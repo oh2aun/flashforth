@@ -1,3 +1,35 @@
+;**********************************************************************
+;                                                                     *
+;    Filename:      FlashForth.asm                                    *
+;    Date:          5.10.2010                                         *
+;    File Version:  0.0                                               *
+;    Copyright:     Mikael Nordman                                    *
+;    Author:        Mikael Nordman                                    *
+;                                                                     * 
+;**********************************************************************
+; FlashForth is a standalone Forth system for microcontrollers that
+; can flash their own flash memory.
+;
+; Copyright (C) 2010  Mikael Nordman
+;
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License version 3 as 
+; published by the Free Software Foundation.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;
+; Modified versions of FlashForth must be clearly marked as such, 
+; in the name of this file, and in the identification
+; displayed when FlashForth starts.
+;**********************************************************************
+
+
 .include "m128def.inc"
 ; Macros
 
@@ -116,8 +148,9 @@
 .equ XOFF=  0x13
 
 ;;; Memory mapping prefixes
-.equ PFLASH=  0x2000
-.equ PEEPROM= 0xfc00
+.equ PRAM    = 0x0000  ; 4 Kbytes of ram
+.equ PFLASH  = 0x1000  ; 56 Kbytes of flash + 4 Kbytes hidden boot flash
+.equ PEEPROM = 0xf000  ; 4 Kbytes of eeprom
 
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size= 64
