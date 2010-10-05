@@ -241,6 +241,12 @@ TWI_:         .dw RESET_FF
 SPMREADY_:    .dw RESET_FF
 
 
+RESET_FF:
+		
+WARM_L:
+WARM:
+		nop
+
 ;;; *************************************
 ;;; COLD dictionary data
 .equ coldlitsize= 6
@@ -270,13 +276,7 @@ WARMLIT:
         .dw      utibbuf               ; TIB
         .dw      OPERATOR_AREA+PFLASH  ; TASK
 ;;; *************************************************
-.org	LARGEBOOTSTART
 
-RESET_FF:
-		
-WARM_L:
-WARM:
-		nop
 OPERATOR_AREA:
 
 ; *******************************************************************
