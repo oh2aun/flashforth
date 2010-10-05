@@ -275,10 +275,10 @@ SPMREADY_:    .dw RESET_FF
 
 
 RESET_FF:
-		
+        
 WARM_L:
 WARM:
-		nop
+        nop
 
 ;;; *************************************
 ;;; COLD dictionary data
@@ -326,95 +326,95 @@ IUPDATEBUF:
         mov     t0, iaddr
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
-		rjmp    IFILL_BUFFER
-		cpse    iaddrh, ibaseh
-		rjmp    IFILL_BUFFER
-		ret
+        rjmp    IFILL_BUFFER
+        cpse    iaddrh, ibaseh
+        rjmp    IFILL_BUFFER
+        ret
 
 IFILL_BUFFER:
-		rcall   IFLUSH
+        rcall   IFLUSH
         mov     t0, iaddrl
-		andi    t0, ~(PAGESIZEB-1)
-		mov     ibasel, t0
-		mov     ibaseh, iaddrh
+        andi    t0, ~(PAGESIZEB-1)
+        mov     ibasel, t0
+        mov     ibaseh, iaddrh
 IFILL_BUFFER_1:
-        ldi		t0, PAGESIZEB&(PAGESIZEB-1)
-		movw    zl, ibase
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
+        ldi     t0, PAGESIZEB&(PAGESIZEB-1)
+        movw    zl, ibase
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
-		lpm     t1, z+
-		st      x+, t1
-		dec     t0
-		brne    IFILL_BUFFER_2
-		ret
+        lpm     t1, z+
+        st      x+, t1
+        dec     t0
+        brne    IFILL_BUFFER_2
+        ret
 
 IWRITE_BUFFER:
 
-		lds     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
-		rcall   DO_SPM
-		ldi 	t3, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
-		rcall 	DO_SPM
+        lds     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
+        rcall   DO_SPM
+        ldi     t3, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
+        rcall   DO_SPM
 
-		; transfer data from RAM to Flash page buffer
-		ldi 	t0, low(PAGESIZEB);init loop variable
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
+        ; transfer data from RAM to Flash page buffer
+        ldi     t0, low(PAGESIZEB);init loop variable
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
 IWRITE_BUFFER1:
-		ld 		r0, x+
-		ld 		r1, x+
-		ldi 	t3, (1<<SPMEN)
-		rcall 	DO_SPM
-		adiw 	ZH:ZL, 2
-		subi 	t0, 2
-		brne 	IWRITE_BUFFER1
+        ld      r0, x+
+        ld      r1, x+
+        ldi     t3, (1<<SPMEN)
+        rcall   DO_SPM
+        adiw    ZH:ZL, 2
+        subi    t0, 2
+        brne    IWRITE_BUFFER1
 
-		; execute page write
-		subi 	ZL, low(PAGESIZEB) ;restore pointer
-		ldi 	t3, (1<<PGWRT) | (1<<SPMEN)
-		rcall 	DO_SPM
-		; re-enable the RWW section
-		ldi 	t3, (1<<RWWSRE) | (1<<SPMEN)
-		rcall 	DO_SPM
+        ; execute page write
+        subi    ZL, low(PAGESIZEB) ;restore pointer
+        ldi     t3, (1<<PGWRT) | (1<<SPMEN)
+        rcall   DO_SPM
+        ; re-enable the RWW section
+        ldi     t3, (1<<RWWSRE) | (1<<SPMEN)
+        rcall   DO_SPM
 #if 0
-		; read back and check, optional
-		ldi 	t0, low(PAGESIZEB);init loop variable
-		subi 	xl, low(PAGESIZEB) ;restore pointer
-		sbci 	xh, high(PAGESIZEB)
+        ; read back and check, optional
+        ldi     t0, low(PAGESIZEB);init loop variable
+        subi    xl, low(PAGESIZEB) ;restore pointer
+        sbci    xh, high(PAGESIZEB)
 IWRITE_BUFFER2:
-		lpm 	r0, z+
-		ld 		r1, x+
-		cpse 	r0, r1
-		jmp 	VERIFY_ERROR     ; What to do here ?? reset ?
-		subi 	t0, 1
-		brne    IWRITE_BUFFER2
+        lpm     r0, z+
+        ld      r1, x+
+        cpse    r0, r1
+        jmp     VERIFY_ERROR     ; What to do here ?? reset ?
+        subi    t0, 1
+        brne    IWRITE_BUFFER2
 #endif
-		; return to RWW section
-		; verify that RWW section is safe to read
+        ; return to RWW section
+        ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
-		lds 	t0, SPMCSR
-		sbrs 	t0, RWWSB ; If RWWSB is set, the RWW section is not ready yet
-		ret
-		; re-enable the RWW section
-		ldi 	t3, (1<<RWWSRE) | (1<<SPMEN)
-		rcall 	DO_SPM
-		rjmp 	IWRITE_BUFFER3
+        lds     t0, SPMCSR
+        sbrs    t0, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+        ret
+        ; re-enable the RWW section
+        ldi     t3, (1<<RWWSRE) | (1<<SPMEN)
+        rcall   DO_SPM
+        rjmp    IWRITE_BUFFER3
 
 DO_SPM:
         lds     t2, SPMCSR
-		sbrc    t2, SPMEN
-		rjmp    DO_SPM       ; Wait for previous write to complete
-		in      t2, SREG
-		cli
-		sts     SPMCSR, t3
-		spm
-		out     SREG, t2
-		ret
+        sbrc    t2, SPMEN
+        rjmp    DO_SPM       ; Wait for previous write to complete
+        in      t2, SREG
+        cli
+        sts     SPMCSR, t3
+        spm
+        out     SREG, t2
+        ret
 ;*****************************************************************
 IFLUSH:
-		sbrc    flags1, idirty
-		rjmp    IWRITE_BUFFER
-		ret
+        sbrc    flags1, idirty
+        rjmp    IWRITE_BUFFER
+        ret
 TX1:
 TX1Q:
 RX1:
@@ -424,247 +424,247 @@ RX1Q:
 
 
 ISTORE:
- 		movw	iaddr, tos
-		rcall   IUPDATEBUF
+        movw    iaddr, tos
+        rcall   IUPDATEBUF
         poptos
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
-		mov     t0, iaddrl
-		andi    t0, ~(PAGESIZEB-1)
-		add     xh, t0
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
+        mov     t0, iaddrl
+        andi    t0, ~(PAGESIZEB-1)
+        add     xh, t0
         st      x+, tosl
-		st      x+, tosh
-		poptos
-		ret
+        st      x+, tosh
+        poptos
+        ret
 
         .dw     WARM_L+PFLASH
 STORE_L:
         .db     NFA|1, "!"
 STORE:
-		cpi		tosh, 0x01
-		brmi    STORE_RAM
-		cpi     tosh, 0xe0
-		brmi    ISTORE
-		rjmp    ESTORE
+        cpi     tosh, 0x01
+        brmi    STORE_RAM
+        cpi     tosh, 0xe0
+        brmi    ISTORE
+        rjmp    ESTORE
 STORE_RAM:
-        movw zl, tosl
+        movw    zl, tosl
         poptos
-        std Z+1, tosh
-        std Z+0, tosl
+        std     Z+1, tosh
+        std     Z+0, tosl
         poptos
-		ret
+        ret
 
 ESTORE:
-		sbic	eecr, eewe
-		rjmp	ESTORE
-		out     eearl, tosl
-		out     eearh, tosh
-		poptos
-		out		eedr, tosl
-		sbi		eecr, eemwe
-		sbi		eecr, eewe
+        sbic    eecr, eewe
+        rjmp    ESTORE
+        out     eearl, tosl
+        out     eearh, tosh
+        poptos
+        out     eedr, tosl
+        sbi     eecr, eemwe
+        sbi     eecr, eewe
 
 ESTORE1:
-		sbic	eecr, eewe
-		rjmp	ESTORE1
+        sbic    eecr, eewe
+        rjmp    ESTORE1
 
-		in      tosl, eearl
-		inc     tosl
-		out     eearl, tosl
+        in      tosl, eearl
+        inc     tosl
+        out     eearl, tosl
 
-		out		eedr, tosl
-		sbi		eecr, eemwe
-		sbi		eecr, eewe
+        out     eedr, tosl
+        sbi     eecr, eemwe
+        sbi     eecr, eewe
 
-		poptos
-		ret
+        poptos
+        ret
 
 ;***********************************************************
 IFETCH:
- 		movw	z, tos
-		cpse    zh, ibaseh
+        movw    z, tos
+        cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zh
-		andi    t0, ~(PAGESIZEB-1)
+        andi    t0, ~(PAGESIZEB-1)
         breq    IIFETCH
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
         andi    zh, (PAGESIZEB-1)
-		add     xl, zh
-		ld		tosl, x+
-		ld		tosh, x+
+        add     xl, zh
+        ld      tosl, x+
+        ld      tosh, x+
 IIFETCH:
-		lpm	    tosl, z+     ; Fetch from Flash directly
-		lpm     tosh, z+
-		ret
-		        
-		.dw     STORE_L+PFLASH
+        lpm     tosl, z+     ; Fetch from Flash directly
+        lpm     tosh, z+
+        ret
+                
+        .dw     STORE_L+PFLASH
 FETCH_L:
         .db     NFA|1, "@"
 FETCH:
-		cpi     tosh, 0x01
-		brmi    FETCH_RAM
-		cpi     tosh, 0xe0
-		brmi    IFETCH
-		rjmp    EFETCH
+        cpi     tosh, 0x01
+        brmi    FETCH_RAM
+        cpi     tosh, 0xe0
+        brmi    IFETCH
+        rjmp    EFETCH
 FETCH_RAM:
-		movw    zl, tosl
+        movw    zl, tosl
         ld      tosl, z+
         ld      tosh, z+
-		ret
+        ret
 
 EFETCH:
-		sbic	eecr, eewe
-		rjmp	EFETCH
-		out     eearl, tosl
-		out     eearh, tosh
+        sbic    eecr, eewe
+        rjmp    EFETCH
+        out     eearl, tosl
+        out     eearh, tosh
         sbi     eecr, eere
-		in      tosl, eedr
-		in      tosh, eearl
-		inc     tosh
-		out     eearl, tosh
-		sbi     eecr, eere
-		in      tosh, eedr
-		ret
+        in      tosl, eedr
+        in      tosh, eearl
+        inc     tosh
+        out     eearl, tosh
+        sbi     eecr, eere
+        in      tosh, eedr
+        ret
 
 ICFETCH:
- 		movw	z, tos
-		cpse    zh, ibaseh
+        movw    z, tos
+        cpse    zh, ibaseh
         rjmp    IICFETCH
         mov     t0, zh
-		andi    t0, ~(PAGESIZEB-1)
+        andi    t0, ~(PAGESIZEB-1)
         breq    IICFETCH
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
         andi    zh, (PAGESIZEB-1)
-		add     xl, zh
-		ld		tosl, x+
-		clr		tosh
+        add     xl, zh
+        ld      tosl, x+
+        clr     tosh
         ret
 IICFETCH:
-		lpm	    tosl, z+     ; Fetch from Flash directly
-		clr     tosh
-		ret
+        lpm     tosl, z+     ; Fetch from Flash directly
+        clr     tosh
+        ret
         .dw     FETCH_L+PFLASH
 CFETCH_L:
         .db     NFA|2, "c@"
 CFETCH:
-		cpi     tosh, 0x01
-		brmi    CFETCH_RAM
-		cpi     tosh, 0xe0
-		brmi    ICFETCH
-		rjmp    ECFETCH
+        cpi     tosh, 0x01
+        brmi    CFETCH_RAM
+        cpi     tosh, 0xe0
+        brmi    ICFETCH
+        rjmp    ECFETCH
 CFETCH_RAM:
         movw    zl, tosl
-		ld      tosl, z+
-		clr     tosh
-		ret
+        ld      tosl, z+
+        clr     tosh
+        ret
 ECFETCH:
-		sbic	eecr, eewe
-		rjmp	ECFETCH
-		out     eearl, tosl
-		out     eearh, tosh
+        sbic    eecr, eewe
+        rjmp    ECFETCH
+        out     eearl, tosl
+        out     eearh, tosh
         sbi     eecr, eere
-		in      tosl, eedr
-		clr     tosh
-		ret
+        in      tosl, eedr
+        clr     tosh
+        ret
 
 ICSTORE:
- 		movw	iaddr, tos
-		rcall   IUPDATEBUF
-		poptos
-		ldi     xl, low(ibuf)
-		ldi     xh, high(ibuf)
-		mov     t0, iaddrl
-		andi    t0, ~(PAGESIZEB-1)
-		add     xh, t0
+        movw    iaddr, tos
+        rcall   IUPDATEBUF
+        poptos
+        ldi     xl, low(ibuf)
+        ldi     xh, high(ibuf)
+        mov     t0, iaddrl
+        andi    t0, ~(PAGESIZEB-1)
+        add     xh, t0
         st      x+, tosl
-		poptos
-		ret
+        poptos
+        ret
 
         .dw     CFETCH_L+PFLASH
 CSTORE_L:
         .db     NFA|2, "c!"
 CSTORE:
-		cpi		tosh, 0x01
-		brmi    CSTORE_RAM
-		cpi     tosh, 0xe0
-		brmi    ICSTORE
-		rjmp    ECSTORE
+        cpi     tosh, 0x01
+        brmi    CSTORE_RAM
+        cpi     tosh, 0xe0
+        brmi    ICSTORE
+        rjmp    ECSTORE
 CSTORE_RAM:
         movw zl, tosl
         poptos
         std Z+0, tosl
         poptos
-		ret
+        ret
 
 ECSTORE:
-		sbic	eecr, eewe
-		rjmp	ECSTORE
-		out     eearl, tosl
-		out     eearh, tosh
-		poptos
-		out		eedr, tosl
-		sbi		eecr, eemwe
-		sbi		eecr, eewe
-		poptos
-		ret
+        sbic    eecr, eewe
+        rjmp    ECSTORE
+        out     eearl, tosl
+        out     eearh, tosh
+        poptos
+        out     eedr, tosl
+        sbi     eecr, eemwe
+        sbi     eecr, eewe
+        poptos
+        ret
 
 
 ICOMMA:
-		ret
+        ret
 
 ; LITERAL  x --           compile literal x as native code
-		.dw		0
+        .dw     0
 LITERAL_L:
-		.db		NFA|IMMED|7,"literal"
+        .db     NFA|IMMED|7,"literal"
 LITERAL:
-		pushtos
-		ldi		tosl, 0x9a      ; savettos
-		ldi		tosh, 0x93      ; savettos
-		rcall	ICOMMA
-		ldi		tosl, 0x8a      ; savettos
-		ldi		tosh, 0x93      ; savettos
-		rcall	ICOMMA
-		poptos
-		rcall   DUP
-		mov		tosh, tosl
-		swap	tosh
-		andi    tosh, 0xf
-		andi	tosl, 0xf
-		ori     tosh, 0xe0
-		ori     tosl, 0x80
-		rcall	ICOMMA
-		poptos
-		mov		tosl, tosh
-		swap	tosh
-		andi    tosh, 0xf
-		andi	tosl, 0xf
-		ori     tosh, 0xe0
-		ori     tosl, 0x90
-		jmp		ICOMMA
+        pushtos
+        ldi     tosl, 0x9a      ; savettos
+        ldi     tosh, 0x93      ; savettos
+        rcall   ICOMMA
+        ldi     tosl, 0x8a      ; savettos
+        ldi     tosh, 0x93      ; savettos
+        rcall   ICOMMA
+        poptos
+        rcall   DUP
+        mov     tosh, tosl
+        swap    tosh
+        andi    tosh, 0xf
+        andi    tosl, 0xf
+        ori     tosh, 0xe0
+        ori     tosl, 0x80
+        rcall   ICOMMA
+        poptos
+        mov     tosl, tosh
+        swap    tosh
+        andi    tosh, 0xf
+        andi    tosl, 0xf
+        ori     tosh, 0xe0
+        ori     tosl, 0x90
+        jmp     ICOMMA
 
 #if 0
 LITERALruntime:
-    	st 		-Y, tosh    ; 0x939a
-	    st 		-Y, tosl	; 0x938a
-        ldi     tosl, 0x12	; 0xe1r2 r=8 (r24)
-		ldi     tosh, 0x34	; 0xe3r4 r=9 (r25)
+        st      -Y, tosh    ; 0x939a
+        st      -Y, tosl    ; 0x938a
+        ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
+        ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
 #endif
 DOLIT_L:
-		
+        
 DOLIT:
 DOCREATE_L:
 DOCREATE:
 DODOES_L:
 DODOES:
 
-		.dw     CSTORE_L+PFLASH
+        .dw     CSTORE_L+PFLASH
 DUP_L:
-		.db		NFA|3, "dup"
+        .db     NFA|3, "dup"
 DUP:
-		pushtos
-		ret
+        pushtos
+        ret
 
 ABS_L:
         .dw     ABS_L+PFLASH
@@ -685,16 +685,16 @@ MPLUS_L:
 MPLUS:
         ld      t2, Y+
         ld      t3, Y+
-		ld      t0, Y+
-		ld      t1, Y+
+        ld      t0, Y+
+        ld      t1, Y+
         add     t0, tosl
-		adc     t1, tosh
+        adc     t1, tosh
         clr     tosl
-		adc     tosl, t2
-		clr     tosh
-		adc     tosh, t3
+        adc     tosl, t2
+        clr     tosh
+        adc     tosh, t3
         st      -Y, t1
-		st      -Y, t0
+        st      -Y, t0
         ret
 
         .dw     MPLUS_L+PFLASH
@@ -709,124 +709,124 @@ MINUS:
         ret
 
 
-		.dw		ONEMINUS_L+PFLASH
+        .dw     ONEMINUS_L+PFLASH
 AND_L:
-		.db		NFA|3, "and"
+        .db     NFA|3, "and"
 AND_:
-		ld		t0, Y+
-		ld		t1, Y+
-		and		tosl, t0
-		and		tosh, t1
-		ret
+        ld      t0, Y+
+        ld      t1, Y+
+        and     tosl, t0
+        and     tosh, t1
+        ret
 
-		.dw		AND_L+PFLASH
+        .dw     AND_L+PFLASH
 OR_L:
-		.db		NFA|2, "or"
+        .db     NFA|2, "or"
 OR_:
-		ld		t0, Y+
-		ld		t1, Y+
-		or		tosl, t0
-		or		tosh, t1
-		ret
+        ld      t0, Y+
+        ld      t1, Y+
+        or      tosl, t0
+        or      tosh, t1
+        ret
 
-		.dw		OR_L+PFLASH
+        .dw     OR_L+PFLASH
 XOR_L:
-		.db		NFA|3, "xor"
+        .db     NFA|3, "xor"
 XOR_:
-		ld		t0, Y+
-		ld		t1, Y+
-		eor		tosl, t0
-		eor		tosh, t1
-		ret
+        ld      t0, Y+
+        ld      t1, Y+
+        eor     tosl, t0
+        eor     tosh, t1
+        ret
 
-		.dw		XOR_L+PFLASH
+        .dw     XOR_L+PFLASH
 INVERT_L:
-		.db		NFA|6, "invert"
+        .db     NFA|6, "invert"
 INVERT:
-		com		tosl
-		com		tosh
-		ret
+        com     tosl
+        com     tosh
+        ret
 
-		.dw		INVERT_L+PFLASH
+        .dw     INVERT_L+PFLASH
 NEGATE_L:
-		.db		NFA|6, "negate"
+        .db     NFA|6, "negate"
 NEGATE:
-		rcall	INVERT
-		jmp		ONEPLUS
+        rcall   INVERT
+        jmp     ONEPLUS
 
-		.dw		NEGATE_L+PFLASH
+        .dw     NEGATE_L+PFLASH
 ONEPLUS_L:
-		.db		NFA|INLINE|2, "1+"
+        .db     NFA|INLINE|2, "1+"
 ONEPLUS:
-		adiw    tosl, 1
-		ret
+        adiw    tosl, 1
+        ret
 
-		.dw		ONEPLUS_L+PFLASH
+        .dw     ONEPLUS_L+PFLASH
 ONEMINUS_L:
-		.db		NFA|INLINE|2, "1-"
+        .db     NFA|INLINE|2, "1-"
 ONEMINUS:
-		sbiw	tosl, 1
-		ret
+        sbiw    tosl, 1
+        ret
 
-		.dw		ONEMINUS_L+PFLASH
+        .dw     ONEMINUS_L+PFLASH
 TWOPLUS_L:
-		.db		NFA|INLINE|2, "2+"
+        .db     NFA|INLINE|2, "2+"
 TWOPLUS:
-		adiw    tosl, 2
-		ret
+        adiw    tosl, 2
+        ret
 
-		.dw		TWOPLUS_L+PFLASH
+        .dw     TWOPLUS_L+PFLASH
 TWOMINUS_L:
-		.db		NFA|INLINE|2, "2-"
+        .db     NFA|INLINE|2, "2-"
 TWOMINUS:
-		sbiw	tosl, 2
-		ret
+        sbiw    tosl, 2
+        ret
 
-		.dw		TWOMINUS_L+PFLASH
+        .dw     TWOMINUS_L+PFLASH
 TOBODY_L:
-		.db		NFA|INLINE|5, ">body"
+        .db     NFA|INLINE|5, ">body"
 TOBODY:
-		adiw	tosl, 4
-		ret
+        adiw    tosl, 4
+        ret
 
-		.dw		TOBODY_L+PFLASH
+        .dw     TOBODY_L+PFLASH
 TWOSTAR_L:
-		.db		NFA|INLINE|2, "2*"
+        .db     NFA|INLINE|2, "2*"
 TWOSTAR:
-		lsl		tosl
-		rol		tosh
-		ret
+        lsl     tosl
+        rol     tosh
+        ret
 
-		.dw		TWOSTAR_L+PFLASH
+        .dw     TWOSTAR_L+PFLASH
 TWOSLASH_L:
-		.db		NFA|INLINE|2, "2/"
+        .db     NFA|INLINE|2, "2/"
 TWOSLASH:
-		asr		tosh
-		ror		tosl
-		ret
+        asr     tosh
+        ror     tosl
+        ret
 
-		.dw		TWOSLASH_L+PFLASH
+        .dw     TWOSLASH_L+PFLASH
 ZEROEQUAL_L:
-		.db		NFA|COMPILE|2, "0="
-ZEROEQUAL:		
-		or		tosh, tosl
-		brne    ZEROEQUAL_1
+        .db     NFA|COMPILE|2, "0="
+ZEROEQUAL:      
+        or      tosh, tosl
+        brne    ZEROEQUAL_1
 TRUE_F:
-		ser     tosh
+        ser     tosh
         ser     tosl
 ZEROEQUAL_1:
-		ret
+        ret
 
-		.dw		ZEROEQUAL_L+PFLASH
+        .dw     ZEROEQUAL_L+PFLASH
 ZEROLESS_L:
-		.db		NFA, COMPILE|2, "0<"
+        .db     NFA, COMPILE|2, "0<"
 ZEROLESS:
-		tst     tosh
-		brmi    TRUE_F
+        tst     tosh
+        brmi    TRUE_F
         clr     tosh
-		clr     tosl
-		ret
-
+        clr     tosl
+        ret
+        
 
 DOTSTATUS:
 lastword:
