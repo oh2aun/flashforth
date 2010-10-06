@@ -651,13 +651,39 @@ LITERALruntime:
         ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
         ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
 #endif
+
 DOLIT_L:
-        
+        .db     NFA|3, "lit"
 DOLIT:
+        pop     zl
+        pop     zh
+        pushtos
+        lpm     tosl, z+
+        lpm     tosh, z+
+        ijmp    ; (z)
+
 DOCREATE_L:
+        .db     NFA|3, "(c)"
 DOCREATE:
+        pop     zl
+        pop     zh
+        pushtos
+        lpm     tosl, z+
+        lpm     tosh, z+
+        ret
+      
 DODOES_L:
+        .db     NFA|3, "(d)"
 DODOES:
+        pop     xl
+        pop     xh
+        pop     zl
+        pop     zh
+        pushtos
+        lpm     tosl, z+
+        lpm     tosh, z+
+        movw    z, x
+        ijmp    ; (z)
 
         .dw     CSTORE_L+PFLASH
 DUP_L:
