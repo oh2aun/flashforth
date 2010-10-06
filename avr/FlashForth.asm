@@ -310,8 +310,6 @@ WARMLIT:
         .dw      OPERATOR_AREA+PFLASH  ; TASK
 ;;; *************************************************
 
-OPERATOR_AREA:
-
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
@@ -415,10 +413,7 @@ IFLUSH:
         sbrc    flags1, idirty
         rjmp    IWRITE_BUFFER
         ret
-TX1:
-TX1Q:
-RX1:
-RX1Q:
+
 
 
 
@@ -610,12 +605,63 @@ ECSTORE:
         poptos
         ret
 
+TX1:
+TX1Q:
+RX1:
+RX1Q:
 
+OPERATOR_L:
+        .db     NFA|8,"operator",0
+OPERATOR:
+        rcall   DOCREATE
+        .dw     OPERATOR_AREA+PFLASH
+OPERATOR_AREA:
+        .dw     ustart-us0
+        .dw     uaddsize
+        .dw     ursize
+        .dw     ussize
+        .dw     utibsize
+
+ICOMMA_L:
+        .db     NFA|2, "i,",0
 ICOMMA:
+        rcall   IHERE
+        rcall   STORE
+        rcall   CELL
+        rcall   IALLOT
+        ret
+IHERE:
+IALLOT:
+CELL:
+CALL_:
+RCALL_:
+ABS_:
+ZEROSENSE:
+COMMAXT_L:
+        .db     NFA|3, "cf,"
+COMMAXT:
+        rcall   DUP
+        rcall   IHERE
+        rcall   MINUS
+        rcall   ABS_ 
+        rcall   DOLIT
+        .dw     0xffe
+        rcall   GREATER
+        rcall   ZEROSENSE
+        breq    STORECF1
+STORECFF1: 
+        rcall   CALL_
+        rjmp    STORECF2 
+STORECF1:
+        rcall   IHERE
+        rcall   MINUS
+        call    TWOMINUS
+        rcall   RCALL_
+STORECF2:
         ret
 
 ; LITERAL  x --           compile literal x as native code
-        .dw     0
+        .dw     OPERATOR_L+PFLASH
 LITERAL_L:
         .db     NFA|IMMED|7,"literal"
 LITERAL:
@@ -685,6 +731,71 @@ DODOES:
         movw    z, x
         ijmp    ; (z)
 
+DROP_L:
+        .db     NFA|4,"drop",0
+DROP:
+        poptos
+        ret
+
+SWOP_L:
+        .db     NFA|4,"swap",0
+SWOP:
+        ld      t0, y+
+        ld      t1, y+
+        pushtos
+        movw    tosl, t0
+        ret
+
+OVER_L:
+        .db     NFA|4,"over",0
+OVER:
+        ldd     t0, y+1
+        ldd     t1, y+2
+        pushtos
+        movw    tosl, t0
+        ret
+
+ROT_L:
+        .db     NFA|3, "rot"
+ROT:
+        rcall   TOR
+        rcall   SWOP
+        rcall   RFROM
+        rjmp    SWOP
+
+TOR_L:
+        .db     NFA|COMPILE|2,">r",0
+TOR:
+        pop     zl
+        pop     zh
+        push    tosh
+        push    tosl
+        poptos
+        ijmp
+
+RFROM_L:
+        .db     NFA|COMPILE|2,"r>",0
+RFROM:
+        pop     zl
+        pop     zh
+        pushtos
+        pop     tosl
+        pop     tosh
+        ijmp
+
+RFETCH_L:
+        .db     NFA|COMPILE|2,"r@",0
+RFETCH:
+        pop     zl
+        pop     zh
+        pushtos
+        pop     tosl
+        pop     tosh
+        push    tosh
+        push    tosl
+        ijmp
+
+
         .dw     CSTORE_L+PFLASH
 DUP_L:
         .db     NFA|3, "dup"
@@ -747,7 +858,7 @@ AND_:
 
         .dw     AND_L+PFLASH
 OR_L:
-        .db     NFA|2, "or"
+        .db     NFA|2, "or",0
 OR_:
         ld      t0, Y+
         ld      t1, Y+
@@ -767,7 +878,7 @@ XOR_:
 
         .dw     XOR_L+PFLASH
 INVERT_L:
-        .db     NFA|6, "invert"
+        .db     NFA|6, "invert",0
 INVERT:
         com     tosl
         com     tosh
@@ -775,35 +886,35 @@ INVERT:
 
         .dw     INVERT_L+PFLASH
 NEGATE_L:
-        .db     NFA|6, "negate"
+        .db     NFA|6, "negate",0
 NEGATE:
         rcall   INVERT
         jmp     ONEPLUS
 
         .dw     NEGATE_L+PFLASH
 ONEPLUS_L:
-        .db     NFA|INLINE|2, "1+"
+        .db     NFA|INLINE|2, "1+",0
 ONEPLUS:
         adiw    tosl, 1
         ret
 
         .dw     ONEPLUS_L+PFLASH
 ONEMINUS_L:
-        .db     NFA|INLINE|2, "1-"
+        .db     NFA|INLINE|2, "1-",0
 ONEMINUS:
         sbiw    tosl, 1
         ret
 
         .dw     ONEMINUS_L+PFLASH
 TWOPLUS_L:
-        .db     NFA|INLINE|2, "2+"
+        .db     NFA|INLINE|2, "2+",0
 TWOPLUS:
         adiw    tosl, 2
         ret
 
         .dw     TWOPLUS_L+PFLASH
 TWOMINUS_L:
-        .db     NFA|INLINE|2, "2-"
+        .db     NFA|INLINE|2, "2-",0
 TWOMINUS:
         sbiw    tosl, 2
         ret
@@ -817,7 +928,7 @@ TOBODY:
 
         .dw     TOBODY_L+PFLASH
 TWOSTAR_L:
-        .db     NFA|INLINE|2, "2*"
+        .db     NFA|INLINE|2, "2*",0
 TWOSTAR:
         lsl     tosl
         rol     tosh
@@ -825,7 +936,7 @@ TWOSTAR:
 
         .dw     TWOSTAR_L+PFLASH
 TWOSLASH_L:
-        .db     NFA|INLINE|2, "2/"
+        .db     NFA|INLINE|2, "2/",0
 TWOSLASH:
         asr     tosh
         ror     tosl
@@ -833,7 +944,7 @@ TWOSLASH:
 
         .dw     TWOSLASH_L+PFLASH
 ZEROEQUAL_L:
-        .db     NFA|COMPILE|2, "0="
+        .db     NFA|COMPILE|2, "0=",0
 ZEROEQUAL:      
         or      tosh, tosl
         brne    ZEROEQUAL_1
@@ -845,14 +956,67 @@ ZEROEQUAL_1:
 
         .dw     ZEROEQUAL_L+PFLASH
 ZEROLESS_L:
-        .db     NFA, COMPILE|2, "0<"
+        .db     NFA, COMPILE|2, "0<",0
 ZEROLESS:
         tst     tosh
         brmi    TRUE_F
+FALSE_F:
         clr     tosh
         clr     tosl
         ret
         
+EQUAL_L:
+        .db     NFA|1, "="
+EQUAL:
+        rcall   MINUS
+        jmp     ZEROEQUAL
+
+LESS_L:
+        .db     NFA|1,"<"
+LESS:
+        rcall   MINUS
+        jmp     ZEROLESS
+
+GREATER_L:
+        .db     NFA|1,">"
+GREATER:
+        rcall   SWOP
+        jmp     LESS
+
+ULESS_L:
+        .db     NFA|2,"u<",0
+ULESS:
+        rcall   MINUS
+        brsh    TRUE_F        ; Carry test  
+        jmp     FALSE_F
+
+UGREATER_L:
+        .db     NFA|2, "u>"
+UGREATER:
+        rcall   SWOP
+        jmp     ULESS
+
+PLUSSTORE_L:
+        .db     NFA|2,"+!",0
+PLUSSTORE:
+        rcall   SWOP
+        rcall   OVER
+        rcall   FETCH
+        rcall   PLUS
+        rcall   SWOP
+        jmp     STORE
+
+WITHIN_L:
+        .db     NFA|6,"within",0
+WITHIN:
+        rcall   OVER
+        rcall   MINUS
+        rcall   TOR
+        rcall   MINUS
+        rcall   RFROM
+        jmp     ULESS
+
+
 
 DOTSTATUS:
 lastword:
