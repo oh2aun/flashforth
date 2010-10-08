@@ -55,8 +55,10 @@
   .def t2 = r18
   .def t3 = r19
 
-  .def t6 = r20
-  .def t7 = r21
+  .def i_lo = r10
+  .def i_hi = r11
+  .def p_lo = r20
+  .def p_hi = r21
 
   .def flags0 = r22
   .def flags1 = r23
@@ -166,7 +168,7 @@
 .equ us0=          - 30         ; Start of parameter stack
 .equ ur0=          - 28         ; Start of return stack
 .equ uemit=        - 26         ; User EMIT vector
-.equ uemitq=       - 24         ; User EMIT? vector
+.equ uemitq_=      - 24         ; User EMIT? vector
 .equ ukey=         - 22         ; User KEY vector
 .equ ukeyq=        - 20         ; User KEY? vector
 .equ ulink=        - 18         ; Task link
@@ -414,10 +416,6 @@ IFLUSH:
         rjmp    IWRITE_BUFFER
         ret
 
-
-
-
-
 ISTORE:
         movw    iaddr, tos
         rcall   IUPDATEBUF
@@ -542,7 +540,7 @@ IICFETCH:
         ret
         .dw     FETCH_L+PFLASH
 CFETCH_L:
-        .db     NFA|2, "c@"
+        .db     NFA|2, "c@",0
 CFETCH:
         cpi     tosh, 0x01
         brmi    CFETCH_RAM
@@ -579,7 +577,7 @@ ICSTORE:
 
         .dw     CFETCH_L+PFLASH
 CSTORE_L:
-        .db     NFA|2, "c!"
+        .db     NFA|2, "c!",0
 CSTORE:
         cpi     tosh, 0x01
         brmi    CSTORE_RAM
@@ -708,6 +706,42 @@ DOLIT:
         lpm     tosh, z+
         ijmp    ; (z)
 
+EXECUTE_L:
+        .db     NFA|7,"execute"
+EXECUTE:
+        movw    zl, tosl
+        poptos
+        ijmp
+
+FEXECUTE_L:
+        .db     NFA|3,"@ex"
+FEXECUTE:
+        rcall   FETCH
+        jmp     EXECUTE
+
+VARIABLE_L:
+        .db     NFA|8,"variable",0
+VARIABLE:
+        rcall   CREATE
+        rcall   CELL
+        jmp     ALLOT
+
+CONSTANT_L:
+        .db     NFA|8,"constant",0
+CONSTANT_:
+        rcall   CREATE
+        rcall   CELL
+        rcall   NEGATE
+        rcall   IALLOT
+        jmp     ICOMMA
+
+CON_L:
+        .db     NFA|3,"con"
+CON:
+        rcall   COLON
+        rcall   LITERAL
+        jmp     SEMICOLON
+
 DOCREATE_L:
         .db     NFA|3, "(c)"
 DOCREATE:
@@ -730,6 +764,281 @@ DODOES:
         lpm     tosh, z+
         movw    z, x
         ijmp    ; (z)
+
+SPFETCH_L:
+        .db     NFA|3,"sp@"
+SPFETCH:
+        movw    z, y
+        pushtos
+        movw    tosl, z
+        ret
+
+        .db     NFA|3,"sp!"
+SPSTORE:
+        movw    y, tosl
+        ret
+
+        .db     NFA|3,"rp0"
+RPEMPTY:
+        ret;FIXME
+
+
+
+; !COLON   --       change code field to docolon
+;   -6 IALLOT ; 
+;       dw      link
+;link   set     $
+        .db     NFA|6,"!colon",0
+STORCOLON:
+        rcall   DOLIT
+        .dw     0xfffa         ;  -6
+        jmp     IALLOT
+
+
+; 2@    a-addr -- x1 x2            fetch 2 cells
+;   DUP @ SWAP CELL+ @ ;
+;   the lower address will appear on top of stack
+        .dw     COMMAXT_L
+TWOFETCH_L:
+        .db     NFA|2,"2@",0
+TWOFETCH:
+        rcall   DUP
+        rcall   FETCH
+        rcall   SWOP
+        rcall   CELLPLUS
+        jmp     FETCH
+
+; 2!    x1 x2 a-addr --            store 2 cells
+;   SWAP OVER ! CELL+ ! ;
+;   the top of stack is stored at the lower adrs
+        .dw     TWOFETCH_L
+TWOSTORE_L:
+        .db     NFA|2,"2!",0
+TWOSTORE:
+        rcall   SWOP
+        rcall   OVER
+        rcall   CELLPLUS
+        rcall   STORE
+        jmp     STORE
+
+; 2DROP  x1 x2 --                   drop 2 cells
+;   DROP DROP ;
+        .dw     TWOSTORE_L
+TWODROP_L:
+        .db     NFA|5,"2drop"
+TWODROP:
+        rcall   DROP
+        jmp     DROP
+
+; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
+;   OVER OVER ;
+        .dw     TWODROP_L
+TWODUP_L:
+        .db     NFA|4,"2dup",0
+TWODUP:
+        rcall   OVER
+        jmp     OVER
+
+; INPUT/OUTPUT ==================================
+
+; SPACE   --                      output a space
+;   BL EMIT ;
+        .dw     TWODUP_L
+SPACE_L:
+        .db     NFA|5,"space"
+SPACE_:  
+        call    BL_
+        jmp     EMIT
+
+; SPACES   n --                  output n spaces
+;   BEGIN DUP WHILE SPACE 1- REPEAT DROP ;
+        .dw     SPACE_L
+SPACES_L:
+        .db     NFA|6,"spaces",0
+SPACES:
+SPCS1:
+        rcall   DUPZEROSENSE
+        breq    SPCS2
+        rcall   SPACE_
+        rcall   ONEMINUS
+        rjmp    SPCS1
+SPCS2:  jmp     DROP
+
+
+; umin     u1 u2 -- u           unsigned minimum
+;   2DUP U> IF SWAP THEN DROP ;
+        .dw     SPACES_L
+UMIN_L:
+        .db     NFA|4,"umin",0
+UMIN:
+        rcall   TWODUP
+        rcall   UGREATER
+        rcall   ZEROSENSE
+        breq    UMIN1
+        rcall   SWOP
+UMIN1:  jmp     DROP
+
+
+; umax    u1 u2 -- u            unsigned maximum
+;   2DUP U< IF SWAP THEN DROP ;
+        .dw     UMIN_L
+UMAX_L:
+        .db     NFA|4,"umax",0
+UMAX:
+        rcall   TWODUP
+        rcall   ULESS
+        rcall   ZEROSENSE
+        breq    UMAX1
+        rcall   SWOP
+UMAX1:  jmp     DROP
+
+        .dw     UMAX_L
+ONE_L:
+        .db     NFA|INLINE|1,"1"
+ONE:
+
+
+; ACCEPT  c-addr +n -- +n'  get line from terminal
+        .dw     ONE_L
+ACCEPT_L:
+        .db     NFA|6,"accept",0
+ACCEPT:
+#if 0
+        rcall   OVER
+        rcall   PLUS
+        rcall   OVER
+ACC1:
+        rcall   KEY
+
+        movf    Sminus, W, A
+        movlw   CR_
+        subwf   Splus, W, A
+        bnz     ACC_LF
+        bsf     FLAGS2, fCR, A
+        rcall   DROP
+        bra     ACC6
+ACC_LF:
+        movf    Sminus, W, A
+        movlw   LF_
+        subwf   Splus, W, A
+        bnz     ACC2
+        rcall   DROP
+        btfss   FLAGS2, fCR, A
+        bra     ACC6
+        bra     ACC1
+ACC2:
+        bcf     FLAGS2, fCR, A
+        rcall   DUP
+        rcall   EMIT
+        rcall   DUP
+        rcall   LIT
+        dw      BS_
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        bz      ACC3
+        rcall   DROP
+        rcall   ONEMINUS
+        rcall   TOR
+        rcall   OVER
+        rcall   RFROM
+        rcall   UMAX
+        bra     ACC1
+ACC3:
+        rcall   OVER
+        rcall   CSTORE
+        rcall   ONEPLUS
+        rcall   OVER
+        rcall   UMIN
+        rcall   TWODUP
+        rcall   NOTEQUAL
+        rcall   ZEROSENSE
+        bnz     ACC1
+ACC6:
+        rcall   NIP
+        rcall   SWOP
+        goto    MINUS
+#endif
+; TYPE    c-addr u --   type line to terminal u < $100
+; : type for c@+ emit next drop ;
+
+        .dw      ACCEPT_L
+TYPE_L:
+        .db     NFA|4,"type",0
+TYPE:
+        push    tosh
+        push    tosl
+        poptos
+        rjmp    TYPE2           ; XFOR
+TYPE1:  
+        rcall   CFETCHPP
+        rcall   EMIT
+TYPE2:
+        call    XNEXT_DEC
+        brpl    TYPE1
+        pop     t0
+        pop     t0          ; UNNEXT
+        jmp     DROP
+
+XNEXT_DEC:
+        ldd     t0, y+3
+        ldd     t1, y+4
+        subi    t0, 1        ; XNEXT
+        sbci    t1, 0
+        std     y+4, t1
+        std     y+3, t0 
+        ret
+
+; (S"    -- c-addr u      run-time code for S"
+;       dw      link
+;link    set     $
+        .db      NFA|3,"(s",0x22
+XSQUOTE:
+        rcall   RFROM
+        rcall   CFETCHPP
+        rcall   TWODUP
+        rcall   PLUS
+        rcall   ALIGNED
+        rcall   TOR       ; do NOT goto TOR!
+        ret
+
+SQUOTE_L:
+        .db      NFA|IMMED|COMPILE|2,"s",0x22,0
+SQUOTE:
+        rcall   LIT
+        .dw      XSQUOTE
+        rcall   COMMAXT
+        rcall   ROM
+        rcall   CQUOTE
+        jmp     FRAM
+
+
+CQUOTE_L:
+        .db     NFA|2,",",0x22,0
+CQUOTE: 
+        rcall   LIT
+        .dw     0x22
+        rcall   PARSE
+        rcall   HERE
+        rcall   OVER
+        rcall   ONEPLUS
+        rcall   ALIGNED
+        rcall   ALLOT
+        jmp     PLACE
+
+
+DOTQUOTE_L:
+        .db      NFA|IMMED|COMPILE|2,".",0x22,0
+DOTQUOTE:
+        rcall   SQUOTE
+        rcall   DOLIT
+        .dw     TYPE
+        jmp     COMMAXT
+
+ALLOT_L:
+        .db     NFA|5,"allot"
+ALLOT:
+        rcall   DP
+        jmp     PLUSSTORE
 
 DROP_L:
         .db     NFA|4,"drop",0
@@ -956,7 +1265,7 @@ ZEROEQUAL_1:
 
         .dw     ZEROEQUAL_L+PFLASH
 ZEROLESS_L:
-        .db     NFA, COMPILE|2, "0<",0
+        .db     NFA|COMPILE|2, "0<",0
 ZEROLESS:
         tst     tosh
         brmi    TRUE_F
@@ -991,7 +1300,7 @@ ULESS:
         jmp     FALSE_F
 
 UGREATER_L:
-        .db     NFA|2, "u>"
+        .db     NFA|2, "u>",0
 UGREATER:
         rcall   SWOP
         jmp     ULESS
@@ -1016,6 +1325,120 @@ WITHIN:
         rcall   RFROM
         jmp     ULESS
 
+STORE_P_L:
+        .db     NFA|2,"!p",0
+STORE_P:
+        movw    p_lo, tosl
+        poptos
+        ret
+
+STORE_P_TO_R_L:
+        .db     NFA|COMPILE|4,"!p>r",0
+STORE_P_TO_R:
+        pop     zl
+        pop     zh
+        push    p_hi
+        push    p_lo
+        movw    p_lo, tosl
+        poptos
+        ijmp
+
+R_TO_P_L:
+        .db     NFA|COMPILE|3,"r>p"
+R_TO_P:
+        pop     zl
+        pop     zh
+        pop     p_lo
+        pop     p_hi
+        ijmp
+
+PFETCH_L:
+        .db     NFA|2,"p@",0
+PFETCH:
+        pushtos
+        movw    tosl, p_lo
+        jmp     FETCH
+
+PSTORE_L:
+        .db     NFA|2,"p!",0
+PSTORE:
+        pushtos
+        movw    tosl, p_lo
+        jmp     STORE
+
+PCSTORE_L:
+        .db     NFA|3,"pc!"
+PCSTORE:
+        pushtos
+        movw    tosl, p_lo
+        jmp     CSTORE
+
+PCFETCH_L:
+        .db     NFA|3,"pc@"
+PCFETCH:
+        pushtos
+        movw    tosl, p_lo
+        jmp     CFETCH
+
+PPLUS_L:
+        .db     NFA|2,"p+",0
+PPLUS:
+        inc     p_lo
+        brne    PPLUS1
+        inc     p_hi
+PPLUS1:
+        ret
+
+PNPLUS_L:
+        .db     NFA|3,"p++"
+PNPLUS:
+        add     p_lo, tosl
+        adc     p_hi, tosh
+        poptos
+        ret
+
+UEMIT_L:
+        .db     NFA|5,"uemit"
+UEMIT_:
+        rcall   DOUSER
+        .dw     uemit
+
+UKEY_L:
+        .db     NFA|4,"ukey",0      
+UKEY_:
+        rcall   DOUSER
+        .dw     ukey
+
+UKEYQ_L:
+        .db     NFA|5,"ukeyq"
+UKEYQ_:
+        rcall   DOUSER
+        .dw     ukeyq
+
+USER_L:
+        .db     NFA|4,"user",0
+USER:
+        rcall   CONSTANT_
+        rcall   XDOES
+DOUSER:
+        pushtos
+        pop     zl
+        pop     zh
+        lpm     tosl, z+
+        lpm     tosh, z+
+        add     tosl, upl
+        adc     tosh, uph
+        ret
+
+CREATE:
+
+
+COLON:
+
+SEMICOLON:
+
+XDOES:
+DP:
 
 
 DOTSTATUS:
