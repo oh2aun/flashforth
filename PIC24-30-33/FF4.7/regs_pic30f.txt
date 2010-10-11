@@ -1,0 +1,4 @@
+$02c6 con trisb
+$02c8 con portb
+$02cb con latb
+$02a8 con adpcfg

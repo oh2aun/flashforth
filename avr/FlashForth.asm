@@ -221,7 +221,8 @@ rbuf_rd:    .byte 2
 rbuf_lv:    .byte 2
 rbuf:       .byte rbuf_size
 
-iflags:     .byte 2
+FLAGS1:     .byte 1
+FLAGS2:     .byte 1
 Preg:       .byte 2
 ms_count:   .byte 2
 intcon1dbg: .byte 2
@@ -979,14 +980,6 @@ TYPE2:
         pop     t0          ; UNNEXT
         jmp     DROP
 
-XNEXT_DEC:
-        ldd     t0, y+3
-        ldd     t1, y+4
-        subi    t0, 1        ; XNEXT
-        sbci    t1, 0
-        std     y+4, t1
-        std     y+3, t0 
-        ret
 
 ; (S"    -- c-addr u      run-time code for S"
 ;       dw      link
@@ -1439,6 +1432,15 @@ SEMICOLON:
 
 XDOES:
 DP:
+
+XNEXT_DEC:
+        ldd     t0, y+3
+        ldd     t1, y+4
+        subi    t0, 1        ; XNEXT
+        sbci    t1, 0
+        std     y+4, t1
+        std     y+3, t0 
+        ret
 
 
 DOTSTATUS:
