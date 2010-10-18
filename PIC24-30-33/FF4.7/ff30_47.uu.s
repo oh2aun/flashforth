@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff30_47.s                                         *
+;    Filename:      ff30_47.uu.s                                      *
 ;    Date:          10.10.2010                                        *
-;    File Version:  4.7 pre                                           *
+;    File Version:  4.7 packed names                                  *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -421,10 +421,11 @@ forceemit1:
         reset
 
 ; LITERAL  x --           append numeric literal as inline code
-        .pword   0
 LITERAL_L:
-        .byte   NFA|IMMED|7
-        .ascii "literal"
+        .fillupper   NFA|IMMED|7
+        .word  0
+		.fillupper 0
+        .pascii "literal"
         .align 2
 LITERAL:
         mov     [W14--], W0
@@ -445,10 +446,11 @@ LITERAL:
         rcall   AS_COMMA
         return
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        .pword   paddr(LITERAL_L)+PFLASH
 COLD_L:
-        .byte   NFA|4
-        .ascii  "cold"
+		.fillupper NFA|4
+        .word    LITERAL_L+PFLASH
+		.fillupper 0
+        .pascii  "cold"
         .align 2
 COLD:
 .ifdef PEEPROM
@@ -1436,10 +1438,15 @@ RSHIFT:
         return
 
 NEQUAL_L:
-        .pword  paddr(RSHIFT_L)+PFLASH
-		.byte   NFA|2
-        .ascii  "n="
+		.fillupper NFA|2
+        .word  RSHIFT_L+PFLASH
+		.fillupper 0
+        .pascii  "n="
         .align  2
+.if 1
+NEQUAL:
+		return
+.else
 NEQUAL:
         mov.w   [W14--], W3     ; count
         mov.w   [W14--], W4     ; caddr2 in flash
@@ -1467,7 +1474,7 @@ NEQUAL1:
 NEQUAL_TRUE:
         setm.w  [W14]
         return
-
+.endif
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
         .pword  paddr(NEQUAL_L)+PFLASH
