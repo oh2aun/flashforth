@@ -1,10 +1,18 @@
 ;;; FlashForth device configuration for the dsPIC33
+;config FBS, BSS_OFF & BWRP_OFF
+config FOSCSEL, FNOSC_FRC
+;config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF & POSCMOD_NONE
+;config FWDT, FWDTEN_ON 
+;config FPOR, MCLRE_OFF & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
+;config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
-.equ FREQ, (7322000*8)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 38400					  ; Serial baudrate
 
-.equ BAUD_DIV1, (FREQ/64/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FREQ/4/1000)				; Timer value for 1 ms ticks
+;.equ FREQ, (7322000)					  ;Clock (Crystal)frequency (Hz)
+.equ FREQ, (16000000)					  ;Clock (Crystal)frequency (Hz)
+.equ BAUDRATE, 9600					  ; Serial baudrate
+
+.equ BAUD_DIV1, (FREQ/2/16/BAUDRATE)-1		; UART divisor
+.equ MS_PR_VAL, (FREQ/2/1000)				; Timer value for 1 ms ticks
 
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
@@ -18,7 +26,6 @@
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
-.equ USE_ALTERNATE_UART_PINS, 0
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x2800  ; 8 Kbytes RAM, 56 KBytes FLASH
 .equ FLASH_ERASE,    0x4042  ; Memory page erase

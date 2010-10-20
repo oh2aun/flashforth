@@ -234,6 +234,7 @@ __MathError:
 __T1Interrupt:
         bclr    IFS0, #T1IF
         inc     ms_count
+		btg		PORTB, #0x8
         retfie
 
 __U1RXInterrupt:
@@ -512,18 +513,40 @@ WARM_0:
         rcall   CQUEUEZ
 
 ; Initialise the UART 1
+		setm    AD1PCFGL
+		mov		#OSCCONL, W0
+		mov.b   #0xb0, W3
+		mov.b	#0x45, W1
+		mov.b	#0x57, W2
+		mov.b	W1, [W0]
+		mov.b	W2, [W0]
+		bclr.b	OSCCONL, #IOLOCK
+		
+		mov     #0x0D0F, W0
+		mov		W0, RPINR18
+
+		mov		#0x0004, W0
+		mov		W0, RPOR6
+		mov		#0x0003, W0
+		mov		W0, RPOR7
+
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
 .endif
+;		bset    U1MODE, #URXINV
         bset    U1MODE, #UARTEN
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
 ;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
         bset    U1STA, #UTXEN
+		bclr	IFS0, #U1RXIF
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
 
-
+	
+		bclr	TRISB, #0x8
+		bclr	LATB, #0x8
+		bclr	PORTB, #0x8
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
         mlit	cse
@@ -1435,8 +1458,8 @@ RSHIFT:
         mov     W1, [W14]
         return
 
-NEQUAL_L:
         .pword  paddr(RSHIFT_L)+PFLASH
+NEQUAL_L:
 		.byte   NFA|2
         .ascii  "n="
         .align  2
