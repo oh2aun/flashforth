@@ -338,10 +338,12 @@ fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
 fill_buffer_from_imem1:
+        mov.w   #IBUFLEN1, W3
+fill_buffer_from_imem2:
         tblrdh.b [W2], [W1++]
         tblrdl   [W2++], [W0++]
         dec      W3, W3
-        bra      nz, fill_buffer_from_imem1
+        bra      nz, fill_buffer_from_imem2
         dec      W4, W4
         bra      nz, fill_buffer_from_imem1
         return
@@ -370,7 +372,6 @@ wbti_init:
         mov.w   #ibufl, W0 ; Low word flash buffer in ram
         mov.w   #ibufh, W1 ; High byte buffer
         mov.w   ibase, W2
-        mov.w   #IBUFLEN1, W3
         mov.w   #IBUFLEN2, W4
         clr     TBLPAG
 		tblwtl  W2, [W2]          ; Set page address
@@ -389,16 +390,21 @@ write_buffer_to_imem:
         mov.w   #FLASH_WRITE, W0  ;  30F 0x4001,  24F 0x4004
         rcall   wbti_init
 wbtil3:
+        mov.w   #IBUFLEN1, W3
+wbtil4:
         tblwth.b  [W1++], [W2]
         tblwtl.w  [W0++], [W2++]
         dec     W3, W3
-        bra     nz, wbtil3
+        bra     nz, wbtil4
         rcall   EWENABLE0   ; Now the flash row has been written.
         dec     W4, W4
         bra     nz, wbtil3  ; write more rows for big flashblocks
+
         clr     W0
         rcall   wbti_init
-wbtil4:
+wbtil5:
+        mov.w   #IBUFLEN1, W3
+wbtil6:
         tblrdh.b  [W2], W5
         cp.b      W5, [W1++]
         bra       nz, verify_imem_2
@@ -406,9 +412,9 @@ wbtil4:
         cp        W5, [W0++]
         bra       nz, verify_imem_2
         dec       W3, W3
-        bra       nz, wbtil4
+        bra       nz, wbtil6
         dec       W4, W4
-        bra       nz, wbtil4
+        bra       nz, wbtil5
         bclr      iflags, #idirty
         setm      ibase       ; Now the flash row has been verified
         return
@@ -1056,6 +1062,7 @@ ISTORE_RAW:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddr       ; W0 = addr, iaddr = addr
+
         rcall   iupdatebuf
 
         mov     iaddr, W0
@@ -1078,6 +1085,7 @@ ISTORE1:
 
 ISTORE_ADDRERR:
         bset    INTCON1, #ADDRERR
+        return
 
 PCFETCH1:
         clr     TBLPAG
@@ -1136,10 +1144,10 @@ EWENABLE:
         mov     W1, NVMCON
 EWENABLE0:
         disi    #5
-        mov     #0x55, W1
-        mov     W1, NVMKEY
-        mov     #0xaa, W1
-        mov     W1, NVMKEY
+        mov     #0x55, W3
+        mov     W3, NVMKEY
+        mov     #0xaa, W3
+        mov     W3, NVMKEY
         bset    NVMCON, #WR
         nop
         nop
@@ -3975,7 +3983,7 @@ INQ:
         goto    AND
 
 ; DEBUG-------------------------------------------------
-.if 0
+.if 1
 DBG1:
         rcall   CR
         mov     [W15-4], W0
@@ -4281,11 +4289,12 @@ DP_TO_EEPROM_3:
 .else
         mlit    dpSTART
         push    Preg            ; P to return stack
-        mov     W1, Preg        ; dst to P
-        rcall   FTURNKEY_A
+        mov     [W14--], W0
+        mov     W0, Preg        ; src in ram
+        rcall   FTURNKEY_A      ; dst in flash
 		mlit	4
         push    [W14--]
-DP_TO_EEPROM_0: 
+DP_TO_EEPROM_0:
 		rcall	DUP
 		rcall	EEREAD
 		rcall	PFETCH
@@ -4302,6 +4311,7 @@ DP_TO_EEPROM_1:
         bra     nz, DP_TO_EEPROM_0
         pop     W0
         pop     Preg
+        sub     W14, #2, W14
 		return
 .endif
 ;;; Check parameter stack pointer

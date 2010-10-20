@@ -18,10 +18,10 @@ config FOSCSEL, FNOSC_FRC
 .equ USE_ALTERNATE_UART_PINS, 0
 
 ; Flash write delay
-.equ write_delay, 1
+.equ write_delay, 20
 
 ; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
+.equ DEBUG_INFO, 1
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
