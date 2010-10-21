@@ -1,15 +1,13 @@
 ;;; FlashForth device configuration for the dsPIC33
-;config FBS, BSS_OFF & BWRP_OFF
-config FOSCSEL, FNOSC_FRC
-;config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF & POSCMOD_NONE
-;config FWDT, FWDTEN_ON 
-;config FPOR, MCLRE_OFF & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
-;config FDS, DSWDTEN_OFF& DSBOREN_OFF
+config FOSCSEL, FNOSC_PRI
+config FOSC, FCKSM_CSDCMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
+;config FWDT,
+;config FPOR,
 
 
 ;.equ FREQ, (7322000)					  ;Clock (Crystal)frequency (Hz)
 .equ FREQ, (16000000)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 9600					  ; Serial baudrate
+.equ BAUDRATE, 9600					      ; Serial baudrate
 
 .equ BAUD_DIV1, (FREQ/2/16/BAUDRATE)-1		; UART divisor
 .equ MS_PR_VAL, (FREQ/2/1000)				; Timer value for 1 ms ticks

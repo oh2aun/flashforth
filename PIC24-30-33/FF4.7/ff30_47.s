@@ -485,7 +485,7 @@ RESET_FF_1:
 __reset:
 WARM:
 .ifdef CLKDIV
-        clr     CLKDIV         ; Use full 8 MHz FRC.S
+;        clr     CLKDIV         ; Use full 8 MHz FRC.S
 .endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
@@ -519,6 +519,7 @@ WARM_0:
         rcall   CQUEUEZ
 
 ; Initialise the UART 1
+.ifdecl RPINR18
 		setm    AD1PCFGL
 		mov		#OSCCONL, W0
 		mov.b   #0xb0, W3
@@ -535,24 +536,19 @@ WARM_0:
 		mov		W0, RPOR6
 		mov		#0x0003, W0
 		mov		W0, RPOR7
+.endif
 
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
 .endif
-;		bset    U1MODE, #URXINV
         bset    U1MODE, #UARTEN
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
 ;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
         bset    U1STA, #UTXEN
-		bclr	IFS0, #U1RXIF
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
 
-	
-		bclr	TRISB, #0x8
-		bclr	LATB, #0x8
-		bclr	PORTB, #0x8
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
         mlit	cse
@@ -567,7 +563,6 @@ WARM_0:
 
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
-
 
 ; Check if cold start is needed
 .ifdef PEEPROM
@@ -1144,7 +1139,7 @@ EWENABLE:
         mov     W1, NVMCON
 EWENABLE0:
         disi    #5
-        mov     #0x55, W3
+        mov     #0x55, W3       ; W3 selected to avoid clash in flash write routine.
         mov     W3, NVMKEY
         mov     #0xaa, W3
         mov     W3, NVMKEY
