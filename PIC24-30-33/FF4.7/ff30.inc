@@ -58,29 +58,3 @@
   .include "p30f_config.inc"
 .endif
 
-.if 0
-;..............................................................................
-;Configuration bits:
-;..............................................................................
-;.equ FREQ, 16000000;
-.equ FREQ, (7322000*8)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 38400					  ; Serial baudrate
-
-.equ BAUD_DIV1, (FREQ/64/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FREQ/4/1000)				; Timer value for 1 ms ticks
-
-; Set to one to use the alternate UART pins
-.ifndef USE_ALTERNATE_UART_PINS
-.equ USE_ALTERNATE_UART_PINS, 1                ; Must be 0 for 24F08KAxxx
-.endif
-
-; Flash write delay
-.equ write_delay, 1
-
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 1
-
-; Set to 1 to allow control-o to reset FlashForth
-.equ CTRL_O_WARM_RESET, 1
-
-.endif

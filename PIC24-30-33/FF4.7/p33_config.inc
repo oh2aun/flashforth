@@ -12,6 +12,13 @@ config FOSC, FCKSM_CSDCMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ BAUD_DIV1, (FREQ/2/16/BAUDRATE)-1		; UART divisor
 .equ MS_PR_VAL, (FREQ/2/1000)				; Timer value for 1 ms ticks
 
+.equ U1RXPIN, 0xf
+.equ U1TXPIN, 0xe
+.equ U1CTSPIN, 0xd
+.equ U1RTSPIN, 0xc
+.equ RPINR18VAL, 0x0d0f; (U1RXPIN | (U1CTSPIN<<0x10))
+
+
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
 
@@ -25,7 +32,12 @@ config FOSC, FCKSM_CSDCMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ CTRL_O_WARM_RESET, 1
 
 ;;; Memory mapping prefixes
-.equ PFLASH,         0x2800  ; 8 Kbytes RAM, 56 KBytes FLASH
+;;; To be set to the amount of ram + 0x800.
+;;; The rest if the memory space is available for flash
+;;; Below is the setting for max amount of ram for dsPIC33FJ128GP802
+.equ PFLASH,         0x4800  ; 16 Kbytes RAM, 48 KBytes FLASH
+
+;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4042  ; Memory page erase
 .equ FLASH_WRITE,    0x4001  ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program

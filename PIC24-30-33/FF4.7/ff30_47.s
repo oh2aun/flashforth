@@ -529,13 +529,13 @@ WARM_0:
 		mov.b	W2, [W0]
 		bclr.b	OSCCONL, #IOLOCK
 		
-		mov     #0x0D0F, W0
+		mov     #RPINR18VAL, W0
 		mov		W0, RPINR18
 
-		mov		#0x0004, W0
-		mov		W0, RPOR6
-		mov		#0x0003, W0
-		mov		W0, RPOR7
+		mov		#0x0004, W0         ; U1RTS
+		mov		W0, RPOR0+U1RTSPIN
+		mov		#0x0003, W0         ; U1TX
+		mov		W0, RPOR0+U1TXPIN
 .endif
 
 .if  (USE_ALTERNATE_UART_PINS == 1)
