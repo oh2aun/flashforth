@@ -1,0 +1,28 @@
+-sieve
+marker -sieve
+decimal ram
+8191 con size inlined
+ram here size allot con flags inlined
+: sieve
+  flags size 1 fill
+  0 1 !p>r size 1-
+  for
+    flags @p + c@
+    if                              
+        @p dup + 3 + 
+        dup @p +
+        begin
+           dup size  <
+        while
+           0 over flags + c!
+           over +
+        repeat
+        drop drop 1+ 
+     then
+     p+
+  next
+  r>p
+  . ." primes " cr ;
+
+: bench ticks swap for sieve next ticks swap - u. ." milliseconds" cr ;
+
