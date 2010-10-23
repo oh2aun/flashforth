@@ -207,7 +207,7 @@ WARMLIT:
         .word      handle(RX1)+PFLASH
         .word      handle(RX1Q)+PFLASH
         .word      u0                    ; ULINK
-        .word      0x0010                ; BASE
+        .word      0x000A                ; BASE
         .word      utibbuf               ; TIB
         .word      handle(OPERATOR_AREA)+PFLASH ; TASK
 ;;; *************************************************
@@ -357,7 +357,7 @@ wait_silence:
         bset    iflags, #ixoff
 wbtil:
         bclr    iflags, #istream
-        mov     #FREQ/1900, W2     ;  This loop takes about xx milliseconds
+        mov     #FCY/1000, W2     ;  This loop takes about xx milliseconds
 wbtil2: 
         repeat  #write_delay
         nop
@@ -484,6 +484,7 @@ RESET_FF_1:
 
 __reset:
 WARM:
+;
 .ifdef CLKDIV
 ;        clr     CLKDIV         ; Use full 8 MHz FRC.S
 .endif
@@ -518,6 +519,19 @@ WARM_0:
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
 
+		mov		#PLL_FBD, W0
+		mov		W0, PLLFBD
+		bclr	CLKDIV, #PLLPOST0
+WAITFORLOCK:
+		btss    OSCCON, #LOCK
+		bra		WAITFORLOCK
+
+	;	bclr    TRISB, #0x8
+
+; Switch to HSPLL
+;		mov		#8, W0
+;		mov		W0, PLLFBD
+
 ; Initialise the UART 1
 .ifdecl RPINR18
 		setm    AD1PCFGL
@@ -532,16 +546,20 @@ WARM_0:
 		mov     #RPINR18VAL, W0
 		mov		W0, RPINR18
 
-		mov		#0x0004, W0         ; U1RTS
-		mov		W0, RPOR0+U1RTSPIN
-		mov		#0x0003, W0         ; U1TX
-		mov		W0, RPOR0+U1TXPIN
+		mov.b	#0x0004, W0         ; U1RTS
+		mov.b	WREG, RPOR0+U1RTSPIN
+		mov.b	#0x0003, W0         ; U1TX
+		mov.b	WREG, RPOR0+U1TXPIN
 .endif
+
 
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
 .endif
         bset    U1MODE, #UARTEN
+.ifdecl BRGH
+		bset	U1MODE, #BRGH
+.endif
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
 ;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
@@ -661,7 +679,18 @@ STARTQ1:
 STARTQ2:
         bra     ABORT
 
+
+; 
         .pword   paddr(WARM_L)+PFLASH
+PLL_L:
+		.byte   NFA|3
+		.ascii  "pll"
+		.align  2
+
+
+		return
+
+        .pword   paddr(PLL_L)+PFLASH
 TURNKEY_L:
         .byte   NFA|7
         .ascii  "turnkey"
@@ -5293,11 +5322,11 @@ DUMP7:
 ; CPU_CLK  ( -- ) 
         .pword   paddr(DUMP_L)+PFLASH
 CPU_CLK_L:
-        .byte   NFA|INLINE|7
-        .ascii  "cpu_clk"
+        .byte   NFA|INLINE|3
+        .ascii  "Fcy"
         .align  2
 
-        mlit    #(FREQ/1000)
+        mlit    #(FCY/1000)
         return
 
         .pword  paddr(CPU_CLK_L)+PFLASH

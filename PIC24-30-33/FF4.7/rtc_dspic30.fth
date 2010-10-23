@@ -20,7 +20,7 @@ $0110 con t2con
 $0084 con ifs0 $0006 con t2if
 $008c con iec0 $0006 con t2ie
 
-$20a0 con t2irq  \ Timer 2 interrupt vector
+$22 con t2irq  \ Timer 2 interrupt vector addrss
 
 ram
 variable sec
@@ -56,7 +56,7 @@ int!               \ with this !
 \ #27 is a tune value dependent on the exact clock frequency
 : T2RtcInit ( -- )
   \ Calculate one second counter value
-  [ cpu_clk #1000 #256 u*/mod nip #27 + literal ] pr2 !   
+  [ Fcy #1000 #256 u*/mod nip #27 + literal ] pr2 !   
   %1000000000110000 t2con ! \ / 256 prescaler
   aivt
   [ t2ie iec0 bset, ]

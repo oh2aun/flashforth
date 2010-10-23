@@ -1,16 +1,24 @@
 ;;; FlashForth device configuration for the dsPIC33
-config FOSCSEL, FNOSC_PRI
-config FOSC, FCKSM_CSDCMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
+config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;config FWDT,
 ;config FPOR,
 
 
-;.equ FREQ, (7322000)					  ;Clock (Crystal)frequency (Hz)
-.equ FREQ, (16000000)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 9600					      ; Serial baudrate
+.equ PLL_DIV, 54
+.equ PLL_FBD, PLL_DIV-2
+.equ PLL_POST, 2
+.equ PLL_PRE, 2          ; Do not change
+.equ FREQ_FIN, 7370000
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )
+;Clock (Crystal)frequency (Hz)
+;.equ FREQ, (16000000)					  ;Clock (Crystal)frequency (Hz)
+.equ BAUDRATE, 115200 				      ; Serial baudrate
 
-.equ BAUD_DIV1, (FREQ/2/16/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FREQ/2/1000)				; Timer value for 1 ms ticks
+.equ FCY, (FREQ_OSC/2)
+.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
+.equ MS_PR_VAL, (FCY/1000)			  ; Timer value for 1 ms ticks
+
 
 .equ U1RXPIN, 0xf
 .equ U1TXPIN, 0xe
@@ -23,10 +31,10 @@ config FOSC, FCKSM_CSDCMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ USE_ALTERNATE_UART_PINS, 0
 
 ; Flash write delay
-.equ write_delay, 20
+.equ write_delay, 1
 
 ; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 1
+.equ DEBUG_INFO, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
