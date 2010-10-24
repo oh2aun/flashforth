@@ -150,7 +150,7 @@ dpLATEST:   .space 2
 dpRAM:      .space 2
 dpLATEST:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
-.equ MARKER_LENGTH, 3
+.equ MARKER_LENGTH, 4
 .endif
 
 cse:        .space 2 ; Current data section 0=flash, 1=eeprom, 2=ram
@@ -272,6 +272,7 @@ __U1RXInterrupt2:
 __U1RXInterrupt3:
         btsc    U1STA, #URXDA
         bra     __U1RXInterrupt0
+__U1RXTXIRQ_END:
         sub     W14, #2, W14
         pop     TBLPAG
         pop     hibyte
@@ -304,12 +305,14 @@ __U1TXInterrupt0:
         mov     [W14--], W0
         mov     W0, U1TXREG
 __U1TXInterrupt3:
+		bra     __U1RXTXIRQ_END
+.if 0
         sub     W14, #2, W14
         pop     TBLPAG
         pop     hibyte
         pop.s
         retfie
-
+.endif
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00
 ; ibuflen  = 0x0040 or 0x0400 
@@ -526,7 +529,7 @@ WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
 
-	;	bclr    TRISB, #0x8
+;		bclr    TRISB, #0x8
 
 ; Switch to HSPLL
 ;		mov		#8, W0
@@ -564,6 +567,15 @@ WAITFORLOCK:
         mov     W0, U1BRG
 ;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
         bset    U1STA, #UTXEN
+
+.if (AUTOBAUD == 1)
+		bset	U1MODE, #ABAUD
+WARM_ABAUD:
+		btsc	U1MODE, #ABAUD
+		bra     WARM_ABAUD
+		bclr    IFS0, #U1RXIF
+.endif
+
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
 
@@ -680,17 +692,7 @@ STARTQ2:
         bra     ABORT
 
 
-; 
         .pword   paddr(WARM_L)+PFLASH
-PLL_L:
-		.byte   NFA|3
-		.ascii  "pll"
-		.align  2
-
-
-		return
-
-        .pword   paddr(PLL_L)+PFLASH
 TURNKEY_L:
         .byte   NFA|7
         .ascii  "turnkey"
@@ -1040,7 +1042,6 @@ COMMAXT:
         dec2    [W14], [W14]
         rcall   RCALL_
         return
-
 
         .pword   paddr(COMMAXT_L)+PFLASH
 IFLUSH_L:
@@ -2555,9 +2556,8 @@ CSE:
 
 
 ; IDP    -- a-addr  Dictonary pointer storage        
-; Stored in EEPROM
-        .pword  paddr(CSE_L)+PFLASH
-IDP_L:
+;        .pword  paddr(CSE_L)+PFLASH
+; IDP_L:
         .byte   NFA|3
         .ascii  "idp"
         .align  2
@@ -2565,7 +2565,7 @@ IDP:
         rcall   DOCREATE
         .word   dpFLASH
 
-        .pword  paddr(IDP_L)+PFLASH
+        .pword  paddr(CSE_L)+PFLASH
 DP_L:
         .byte   NFA|2
         .ascii  "dp"
@@ -4778,10 +4778,19 @@ DUPZEROSENSE:
         cp0     [W14]
         return
 
-
-; in, ( cfa -- ) begin dup cf@ dup $12 <> while cf, 2+ repeat 3drop ;
         .pword  paddr(BRACTICK_L)+PFLASH
 INLINE_L:
+        .byte   NFA|IMMED|COMPILE|6
+        .ascii  "inline"
+        .align  2
+		bclr	iflags, #izeroeq
+		bclr	iflags, #idup
+		rcall	TICK
+		goto	INLINE_0
+
+; in, ( cfa -- ) begin dup cf@ dup $0006 <> while as, 2+ repeat 3drop ;
+        .pword  paddr(INLINE_L)+PFLASH
+INC_L:
         .byte   NFA|3
         .ascii  "in,"
         .align  2
@@ -4801,7 +4810,7 @@ INLINE1:
         return
 
 ; un, ( -- cc)   Unconditional
-        .pword  paddr(INLINE_L)+PFLASH
+        .pword  paddr(INC_L)+PFLASH
 UNC_L:
         .byte   NFA|3
         .ascii  "un,"
@@ -5253,8 +5262,8 @@ DOTS2:
         return
 
 ; IALLOT   n --    allocate n bytes in ROM
-        .pword  paddr(DOTS_L)+PFLASH
-IALLOT_L:
+;        .pword  paddr(DOTS_L)+PFLASH
+;IALLOT_L:
         .byte   NFA|6
         .ascii  "iallot"
         .align  2
@@ -5263,7 +5272,7 @@ IALLOT:
         goto    PLUSSTORE
 
 ; ALLOT   n --    allocate n bytes in current data section
-        .pword  paddr(IALLOT_L)+PFLASH
+        .pword  paddr(DOTS_L)+PFLASH
 ALLOT_L:
         .byte   NFA|5
         .ascii  "allot"
@@ -5408,14 +5417,18 @@ lastword:
         .ascii  "marker"
         .align  2
 MARKER:
-        rcall   FLASH
-        rcall   CREATE
         mlit    dpSTART
-        rcall   IHERE
+        rcall   PAD
         mlit    MARKER_LENGTH
         rcall   WMOVE
-        mlit    10
-        rcall   IALLOT
+        rcall   FLASH
+        rcall   CREATE
+        rcall   PAD
+        rcall   HERE
+        mlit    MARKER_LENGTH
+        rcall   WMOVE
+        mlit    MARKER_LENGTH*2
+        rcall   ALLOT
         rcall   RAM
         rcall   XDOES
 MARKER_DOES:
