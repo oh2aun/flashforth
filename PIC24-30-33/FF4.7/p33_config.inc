@@ -34,7 +34,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ USE_ALTERNATE_UART_PINS, 0
 
 ; Flash write delay
-.equ write_delay, 1
+.equ write_delay, 20
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
