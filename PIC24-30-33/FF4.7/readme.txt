@@ -242,7 +242,7 @@ FlashForth v4.7 preliminary
 - UDEFER removed
   User variable vectoring aligned with FF3.7
 - Devices without EEPROM use EEPROM emulation in FLASH.
-  Needs 4 Kbytes of flash to store TURNKEY, FLASH DP, RAM DP, LATEST.
+  Needs 4(6) Kbytes of flash to store TURNKEY, FLASH DP, RAM DP, LATEST.
 - EMITQ and UEMITQ removed.
 - PROMPT moved to RAM. Default at WARM start is .ST.
 - Added PFL. PFL is a constant for the FLASH memory mapping prefix.

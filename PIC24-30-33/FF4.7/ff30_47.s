@@ -60,7 +60,7 @@
 .equ XON,   0x11
 .equ XOFF,  0x13
 
-
+.equ IVECSIZE, 64
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size,      64
 .equ tbuf_size,      64
@@ -153,6 +153,9 @@ dpFLASH:    .space 2 ; DP's and LATEST in RAM
 .equ MARKER_LENGTH, 4
 .endif
 
+.ifdecl INTTREG
+IVECTAB:    .space IVECSIZE*2 ; space for 64 interrupt vectors
+.endif
 cse:        .space 2 ; Current data section 0=flash, 1=eeprom, 2=ram
 prompt:     .space 2
 state:      .space 2 ; Compilation state
@@ -173,8 +176,40 @@ uarea_dbg:  .space 0x100
 .global __AddressError
 .global __StackError
 .global __MathError
-
-
+.ifdecl INTTREG
+.global __AltINT0Interrupt
+.global __AltIC1Interrupt
+.global __AltOC1Interrupt
+.global __AltDMA0Interrupt
+.global __AltIC2Interrupt
+.global __AltOC2Interrupt
+.global __AltT2Interrupt
+.global __AltT3Interrupt
+.global __AltSPI1ErrInterrupt
+.global __AltSPI1Interrupt
+.global __AltADC1Interrupt
+.global __AltDMA1Interrupt
+.global __AltSI2C1Interrupt
+.global __AltMI2C1Interrupt
+.global __AltCMPInterrupt
+.global __AltCNInterrupt
+.global __AltINT1Interrupt
+.global __AltIC7Interrupt
+.global __AltIC8Interrupt
+.global __AltDMA2Interrupt
+.global __AltOC3Interrupt
+.global __AltOC4Interrupt
+.global __AltT4Interrupt
+.global __AltT5Interrupt
+.global __AltINT2Interrupt
+.global __AltU2RXInterrupt
+.global __AltU2TXInterrupt
+.global __AltSPI2ErrInterrupt
+.global __AltSPI2Interrupt
+.global __AltC1RxRdyInterrupt
+.global __AltC1Interrupt
+.global __AltDMA3Interrupt
+.endif
 ; Start of code !
 .text
 ;;; *************************************
@@ -207,7 +242,7 @@ WARMLIT:
         .word      handle(RX1)+PFLASH
         .word      handle(RX1Q)+PFLASH
         .word      u0                    ; ULINK
-        .word      0x000A                ; BASE
+        .word      0x0010                ; BASE
         .word      utibbuf               ; TIB
         .word      handle(OPERATOR_AREA)+PFLASH ; TASK
 ;;; *************************************************
@@ -276,8 +311,10 @@ __U1RXTXIRQ_END:
         sub     W14, #2, W14
         pop     TBLPAG
         pop     hibyte
+ALT_INT_EXIT:
         pop.s
         retfie
+
 U1RX_ERR1:
         btss    U1STA, #TRMT
         bra     U1RX_ERR1
@@ -306,13 +343,51 @@ __U1TXInterrupt0:
         mov     W0, U1TXREG
 __U1TXInterrupt3:
 		bra     __U1RXTXIRQ_END
-.if 0
-        sub     W14, #2, W14
-        pop     TBLPAG
-        pop     hibyte
-        pop.s
-        retfie
+
+.ifdecl INTTREG
+__AltINT0Interrupt:
+__AltIC1Interrupt:
+__AltOC1Interrupt:
+__AltDMA0Interrupt:
+__AltIC2Interrupt:
+__AltOC2Interrupt:
+__AltT2Interrupt:
+__AltT3Interrupt:
+__AltSPI1ErrInterrupt:
+__AltSPI1Interrupt:
+__AltADC1Interrupt:
+__AltDMA1Interrupt:
+__AltSI2C1Interrupt:
+__AltMI2C1Interrupt:
+__AltCMPInterrupt:
+__AltCNInterrupt:
+__AltINT1Interrupt:
+__AltIC7Interrupt:
+__AltIC8Interrupt:
+__AltDMA2Interrupt:
+__AltOC3Interrupt:
+__AltOC4Interrupt:
+__AltT4Interrupt:
+__AltT5Interrupt:
+__AltINT2Interrupt:
+__AltU2RXInterrupt:
+__AltU2TXInterrupt:
+__AltSPI2ErrInterrupt:
+__AltSPI2Interrupt:
+__AltC1RxRdyInterrupt:
+__AltC1Interrupt:
+__AltDMA3Interrupt:
+		push.s
+		mov		#INTTREG, W1
+		clr		W0
+		mov.b	[W1], W0
+		sl		W0, W1
+		mov		#IVECTAB, W0
+		add		W0, W1, W2
+		mov		[W2], W0
+		goto	W0
 .endif
+
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00
 ; ibuflen  = 0x0040 or 0x0400 
@@ -487,10 +562,6 @@ RESET_FF_1:
 
 __reset:
 WARM:
-;
-.ifdef CLKDIV
-;        clr     CLKDIV         ; Use full 8 MHz FRC.S
-.endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
         
@@ -508,6 +579,16 @@ WARM:
         setm    ibase
         clr     iflags
 
+.ifdecl INTTREG
+		mov		#IVECTAB, W0
+		mov		#IVECSIZE, W1
+		mov		#handle(__DefaultInterrupt), W2
+WARM_FILL_IVEC:
+		mov		W2, [W0++]
+		dec		W1, W1
+		bra		nz, WARM_FILL_IVEC
+.endif
+
 		btss	RCON, #SWR
 		clr		intcon1dbg      ; clear if it was not a reset from the reset instruction
 WARM_0:
@@ -522,13 +603,14 @@ WARM_0:
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
 
+.ifdef PLLPOST0
 		mov		#PLL_FBD, W0
 		mov		W0, PLLFBD
 		bclr	CLKDIV, #PLLPOST0
 WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
-
+.endif
 ;		bclr    TRISB, #0x8
 
 ; Switch to HSPLL
@@ -735,8 +817,10 @@ CWD:
         clrwdt
         return
 
-; INT!  ( xt intaddr -- )
+; INT!  ( xt intnumber -- ) intnumber 8..
 ; Store interrupt vector in alternate interrupt vector table
+; Stored directly in Flash on the 30F series     intnumber 0..61 
+; Stored in ram revector table in 24,33 series   intnumber 0..83
 
         .pword   paddr(CWD_L)+PFLASH
 INTERRUPT_STORE_L:
@@ -744,11 +828,23 @@ INTERRUPT_STORE_L:
         .ascii  "int!"
         .align 2
 INTERRUPT_STORE:
-        mov     #0xff, W0
+.ifdecl INTTREG
+		mov		#IVECTAB, W0
+		mov		[W14--], W1
+		sl		W1, W1
+		add		W0, W1, W0
+		mov		#PFLASH, W1
+		mov		[W14--], W2
+		sub		W2, W1, W1
+		mov		W1, [W0]
+		return
+.else
+        mov     #0x7f, W0
         mov     [W14--], W1
         and     W1, W0, W1
-        mov     #PAIVT+PFLASH, W0
-        ior     W1, W0, W0
+		sl		W1, W1
+        mov     #PAIVT+PFLASH+4, W0
+        add     W1, W0, W0
         mov     #PFLASH, W1
 		mov     [W14], W2
         sub     W2, W1, [W14]
@@ -756,7 +852,7 @@ INTERRUPT_STORE:
         rcall   ISTORE_RAW
         rcall   IFLUSH
         return
-
+.endif
 
 ; IVT  ( -- )  Use the normal interrupt vector table
         .pword   paddr(INTERRUPT_STORE_L)+PFLASH
@@ -785,7 +881,7 @@ BRACKETI_L:
         .ascii  "[i"
         .align  2
 BRACKETI:
-        push.s
+;        push.s
         push    hibyte
         push    TBLPAG
         push    Preg
@@ -805,7 +901,7 @@ IBRACKET:
         pop     Preg
         pop     TBLPAG
         pop     hibyte
-        pop.s
+;        pop.s
         return
 
 
@@ -1055,62 +1151,61 @@ IFLUSH:
 
 ; data addr IC! Address is in W0
 ICSTORE:
+		rcall	ISTORE_ADDRCHK
+		clr.b	hibyte
+.if 0
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
         bra     n, ISTORE_ADDRERR
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
-
-        mov     W0, iaddr
-        rcall   iupdatebuf
-        mov     iaddr, W0
-        mov     #IBUFSIZEL-1, W1
-        and     W0, W1, W2
-        lsr     W2,#1,W0
-        mov     #ibufh, W1
-        add     W1, W0, W0
-        clr.b   [W0]
-
-        mov     #ibufl, W1
-        add     W2, W1, W0
-        mov     [W14--], W1
+.endif
+		rcall	ISTORE_SUB
         mov.b   W1, [W0]
-        bset    iflags, #idirty
+
         return
 
 ; data addr I!  Address is in W0
 ISTORE:
+		rcall	ISTORE_ADDRCHK
+.if 0
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
         bra     n, ISTORE_ADDRERR
+.endif
 ISTORE_RAW:
+		rcall	ISTORE_SUB
+        mov     W1, [W0]
+ISTORE1:
+        return
+
+ISTORE_SUB:
         mov     #PFLASH, W1
         sub     W0, W1, W0
+
         mov     W0, iaddr       ; W0 = addr, iaddr = addr
-
         rcall   iupdatebuf
-
         mov     iaddr, W0
-
         mov     #IBUFSIZEL-1, W1
         and     W0, W1, W2
         lsr     W2,#1,W0
-
         mov     #ibufh, W1
         add     W1, W0, W0
+
         mov     #hibyte, W1
         mov.b   [W1], [W0]
 
         mov     #ibufl, W1
         add     W2, W1, W0
-        mov     [W14--], [W0]
+        mov     [W14--], W1
         bset    iflags, #idirty
-ISTORE1:
-        return
+		return
 
+ISTORE_ADDRCHK:
+        mov     #handle(KERNEL_END)+PFLASH, W1
+        cp      W0, W1
+        bra     n, ISTORE_ADDRERR
+        return
 ISTORE_ADDRERR:
         bset    INTCON1, #ADDRERR
-        return
 
 PCFETCH1:
         clr     TBLPAG
@@ -2443,7 +2538,7 @@ DEFER_DOES:
         .pword  paddr(DEFER_L)+PFLASH
 IS_L:
         .byte   NFA|2
-        .ascii  "is"
+        .ascii  "to"
         .align  2
 IS:
         rcall   TICK
@@ -4007,7 +4102,7 @@ INQ:
         goto    AND
 
 ; DEBUG-------------------------------------------------
-.if 1
+.if 0
 DBG1:
         rcall   CR
         mov     [W15-4], W0
@@ -4409,12 +4504,9 @@ PROMPT_L:
         .ascii  "prompt"
         .align  2
 PROMPT:
-.ifdef	PEEPROM
         rcall   DEFER_DOES
         .word   prompt
-.else
-		goto	DOTSTATUS
-.endif
+
 ; ABORT    i*x --   R: j*x --   clear stk & QUIT
         .pword  paddr(PROMPT_L)+PFLASH
 ABORT_L:
@@ -4734,15 +4826,16 @@ SEMICOLON2:
 SEMICOLON3:
         goto    LEFTBRACKET
 
-; ;        --             end a interrupt colon definition
-;   retfie, [
+; ;i        --             end a interrupt colon definition
+
         .pword  paddr(SEMICOLON_L)+PFLASH
 SEMICOLONI_L:
         .byte   NFA|IMMED|2
         .ascii  ";i"
         .align  2
 SEMICOLONI:
-        rcall   RETFIE_
+		mlit	handle(ALT_INT_EXIT)+PFLASH
+        rcall   AGAINC
         goto    LEFTBRACKET
 
 ; [']  --         find word & compile as literal
