@@ -20,7 +20,7 @@ $0110 con t2con
 $0084 con ifs0 $0006 con t2if
 $008c con iec0 $0006 con t2ie
 
-$22 con t2irq  \ Timer 2 interrupt vector addrss
+#14 con t2irq  \ Timer 2 interrupt vector number
 
 ram
 variable sec

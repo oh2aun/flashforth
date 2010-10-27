@@ -881,7 +881,9 @@ BRACKETI_L:
         .ascii  "[i"
         .align  2
 BRACKETI:
-;        push.s
+.ifndecl INTTREG
+        push.s
+.endif
         push    hibyte
         push    TBLPAG
         push    Preg
@@ -901,7 +903,9 @@ IBRACKET:
         pop     Preg
         pop     TBLPAG
         pop     hibyte
-;        pop.s
+.ifndecl INTTREG
+        pop.s
+.endif
         return
 
 
@@ -4834,8 +4838,12 @@ SEMICOLONI_L:
         .ascii  ";i"
         .align  2
 SEMICOLONI:
+.ifdecl INTTREG
 		mlit	handle(ALT_INT_EXIT)+PFLASH
         rcall   AGAINC
+.else
+		rcall	RETFIE_
+.endif
         goto    LEFTBRACKET
 
 ; [']  --         find word & compile as literal
