@@ -354,7 +354,7 @@ wait_silence:
         bset    iflags, #ixoff
 wbtil:
         bclr    iflags, #istream
-        mov     #FREQ/1900, W2     ;  This loop takes about xx milliseconds
+        mov     #FCY/1900, W2     ;  This loop takes about xx milliseconds
 wbtil2: 
         repeat  #write_delay
         nop
@@ -447,10 +447,9 @@ LITERAL:
         return
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 COLD_L:
-		.fillupper NFA|4
+		.fillupper NFA|6
         .word    LITERAL_L+PFLASH
-		.fillupper 0
-        .pascii  "cold"
+        .pascii  "123456"
         .align 2
 COLD:
 .ifdef PEEPROM
@@ -467,7 +466,7 @@ COLD:
         .pword   paddr(COLD_L)+PFLASH
 WARM_L:
         .byte   NFA|4
-        .ascii  "warm"
+        .ascii  "war"
         .align 2
 WARM_:
         rcall   DP_TO_EEPROM
@@ -5276,7 +5275,7 @@ CPU_CLK_L:
         .ascii  "cpu_clk"
         .align  2
 
-        mlit    #(FREQ/1000)
+        mlit    #(FCY/1000)
         return
 
         .pword  paddr(CPU_CLK_L)+PFLASH

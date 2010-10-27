@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=dsPIC30F4012
+device=dsPIC33FJ128GP802
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -9,7 +9,7 @@ dir_bin=
 dir_tmp=
 dir_sin=
 dir_inc=
-dir_lib=C:\Program Files\Microchip\MPLAB ASM30 Suite\Support\dsPIC30F\gld
+dir_lib=C:\Program Files\Microchip\MPLAB ASM30 Suite\Support\dsPIC33F\gld;C:\Program Files\Microchip\MPLAB ASM30 Suite\Support\dsPIC30F\gld
 dir_lkr=
 [CAT_FILTERS]
 filter_src=*.s

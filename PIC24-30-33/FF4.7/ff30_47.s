@@ -211,6 +211,8 @@ uarea_dbg:  .space 0x100
 .global __AltDMA3Interrupt
 .endif
 ; Start of code !
+.section		aivt
+.word(ALT_INT_REVECTOR)
 .text
 ;;; *************************************
 ;;; COLD dictionary data
@@ -344,6 +346,7 @@ __U1TXInterrupt0:
 __U1TXInterrupt3:
 		bra     __U1RXTXIRQ_END
 
+		.text
 .ifdecl INTTREG
 __AltINT0Interrupt:
 __AltIC1Interrupt:
@@ -377,6 +380,7 @@ __AltSPI2Interrupt:
 __AltC1RxRdyInterrupt:
 __AltC1Interrupt:
 __AltDMA3Interrupt:
+ALT_INT_REVECTOR:
 		push.s
 		mov		#INTTREG, W1
 		clr		W0

@@ -247,6 +247,8 @@ FlashForth v4.7 preliminary
 - PROMPT moved to RAM. Default at WARM start is .ST.
 - Added PFL. PFL is a constant for the FLASH memory mapping prefix.
   It is dependent on the RAM size.
-- Interrupt words do not yet work for PIC24 or PIC33 devices.
-  TODO: The vectors must be moved to RAM.
+- INT! stores the interrupt vector based on interrupt numbers.
+- dsPIC30F stores the interrupt vector directly to flash in the Alternate Interrupt Vector table
+- dsPIC33 and PIC24 stores the interrupt vectori into a table in ram
+  The 64 First Vectors are supported
 - TODO CTS/RTS flow control.
