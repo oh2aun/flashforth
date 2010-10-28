@@ -177,42 +177,9 @@ uarea_dbg:  .space 0x100
 .global __StackError
 .global __MathError
 .ifdecl INTTREG
-.global __AltINT0Interrupt
-.global __AltIC1Interrupt
-.global __AltOC1Interrupt
-.global __AltDMA0Interrupt
-.global __AltIC2Interrupt
-.global __AltOC2Interrupt
-.global __AltT2Interrupt
-.global __AltT3Interrupt
-.global __AltSPI1ErrInterrupt
-.global __AltSPI1Interrupt
-.global __AltADC1Interrupt
-.global __AltDMA1Interrupt
-.global __AltSI2C1Interrupt
-.global __AltMI2C1Interrupt
-.global __AltCMPInterrupt
-.global __AltCNInterrupt
-.global __AltINT1Interrupt
-.global __AltIC7Interrupt
-.global __AltIC8Interrupt
-.global __AltDMA2Interrupt
-.global __AltOC3Interrupt
-.global __AltOC4Interrupt
-.global __AltT4Interrupt
-.global __AltT5Interrupt
-.global __AltINT2Interrupt
-.global __AltU2RXInterrupt
-.global __AltU2TXInterrupt
-.global __AltSPI2ErrInterrupt
-.global __AltSPI2Interrupt
-.global __AltC1RxRdyInterrupt
-.global __AltC1Interrupt
-.global __AltDMA3Interrupt
+.global __DefaultInterrupt
 .endif
 ; Start of code !
-.section		aivt
-.word(ALT_INT_REVECTOR)
 .text
 ;;; *************************************
 ;;; COLD dictionary data
@@ -348,40 +315,10 @@ __U1TXInterrupt3:
 
 		.text
 .ifdecl INTTREG
-__AltINT0Interrupt:
-__AltIC1Interrupt:
-__AltOC1Interrupt:
-__AltDMA0Interrupt:
-__AltIC2Interrupt:
-__AltOC2Interrupt:
-__AltT2Interrupt:
-__AltT3Interrupt:
-__AltSPI1ErrInterrupt:
-__AltSPI1Interrupt:
-__AltADC1Interrupt:
-__AltDMA1Interrupt:
-__AltSI2C1Interrupt:
-__AltMI2C1Interrupt:
-__AltCMPInterrupt:
-__AltCNInterrupt:
-__AltINT1Interrupt:
-__AltIC7Interrupt:
-__AltIC8Interrupt:
-__AltDMA2Interrupt:
-__AltOC3Interrupt:
-__AltOC4Interrupt:
-__AltT4Interrupt:
-__AltT5Interrupt:
-__AltINT2Interrupt:
-__AltU2RXInterrupt:
-__AltU2TXInterrupt:
-__AltSPI2ErrInterrupt:
-__AltSPI2Interrupt:
-__AltC1RxRdyInterrupt:
-__AltC1Interrupt:
-__AltDMA3Interrupt:
-ALT_INT_REVECTOR:
-		push.s
+__DefaultInterrupt:
+		btss	INTCON2, #ALTIVT
+		reset                    ; Reset if IVT
+		push.s                   ; Handle interrupt via lookup table
 		mov		#INTTREG, W1
 		clr		W0
 		mov.b	[W1], W0
