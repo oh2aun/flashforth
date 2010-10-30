@@ -7,15 +7,15 @@ ram here size allot con flags inlined
   flags size 1 fill
   0 1 !p>r size 1-
   for
-    flags inline @p inline + c@
+    flags @p + c@
     if                              
-        inline @p dup inline + 3 inline + 
-        dup inline @p inline +
+        @p dup + 3 + 
+        dup @p +
         begin
            dup size  <
         while
-           0 over flags inline + c!
-           over inline +
+           0 over flags + c!
+           over +
         repeat
         drop drop 1+ 
      then
@@ -29,8 +29,8 @@ ram here size allot con flags inlined
 -sieve2
 marker -sieve2
 decimal ram
-8192 constant size
-variable flags size 8 / allot
+8192 constant size2
+variable flags2 size2 8 / allot
 
 : bit-addr ( addr bit -- eff-addr )
   3 rshift  ( -- addr off)
@@ -47,17 +47,17 @@ variable flags size 8 / allot
   invert over c@ and swap c! ;
 
 : sieve2      
-  flags [ size 8 / ] literal -1 fill
-  0  0 !p>r size 
+  flags2 [ size2 8 / ] literal -1 fill
+  0 0 !p>r size2 
   for 
-     flags @p bit? 
+     flags2 @p bit? 
      if 
         @p 2*  3 +
         dup  @p +
         begin  
-          dup size u< 
+          dup size2 u< 
         while  
-          flags over bit-reset
+          flags2 over bit-reset
           over +
         repeat
         2drop 1+
@@ -68,3 +68,35 @@ variable flags size 8 / allot
 ;
 
 : bench2 ticks swap for sieve2 next ticks swap - u. ." milliseconds" cr ;
+
+
+-sieve3
+marker -sieve3
+decimal ram
+8192 con size3 inlined
+\ variable flags3 size3 8 / allot
+ram here size3 8 / allot con flags3 inlined
+
+: sieve3      
+  flags3 [ size3 8 / ] literal -1 fill
+  0 0 !p>r size3 
+  for 
+     flags3 @p btst 
+     if 
+        @p 2*  3 +
+        dup  @p +
+        begin  
+          dup size3 u< 
+        while  
+          flags3 over bclr
+          over +
+        repeat
+        2drop 1+
+     then
+     p+
+  next
+  r>p   . ." primes " cr
+;
+
+: bench3 ticks swap for sieve3 next ticks swap - u. ." milliseconds" cr ;
+

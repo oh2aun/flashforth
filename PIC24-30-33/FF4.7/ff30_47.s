@@ -780,7 +780,7 @@ INTERRUPT_STORE:
 		mov		W1, [W0]
 		return
 .else
-        mov     #0x7f, W0
+        mov     #0x3f, W0
         mov     [W14--], W1
         and     W1, W0, W1
 		sl		W1, W1
@@ -1507,7 +1507,57 @@ MTST:
         and.w   W1, [W0],[W0] 
         return
 
+; bset ( base-addr bit-index -- )
         .pword  paddr(MTST_L)+PFLASH
+BSET__L:
+        .byte   NFA|4
+        .ascii  "bset"
+        .align  2
+BSET__:
+        mov.w   [W14--], W1
+		mov.w	[W14--], W0
+		lsr		W1, #3, W2
+		add		W2, W0, W0
+		bclr	W0, #0
+		bset	SR, #C
+        bsw.c   [W0], W1
+        return
+
+
+; bclr ( base-addr bit-index -- )
+        .pword  paddr(BSET__L)+PFLASH
+BCLR__L:
+        .byte   NFA|4
+        .ascii  "bclr"
+        .align  2
+BCLR__:
+        mov.w   [W14--], W1
+		mov.w   [W14--], W0
+		lsr		W1, #3, W2
+		add		W2, W0, W0
+		bclr	W0, #0
+		bclr	SR, #C
+        bsw.c   [W0], W1
+        return
+
+; btst ( base-addr bit-index -- )
+        .pword  paddr(BCLR__L)+PFLASH
+BTST__L:
+        .byte   NFA|4
+        .ascii  "btst"
+        .align  2
+BTST__:
+        mov.w   [W14--], W1
+		mov.w	[W14--], W0
+		lsr		W1, #3, W2
+		add		W2, W0, W0
+ 		bclr	W0, #0
+        btst.z  [W0], W1
+        bra     NZ, TRUE_
+		bra		FALSE_ 
+        return
+
+        .pword  paddr(BTST__L)+PFLASH
 LSHIFT_L:
         .byte   NFA|6
         .ascii  "lshift"
@@ -2483,7 +2533,7 @@ DEFER_DOES:
         .pword  paddr(DEFER_L)+PFLASH
 IS_L:
         .byte   NFA|2
-        .ascii  "to"
+        .ascii  "is"
         .align  2
 IS:
         rcall   TICK
@@ -2501,8 +2551,17 @@ IS1:
 IS2:
         return
 
-; >body xt -- a-addr transform a created words XT to it's data field address
         .pword  paddr(IS_L)+PFLASH
+TO_L:
+        .byte   NFA|2
+        .ascii  "to"
+        .align  2
+TO:
+        goto    IS
+
+
+; >body xt -- a-addr transform a created words XT to it's data field address
+        .pword  paddr(TO_L)+PFLASH
 TOBODY_L:
         .byte   NFA|INLINE|5
         .ascii  ">body"

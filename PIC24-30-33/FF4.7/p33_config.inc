@@ -24,7 +24,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
 
 
-.equ U1RXPIN, 0xf
+.equ U1RXPIN, 0xf                 ; 
 .equ U1TXPIN, 0xe
 .equ U1CTSPIN, 0xd
 .equ U1RTSPIN, 0xc
@@ -45,8 +45,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;;; Memory mapping prefixes
 ;;; To be set to the amount of ram + 0x800.
 ;;; The rest if the memory space is available for flash
+;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for dsPIC33FJ128GP802
-.equ PFLASH,         0x4800  ; 16 Kbytes RAM, 48 KBytes FLASH
+.equ PFLASH,         0x4800  ; 18 Kbytes RAM, 46(69) KBytes FLASH
 
 ;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4042  ; Memory page erase

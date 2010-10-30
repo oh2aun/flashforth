@@ -1,10 +1,31 @@
 ;;; FlashForth device configuration for the PIC24HJ
+config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 
-.equ FREQ, (7322000*8)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 38400					  ; Serial baudrate
+.equ PLL_DIV, 30
+.equ PLL_FBD, PLL_DIV-2
+.equ PLL_POST, 2                          ; Do not change
+.equ PLL_PRE, 2                           ; Do not change
+.equ FREQ_FIN, 7370000            
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; Used with FRCPLL
 
-.equ BAUD_DIV1, (FREQ/64/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FREQ/4/1000)				; Timer value for 1 ms ticks
+;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
+;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS and external oscillator
+
+.equ BAUDRATE, 115200 				      ; Serial baudrate
+.equ AUTOBAUD, 0                          ; 0 = to use fixed baudrate
+                                          ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+
+.equ FCY, (FREQ_OSC/2)
+.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
+.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
+
+
+.equ U1RXPIN, 0xf                 ; 
+.equ U1TXPIN, 0xe
+.equ U1CTSPIN, 0xd
+.equ U1RTSPIN, 0xc
+.equ RPINR18VAL, 0x0d0f    ; (U1RXPIN | (U1CTSPIN<<0x10))
 
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
@@ -18,7 +39,13 @@
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
-.equ USE_ALTERNATE_UART_PINS, 0
+;;; Memory mapping prefixes
+;;; To be set to the amount of ram + 0x800.
+;;; The rest if the memory space is available for flash
+;;; You can increase the addressable flash range be decreasing the addressable ram.
+;;; Below is the setting for max amount of ram for dsPIC24HJ128GP502
+.equ PFLASH,         0x2800  ; 10 Kbytes RAM, 54(81) KBytes FLASH
+
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x2800  ; 8 Kbytes for ram
 .equ FLASH_ERASE,    0x4042  ; Memory page erase

@@ -249,6 +249,7 @@ FlashForth v4.7 preliminary
   It is dependent on the RAM size.
 - INT! stores the interrupt vector based on interrupt numbers.
 - dsPIC30F stores the interrupt vector directly to flash in the Alternate Interrupt Vector table
-- dsPIC33 and PIC24 stores the interrupt vectori into a table in ram
-  The 64 First Vectors are supported
-- TODO CTS/RTS flow control.
+- dsPIC33 and PIC24 stores the interrupt vector into a table in ram
+  The 64 First Vectors are supported by default
+- Added BCLR, BSET, BTST bit vector words.
+

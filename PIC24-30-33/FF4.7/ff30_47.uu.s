@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff30_47.uu.s                                      *
+;    Filename:      ff30_47.s                                         *
 ;    Date:          10.10.2010                                        *
-;    File Version:  4.7 packed names                                  *
+;    File Version:  4.7 pre                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -60,7 +60,7 @@
 .equ XON,   0x11
 .equ XOFF,  0x13
 
-
+.equ IVECSIZE, 64
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size,      64
 .equ tbuf_size,      64
@@ -150,9 +150,12 @@ dpLATEST:   .space 2
 dpRAM:      .space 2
 dpLATEST:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
-.equ MARKER_LENGTH, 3
+.equ MARKER_LENGTH, 4
 .endif
 
+.ifdecl INTTREG
+IVECTAB:    .space IVECSIZE*2 ; space for 64 interrupt vectors
+.endif
 cse:        .space 2 ; Current data section 0=flash, 1=eeprom, 2=ram
 prompt:     .space 2
 state:      .space 2 ; Compilation state
@@ -173,8 +176,9 @@ uarea_dbg:  .space 0x100
 .global __AddressError
 .global __StackError
 .global __MathError
-
-
+.ifdecl INTTREG
+.global __DefaultInterrupt
+.endif
 ; Start of code !
 .text
 ;;; *************************************
@@ -234,6 +238,7 @@ __MathError:
 __T1Interrupt:
         bclr    IFS0, #T1IF
         inc     ms_count
+		btg		PORTB, #0x8
         retfie
 
 __U1RXInterrupt:
@@ -271,11 +276,14 @@ __U1RXInterrupt2:
 __U1RXInterrupt3:
         btsc    U1STA, #URXDA
         bra     __U1RXInterrupt0
+__U1RXTXIRQ_END:
         sub     W14, #2, W14
         pop     TBLPAG
         pop     hibyte
+ALT_INT_EXIT:
         pop.s
         retfie
+
 U1RX_ERR1:
         btss    U1STA, #TRMT
         bra     U1RX_ERR1
@@ -303,11 +311,23 @@ __U1TXInterrupt0:
         mov     [W14--], W0
         mov     W0, U1TXREG
 __U1TXInterrupt3:
-        sub     W14, #2, W14
-        pop     TBLPAG
-        pop     hibyte
-        pop.s
-        retfie
+		bra     __U1RXTXIRQ_END
+
+		.text
+.ifdecl INTTREG
+__DefaultInterrupt:
+		btss	INTCON2, #ALTIVT
+		reset                    ; Reset if IVT
+		push.s                   ; Handle interrupt via lookup table
+		mov		#INTTREG, W1
+		clr		W0
+		mov.b	[W1], W0
+		sl		W0, W1
+		mov		#IVECTAB, W0
+		add		W0, W1, W2
+		mov		[W2], W0
+		goto	W0
+.endif
 
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00
@@ -337,10 +357,12 @@ fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
 fill_buffer_from_imem1:
+        mov.w   #IBUFLEN1, W3
+fill_buffer_from_imem2:
         tblrdh.b [W2], [W1++]
         tblrdl   [W2++], [W0++]
         dec      W3, W3
-        bra      nz, fill_buffer_from_imem1
+        bra      nz, fill_buffer_from_imem2
         dec      W4, W4
         bra      nz, fill_buffer_from_imem1
         return
@@ -354,7 +376,7 @@ wait_silence:
         bset    iflags, #ixoff
 wbtil:
         bclr    iflags, #istream
-        mov     #FCY/1900, W2     ;  This loop takes about xx milliseconds
+        mov     #FCY/1000, W2     ;  This loop takes about xx milliseconds
 wbtil2: 
         repeat  #write_delay
         nop
@@ -369,7 +391,6 @@ wbti_init:
         mov.w   #ibufl, W0 ; Low word flash buffer in ram
         mov.w   #ibufh, W1 ; High byte buffer
         mov.w   ibase, W2
-        mov.w   #IBUFLEN1, W3
         mov.w   #IBUFLEN2, W4
         clr     TBLPAG
 		tblwtl  W2, [W2]          ; Set page address
@@ -388,16 +409,21 @@ write_buffer_to_imem:
         mov.w   #FLASH_WRITE, W0  ;  30F 0x4001,  24F 0x4004
         rcall   wbti_init
 wbtil3:
+        mov.w   #IBUFLEN1, W3
+wbtil4:
         tblwth.b  [W1++], [W2]
         tblwtl.w  [W0++], [W2++]
         dec     W3, W3
-        bra     nz, wbtil3
+        bra     nz, wbtil4
         rcall   EWENABLE0   ; Now the flash row has been written.
         dec     W4, W4
         bra     nz, wbtil3  ; write more rows for big flashblocks
+
         clr     W0
         rcall   wbti_init
-wbtil4:
+wbtil5:
+        mov.w   #IBUFLEN1, W3
+wbtil6:
         tblrdh.b  [W2], W5
         cp.b      W5, [W1++]
         bra       nz, verify_imem_2
@@ -405,9 +431,9 @@ wbtil4:
         cp        W5, [W0++]
         bra       nz, verify_imem_2
         dec       W3, W3
-        bra       nz, wbtil4
+        bra       nz, wbtil6
         dec       W4, W4
-        bra       nz, wbtil4
+        bra       nz, wbtil5
         bclr      iflags, #idirty
         setm      ibase       ; Now the flash row has been verified
         return
@@ -421,11 +447,10 @@ forceemit1:
         reset
 
 ; LITERAL  x --           append numeric literal as inline code
+        .pword   0
 LITERAL_L:
-        .fillupper   NFA|IMMED|7
-        .word  0
-		.fillupper 0
-        .pascii "literal"
+        .byte   NFA|IMMED|7
+        .ascii "literal"
         .align 2
 LITERAL:
         mov     [W14--], W0
@@ -451,6 +476,12 @@ COLD_L:
         .word    LITERAL_L+PFLASH
         .pascii  "123456"
         .align 2
+
+        .pword   paddr(LITERAL_L)+PFLASH
+
+        .byte   NFA|4
+        .ascii  "cold"
+        .align 2
 COLD:
 .ifdef PEEPROM
         mlit    handle(COLDLIT)+PFLASH
@@ -466,7 +497,7 @@ COLD:
         .pword   paddr(COLD_L)+PFLASH
 WARM_L:
         .byte   NFA|4
-        .ascii  "war"
+        .ascii  "warm"
         .align 2
 WARM_:
         rcall   DP_TO_EEPROM
@@ -478,9 +509,6 @@ RESET_FF_1:
 
 __reset:
 WARM:
-.ifdef CLKDIV
-        clr     CLKDIV         ; Use full 8 MHz FRC.S
-.endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
         
@@ -498,6 +526,16 @@ WARM:
         setm    ibase
         clr     iflags
 
+.ifdecl INTTREG
+		mov		#IVECTAB, W0
+		mov		#IVECSIZE, W1
+		mov		#handle(__DefaultInterrupt), W2
+WARM_FILL_IVEC:
+		mov		W2, [W0++]
+		dec		W1, W1
+		bra		nz, WARM_FILL_IVEC
+.endif
+
 		btss	RCON, #SWR
 		clr		intcon1dbg      ; clear if it was not a reset from the reset instruction
 WARM_0:
@@ -512,18 +550,63 @@ WARM_0:
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
 
+.ifdef PLLPOST0
+		mov		#PLL_FBD, W0
+		mov		W0, PLLFBD
+		bclr	CLKDIV, #PLLPOST0
+WAITFORLOCK:
+		btss    OSCCON, #LOCK
+		bra		WAITFORLOCK
+.endif
+;		bclr    TRISB, #0x8
+
+; Switch to HSPLL
+;		mov		#8, W0
+;		mov		W0, PLLFBD
+
 ; Initialise the UART 1
+.ifdecl RPINR18
+		setm    AD1PCFGL
+		mov		#OSCCONL, W0
+		mov.b   #0xb0, W3
+		mov.b	#0x45, W1
+		mov.b	#0x57, W2
+		mov.b	W1, [W0]
+		mov.b	W2, [W0]
+		bclr.b	OSCCONL, #IOLOCK
+		
+		mov     #RPINR18VAL, W0
+		mov		W0, RPINR18
+
+		mov.b	#0x0004, W0         ; U1RTS
+		mov.b	WREG, RPOR0+U1RTSPIN
+		mov.b	#0x0003, W0         ; U1TX
+		mov.b	WREG, RPOR0+U1TXPIN
+.endif
+
+
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
 .endif
         bset    U1MODE, #UARTEN
+.ifdecl BRGH
+		bset	U1MODE, #BRGH
+.endif
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
 ;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
         bset    U1STA, #UTXEN
+
+.if (AUTOBAUD == 1)
+		bset	U1MODE, #ABAUD
+WARM_ABAUD:
+		btsc	U1MODE, #ABAUD
+		bra     WARM_ABAUD
+		bclr    IFS0, #U1RXIF
+.endif
+
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
-
 
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
@@ -539,7 +622,6 @@ WARM_0:
 
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
-
 
 ; Check if cold start is needed
 .ifdef PEEPROM
@@ -638,6 +720,7 @@ STARTQ1:
 STARTQ2:
         bra     ABORT
 
+
         .pword   paddr(WARM_L)+PFLASH
 TURNKEY_L:
         .byte   NFA|7
@@ -681,8 +764,10 @@ CWD:
         clrwdt
         return
 
-; INT!  ( xt intaddr -- )
+; INT!  ( xt intnumber -- ) intnumber 8..
 ; Store interrupt vector in alternate interrupt vector table
+; Stored directly in Flash on the 30F series     intnumber 0..61 
+; Stored in ram revector table in 24,33 series   intnumber 0..83
 
         .pword   paddr(CWD_L)+PFLASH
 INTERRUPT_STORE_L:
@@ -690,11 +775,23 @@ INTERRUPT_STORE_L:
         .ascii  "int!"
         .align 2
 INTERRUPT_STORE:
-        mov     #0xff, W0
+.ifdecl INTTREG
+		mov		#IVECTAB, W0
+		mov		[W14--], W1
+		sl		W1, W1
+		add		W0, W1, W0
+		mov		#PFLASH, W1
+		mov		[W14--], W2
+		sub		W2, W1, W1
+		mov		W1, [W0]
+		return
+.else
+        mov     #0x7f, W0
         mov     [W14--], W1
         and     W1, W0, W1
-        mov     #PAIVT+PFLASH, W0
-        ior     W1, W0, W0
+		sl		W1, W1
+        mov     #PAIVT+PFLASH+4, W0
+        add     W1, W0, W0
         mov     #PFLASH, W1
 		mov     [W14], W2
         sub     W2, W1, [W14]
@@ -702,7 +799,7 @@ INTERRUPT_STORE:
         rcall   ISTORE_RAW
         rcall   IFLUSH
         return
-
+.endif
 
 ; IVT  ( -- )  Use the normal interrupt vector table
         .pword   paddr(INTERRUPT_STORE_L)+PFLASH
@@ -731,7 +828,9 @@ BRACKETI_L:
         .ascii  "[i"
         .align  2
 BRACKETI:
+.ifndecl INTTREG
         push.s
+.endif
         push    hibyte
         push    TBLPAG
         push    Preg
@@ -751,7 +850,9 @@ IBRACKET:
         pop     Preg
         pop     TBLPAG
         pop     hibyte
+.ifndecl INTTREG
         pop.s
+.endif
         return
 
 
@@ -989,7 +1090,6 @@ COMMAXT:
         rcall   RCALL_
         return
 
-
         .pword   paddr(COMMAXT_L)+PFLASH
 IFLUSH_L:
         .byte   NFA|6
@@ -1002,58 +1102,59 @@ IFLUSH:
 
 ; data addr IC! Address is in W0
 ICSTORE:
+		rcall	ISTORE_ADDRCHK
+		clr.b	hibyte
+.if 0
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
         bra     n, ISTORE_ADDRERR
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
-
-        mov     W0, iaddr
-        rcall   iupdatebuf
-        mov     iaddr, W0
-        mov     #IBUFSIZEL-1, W1
-        and     W0, W1, W2
-        lsr     W2,#1,W0
-        mov     #ibufh, W1
-        add     W1, W0, W0
-        clr.b   [W0]
-
-        mov     #ibufl, W1
-        add     W2, W1, W0
-        mov     [W14--], W1
+.endif
+		rcall	ISTORE_SUB
         mov.b   W1, [W0]
-        bset    iflags, #idirty
+
         return
 
 ; data addr I!  Address is in W0
 ISTORE:
+		rcall	ISTORE_ADDRCHK
+.if 0
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
         bra     n, ISTORE_ADDRERR
+.endif
 ISTORE_RAW:
+		rcall	ISTORE_SUB
+        mov     W1, [W0]
+ISTORE1:
+        return
+
+ISTORE_SUB:
         mov     #PFLASH, W1
         sub     W0, W1, W0
+
         mov     W0, iaddr       ; W0 = addr, iaddr = addr
         rcall   iupdatebuf
-
         mov     iaddr, W0
-
         mov     #IBUFSIZEL-1, W1
         and     W0, W1, W2
         lsr     W2,#1,W0
-
         mov     #ibufh, W1
         add     W1, W0, W0
+
         mov     #hibyte, W1
         mov.b   [W1], [W0]
 
         mov     #ibufl, W1
         add     W2, W1, W0
-        mov     [W14--], [W0]
+        mov     [W14--], W1
         bset    iflags, #idirty
-ISTORE1:
-        return
+		return
 
+ISTORE_ADDRCHK:
+        mov     #handle(KERNEL_END)+PFLASH, W1
+        cp      W0, W1
+        bra     n, ISTORE_ADDRERR
+        return
 ISTORE_ADDRERR:
         bset    INTCON1, #ADDRERR
 
@@ -1114,10 +1215,10 @@ EWENABLE:
         mov     W1, NVMCON
 EWENABLE0:
         disi    #5
-        mov     #0x55, W1
-        mov     W1, NVMKEY
-        mov     #0xaa, W1
-        mov     W1, NVMKEY
+        mov     #0x55, W3       ; W3 selected to avoid clash in flash write routine.
+        mov     W3, NVMKEY
+        mov     #0xaa, W3
+        mov     W3, NVMKEY
         bset    NVMCON, #WR
         nop
         nop
@@ -1436,16 +1537,11 @@ RSHIFT:
         mov     W1, [W14]
         return
 
+        .pword  paddr(RSHIFT_L)+PFLASH
 NEQUAL_L:
-		.fillupper NFA|2
-        .word  RSHIFT_L+PFLASH
-		.fillupper 0
-        .pascii  "n="
+		.byte   NFA|2
+        .ascii  "n="
         .align  2
-.if 1
-NEQUAL:
-		return
-.else
 NEQUAL:
         mov.w   [W14--], W3     ; count
         mov.w   [W14--], W4     ; caddr2 in flash
@@ -1473,7 +1569,7 @@ NEQUAL1:
 NEQUAL_TRUE:
         setm.w  [W14]
         return
-.endif
+
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
         .pword  paddr(NEQUAL_L)+PFLASH
@@ -2393,7 +2489,7 @@ DEFER_DOES:
         .pword  paddr(DEFER_L)+PFLASH
 IS_L:
         .byte   NFA|2
-        .ascii  "is"
+        .ascii  "to"
         .align  2
 IS:
         rcall   TICK
@@ -2506,9 +2602,8 @@ CSE:
 
 
 ; IDP    -- a-addr  Dictonary pointer storage        
-; Stored in EEPROM
-        .pword  paddr(CSE_L)+PFLASH
-IDP_L:
+;        .pword  paddr(CSE_L)+PFLASH
+; IDP_L:
         .byte   NFA|3
         .ascii  "idp"
         .align  2
@@ -2516,7 +2611,7 @@ IDP:
         rcall   DOCREATE
         .word   dpFLASH
 
-        .pword  paddr(IDP_L)+PFLASH
+        .pword  paddr(CSE_L)+PFLASH
 DP_L:
         .byte   NFA|2
         .ascii  "dp"
@@ -3638,8 +3733,84 @@ FETCHPP:
         mov     W0, [W14-0x2]      
         return
 
-; NFA>CFA   nfa -- cfa    name adr -> code field
+; pack>  ( flash-addr ram-addr -- ) ; unpack 18 bytes link+length+name
         .pword  paddr(FETCHPP_L)+PFLASH
+CUNPACK_L:
+        .byte   NFA|3
+        .ascii  "f>>"
+        .align  2
+CUNPACK:
+        push    Preg
+        mov     [W14--], W0
+        mov     W0, Preg
+		mov		#6, W0
+		push	W0
+CUNPACK1:
+        mov     [W14++], [W14]      ; dup
+		rcall   CF_FETCH
+		rcall	SWOP
+        mov     [W14++], [W14]      ; dup
+		rcall	PCSTORE
+		inc		Preg
+		mov		[W14--], W0
+		swap	W0
+		mov		W0, [++W14]
+		rcall	PCSTORE
+		inc		Preg
+		rcall	PCSTORE
+		inc		Preg
+		inc2	[W14], [W14]
+		dec     [--W15], [W15++] ; XNEXT
+		bra		nz,	CUNPACK1
+		pop		W0
+		pop		Preg
+        sub     W14, #2, W14
+		return
+
+; pack>  ( flash-addr ram-addr length -- ) ; pack 18 bytes link+length+name
+        .pword  paddr(CUNPACK_L)+PFLASH
+CPACK_L:
+        .byte   NFA|3
+        .ascii  ">>f"
+        .align  2
+CPACK:
+        push    Preg
+        mov     [W14--], W0
+        mov     [W14--], W1
+        mov     W1, Preg            ; ram addr Preg
+		push	W0
+CPACK1:
+        mov     [W14++], [W14]      ; dup flash addr in tos
+		mov		Preg, W1
+		mov		[W1++], [++W14]
+        mov.b   [W1],[++W14]
+        mov.b   [W1],[++W14]        ; Upper byte will be ignored in CF!
+        rcall   ROT
+		rcall	CFSTORE
+		inc2	Preg
+		rcall	PCFETCH
+		rcall   CF_FETCH
+		rcall	SWOP
+        mov     [W14++], [W14]      ; dup
+		rcall	PCSTORE
+		inc		Preg
+		mov		[W14--], W0
+		swap	W0
+		mov		W0, [++W14]
+		rcall	PCSTORE
+		inc		Preg
+		rcall	PCSTORE
+		inc		Preg
+		inc2	[W14], [W14]
+		dec     [--W15], [W15++] ; XNEXT
+		bra		nz,	CUNPACK1
+		pop		W0
+		pop		Preg
+        sub     W14, #2, W14
+		return
+
+; NFA>CFA   nfa -- cfa    name adr -> code field
+        .pword  paddr(CPACK_L)+PFLASH
 NFATOCFA_L:
         .byte   NFA|3
         .ascii  "n>c"
@@ -4264,11 +4435,12 @@ DP_TO_EEPROM_3:
 .else
         mlit    dpSTART
         push    Preg            ; P to return stack
-        mov     W1, Preg        ; dst to P
-        rcall   FTURNKEY_A
+        mov     [W14--], W0
+        mov     W0, Preg        ; src in ram
+        rcall   FTURNKEY_A      ; dst in flash
 		mlit	4
         push    [W14--]
-DP_TO_EEPROM_0: 
+DP_TO_EEPROM_0:
 		rcall	DUP
 		rcall	EEREAD
 		rcall	PFETCH
@@ -4285,6 +4457,7 @@ DP_TO_EEPROM_1:
         bra     nz, DP_TO_EEPROM_0
         pop     W0
         pop     Preg
+        sub     W14, #2, W14
 		return
 .endif
 ;;; Check parameter stack pointer
@@ -4358,12 +4531,9 @@ PROMPT_L:
         .ascii  "prompt"
         .align  2
 PROMPT:
-.ifdef	PEEPROM
         rcall   DEFER_DOES
         .word   prompt
-.else
-		goto	DOTSTATUS
-.endif
+
 ; ABORT    i*x --   R: j*x --   clear stk & QUIT
         .pword  paddr(PROMPT_L)+PFLASH
 ABORT_L:
@@ -4683,15 +4853,20 @@ SEMICOLON2:
 SEMICOLON3:
         goto    LEFTBRACKET
 
-; ;        --             end a interrupt colon definition
-;   retfie, [
+; ;i        --             end a interrupt colon definition
+
         .pword  paddr(SEMICOLON_L)+PFLASH
 SEMICOLONI_L:
         .byte   NFA|IMMED|2
         .ascii  ";i"
         .align  2
 SEMICOLONI:
-        rcall   RETFIE_
+.ifdecl INTTREG
+		mlit	handle(ALT_INT_EXIT)+PFLASH
+        rcall   AGAINC
+.else
+		rcall	RETFIE_
+.endif
         goto    LEFTBRACKET
 
 ; [']  --         find word & compile as literal
@@ -4727,10 +4902,19 @@ DUPZEROSENSE:
         cp0     [W14]
         return
 
-
-; in, ( cfa -- ) begin dup cf@ dup $12 <> while cf, 2+ repeat 3drop ;
         .pword  paddr(BRACTICK_L)+PFLASH
 INLINE_L:
+        .byte   NFA|IMMED|COMPILE|6
+        .ascii  "inline"
+        .align  2
+		bclr	iflags, #izeroeq
+		bclr	iflags, #idup
+		rcall	TICK
+		goto	INLINE_0
+
+; in, ( cfa -- ) begin dup cf@ dup $0006 <> while as, 2+ repeat 3drop ;
+        .pword  paddr(INLINE_L)+PFLASH
+INC_L:
         .byte   NFA|3
         .ascii  "in,"
         .align  2
@@ -4750,7 +4934,7 @@ INLINE1:
         return
 
 ; un, ( -- cc)   Unconditional
-        .pword  paddr(INLINE_L)+PFLASH
+        .pword  paddr(INC_L)+PFLASH
 UNC_L:
         .byte   NFA|3
         .ascii  "un,"
@@ -5202,8 +5386,8 @@ DOTS2:
         return
 
 ; IALLOT   n --    allocate n bytes in ROM
-        .pword  paddr(DOTS_L)+PFLASH
-IALLOT_L:
+;        .pword  paddr(DOTS_L)+PFLASH
+;IALLOT_L:
         .byte   NFA|6
         .ascii  "iallot"
         .align  2
@@ -5212,7 +5396,7 @@ IALLOT:
         goto    PLUSSTORE
 
 ; ALLOT   n --    allocate n bytes in current data section
-        .pword  paddr(IALLOT_L)+PFLASH
+        .pword  paddr(DOTS_L)+PFLASH
 ALLOT_L:
         .byte   NFA|5
         .ascii  "allot"
@@ -5271,8 +5455,8 @@ DUMP7:
 ; CPU_CLK  ( -- ) 
         .pword   paddr(DUMP_L)+PFLASH
 CPU_CLK_L:
-        .byte   NFA|INLINE|7
-        .ascii  "cpu_clk"
+        .byte   NFA|INLINE|3
+        .ascii  "Fcy"
         .align  2
 
         mlit    #(FCY/1000)
@@ -5357,14 +5541,18 @@ lastword:
         .ascii  "marker"
         .align  2
 MARKER:
-        rcall   FLASH
-        rcall   CREATE
         mlit    dpSTART
-        rcall   IHERE
+        rcall   PAD
         mlit    MARKER_LENGTH
         rcall   WMOVE
-        mlit    10
-        rcall   IALLOT
+        rcall   FLASH
+        rcall   CREATE
+        rcall   PAD
+        rcall   HERE
+        mlit    MARKER_LENGTH
+        rcall   WMOVE
+        mlit    MARKER_LENGTH*2
+        rcall   ALLOT
         rcall   RAM
         rcall   XDOES
 MARKER_DOES:
