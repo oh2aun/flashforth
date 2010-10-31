@@ -46,8 +46,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;;; Below is the setting for max amount of ram for dsPIC24HJ128GP502
 .equ PFLASH,         0x2800  ; 10 Kbytes RAM, 54(81) KBytes FLASH
 
-;;; Memory mapping prefixes
-.equ PFLASH,         0x2800  ; 8 Kbytes for ram
+;;; Memory control defines
 .equ FLASH_ERASE,    0x4042  ; Memory page erase
 .equ FLASH_WRITE,    0x4001  ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
