@@ -503,6 +503,10 @@ RESET_FF_1:
 
 __reset:
 WARM:
+.ifdecl CLKDIV
+		clr		CLKDIV   ; Use full FRC frequency
+                         ; PLL PRE/POST scalers are 2.      
+.endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
         
@@ -544,25 +548,18 @@ WARM_0:
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
 
-.ifdef PLLPOST0
+.ifdecl PLLFBD
 		mov		#PLL_FBD, W0
 		mov		W0, PLLFBD
-		bclr	CLKDIV, #PLLPOST0
+.endif
 WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
-.endif
-;		bclr    TRISB, #0x8
-
-; Switch to HSPLL
-;		mov		#8, W0
-;		mov		W0, PLLFBD
 
 ; Initialise the UART 1
 .ifdecl RPINR18
 		setm    AD1PCFGL
 		mov		#OSCCONL, W0
-		mov.b   #0xb0, W3
 		mov.b	#0x45, W1
 		mov.b	#0x57, W2
 		mov.b	W1, [W0]
@@ -572,15 +569,16 @@ WAITFORLOCK:
 		mov     #RPINR18VAL, W0
 		mov		W0, RPINR18
 
-		mov.b	#0x0004, W0         ; U1RTS
-		mov.b	WREG, RPOR0+U1RTSPIN
+;		mov.b	#0x0004, W0         ; U1RTS
+;		mov.b	WREG, RPOR0+U1RTSPIN
 		mov.b	#0x0003, W0         ; U1TX
 		mov.b	WREG, RPOR0+U1TXPIN
 .endif
 
-
+.ifdecl USE_ALTERNATE_UART_PINS
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
+.endif
 .endif
         bset    U1MODE, #UARTEN
 .ifdecl BRGH
@@ -588,9 +586,9 @@ WAITFORLOCK:
 .endif
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
-;;;        bset    U1STA, #UTXISEL     ; Interrupt when fifo is empty
         bset    U1STA, #UTXEN
 
+.ifdecl AUTOBAUD
 .if (AUTOBAUD == 1)
 		bset	U1MODE, #ABAUD
 WARM_ABAUD:
@@ -598,7 +596,7 @@ WARM_ABAUD:
 		bra     WARM_ABAUD
 		bclr    IFS0, #U1RXIF
 .endif
-
+.endif
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
 
@@ -724,7 +722,7 @@ TURNKEY:
         rcall   VALUE_DOES
         .word   dpSTART
 
-; PAUSE  20 cycles, 5us@16MHz
+; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
         .pword   paddr(TURNKEY_L)+PFLASH
 PAUSE_L:
         .byte   NFA|5

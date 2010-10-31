@@ -33,8 +33,8 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ;;; Below is the setting for max amount of ram for dsPIC24F16KA102
 .equ PFLASH,  0x1000
 
-;;; Memory mapping prefixe for EEPROM
-.equ PEEPROM, 0xfe00
+;;; Memory mapping prefixe for EEPROM 
+.equ PEEPROM, 0xfe00          ; 512 bytes of eeprom
 
 ;;; Meory control defines
 .equ EEPROM_ERASE, 0x4058   ; Erase one word

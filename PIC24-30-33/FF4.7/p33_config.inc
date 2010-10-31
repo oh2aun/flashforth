@@ -1,16 +1,20 @@
 ;;; FlashForth device configuration for the dsPIC33
+.ifndecl IOL1WAY_OFF
+.equ IOL1WAY_OFF, 0xffff
+.endif
+
 config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;config FWDT,
 ;config FPOR,
 
 
-.equ PLL_DIV, 30
+.equ PLL_DIV, 30                          ; Fcy is 27637 KHz
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2                          ; Do not change
 .equ PLL_PRE, 2                           ; Do not change
-.equ FREQ_FIN, 7370000            
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; Used with FRCPLL
+.equ FREQ_FIN, 7370000                    ; PLL input frequency
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL input frequency. Used with FRCPLL
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS and external oscillator
@@ -26,12 +30,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 
 .equ U1RXPIN, 0xf                 ; 
 .equ U1TXPIN, 0xe
-.equ U1CTSPIN, 0xd
-.equ U1RTSPIN, 0xc
-.equ RPINR18VAL, 0x0d0f    ; (U1RXPIN | (U1CTSPIN<<0x10))
-
-; Set to one to use the alternate UART pins
-.equ USE_ALTERNATE_UART_PINS, 0
+;.equ U1CTSPIN, 0xd        ; Not in use
+;.equ U1RTSPIN, 0xc        ; Not in use
+.equ RPINR18VAL, 0x000f    ; (U1RXPIN | (U1CTSPIN<<0x10))
 
 ; Flash write delay
 .equ write_delay, 20
@@ -43,7 +44,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ CTRL_O_WARM_RESET, 1
 
 ;;; Memory mapping prefixes
-;;; To be set to the amount of ram + 0x800.
+;;; To be set to the amount of ram + 0x800 register space.
 ;;; The rest if the memory space is available for flash
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for dsPIC33FJ128GP802

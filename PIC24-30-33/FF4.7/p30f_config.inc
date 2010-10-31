@@ -14,17 +14,16 @@ config __FBORPOR, PBOR_ON & BORV_27 & PWRT_16 & MCLR_EN
 config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 
-;.equ FREQ_OSC, 16000000;
-.equ FREQ_OSC, (7322000*8)					  ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 38400					  ; Serial baudrate
-.equ AUTOBAUD, 0                          ; 0 = to use fixed baudrate
-                                          ; 1 = Autobaud, First char after reset must be 'U' (0x55)
-.equ FCY, (FREQ_OSC/4)
+;.equ FREQ_OSC, 16000000;           ; Max baudrate 19200 with this clock
+.equ FREQ_OSC, (7322000*8)			; Oscillator frequency
+.equ BAUDRATE, 38400				; Serial baudrate
+
+.equ FCY, (FREQ_OSC/4)              ; CPU intruction frequency
 
 .equ BAUD_DIV1, (FCY/16/BAUDRATE)-1		; UART divisor
 .equ MS_PR_VAL, (FCY/1000)				; Timer value for 1 ms ticks
 
-; Set to one to use the alternate UART pins
+; Set to one to use the alternate UART pins. Only for dsPIC30F.
 .equ USE_ALTERNATE_UART_PINS, 1
 
 ; Flash write delay
@@ -36,6 +35,10 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
+;;; Memory mapping prefixes
+;;; To be set to the amount of ram + 0x800 register space.
+;;; The rest if the memory space is available for flash
+;;; You can increase the addressable flash range be decreasing the addressable ram.
 .equ PFLASH,       0x1000    ; 2 Kbytes RAM  61 Kbytes flash
 .equ PEEPROM,      0xfc00    ; 1 Kbyte EEPROM
 
