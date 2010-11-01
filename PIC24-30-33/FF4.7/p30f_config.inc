@@ -20,14 +20,14 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 .equ FCY, (FREQ_OSC/4)              ; CPU intruction frequency
 
-.equ BAUD_DIV1, (FCY/16/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FCY/1000)				; Timer value for 1 ms ticks
+;;; UART1 configuration
+.equ BAUDRATE1, 115200 				      ; Serial baudrate UART1
+
+;;; UART2 configuration
+;.equ BAUDRATE2, 115200 				      ; Serial baudrate UART2, comment if not used
 
 ; Set to one to use the alternate UART pins. Only for dsPIC30F.
 .equ USE_ALTERNATE_UART_PINS, 1
-
-; Flash write delay
-.equ write_delay, 20
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
@@ -53,5 +53,13 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ IBUFLEN1,       0x0020
 .equ IBUFLEN2,       0x0001
 .equ IBUFMASK,       0xffc0
+
+
+.equ MS_PR_VAL, (FCY/1000)	            ; Timer value for 1 ms ticks
+.equ BAUD_DIV1, (FCY/16/BAUDRATE1)-1	; UART1 divisor
+.ifdecl BAUDRATE2
+.equ BAUD_DIV2, (FCY/16/BAUDRATE2)-1	; UART2 divisor
+.endif
+.equ write_delay, 20           ; Flash write delay
 
 

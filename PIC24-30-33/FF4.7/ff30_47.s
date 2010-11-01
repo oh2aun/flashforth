@@ -45,25 +45,30 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
-.equ fLOCK,   9   ; 
+.equ fFC2,    11  ; Flow control for UART2
+.equ ixoff2,  10  ; XON/XOFF flag for UART2
+.equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
 .equ iCR,     7   ; ACCEPT has found CR
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
 .equ istream, 3
-.equ fFC,     2   ; 0=FC, 1 = noFC
-.equ ixoff,   1
+.equ fFC1,    2   ; 0=FC, 1 = noFC for UART1
+.equ ixoff1,  1   ; XON/XOFF flag for UART1
 .equ idirty,  0
 
 ;;; For Flow Control
 .equ XON,   0x11
 .equ XOFF,  0x13
 
+
 .equ IVECSIZE, 64
 ;;; Sizes of the serial RX and TX character queues
-.equ rbuf_size,      64
-.equ tbuf_size,      64
+.equ rbuf_size1,      64
+.equ tbuf_size1,      64
+.equ rbuf_size2,      32
+.equ tbuf_size2,      32
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ uaddsize,       0          ; No additional user variables 
@@ -115,19 +120,35 @@
 .bss
 ibufl:      .space IBUFSIZEL
 ibufh:      .space IBUFSIZEH
-txqueue:
-tbuf_len:   .space 2
-tbuf_wr:    .space 2
-tbuf_rd:    .space 2
-tbuf_lv:    .space 2
-tbuf:       .space tbuf_size
+txqueue1:
+tbuf_len1:   .space 2
+tbuf_wr1:    .space 2
+tbuf_rd1:    .space 2
+tbuf_lv1:    .space 2
+tbuf1:       .space tbuf_size1
 
-rxqueue:
-rbuf_len:   .space 2
-rbuf_wr:    .space 2
-rbuf_rd:    .space 2
-rbuf_lv:    .space 2
-rbuf:       .space rbuf_size
+rxqueue1:
+rbuf_len1:   .space 2
+rbuf_wr1:    .space 2
+rbuf_rd1:    .space 2
+rbuf_lv1:    .space 2
+rbuf1:       .space rbuf_size1
+
+.ifdecl BAUDRATE2
+txqueue2:
+tbuf_len2:   .space 2
+tbuf_wr2:    .space 2
+tbuf_rd2:    .space 2
+tbuf_lv2:    .space 2
+tbuf2:       .space tbuf_size2
+
+rxqueue2:
+rbuf_len2:   .space 2
+rbuf_wr2:    .space 2
+rbuf_rd2:    .space 2
+rbuf_lv2:    .space 2
+rbuf2:       .space rbuf_size2
+.endif
 
 ibase:      .space 2
 iaddr:      .space 2
@@ -259,12 +280,20 @@ __U1RXInterrupt0:
         cp      W0, #15
         bra     z, RESET_FF_1
 .endif
+
+        btsc    iflags, #fFC1
+        bra     U1_SKIP_FC_1
         cp      W0, #XOFF
         bra     z, __U1RXInterrupt3
+U1_SKIP_FC_1:
+
         mov     W0, [++W14]
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_TO
-        mov     rbuf_wr, W0
+        
+        btsc    iflags, #fFC1
+        bra     U1_SKIP_FC_2
+        mov     rbuf_wr1, W0
         and     W0, #0xf, W0
         bra     nz, __U1RXInterrupt3
 __U1RXInterrupt2:
@@ -272,7 +301,9 @@ __U1RXInterrupt2:
         bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
-        bset    iflags, #ixoff
+        bset    iflags, #ixoff1
+U1_SKIP_FC_2:
+
 __U1RXInterrupt3:
         btsc    U1STA, #URXDA
         bra     __U1RXInterrupt0
@@ -313,7 +344,86 @@ __U1TXInterrupt0:
 __U1TXInterrupt3:
 		bra     __U1RXTXIRQ_END
 
-		.text
+.ifdecl BAUDRATE2
+.ifdecl U2RXREG
+__U2RXInterrupt:
+        push.s
+        push    hibyte
+        push    TBLPAG
+        inc2    W14, W14
+__U2RXInterrupt0:
+        bclr    IFS1, #U2RXIF
+        bset    iflags, #istream      ; Indicate UART activity.
+        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_TOQ
+        cp0     [W14--]
+        bra     z, U2RX_ERR1
+        bclr    U2STA, #OERR
+        mov     U2RXREG, W0
+
+.if (CTRL_O_WARM_RESET == 1)
+        cp      W0, #15
+        bra     z, RESET_FF_1
+.endif
+
+        btsc    iflags, #fFC2
+        bra     U2_SKIP_FC_1
+        cp      W0, #XOFF
+        bra     z, __U2RXInterrupt3
+U2_SKIP_FC_1:
+        mov     W0, [++W14]
+        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_TO
+        
+        btsc    iflags, #fFC2
+        bra     U2_SKIP_FC_2
+        mov     rbuf_wr2, W0
+        and     W0, #0xf, W0
+        bra     nz, __U2RXInterrupt3
+__U2RXInterrupt2:
+        btsc    U2STA, #UTXBF
+        bra     __U2RXInterrupt2
+        mov     #XOFF, W0
+        mov     W0, U2TXREG
+        bset    iflags, #ixoff2
+U2_SKIP_FC_2:
+__U2RXInterrupt3:
+        btsc    U2STA, #URXDA
+        bra     __U2RXInterrupt0
+__U2RXTXIRQ_END:
+		bra     __U1RXTXIRQ_END
+
+U2RX_ERR1:
+        btss    U2STA, #TRMT
+        bra     U2RX_ERR1
+        mov     U2RXREG, W0
+        mov     #'|', W0
+        mov     W0, U2TXREG
+        bra     __U2RXInterrupt3
+
+__U2TXInterrupt:
+        push.s
+        push    hibyte
+        push    TBLPAG
+        add     W14, #2, W14
+        bset    iflags, #istream      ; Indicate UART activity.
+        bclr    IFS1, #U2TXIF
+__U2TXInterrupt0:
+        btsc    U2STA, #UTXBF
+        bra     __U2TXInterrupt3
+        mlit    handle(U2TXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_FROMQ
+        cp0     [W14--]
+        bra     z, __U2TXInterrupt3
+        mlit    handle(U2TXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_FROM
+        mov     [W14--], W0
+        mov     W0, U2TXREG
+__U2TXInterrupt3:
+		bra     __U1RXTXIRQ_END
+.endif
+.endif
+
 .ifdecl INTTREG
 __DefaultInterrupt:
 		btss	INTCON2, #ALTIVT
@@ -373,7 +483,7 @@ wait_silence:
         bra     wait_silence
         mov     #XOFF, W2
         mov     W2, U1TXREG
-        bset    iflags, #ixoff
+        bset    iflags, #ixoff1
 wbtil:
         bclr    iflags, #istream
         mov     #FCY/1000, W2     ;  This loop takes about xx milliseconds
@@ -547,6 +657,17 @@ WARM_0:
 ; Init the serial RX buffer
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
+        
+.ifdecl BAUDRATE2
+.ifdecl U2RXREG
+; Init the serial TX buffer
+        rcall   U2TXQUEUE
+        rcall   CQUEUEZ
+; Init the serial RX buffer
+        rcall   U2RXQUEUE
+        rcall   CQUEUEZ
+.endif
+.endif
 
 .ifdecl PLLFBD
 		mov		#PLL_FBD, W0
@@ -556,7 +677,7 @@ WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
 
-; Initialise the UART 1
+;;;; Initialise the UART 1
 .ifdecl RPINR18
 		setm    AD1PCFGL
 		mov		#OSCCONL, W0
@@ -580,6 +701,7 @@ WAITFORLOCK:
         bset    U1MODE, #ALTIO
 .endif
 .endif
+
         bset    U1MODE, #UARTEN
 .ifdecl BRGH
 		bset	U1MODE, #BRGH
@@ -588,17 +710,52 @@ WAITFORLOCK:
         mov     W0, U1BRG
         bset    U1STA, #UTXEN
 
-.ifdecl AUTOBAUD
-.if (AUTOBAUD == 1)
+.ifdecl AUTOBAUD1
+.if (AUTOBAUD1 == 1)
 		bset	U1MODE, #ABAUD
-WARM_ABAUD:
+WARM_ABAUD1:
 		btsc	U1MODE, #ABAUD
-		bra     WARM_ABAUD
+		bra     WARM_ABAUD1
 		bclr    IFS0, #U1RXIF
 .endif
 .endif
         bset    IEC0, #U1RXIE
         bset    IEC0, #U1TXIE
+
+;;; Initialise UART2
+.ifdecl BAUDRATE2
+.ifdecl U2RXREG
+.ifdecl RPINR19
+		mov     #RPINR19VAL, W0
+		mov		W0, RPINR19
+
+;		mov.b	#0x0004, W0         ; U2RTS
+;		mov.b	WREG, RPOR0+U1RTSPIN
+		mov.b	#0x0005, W0         ; U2TX
+		mov.b	WREG, RPOR0+U2TXPIN
+.endif
+
+        bset    U2MODE, #UARTEN
+.ifdecl BRGH
+		bset	U2MODE, #BRGH
+.endif
+        mov     #BAUD_DIV2, W0
+        mov     W0, U2BRG
+;        bset    U2STA, #UTXEN
+
+.ifdecl AUTOBAUD2
+.if (AUTOBAUD2 == 1)
+		bset	U2MODE, #ABAUD
+WARM_ABAUD2:
+		btsc	U2MODE, #ABAUD
+		bra     WARM_ABAUD2
+		bclr    IFS1, #U2RXIF
+.endif
+.endif
+ ;       bset    IEC1, #U2RXIE
+;        bset    IEC1, #U2TXIE
+.endif
+.endif
 
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
@@ -1096,11 +1253,6 @@ IFLUSH:
 ICSTORE:
 		rcall	ISTORE_ADDRCHK
 		clr.b	hibyte
-.if 0
-        mov     #handle(KERNEL_END)+PFLASH, W1
-        cp      W0, W1
-        bra     n, ISTORE_ADDRERR
-.endif
 		rcall	ISTORE_SUB
         mov.b   W1, [W0]
 
@@ -1109,11 +1261,6 @@ ICSTORE:
 ; data addr I!  Address is in W0
 ISTORE:
 		rcall	ISTORE_ADDRCHK
-.if 0
-        mov     #handle(KERNEL_END)+PFLASH, W1
-        cp      W0, W1
-        bra     n, ISTORE_ADDRERR
-.endif
 ISTORE_RAW:
 		rcall	ISTORE_SUB
         mov     W1, [W0]
@@ -1374,7 +1521,7 @@ FCON_L:
         .byte   NFA|3
         .ascii  "ft1"
         .align  2
-		bset	iflags, #fFC
+		bclr	iflags, #fFC1
 		return
 
         .pword   paddr(FCON_L)+PFLASH
@@ -1382,7 +1529,7 @@ FCOFF_L:
         .byte   NFA|3
         .ascii  "ft0"
         .align  2
-		bclr	iflags, #fFC
+		bset	iflags, #fFC1
 		return
 
 LOCKED:
@@ -1855,8 +2002,8 @@ U1TXQUEUE:
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         return
 U1TXQUEUE_DATA:
-        .word   txqueue
-        .word   tbuf_size-1
+        .word   txqueue1
+        .word   tbuf_size1-1
 
         .pword  paddr(U1TXQUEUE_L)+PFLASH
 U1RXQUEUE_L:
@@ -1867,8 +2014,8 @@ U1RXQUEUE:
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         return
 U1RXQUEUE_DATA:
-        .word   rxqueue
-        .word   rbuf_size-1
+        .word   rxqueue1
+        .word   rbuf_size1-1
 
         .pword  paddr(U1RXQUEUE_L)+PFLASH
 TX1_L:
@@ -1886,9 +2033,9 @@ TX1:
         rcall   CQUEUE_FROMQ
         mov     [W14--], W0
         sub     #2, W0              ; If there are less than 2 chars
-        bra     nn, TX2             ; in TX queue,
+        bra     nn, TX1_2           ; in TX queue,
         bset    IFS0, #U1TXIF       ; check if UART TX has space
-TX2:
+TX1_2:
         return
 
         .pword  paddr(TX1_L)+PFLASH
@@ -1924,15 +2071,110 @@ RX1Q:
         rcall   CQUEUE_FROMQ
         cp0     [W14]
         bra     nz, RX1Q1
-        btst    iflags, #ixoff
+
+        btsc    iflags, #fFC1
+        bra     RX1Q1      
+        btst    iflags, #ixoff1
         bra     z, RX1Q1
-        bclr    iflags, #ixoff
+        bclr    iflags, #ixoff1
         mlit    XON
         rcall   EMIT
 RX1Q1:
         return
 
         .pword  paddr(RX1Q_L)+PFLASH
+.ifdecl BAUDRATE2
+.ifdecl U2RXREG
+U2TXQUEUE_L:
+        .byte   NFA|INLINE|5
+        .ascii  "u2txq"
+        .align  2
+U2TXQUEUE:
+        mlit    handle(U2TXQUEUE_DATA)+PFLASH
+        return
+U2TXQUEUE_DATA:
+        .word   txqueue2
+        .word   tbuf_size2-1
+
+        .pword  paddr(U2TXQUEUE_L)+PFLASH
+U2RXQUEUE_L:
+        .byte   NFA|INLINE|5
+        .ascii  "u2rxq"
+        .align  2
+U2RXQUEUE:
+        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+        return
+U2RXQUEUE_DATA:
+        .word   rxqueue2
+        .word   rbuf_size2-1
+
+        .pword  paddr(U2RXQUEUE_L)+PFLASH
+TX2_L:
+        .byte   NFA|3
+        .ascii  "tx2"
+        .align  2
+TX2:    
+        rcall   PAUSE
+        rcall   TX2Q
+        cp0     [W14--]
+        bra     z, TX2
+        rcall   U2TXQUEUE
+        rcall   CQUEUE_TO
+        rcall   U2TXQUEUE
+        rcall   CQUEUE_FROMQ
+        mov     [W14--], W0
+        sub     #2, W0              ; If there are less than 2 chars
+        bra     nn, TX2_2           ; in TX queue,
+        bset    IFS1, #U2TXIF       ; check if UART TX has space
+TX2_2:
+        return
+
+        .pword  paddr(TX2_L)+PFLASH
+TX2Q_L:
+        .byte   NFA|4
+        .ascii  "tx2?"
+        .align  2
+TX2Q:
+        mlit    handle(U2TXQUEUE_DATA)+PFLASH
+        goto    CQUEUE_TOQ
+
+        .pword  paddr(TX2Q_L)+PFLASH
+RX2_L:
+        .byte   NFA|3
+        .ascii  "rx2"
+        .align  2
+RX2:
+        rcall   PAUSE
+        rcall   RX2Q
+        cp0     [W14--]
+        bra     z, RX2
+        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_FROM
+        return
+
+        .pword  paddr(RX2_L)+PFLASH
+RX2Q_L:
+        .byte   NFA|4
+        .ascii  "rx2?"
+        .align  2
+RX2Q:
+        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_FROMQ
+        cp0     [W14]
+        bra     nz, RX2Q1
+        btss    iflags, #fFC2
+        bra     RX2Q1      
+        btst    iflags, #ixoff2
+        bra     z, RX2Q1
+        bclr    iflags, #ixoff2
+        mlit    XON
+        rcall   EMIT
+RX2Q1:
+        return
+
+        .pword  paddr(RX2Q_L)+PFLASH
+.endif
+.endif
 DUP_L:
         .byte   NFA|INLINE|3
         .ascii  "dup"
@@ -5540,7 +5782,9 @@ MARKER_DOES:
 .ifndef PEEPROM
 CONFIG_DATA:
 ;.pspace IBUFSIZEL*4
-.endif
 KERNEL_END1:
 .equ KERNEL_END, KERNEL_END1 + IBUFSIZEL*4
+.else
+KERNEL_END:
+.endif
 .end

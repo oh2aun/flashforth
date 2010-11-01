@@ -16,14 +16,19 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS and external oscillator
 
-.equ BAUDRATE, 115200 				      ; Serial baudrate
-.equ AUTOBAUD, 0                          ; 0 = to use fixed baudrate
+.equ FCY, (FREQ_OSC/2)
+
+;;; UART1 configuration
+.equ BAUDRATE1, 115200 				      ; Serial baudrate UART1
+.equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
-.equ FCY, (FREQ_OSC/2)
-.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
-.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
+;;; UART2 configuration
+;.equ BAUDRATE2, 115200 				      ; Serial baudrate UART2, comment if not used
+.equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
+                                          ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
+; Map UART1 pins
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
 .equ U1TXPIN, 0xe
@@ -32,8 +37,16 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ RPINR18VAL, 0x000f    ; (U1RXPIN | (U1CTSPIN<<0x10))
 .endif
 
-; Flash write delay
-.equ write_delay, 20
+; Map UART2 pins
+.ifdecl BAUDRATE2
+.ifdecl RPINR19
+.equ U2RXPIN, 0x2          ; 
+.equ U2TXPIN, 0x3
+;.equ U2CTSPIN, 0x3        ; Not in use
+;.equ U2RTSPIN, 0x4        ; Not in use
+.equ RPINR19VAL, 0x0002    ; (U2RXPIN | (U2CTSPIN<<0x8))
+.endif
+.endif
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
@@ -58,3 +71,12 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ IBUFLEN1,       0x0040   ; Inner write loop
 .equ IBUFLEN2,       0x0008   ; Outer write loop
 .equ IBUFMASK,       0xfc00
+
+
+.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
+.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART1 divisor
+.ifdecl BAUDRATE2
+.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor
+.endif
+.equ write_delay, 20                      ; Flash write delay
+
