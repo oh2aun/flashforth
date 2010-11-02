@@ -252,4 +252,5 @@ FlashForth v4.7 preliminary
 - dsPIC33 and PIC24 stores the interrupt vector into a table in ram
   The 64 First Vectors are supported by default
 - Added BCLR, BSET, BTST bit vector words.
+- UART2 support with TX2, RX2, RX2?.
 

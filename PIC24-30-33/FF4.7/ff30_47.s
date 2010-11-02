@@ -135,6 +135,7 @@ rbuf_lv1:    .space 2
 rbuf1:       .space rbuf_size1
 
 .ifdecl BAUDRATE2
+.ifdecl _U2RXREG
 txqueue2:
 tbuf_len2:   .space 2
 tbuf_wr2:    .space 2
@@ -148,6 +149,7 @@ rbuf_wr2:    .space 2
 rbuf_rd2:    .space 2
 rbuf_lv2:    .space 2
 rbuf2:       .space rbuf_size2
+.endif
 .endif
 
 ibase:      .space 2
@@ -193,6 +195,8 @@ uarea_dbg:  .space 0x100
 .global __T1Interrupt
 .global __U1TXInterrupt
 .global __U1RXInterrupt
+.global __U2TXInterrupt
+.global __U2RXInterrupt
 .global __OscillatorFail
 .global __AddressError
 .global __StackError
@@ -345,7 +349,7 @@ __U1TXInterrupt3:
 		bra     __U1RXTXIRQ_END
 
 .ifdecl BAUDRATE2
-.ifdecl U2RXREG
+.ifdecl _U2RXREG
 __U2RXInterrupt:
         push.s
         push    hibyte
@@ -659,7 +663,7 @@ WARM_0:
         rcall   CQUEUEZ
         
 .ifdecl BAUDRATE2
-.ifdecl U2RXREG
+.ifdecl _U2RXREG
 ; Init the serial TX buffer
         rcall   U2TXQUEUE
         rcall   CQUEUEZ
@@ -724,7 +728,7 @@ WARM_ABAUD1:
 
 ;;; Initialise UART2
 .ifdecl BAUDRATE2
-.ifdecl U2RXREG
+.ifdecl _U2RXREG
 .ifdecl RPINR19
 		mov     #RPINR19VAL, W0
 		mov		W0, RPINR19
@@ -741,7 +745,7 @@ WARM_ABAUD1:
 .endif
         mov     #BAUD_DIV2, W0
         mov     W0, U2BRG
-;        bset    U2STA, #UTXEN
+        bset    U2STA, #UTXEN
 
 .ifdecl AUTOBAUD2
 .if (AUTOBAUD2 == 1)
@@ -752,8 +756,8 @@ WARM_ABAUD2:
 		bclr    IFS1, #U2RXIF
 .endif
 .endif
- ;       bset    IEC1, #U2RXIE
-;        bset    IEC1, #U2TXIE
+        bset    IEC1, #U2RXIE
+        bset    IEC1, #U2TXIE
 .endif
 .endif
 
@@ -2084,7 +2088,7 @@ RX1Q1:
 
         .pword  paddr(RX1Q_L)+PFLASH
 .ifdecl BAUDRATE2
-.ifdecl U2RXREG
+.ifdecl _U2RXREG
 U2TXQUEUE_L:
         .byte   NFA|INLINE|5
         .ascii  "u2txq"

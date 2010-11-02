@@ -27,7 +27,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 115200 				      ; Serial baudrate UART2, comment if not used
+.equ BAUDRATE2, 115200 				      ; Serial baudrate UART2, comment if not used
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
