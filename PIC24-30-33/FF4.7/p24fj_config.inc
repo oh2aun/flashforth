@@ -18,6 +18,9 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; Flash write delay
 .equ write_delay, 20
 
+; Default number base
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
 

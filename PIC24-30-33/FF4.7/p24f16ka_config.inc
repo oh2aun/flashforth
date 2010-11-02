@@ -11,14 +11,12 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 .equ FCY, (FREQ_OSC/2)
-.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
-.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
 
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
 
-; Flash write delay
-.equ write_delay, 20
+; Default number base
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
@@ -47,3 +45,8 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ IBUFLEN1,     0x0020   ; Inner write loop
 .equ IBUFLEN2,     0x0001   ; Outer write loop
 .equ IBUFMASK,     0xffc0
+
+; Flash write delay
+.equ write_delay, 20
+.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
+.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks

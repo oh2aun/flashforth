@@ -236,7 +236,7 @@ WARMLIT:
         .word      handle(RX1)+PFLASH
         .word      handle(RX1Q)+PFLASH
         .word      u0                    ; ULINK
-        .word      0x0010                ; BASE
+        .word      BASE_DEFAULT          ; BASE
         .word      utibbuf               ; TIB
         .word      handle(OPERATOR_AREA)+PFLASH ; TASK
 ;;; *************************************************
@@ -685,7 +685,7 @@ WAITFORLOCK:
 .ifdecl RPINR18
 		setm    AD1PCFGL
 		mov		#OSCCONL, W0
-		mov.b	#0x45, W1
+		mov.b	#0x46, W1
 		mov.b	#0x57, W2
 		mov.b	W1, [W0]
 		mov.b	W2, [W0]
@@ -2286,7 +2286,7 @@ DROP:
 
         .pword  paddr(DROP_L)+PFLASH
 SWAP_L:
-        .byte   NFA|4
+        .byte   NFA|INLINE|4
         .ascii  "swap"
         .align  2
 SWOP:
@@ -2360,7 +2360,7 @@ ABS:
 
         .pword  paddr(ABS_L)+PFLASH
 PLUS_L:
-        .byte   NFA|1
+        .byte   NFA|INLINE|1
         .ascii  "+"
         .align  2
 PLUS:
@@ -2381,7 +2381,7 @@ MPLUS:
 
         .pword  paddr(MPLUS_L)+PFLASH
 MINUS_L:
-        .byte   NFA|1
+        .byte   NFA|INLINE|1
         .ascii  "-"
         .align  2
 MINUS:
@@ -2402,7 +2402,7 @@ AND:
 
         .pword  paddr(AND_L)+PFLASH
 OR_L:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "or"
         .align  2
 OR:
@@ -2412,7 +2412,7 @@ OR:
 
         .pword  paddr(OR_L)+PFLASH
 XOR_L:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "xor"
         .align  2
 XOR:
@@ -2518,7 +2518,7 @@ test_false:
 
         .pword  paddr(ZEROLESS_L)+PFLASH
 STORE_P_L:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "!p"
         .align  2
 STORE_P:
@@ -2548,7 +2548,7 @@ R_TO_P:
 
         .pword  paddr(R_TO_P_L)+PFLASH
 FETCH_P_L:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "@p"
         .align  2
 FETCH_P:
@@ -2616,7 +2616,7 @@ PPLUS2:
 
         .pword  paddr(PPLUS2_L)+PFLASH
 PNPLUS_L:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "p++"
         .align  2
 PNPLUS:
@@ -4921,6 +4921,7 @@ CREATE:
         mlit    handle(DOCREATE)+PFLASH
                                 ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
         rcall   COMMAXT         ; Append an exeution token
+        rcall   ALIGN
         rcall   HERE            ; compiles the current dataspace dp into the dictionary
         mov     cse, W0
         sub  	#4, W0

@@ -29,6 +29,9 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ; Set to one to use the alternate UART pins. Only for dsPIC30F.
 .equ USE_ALTERNATE_UART_PINS, 1
 
+; Default number base
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
 

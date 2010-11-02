@@ -48,6 +48,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .endif
 .endif
 
+; Default number base
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
 

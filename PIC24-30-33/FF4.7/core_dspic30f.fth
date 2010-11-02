@@ -21,9 +21,6 @@ hex ram
   r> >in ! r> r> 'source 2!
 ;
 
-\ Define TO
-: to is ;
-
 : forget ( --- name )
   bl word latest @ (f) 0= ?abort?
   c>n 2- dup @ 0= ?abort?
