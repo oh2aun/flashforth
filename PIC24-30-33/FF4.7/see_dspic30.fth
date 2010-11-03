@@ -3,7 +3,7 @@
 \    Filename:      see.fth                                         *
 \    Date:          10.10.2010                                      *
 \    FF Version:    4.7                                             *
-\    MCU:           dsPIC30F                                        *
+\    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************

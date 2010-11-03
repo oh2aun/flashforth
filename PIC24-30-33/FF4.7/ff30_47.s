@@ -431,7 +431,7 @@ __U2TXInterrupt3:
 .ifdecl INTTREG
 __DefaultInterrupt:
 		btss	INTCON2, #ALTIVT
-		reset                    ; Reset if IVT
+		bra     __AddressError
 		push.s                   ; Handle interrupt via lookup table
 		mov		#INTTREG, W1
 		clr		W0
@@ -441,7 +441,11 @@ __DefaultInterrupt:
 		add		W0, W1, W2
 		mov		[W2], W0
 		goto	W0
+.else
+__DefaultInterrupt:
+		bra     __AddressError
 .endif
+
 
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00
@@ -676,10 +680,10 @@ WARM_0:
 .ifdecl PLLFBD
 		mov		#PLL_FBD, W0
 		mov		W0, PLLFBD
-.endif
 WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
+.endif
 
 ;;;; Initialise the UART 1
 .ifdecl RPINR18

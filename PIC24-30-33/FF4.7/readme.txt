@@ -253,4 +253,4 @@ FlashForth v4.7 preliminary
   The 64 First Vectors are supported by default
 - Added BCLR, BSET, BTST bit vector words.
 - UART2 support with TX2, RX2, RX2? TX2?.
-
+- The RTC interrupt example is corrected.

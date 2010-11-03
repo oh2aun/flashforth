@@ -1,13 +1,21 @@
 \ *******************************************************************
-\    Simple RTC for FlashForth 30F                                  *
+\    Simple RTC for FlashForth PIC30F                               *
 \    Filename:      rtc_30.fth                                      *
-\    Date:          31.1.2009                                       *
-\    FlashForth:    30F4.4                                          *
+\    Date:          3.11.2010                                       *
+\    FlashForth:    FF4.7                                           *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
+\ EXAMPLE OF HOW TO SET UP AN INTERRUPT ROUTINE
+\ Disable the alternate interrupts and switch back to IVT.
+\ All user defined interrupts must be disabled
+\ before the  switch to IVT is made.
+\ Otherwise the device will reset because
+\ the unused IVT vectors point to the reset instruction.
+
+iec0 t2ie bclr ivt
 
 -rtc
 marker -rtc
@@ -23,6 +31,7 @@ $008c con iec0 $0006 con t2ie
 #14 con t2irq  \ Timer 2 interrupt vector number
 
 ram
+variable hsec 
 variable sec
 variable mins
 variable hour
@@ -30,16 +39,16 @@ variable hour
 \ Interrupt routine
 : T2RtcIrq
   [i
-     1 sec +!
-     sec @ #59 > 
-     if
-       0 sec ! 1 mins +!
-       mins @ #59 >
+     1 hsec +! hsec @ #4 >
+     if 
+       0 hsec ! 1 sec +! sec @ #59 > 
        if
-         0 mins ! 1 hour +!
-         hour @ #23 >
+         0 sec ! 1 mins +! mins @ #59 >
          if
-           0 hour !
+           0 mins ! 1 hour +! hour @ #23 >
+           if
+             0 hour !
+           then
          then
        then
      then
@@ -49,14 +58,12 @@ variable hour
 
 \ Store the interrupt word address in the
 \ Alternate Interrupt Vector Table
-
 ' T2RtcIrq t2irq   \ Must be on separate lines
 int!               \ with this !
 
-\ #27 is a tune value dependent on the exact clock frequency
 : T2RtcInit ( -- )
   \ Calculate one second counter value
-  [ Fcy #1000 #256 u*/mod nip #27 + literal ] pr2 !   
+  [ Fcy #200 #256 u*/mod nip literal ] pr2 !   
   %1000000000110000 t2con ! \ / 256 prescaler
   aivt
   [ t2ie iec0 bset, ]

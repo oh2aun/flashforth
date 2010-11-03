@@ -1,5 +1,5 @@
 ;;; FlashForth device configuration for the dsPIC30Fxxxx
-config __FOSC, CSW_ON_FSCM_OFF & LPRC & FRC_PLL8
+config __FOSC, CSW_FSCM_OFF & FRC_PLL8
 ;config __FOSC, HS;FRC; HS            ;Turn off clock switching and
                               ;fail-safe clock monitoring and
                               ;use the External HS Clock as the
