@@ -46,5 +46,4 @@ ram variable delay
 : t1go ['] tloop t1 tinit t1 run ;
 
 ' t1go is turnkey
-hex ram
 warm

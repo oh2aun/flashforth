@@ -45,6 +45,7 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
+.equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
@@ -72,8 +73,8 @@
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ uaddsize,       0          ; No additional user variables 
-.equ ursize,         72         ; 36 cells return stack size ( 2 cells per rcall )
-.equ ussize,         72         ; 36 cells parameter stack
+.equ ursize,         96         ; 48 cells return stack size ( 2 cells per rcall )
+.equ ussize,         96         ; 48 cells parameter stack
 .equ utibsize,       82         ; 72 character TIB and 10 chars hold buffer
 
 ;;; User variables and area
@@ -154,6 +155,7 @@ rbuf2:       .space rbuf_size2
 
 ibase:      .space 2
 iaddr:      .space 2
+itmo:       .space 2
 hibyte:     .space 2
 iflags:     .space 2
 Preg:       .space 2
@@ -168,11 +170,17 @@ dpRAM:      .space 2
 dpEEPROM:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
 dpLATEST:   .space 2
+.if WRITE_METHOD == 2
+dpSAVE:     .space 10
+.endif
 .equ MARKER_LENGTH, 5
 .else
 dpRAM:      .space 2
 dpLATEST:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
+.if WRITE_METHOD == 2
+dpSAVE:     .space 8
+.endif
 .equ MARKER_LENGTH, 4
 .endif
 
@@ -263,7 +271,6 @@ __MathError:
 __T1Interrupt:
         bclr    IFS0, #T1IF
         inc     ms_count
-		btg		PORTB, #0x8
         retfie
 
 __U1RXInterrupt:
@@ -519,7 +526,10 @@ write_buffer_to_imem:
 ;; from the UART.
 ;; The assumption is that the serial line is silent then.
         rcall   wait_silence
-
+.ifdecl DEBUG_FLASH
+        mov     #'F', W2
+        mov     W2, U1TXREG
+.endif
         mov.w   #FLASH_ERASE, W0  ; #30F 0x4041,  24F 0x4058
         rcall   wbti_init
         rcall   EWENABLE0         ; Now the flash row has been erased.
@@ -612,6 +622,7 @@ WARM_L:
         .ascii  "warm"
         .align 2
 WARM_:
+        rcall   IFLUSH
         rcall   DP_TO_EEPROM
 RESET_FF:
         mlit    10
@@ -633,10 +644,10 @@ WARM:
         REPEAT  #12
         MOV     W0, [++W14]
 
-		setm	W0				; Fill operator return and parameter stacks with 0xff
-		mov		W15,W14
-		repeat	#144
-		mov		W0, [W14++]
+		clr	    W0				; Fill operator return and parameter stacks with 0x00
+		mov		#0x800,W14
+		repeat	#1023
+		mov.w	W0, [W14++]
 
         mov     #usbuf0, W14
         setm    ibase
@@ -655,7 +666,7 @@ WARM_FILL_IVEC:
 		btss	RCON, #SWR
 		clr		intcon1dbg      ; clear if it was not a reset from the reset instruction
 WARM_0:
-		clr		RCON
+;		clr		RCON
 ; No nested interrupts
         bset    INTCON1, #NSTDIS
 
@@ -709,6 +720,11 @@ WAITFORLOCK:
         bset    U1MODE, #ALTIO
 .endif
 .endif
+.ifdecl UTXISEL1
+        bset    U1STA, #UTXISEL1
+.else
+        bset    U1STA, #UTXISEL
+.endif
 
         bset    U1MODE, #UARTEN
 .ifdecl BRGH
@@ -743,6 +759,11 @@ WARM_ABAUD1:
 		mov.b	WREG, RPOR0+U2TXPIN
 .endif
 
+.ifdecl UTXISEL1
+        bset    U2STA, #UTXISEL1
+.else
+        bset    U2STA, #UTXISEL
+.endif
         bset    U2MODE, #UARTEN
 .ifdecl BRGH
 		bset	U2MODE, #BRGH
@@ -793,7 +814,9 @@ WARM_ABAUD2:
         bra     z, COLD
 
         rcall   DP_TO_RAM
-
+.if WRITE_METHOD == 2
+        rcall   DP_PUSH
+.endif
 ; Wait 10 ms for UARTs to reset 
         mlit    10
         rcall   MS
@@ -812,6 +835,15 @@ WARM_ABAUD2:
         rcall   UDOT
         clr     intcon1dbg
 .if (DEBUG_INFO == 1)
+        rcall   CR
+        rcall   XSQUOTE
+        .byte   5
+        .ascii  "RCON:"
+        .align 2
+        rcall   TYPE
+        mov     RCON, W0
+        mov     W0, [++W14]
+        rcall   UDOT
         rcall   XSQUOTE
         .byte   3
         .ascii  "RP:"
@@ -841,6 +873,8 @@ WARM_ABAUD2:
         mlit    0x100
         rcall   DUMP
 .endif
+
+        clr     RCON
 
 WARM1:
         rcall   CR
@@ -895,6 +929,18 @@ PAUSE_L:
         .align 2
 PAUSE:
         clrwdt
+.if WRITE_METHOD == 2
+        mov     #u0, W0
+        sub     upcurr, WREG
+        bra     nz, PAUSE2
+        mov     ms_count, W0  ; itmo - ms_count
+        sub     itmo, WREG    ; itmo - w0 -> W0
+        bra     nn, PAUSE2
+        btsc    iflags, #edirty
+        rcall   DP_TO_EEPROM
+        rcall   IFLUSH
+.endif
+PAUSE2:
 		disi	#14
         mov     upcurr, W0
         mov     W14, [W0+ussave]    ; Save SP W14
@@ -1256,14 +1302,24 @@ IFLUSH:
         btsc    iflags, #idirty
         bra     write_buffer_to_imem
         return
-
+ 
+BFLUSH:
+        mov     [W14], W2
+        mov     #PFLASH, W0
+        sub     W2, W0, W2
+        mov     #IBUFMASK, W1
+        and     W2, W1, W0
+        cp      ibase       ; ibase - address
+        bra     z, IFLUSH
+        bra     n, IFLUSH
+        return
+        
 ; data addr IC! Address is in W0
 ICSTORE:
 		rcall	ISTORE_ADDRCHK
 		clr.b	hibyte
 		rcall	ISTORE_SUB
         mov.b   W1, [W0]
-
         return
 
 ; data addr I!  Address is in W0
@@ -1295,8 +1351,14 @@ ISTORE_SUB:
         add     W2, W1, W0
         mov     [W14--], W1
         bset    iflags, #idirty
+SET_FLASH_W_TMO:
+        mov     ms_count, W3
+        add     #WRITE_TIMEOUT, W3
+        mov     W3, itmo
 		return
-
+SET_EEPROM_W_TMO:
+        bset    iflags, #edirty
+        bra     SET_FLASH_W_TMO
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
@@ -1462,7 +1524,6 @@ EEREAD1:
 
 EEINIT:
         rcall   LOCKED
-;        call    DUP
         rcall   EEERASE
         bra     EEWRITE
 
@@ -1499,6 +1560,10 @@ EEWRITE3:
 
 ; block-addr -- block-addr
 EEERASE:
+.ifdecl DEBUG_FLASH
+        mov     #'R', W2
+        mov     W2, U1TXREG
+.endif
 		mov		#FLASH_ERASE, W0
 		mov		W0, NVMCON
 		mov		[W14], W0
@@ -2086,7 +2151,7 @@ RX1Q:
         bra     z, RX1Q1
         bclr    iflags, #ixoff1
         mlit    XON
-        rcall   EMIT
+        rcall   TX1
 RX1Q1:
         return
 
@@ -2176,7 +2241,7 @@ RX2Q:
         bra     z, RX2Q1
         bclr    iflags, #ixoff2
         mlit    XON
-        rcall   EMIT
+        rcall   TX2
 RX2Q1:
         return
 
@@ -2265,7 +2330,18 @@ SPFETCH:
         mov     W14, [++W14]
         return
 
+; RP points to the first empty stack cell.
         .pword  paddr(SPFETCH_L)+PFLASH
+RPFETCH_L:
+        .byte   NFA|3
+        .ascii  "rp@"
+        .align  2
+RPFETCH:
+        dec2    W15, W0
+        dec2    W0, [++W14]
+        return
+
+        .pword  paddr(RPFETCH_L)+PFLASH
 RPEMPTY_L:
         .byte   NFA|COMPILE|3
         .ascii  "rp0"
@@ -3914,6 +3990,7 @@ PARSE1:
         goto    MINUS
 
 ; WORD   char -- c-addr        word delimited by char
+; Length byte is written to the input buffer.
         .pword  paddr(PARSE_L)+PFLASH
 WORD_L:
         .byte   NFA|4
@@ -3926,34 +4003,45 @@ WORD:
         rcall   TUCK
         goto    CSTORE
 
-; CMOVE  src dst u --  copy u bytes from src to dst
-; cmove swap !p for c@+ pc! p+ next drop ;
+; FILL  addr n c --  copy u bytes from src to dst
+; fill rot !p>r swap for dup pc! p+ next r>p drop ;
         .pword  paddr(WORD_L)+PFLASH
+FILL_L:
+        .byte   NFA|4
+        .ascii  "fill"
+        .align  2
+FILL:
+        push    Preg            ; P to return stack
+        mov     [W14--], W1
+        push    [W14--]         ; Count to return stack
+        mov     [W14], W0
+        mov     W0, Preg        ; addr to P
+        mov     W1, [W14]       ; Char to parameter stack
+        bra     FILL2
+FILL1:
+        mov     [W14++],[W14]
+        rcall   PCSTORE
+        inc     Preg
+FILL2:
+        dec     [--W15], [W15++] ; XNEXT
+        bra     c, FILL1
+        pop     W0               ; UNNEXT
+        pop     Preg
+        sub     W14, #2, W14 
+        return
+
+; CMOVE  src dst u --  copy u bytes from src to dst
+; cmove swap !p>r for c@+ pc! p+ next r>p drop ;
+        .pword  paddr(FILL_L)+PFLASH
 CMOVE_L:
         .byte   NFA|5
         .ascii  "cmove"
         .align  2
 CMOVE:
-        mov     #PFLASH, W3
-        mov     [W14--], W2     ;  u
-        mov     [W14--], W1     ;  dst
-        mov     [W14--], W0     ;  src
-        
-        cp0     W2
-        bra		z, CMOVE3
-        cp      W0, W3
-        bra     GEU, CMOVE0
-        cp      W1, W3
-        bra     GEU, CMOVE0
-		dec		W2, W2
-        repeat  W2              ; move u+1 characters
-        mov.b   [W0++], [W1++]
-        bra     CMOVE3
-CMOVE0:
         push    Preg            ; P to return stack
-        mov     W1, Preg        ; dst to P
-        push    W2              ; Count to return stack 
-        mov     W0, [++W14]     ; src to parameter stack
+        push    [W14--]         ; Count to return stack 
+        mov     [W14--], W0
+        mov     W0, Preg   ; dst to P
         bra     CMOVE2
 CMOVE1:
         rcall   CFETCHPP
@@ -3965,7 +4053,6 @@ CMOVE2:
         pop     W0               ; UNNEXT
         pop     Preg
         sub     W14, #2, W14
-CMOVE3: 
         return
 
 ; WMOVE  src dst u --  copy u words (cells) from src to dst
@@ -4426,6 +4513,9 @@ INTER11:
         cp0     [W14--]
         btsc    SRL, #Z
         bset    iflags, #noclear
+.if WRITE_METHOD == 2
+        rcall   BFLUSH
+.endif
         rcall   EXECUTE         ; Execute a word
         btss    iflags, #noclear
         bra     INTER1
@@ -4466,7 +4556,7 @@ INTERCALL:
         bra     INTER1
 
 INTER4:                           ; Convert to number
-        bclr    iflags, #tailcall  ; allow tailcall optimisation
+        bclr    iflags, #tailcall ; allow tailcall optimisation
         bclr    iflags, #izeroeq ; Clear 0= encountered in compilation
         bclr    iflags, #idup    ; Clear DUP encountered in compilation
         sub     W14, #2, W14
@@ -4479,7 +4569,6 @@ INTER4:                           ; Convert to number
         rcall   LITERAL 
         bra     INTER1
 INTER5:                        ; ?????
-        rcall   DP_TO_RAM
         rcall   CFETCHPP
         rcall   TYPE
         rcall   TRUE_
@@ -4645,6 +4734,10 @@ DP_TO_EEPROM_0:
         cp0     [W14--]
         bra     z, DP_TO_EEPROM_1
         rcall   PSTORE
+.ifdecl DEBUG_FLASH
+        mov     #'E', W2
+        mov     W2, U1TXREG
+.endif
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         sub     W14, #2, W14
@@ -4675,6 +4768,10 @@ DP_TO_EEPROM_0:
 		rcall	PFETCH
 		rcall	OVER
 		rcall	EEWRITE
+.ifdecl DEBUG_FLASH
+        mov     #'E', W2
+        mov     W2, U1TXREG
+.endif
 DP_TO_EEPROM_1:
 		rcall	PLUS0x400
 		rcall	PPLUS2
@@ -4685,6 +4782,7 @@ DP_TO_EEPROM_1:
         sub     W14, #2, W14
 		return
 .endif
+
 ;;; Check parameter stack pointer
         .byte   NFA|3
         .ascii  "sp?"
@@ -4699,7 +4797,9 @@ check_sp:
         bra     z, check_sp_err
         return
 check_sp_err:
-        rcall   DP_TO_RAM
+.if WRITE_METHOD == 2
+        rcall   DP_POP
+.endif
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE
@@ -4709,7 +4809,19 @@ check_sp_err:
         .align  2
         rcall   TYPE
         goto    CR
-
+.if WRITE_METHOD == 2
+DP_PUSH:
+        mov     #dpSTART, W0
+        mov     #dpSAVE, W1
+        bra     DP_POP_LOOP
+DP_POP:
+        mov     #dpSTART, W1
+        mov     #dpSAVE, W0
+DP_POP_LOOP:
+        repeat  #MARKER_LENGTH-1
+        mov     [W0++], [W1++]
+        return
+.endif
 ; QUIT     --    R: i*x --    interpret from kbd
         .pword  paddr(DP_TO_EEPROM_L)+PFLASH
 QUIT_L:
@@ -4723,9 +4835,14 @@ QUIT:
         mlit    XON
         rcall   EMIT
 QUIT0:  
+.if WRITE_METHOD == 2
+        rcall   DP_PUSH
+.endif
+.if WRITE_METHOD == 1
         rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
-        rcall   DP_TO_RAM
+        rcall   DP_TO_RAM 
+.endif
 QUIT1: 
         rcall   check_sp
         rcall   CR
@@ -4735,12 +4852,21 @@ QUIT1:
 		mlit	0xA                 ; Reserve 10 bytes for hold buffer
 		rcall	MINUS
         rcall   ACCEPT
+
+.if WRITE_METHOD == 2
+        mov     #XOFF, W2
+        mov     W2, U1TXREG
+        bset    iflags, #ixoff1
+.endif
         rcall   SPACE_
         rcall   INTERPRET
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-        rcall   DP_TO_EEPROM
+.if WRITE_METHOD == 2
+        btss    iflags, #edirty      ; If dirty then write after timeout in PAUSE
+.endif
+        rcall   DP_TO_EEPROM   
         rcall   XSQUOTE
         .byte   3
         .ascii  "ok "
@@ -4769,6 +4895,11 @@ ABORT:
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE
+.if WRITE_METHOD == 2
+        rcall   IFLUSH
+        rcall   DP_POP
+        rcall   DP_TO_EEPROM        ; If dirty then write after timeout in PAUSE
+.endif
         goto    QUIT            ; QUIT never returns
 
 ; ?ABORT   f --       abort & print ?
@@ -5618,6 +5749,7 @@ DOTS2:
         .ascii  "iallot"
         .align  2
 IALLOT:
+        rcall   SET_EEPROM_W_TMO
         rcall   IDP
         goto    PLUSSTORE
 
@@ -5628,6 +5760,7 @@ ALLOT_L:
         .ascii  "allot"
         .align  2
 ALLOT:
+        rcall   SET_EEPROM_W_TMO
         rcall   DP
         goto    PLUSSTORE
 

@@ -38,13 +38,13 @@ variable hour
 \ Interrupt routine
 : T2RtcIrq
   [i
-     1 hsec +! hsec @ #4 >
+     1 hsec +! hsec @ #4 u>
      if 
-       0 hsec ! 1 sec +! sec @ #59 > 
+       0 hsec ! 1 sec +! sec @ #59 u> 
        if
-         0 sec ! 1 mins +! mins @ #59 >
+         0 sec ! 1 mins +! mins @ #59 u>
          if
-           0 mins ! 1 hour +! hour @ #23 >
+           0 mins ! 1 hour +! hour @ #23 u>
            if
              0 hour !
            then
@@ -55,12 +55,11 @@ variable hour
   i]
 ;i
 
-\ Store the interrupt word address in the
-\ Alternate Interrupt Vector Table
-
-' T2RtcIrq #15 int!
 
 : T2RtcInit ( -- )
+  \ Store the interrupt word address in the
+  \ Alternate Interrupt Vector Table in ram
+  ['] T2RtcIrq #15 int!
   \ Calculate one second counter value
   [ Fcy #200 #256 u*/mod nip literal ] pr2 !   
   %1000000000110000 t2con ! \ / 256 prescaler
@@ -74,4 +73,6 @@ variable hour
 
 \ Initialise the RTC
 T2RtcInit
+\ ' T2RtcInit is turnkey
 
+\ warm

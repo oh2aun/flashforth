@@ -27,13 +27,6 @@ hex ram
   dup flash dp ! @ latest ! ram
 ;
 
-: fill ( addr n c -- ) \ fill addr to addr+n with c
-  rot !p>r swap
-  for
-    dup pc! p+
-  next
-  r>p drop 
-;
 : erase  ( addr n -- )
   0 fill
 ;

@@ -39,13 +39,13 @@ variable hour
 \ Interrupt routine
 : T2RtcIrq
   [i
-     1 hsec +! hsec @ #4 >
+     1 hsec +! hsec @ #4 u>
      if 
-       0 hsec ! 1 sec +! sec @ #59 > 
+       0 hsec ! 1 sec +! sec @ #59 u> 
        if
-         0 sec ! 1 mins +! mins @ #59 >
+         0 sec ! 1 mins +! mins @ #59 u>
          if
-           0 mins ! 1 hour +! hour @ #23 >
+           0 mins ! 1 hour +! hour @ #23 u>
            if
              0 hour !
            then
@@ -58,8 +58,7 @@ variable hour
 
 \ Store the interrupt word address in the
 \ Alternate Interrupt Vector Table
-' T2RtcIrq t2irq   \ Must be on separate lines
-int!               \ with this !
+' T2RtcIrq t2irq int!
 
 : T2RtcInit ( -- )
   \ Calculate one second counter value
@@ -74,5 +73,7 @@ int!               \ with this !
   decimal hour @ u. mins @ u. sec  @ u. ;
 
 \ Initialise the RTC
-T2RtcInit
+' T2RtcInit is turnkey
+
+warm
 

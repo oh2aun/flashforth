@@ -9,7 +9,6 @@ ram hex
   ." default"
   endcase
 ;
-
 2 case-test
 3 case-test
 8 case-test

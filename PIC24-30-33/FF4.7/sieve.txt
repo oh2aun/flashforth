@@ -31,7 +31,6 @@ marker -sieve2
 decimal ram
 8192 constant size2
 variable flags2 size2 8 / allot
-
 : bit-addr ( addr bit -- eff-addr )
   3 rshift  ( -- addr off)
   +         ( -- eff-addr) ;

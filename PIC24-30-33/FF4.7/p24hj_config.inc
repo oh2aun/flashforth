@@ -54,6 +54,22 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
 
+; Set to 1 to see when FF writes to flash and eeprom
+; 'F' is printed before each flash write.
+; 'E' is printed before each eeprom write
+.equ DEBUG_FLASH, 1
+
+; Write method 1 writes to flash always before the prompt. -> Robust. More wear on the flash
+; - Recommended for all chips if delays between characters is large.
+; - Recommended for dsPIC30F and PIC24F16KAxxx.
+; Write method 2 writes to flash when needed and after WRITE_TIMEOUT ms timeout.-> Less Robust.Less wear on the flash
+; - Pretty good for dsPIC33 and for PIC24 with large flash block size.
+; - NOT WORKING CASE: If a word is executed that starts on the prevoius flash page
+;   and it continues on the current flash page which has not yet been written to flash,
+;   a reset will occur.
+.equ WRITE_METHOD, 1
+.equ WRITE_TIMEOUT, 500
+
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 

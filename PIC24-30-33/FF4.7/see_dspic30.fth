@@ -15,6 +15,7 @@
 marker -see
 hex ram
 : dup@ ( addr -- addr lo hi ) dup @ ;
+7c00 dup@
 : hi@ ( addr -- addr hi ) dup cf@ nip ;
 : field@ ( x mask offset -- field )
   rot swap rshift and ;
@@ -121,8 +122,10 @@ flash lookup: mov.amode , , , , , , , ,
 :noname ." rcall " dup@ 2* over + 2+ c>n .id cell+ ;
 :noname ( addr -- addr f ) hi@ 07 = ;
 
-\ define a condition table called (see) with 13 elements
-flash #13 ct (see)
+\ define a condition table 
+\ called (see) with 13 elements
+flash 
+#13 ct (see)
 ram
 
 : see 
