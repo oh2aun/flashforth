@@ -25,6 +25,7 @@ hex ram
 $010c con pr2
 $0106 con tmr2
 $0110 con t2con
+$0770 con pmd1  $c con t2md
 
 $0084 con ifs0 $0007 con t2if
 $0094 con iec0 $0007 con t2ie
@@ -51,7 +52,7 @@ variable hour
          then
        then
      then
-     [ t2if ifs0 bclr, ]
+     ifs0 t2if bclr
   i]
 ;i
 
@@ -60,11 +61,12 @@ variable hour
   \ Store the interrupt word address in the
   \ Alternate Interrupt Vector Table in ram
   ['] T2RtcIrq #15 int!
+  pmd1 t2md bclr
   \ Calculate one second counter value
   [ Fcy #200 #256 u*/mod nip literal ] pr2 !   
   %1000000000110000 t2con ! \ / 256 prescaler
   aivt
-  [ t2ie iec0 bset, ]
+  iec0 t2ie bset
 ;
 
 \ Display the current time

@@ -158,6 +158,9 @@ iaddr:      .space 2
 itmo:       .space 2
 hibyte:     .space 2
 iflags:     .space 2
+.ifdecl DOZEN
+dozeval:    .space 2
+.endif
 Preg:       .space 2
 ms_count:   .space 2
 intcon1dbg: .space 2
@@ -501,7 +504,14 @@ wait_silence:
         bset    iflags, #ixoff1
 wbtil:
         bclr    iflags, #istream
+.ifdecl DOZEN
+        mov     dozeval, W3
+        lsr     W3, W3
+.endif
         mov     #FCY/1000, W2     ;  This loop takes about xx milliseconds
+.ifdecl DOZEN
+        asr     W2, W3, W2
+.endif
 wbtil2: 
         repeat  #write_delay
         nop
@@ -634,7 +644,8 @@ __reset:
 WARM:
 .ifdecl CLKDIV
 		clr		CLKDIV   ; Use full FRC frequency
-                         ; PLL PRE/POST scalers are 2.      
+                         ; PLL PRE/POST scalers are 2.
+        clr     dozeval
 .endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
@@ -663,10 +674,14 @@ WARM_FILL_IVEC:
 		bra		nz, WARM_FILL_IVEC
 .endif
 
+        setm    PMD1
+        setm    PMD2
+.ifdecl PMD3
+        setm    PMD3
+.endif
 		btss	RCON, #SWR
 		clr		intcon1dbg      ; clear if it was not a reset from the reset instruction
 WARM_0:
-;		clr		RCON
 ; No nested interrupts
         bset    INTCON1, #NSTDIS
 
@@ -715,6 +730,7 @@ WAITFORLOCK:
 		mov.b	WREG, RPOR0+U1TXPIN
 .endif
 
+        bclr    PMD1, #U1MD
 .ifdecl USE_ALTERNATE_UART_PINS
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
@@ -758,7 +774,7 @@ WARM_ABAUD1:
 		mov.b	#0x0005, W0         ; U2TX
 		mov.b	WREG, RPOR0+U2TXPIN
 .endif
-
+       bclr    PMD1, #U2MD
 .ifdecl UTXISEL1
         bset    U2STA, #UTXISEL1
 .else
@@ -793,6 +809,8 @@ WARM_ABAUD2:
         rcall   WMOVE
 
 ; Configure MS timer1
+        
+        bclr    PMD1, #T1MD
         mov     #MS_PR_VAL, W0
         mov     W0, PR1
         mov     #0x8000, W0
@@ -1776,6 +1794,28 @@ BTST__:
         return
 
         .pword  paddr(BTST__L)+PFLASH
+.ifdecl DOZEN
+DOZE_L:
+        .byte   NFA|4
+        .ascii  "doze"
+        .align  2
+DOZE:
+        bclr    CLKDIV, #DOZEN
+        mov     #0x8fff, W0
+        and     CLKDIV
+        mov.w   [W14--], W0
+        and     #7, W0
+        mov     W0, dozeval
+        sl      W0, #12, W0
+        ior     CLKDIV
+        cp0     W0
+        btss    SR, #Z
+        bset    CLKDIV, #DOZEN
+        return
+
+
+        .pword  paddr(DOZE_L)+PFLASH
+.endif
 LSHIFT_L:
         .byte   NFA|6
         .ascii  "lshift"
@@ -2145,6 +2185,7 @@ RX1Q:
         cp0     [W14]
         bra     nz, RX1Q1
 
+        pwrsav  #1             ; Go to IDLE mode to save power.
         btsc    iflags, #fFC1
         bra     RX1Q1      
         btst    iflags, #ixoff1
@@ -2967,8 +3008,8 @@ RAM:
 		clr		cse
 		return
 
-        .pword  paddr(RAM_L)+PFLASH
-CSE_L:
+;        .pword  paddr(RAM_L)+PFLASH
+;CSE_L:
         .byte   NFA|3
         .ascii  "cse"
         .align  2
@@ -2988,7 +3029,7 @@ IDP:
         rcall   DOCREATE
         .word   dpFLASH
 
-        .pword  paddr(CSE_L)+PFLASH
+        .pword  paddr(RAM_L)+PFLASH
 DP_L:
         .byte   NFA|2
         .ascii  "dp"
@@ -4987,8 +5028,8 @@ PAREN:
 
 ; IHERE    -- a-addr    return Code dictionary ptr
 ;   IDP @ ;
-        .pword  paddr(PAREN_L)+PFLASH
-IHERE_L:
+;        .pword  paddr(PAREN_L)+PFLASH
+;IHERE_L:
         .byte   NFA|5
         .ascii  "ihere"
         .align  2
@@ -4997,7 +5038,7 @@ IHERE:
         goto    FETCH
 
 ; [CHAR]   --          compile character literal
-        .pword  paddr(IHERE_L)+PFLASH
+        .pword  paddr(PAREN_L)+PFLASH
 BRACCHAR_L:
         .byte   NFA|IMMED|COMPILE|6
         .ascii  "[char]"
@@ -5811,14 +5852,19 @@ DUMP7:
         return
 
 ;***************************************************************
-; CPU_CLK  ( -- ) 
+; Fcy   ( -- ) The CPU clock ( Fcy in PIC datasheet ) 
         .pword   paddr(DUMP_L)+PFLASH
 CPU_CLK_L:
         .byte   NFA|INLINE|3
         .ascii  "Fcy"
         .align  2
-
-        mlit    #(FCY/1000)
+FCY_:
+        mov     #(FCY/1000), W0
+.ifdecl DOZEN
+        mov     dozeval, W1
+        asr     W0, W1, W0
+.endif
+        mov     W0, [++W14]
         return
 
         .pword  paddr(CPU_CLK_L)+PFLASH
