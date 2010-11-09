@@ -3,21 +3,24 @@
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
+;config __FOSCSEL, IESO_ON & FNOSC_FRC
 config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+;config __FOSCSEL, IESO_ON & FNOSC_PRI
+;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;config FWDT,
 ;config FPOR,
 
 
-.equ PLL_DIV, 30                          ; Fcy is 27637 KHz
+.equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
-.equ PLL_POST, 2                          ; Do not change
-.equ PLL_PRE, 2                           ; Do not change
-.equ FREQ_FIN, 7370000                    ; PLL input frequency
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL input frequency. Used with FRCPLL
+.equ PLL_POST, 2              ; Do not change
+.equ PLL_PRE, 2               ; Do not change
+.equ FREQ_FIN, 7370000        ; PLL input frequency.
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS and external oscillator
+;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1

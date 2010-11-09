@@ -252,8 +252,15 @@ FlashForth v4.7 preliminary
 - dsPIC33 and PIC24 stores the interrupt vector into a table in ram
   The 64 First Vectors are supported by default
 - Added BCLR, BSET, BTST bit vector words.
+  Can address bit vectors upto 64K size
 - UART2 support with TX2, RX2, RX2? TX2?.
 - The RTC interrupt example is corrected.
 - Optional faster flash and eeprom write algorithm.
 - FILL added.
 - RP@ added
+- IDLE mode added. It reduces power consumption when 
+  waiting for input from the operator on UART1.
+- DOZE control added. It limits the max power consumption
+  by reducing the cpu clock. IDLE mode power consumption is not affected.
+- All unused peripherals are disabled by the PMD registers to save power.
+  See the rtc example of how to enable the Timer2 peripheral.

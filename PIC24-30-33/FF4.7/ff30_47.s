@@ -703,14 +703,26 @@ WARM_0:
 .endif
 .endif
 
+.ifndecl __dsPIC30F
+        mov     OSCCON, W0
+        asr     W0, #8, W1
+        and     #7, W1
+        sub     W1, #1, W0
+        bra     z, PLL_IN_USE
+        sub     W1, #3, W0
+        bra     z, PLL_IN_USE
+        bra     PLL_NOT_IN_USE
+
+PLL_IN_USE:
 .ifdecl PLLFBD
 		mov		#PLL_FBD, W0
 		mov		W0, PLLFBD
+.endif
 WAITFORLOCK:
 		btss    OSCCON, #LOCK
 		bra		WAITFORLOCK
+PLL_NOT_IN_USE:
 .endif
-
 ;;;; Initialise the UART 1
 .ifdecl RPINR18
 		setm    AD1PCFGL
@@ -781,6 +793,7 @@ WARM_ABAUD1:
         bset    U2STA, #UTXISEL
 .endif
         bset    U2MODE, #UARTEN
+
 .ifdecl BRGH
 		bset	U2MODE, #BRGH
 .endif
@@ -1776,7 +1789,7 @@ BCLR__:
         bsw.c   [W0], W1
         return
 
-; btst ( base-addr bit-index -- )
+; btst ( base-addr bit-index -- f )
         .pword  paddr(BCLR__L)+PFLASH
 BTST__L:
         .byte   NFA|4
@@ -3497,8 +3510,10 @@ EQUAL_L:
         .ascii  "=" 
         .align  2
 EQUAL:
-        rcall   MINUS
-        goto    ZEROEQUAL
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     Z, test_true
+        bra     test_false
 
 ;   <       n1 n2 -- flag       return true if n1 < n2
         .pword  paddr(EQUAL_L)+PFLASH
@@ -3507,8 +3522,10 @@ LESS_L:
         .ascii  "<" 
         .align  2
 LESS:
-        rcall   MINUS               ; n1 - n2 in TOS
-        goto    ZEROLESS            ; if negative return true
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     GT, test_true
+        bra     test_false
 
 ;   >       n1 n2 -- flag      return true if n1 > n2
         .pword  paddr(LESS_L)+PFLASH
@@ -3517,8 +3534,10 @@ GREATER_L:
         .ascii  ">" 
         .align  2
 GREATER:
-        rcall   SWOP
-        goto    LESS
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     LT, test_true
+        bra     test_false
 
 ;   U<      u1 u2 -- flag       test unsigned less
         .pword  paddr(GREATER_L)+PFLASH
@@ -3527,9 +3546,10 @@ ULESS_L:
         .ascii  "u<" 
         .align  2
 ULESS:
-        rcall   MINUS
-        bra     c, test_false
-        bra     test_true
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     GTU, test_true
+        bra     test_false
 
 ;   U>      u1 u2 -- flag       test unsigned greater than
         .pword  paddr(ULESS_L)+PFLASH
@@ -3538,8 +3558,10 @@ UGREATER_L:
         .ascii  "u>" 
         .align  2
 UGREATER:
-        rcall   SWOP
-        goto    ULESS
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     LTU, test_true
+        bra     test_false
 
 ; *      n1|u1 n2|u2 -- n3|u3      16*16->16 multiply
 ; : *  um* drop ;

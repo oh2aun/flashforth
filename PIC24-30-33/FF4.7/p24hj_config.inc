@@ -10,11 +10,11 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2                          ; Do not change
 .equ PLL_PRE, 2                           ; Do not change
-.equ FREQ_FIN, 7370000                    ; PLL input frequency
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL input frequency. Used with FRCPLL 
+.equ FREQ_FIN, 7370000                    ; PLL input frequency.
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL ouput frequency. Used with FRCPLL 
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS and external oscillator
+;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 .equ FCY, (FREQ_OSC/2)
 
