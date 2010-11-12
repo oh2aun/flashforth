@@ -11,7 +11,6 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;config FWDT,
 ;config FPOR,
 
-
 .equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2              ; Do not change
@@ -24,11 +23,13 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+.equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -36,8 +37,8 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
 .equ U1TXPIN, 0xe
-;.equ U1CTSPIN, 0xd        ; Not in use
-;.equ U1RTSPIN, 0xc        ; Not in use
+.equ U1CTSPIN, 0xd        ; Not in use
+.equ U1RTSPIN, 0xc        ; Not in use
 .equ RPINR18VAL, 0x000f    ; (U1RXPIN | (U1CTSPIN<<0x10))
 .endif
 

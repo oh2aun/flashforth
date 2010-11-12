@@ -297,8 +297,10 @@ __U1RXInterrupt0:
 
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_1
+.if FC1_TYPE == 1
         cp      W0, #XOFF
         bra     z, __U1RXInterrupt3
+.endif
 U1_SKIP_FC_1:
 
         mov     W0, [++W14]
@@ -307,6 +309,7 @@ U1_SKIP_FC_1:
         
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_2
+.if FC1_TYPE == 1
         mov     rbuf_wr1, W0
         and     W0, #0xf, W0
         bra     nz, __U1RXInterrupt3
@@ -316,6 +319,7 @@ __U1RXInterrupt2:
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
+.endif
 U1_SKIP_FC_2:
 
 __U1RXInterrupt3:
@@ -382,8 +386,10 @@ __U2RXInterrupt0:
 
         btsc    iflags, #fFC2
         bra     U2_SKIP_FC_1
+.if FC2_TYPE == 1
         cp      W0, #XOFF
         bra     z, __U2RXInterrupt3
+.endif
 U2_SKIP_FC_1:
         mov     W0, [++W14]
         mlit    handle(U2RXQUEUE_DATA)+PFLASH
@@ -391,6 +397,7 @@ U2_SKIP_FC_1:
         
         btsc    iflags, #fFC2
         bra     U2_SKIP_FC_2
+.if FC2_TYPE == 1
         mov     rbuf_wr2, W0
         and     W0, #0xf, W0
         bra     nz, __U2RXInterrupt3
@@ -400,6 +407,7 @@ __U2RXInterrupt2:
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2
+.endif
 U2_SKIP_FC_2:
 __U2RXInterrupt3:
         btsc    U2STA, #URXDA
@@ -497,11 +505,13 @@ fill_buffer_from_imem2:
 
 wait_silence:
         rcall	LOCKED
+.if FC1_TYPE == 1
         btsc    U1STA, #UTXBF
         bra     wait_silence
         mov     #XOFF, W2
         mov     W2, U1TXREG
         bset    iflags, #ixoff1
+.endif
 wbtil:
         bclr    iflags, #istream
 .ifdecl DOZEN
@@ -656,8 +666,8 @@ WARM:
         MOV     W0, [++W14]
 
 		clr	    W0				; Fill operator return and parameter stacks with 0x00
-		mov		#0x800,W14
-		repeat	#1023
+		mov		#ustart, W14
+		repeat	#uareasize/2
 		mov.w	W0, [W14++]
 
         mov     #usbuf0, W14
@@ -822,7 +832,6 @@ WARM_ABAUD2:
         rcall   WMOVE
 
 ; Configure MS timer1
-        
         bclr    PMD1, #T1MD
         mov     #MS_PR_VAL, W0
         mov     W0, PR1
@@ -1293,8 +1302,32 @@ AS_COMMA_L:
         .align  2
 AS_COMMA:
         mov     [W14--], W0
-        mov     WREG, hibyte
+.if 1        
+        cp      W0, W13
+        bra     nz, AS_COMMA1
+        sub     #0x78, W13
+        bra     nz, AS_COMMA1  ; hibytecheck
+        
+        mov     [W14], W1
+        mov     #0x002e, W2
+        cp      W1, W2
+        bra     nz, AS_COMMA1  ; mov [W14--], W0  ???
+        mov     #0x2f00, W2
+        cp      W2, W12
+        bra     nz, AS_COMMA1  ; mov W0, [++W14]  ???
+        sub     W14, #2, W14
+        mlit    #-2
+        rcall   IALLOT
+        mov     #0, W12
+        mov     #0, W13
+        bra     AS_COMMA2
+.endif        
+AS_COMMA1:
+        mov     W0, hibyte
+        mov     W0, W13
+        mov     [W14], W12
         rcall   ICOMMA
+AS_COMMA2:
         clr     hibyte
         return
 
@@ -1620,10 +1653,15 @@ FUNLOCK_L:
 		bclr	iflags, #fLOCK
 		return
 
+LOCKED:
+		btss	iflags, #fLOCK
+		return
+        bset    INTCON1, #ADDRERR
+
         .pword   paddr(FUNLOCK_L)+PFLASH
 FCON_L:
         .byte   NFA|3
-        .ascii  "ft1"
+        .ascii  "u1+"
         .align  2
 		bclr	iflags, #fFC1
 		return
@@ -1631,17 +1669,32 @@ FCON_L:
         .pword   paddr(FCON_L)+PFLASH
 FCOFF_L:
         .byte   NFA|3
-        .ascii  "ft0"
+        .ascii  "u1-"
         .align  2
 		bset	iflags, #fFC1
 		return
 
-LOCKED:
-		btss	iflags, #fLOCK
-		return
-        bset    INTCON1, #ADDRERR
-
         .pword   paddr(FCOFF_L)+PFLASH
+.ifdecl BAUDRATE2
+.ifdecl _U2RXREG
+FCON2_L:
+        .byte   NFA|3
+        .ascii  "u2+"
+        .align  2
+		bclr	iflags, #fFC2
+		return
+
+        .pword   paddr(FCON2_L)+PFLASH
+FCOFF2_L:
+        .byte   NFA|3
+        .ascii  "u2-"
+        .align  2
+		bset	iflags, #fFC2
+		return
+
+        .pword   paddr(FCOFF2_L)+PFLASH
+.endif
+.endif
 STORE_L:
         .byte   NFA|1
         .ascii  "!"
@@ -2199,13 +2252,16 @@ RX1Q:
         bra     nz, RX1Q1
 
         pwrsav  #1             ; Go to IDLE mode to save power.
+        
         btsc    iflags, #fFC1
         bra     RX1Q1      
         btst    iflags, #ixoff1
         bra     z, RX1Q1
+.if FC1_TYPE == 1
         bclr    iflags, #ixoff1
         mlit    XON
         rcall   TX1
+.endif
 RX1Q1:
         return
 
@@ -2293,9 +2349,11 @@ RX2Q:
         bra     RX2Q1      
         btst    iflags, #ixoff2
         bra     z, RX2Q1
+.if FC2_TYPE == 1
         bclr    iflags, #ixoff2
         mlit    XON
         rcall   TX2
+.endif
 RX2Q1:
         return
 
@@ -2666,8 +2724,8 @@ STORE_P_TO_R_L:
         .ascii  "!p>r"
         .align  2
 STORE_P_TO_R:
-        push    Preg
         mov     [W14--], W0
+        push    Preg
         mov     W0, Preg
         return
 
@@ -4568,7 +4626,6 @@ INTER11:
         cp0     [W14--]
         btsc    SRL, #Z
         bclr    iflags, #tailcall  ; allow tailcall optimisation
-
         bclr    iflags, #noclear ; dont clear flags in case of \
         mov     [W14++], [W14]      ; dup
         mlit    handle(BSLASH)+PFLASH
@@ -4917,9 +4974,11 @@ QUIT1:
         rcall   ACCEPT
 
 .if WRITE_METHOD == 2
+.if FC1_TYPE == 1
         mov     #XOFF, W2
         mov     W2, U1TXREG
         bset    iflags, #ixoff1
+.endif
 .endif
         rcall   SPACE_
         rcall   INTERPRET

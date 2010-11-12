@@ -19,12 +19,14 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ FCY, (FREQ_OSC/2)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 115200 				      ; Serial baudrate UART1
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 115200 				      ; Serial baudrate UART2, comment if not used
+;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+.equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 

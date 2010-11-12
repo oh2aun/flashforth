@@ -6,8 +6,9 @@ config FPOR, MCLRE_OFF & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
-.equ BAUDRATE, 38400		 ; Serial baudrate
-.equ AUTOBAUD, 0             ; 0 = to use fixed baudrate
+.equ BAUDRATE1, 38400		 ; Serial baudrate
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ AUTOBAUD1, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 .equ FCY, (FREQ_OSC/2)
@@ -64,5 +65,5 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
 ; Flash write delay
 .equ write_delay, 20
-.equ BAUD_DIV1, (FCY/4/BAUDRATE)-1		  ; UART divisor
+.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
 .equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
