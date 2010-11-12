@@ -16,9 +16,6 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 ;.equ FREQ_OSC, 16000000;           ; Max baudrate 19200 with this clock
 .equ FREQ_OSC, (7322000*8)			; Oscillator frequency
-.equ BAUDRATE, 38400				; Serial baudrate
-
-.equ FCY, (FREQ_OSC/4)              ; CPU intruction frequency
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				; Serial baudrate UART1
@@ -75,7 +72,7 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ IBUFLEN2,       0x0001
 .equ IBUFMASK,       0xffc0
 
-
+.equ FCY, (FREQ_OSC/4)              ; CPU intruction frequency
 .equ MS_PR_VAL, (FCY/1000)	            ; Timer value for 1 ms ticks
 .equ BAUD_DIV1, (FCY/16/BAUDRATE1)-1	; UART1 divisor
 .ifdecl BAUDRATE2
