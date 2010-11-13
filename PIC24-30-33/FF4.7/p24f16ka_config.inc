@@ -7,9 +7,12 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
 .equ BAUDRATE1, 38400		 ; Serial baudrate
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC1_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+.equ U1RTSPORT, LATB
+.equ U1RTSTRIS, TRISB
+.equ U1RTSPIN, 0xc
 
 .equ FCY, (FREQ_OSC/2)
 

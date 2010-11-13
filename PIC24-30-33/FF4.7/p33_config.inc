@@ -22,34 +22,36 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+.equ FC2_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ; Map UART1 pins
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
+.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
 .equ U1TXPIN, 0xe
-.equ U1CTSPIN, 0xd        ; Not in use
-.equ U1RTSPIN, 0xc        ; Not in use
-.equ RPINR18VAL, 0x000f    ; (U1RXPIN | (U1CTSPIN<<0x10))
+.equ U1RTSPORT, LATB
+.equ U1RTSTRIS, TRISB
+.equ U1RTSPIN, 0xc
 .endif
 
 ; Map UART2 pins
 .ifdecl BAUDRATE2
 .ifdecl RPINR19
 .equ U2RXPIN, 0x1          ; 
+.equ RPINR19VAL, 0x0001    ; (U2RXPIN)
 .equ U2TXPIN, 0x2
-;.equ U2CTSPIN, 0x3        ; Not in use
-;.equ U2RTSPIN, 0x4        ; Not in use
-.equ RPINR19VAL, 0x0001    ; (U2RXPIN | (U2CTSPIN<<0x8))
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 0x3
 .endif
 .endif
 

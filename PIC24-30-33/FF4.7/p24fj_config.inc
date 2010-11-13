@@ -15,12 +15,18 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+.equ U1RTSPORT, LATB
+.equ U1RTSTRIS, TRISB
+.equ U1RTSPIN, 0xc
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 0x3
 
 
 .equ BAUD_DIV1, (FREQ/16/BAUDRATE)-1		; UART divisor

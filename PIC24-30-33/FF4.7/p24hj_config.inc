@@ -33,20 +33,22 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ; Map UART1 pins
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
+.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
 .equ U1TXPIN, 0xe
-;.equ U1CTSPIN, 0xd        ; Not in use
-;.equ U1RTSPIN, 0xc        ; Not in use
-.equ RPINR18VAL, 0x000f    ; (U1RXPIN | (U1CTSPIN<<0x10))
+.equ U1RTSPORT, LATB
+.equ U1RTSTRIS, TRISB
+.equ U1RTSPIN, 0xc
 .endif
 
 ; Map UART2 pins
 .ifdecl BAUDRATE2
 .ifdecl RPINR19
 .equ U2RXPIN, 0x2          ; 
+.equ RPINR19VAL, 0x0002    ; (U2RXPIN)
 .equ U2TXPIN, 0x3
-;.equ U2CTSPIN, 0x3        ; Not in use
-;.equ U2RTSPIN, 0x4        ; Not in use
-.equ RPINR19VAL, 0x0002    ; (U2RXPIN | (U2CTSPIN<<0x8))
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 0x3
 .endif
 .endif
 

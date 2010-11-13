@@ -67,8 +67,10 @@
 .equ IVECSIZE, 64
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size1,      64
+.equ rbuf_level1_off, 32
 .equ tbuf_size1,      64
 .equ rbuf_size2,      32
+.equ rbuf_level2_off, 8
 .equ tbuf_size2,      32
 
 ;;; USER AREA sizes for the OPERATOR task
@@ -173,17 +175,13 @@ dpRAM:      .space 2
 dpEEPROM:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
 dpLATEST:   .space 2
-.if WRITE_METHOD == 2
 dpSAVE:     .space 10
-.endif
 .equ MARKER_LENGTH, 5
 .else
 dpRAM:      .space 2
 dpLATEST:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
-.if WRITE_METHOD == 2
 dpSAVE:     .space 8
-.endif
 .equ MARKER_LENGTH, 4
 .endif
 
@@ -295,9 +293,9 @@ __U1RXInterrupt0:
         bra     z, RESET_FF_1
 .endif
 
+.if FC1_TYPE == 1
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_1
-.if FC1_TYPE == 1
         cp      W0, #XOFF
         bra     z, __U1RXInterrupt3
 .endif
@@ -319,6 +317,13 @@ __U1RXInterrupt2:
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
+.else
+.if  FC1_TYPE == 2
+        mov     #rbuf_level1_off, W0
+        cp      rbuf_lv1
+        bra     n, __U1RXInterrupt3
+        bset    U1RTSPORT, #U1RTSPIN
+.endif
 .endif
 U1_SKIP_FC_2:
 
@@ -384,9 +389,9 @@ __U2RXInterrupt0:
         bra     z, RESET_FF_1
 .endif
 
+.if FC2_TYPE == 1
         btsc    iflags, #fFC2
         bra     U2_SKIP_FC_1
-.if FC2_TYPE == 1
         cp      W0, #XOFF
         bra     z, __U2RXInterrupt3
 .endif
@@ -407,6 +412,13 @@ __U2RXInterrupt2:
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2
+.else
+.if  FC2_TYPE == 2
+        mov     #rbuf_level2_off, W0
+        cp      rbuf_lv2
+        bra     n, __U2RXInterrupt3
+        bset    U2RTSPORT, #U2RTSPIN
+.endif
 .endif
 U2_SKIP_FC_2:
 __U2RXInterrupt3:
@@ -511,17 +523,15 @@ wait_silence:
         mov     #XOFF, W2
         mov     W2, U1TXREG
         bset    iflags, #ixoff1
+.else
+.if FC1_TYPE == 2
+        bset    U1RTSPORT, #U1RTSPIN
 .endif
+.endif
+.if FC1_TYPE == 1
 wbtil:
         bclr    iflags, #istream
-.ifdecl DOZEN
-        mov     dozeval, W3
-        lsr     W3, W3
-.endif
         mov     #FCY/1000, W2     ;  This loop takes about xx milliseconds
-.ifdecl DOZEN
-        asr     W2, W3, W2
-.endif
 wbtil2: 
         repeat  #write_delay
         nop
@@ -529,6 +539,7 @@ wbtil2:
         bra     wbtil               ;
         dec     W2, W2              ;
         bra     nz, wbtil2          ;
+.endif
         return
 ;***********************************************************
 wbti_init:
@@ -734,6 +745,10 @@ WAITFORLOCK:
 PLL_NOT_IN_USE:
 .endif
 ;;;; Initialise the UART 1
+.if FC1_TYPE == 2
+        bclr    U1RTSTRIS, #U1RTSPIN
+        bclr    U1RTSPORT, #U1RTSPIN
+.endif
 .ifdecl RPINR18
 		setm    AD1PCFGL
 		mov		#OSCCONL, W0
@@ -745,14 +760,12 @@ PLL_NOT_IN_USE:
 		
 		mov     #RPINR18VAL, W0
 		mov		W0, RPINR18
-
-;		mov.b	#0x0004, W0         ; U1RTS
-;		mov.b	WREG, RPOR0+U1RTSPIN
 		mov.b	#0x0003, W0         ; U1TX
 		mov.b	WREG, RPOR0+U1TXPIN
 .endif
 
         bclr    PMD1, #U1MD
+
 .ifdecl USE_ALTERNATE_UART_PINS
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
@@ -787,12 +800,13 @@ WARM_ABAUD1:
 ;;; Initialise UART2
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
+.if FC2_TYPE == 2
+        bclr    U2RTSTRIS, #U2RTSPIN
+        bclr    U2RTSPORT, #U2RTSPIN
+.endif
 .ifdecl RPINR19
 		mov     #RPINR19VAL, W0
 		mov		W0, RPINR19
-
-;		mov.b	#0x0004, W0         ; U2RTS
-;		mov.b	WREG, RPOR0+U1RTSPIN
 		mov.b	#0x0005, W0         ; U2TX
 		mov.b	WREG, RPOR0+U2TXPIN
 .endif
@@ -2255,12 +2269,18 @@ RX1Q:
         
         btsc    iflags, #fFC1
         bra     RX1Q1      
+.if FC1_TYPE == 1
         btst    iflags, #ixoff1
         bra     z, RX1Q1
-.if FC1_TYPE == 1
         bclr    iflags, #ixoff1
         mlit    XON
         rcall   TX1
+.else
+.if FC1_TYPE == 2
+        cp0     rbuf_lv1
+        bra     nz, RX1Q1
+        bclr    U1RTSPORT, #U1RTSPIN
+.endif
 .endif
 RX1Q1:
         return
@@ -2347,12 +2367,18 @@ RX2Q:
         bra     nz, RX2Q1
         btss    iflags, #fFC2
         bra     RX2Q1      
+.if FC2_TYPE == 1
         btst    iflags, #ixoff2
         bra     z, RX2Q1
-.if FC2_TYPE == 1
         bclr    iflags, #ixoff2
         mlit    XON
         rcall   TX2
+.else
+.if FC1_TYPE == 2
+        cp0     rbuf_lv2
+        bra     nz, RX2Q1
+        bclr    U2RTSPORT, #U2RTSPIN
+.endif
 .endif
 RX2Q1:
         return
@@ -3796,7 +3822,7 @@ LESSNUM_L:
         .ascii  "<#" 
         .align  2
 LESSNUM: 
-        rcall   PAD
+        rcall   HA
         rcall   HP
         goto    STORE
 
@@ -3846,7 +3872,7 @@ NUMS:
         return
 
 ; #>    u1 -- c-addr u    end conv., get string
-;   DROP HP @ PAD OVER - ;
+;   DROP HP @ HA OVER - ;
         .pword  paddr(NUMS_L)+PFLASH
 NUMGREATER_L:
         .byte   NFA|2
@@ -3856,7 +3882,7 @@ NUMGREATER:
         sub     W14, #2, W14
         rcall   HP
         rcall   FETCH
-        rcall   PAD
+        rcall   HA
         rcall   OVER
         goto    MINUS
 
@@ -4015,16 +4041,25 @@ HP:
         rcall   DOUSER
         .word   uhp
 
-; PAD     -- a-addr        User Pad buffer
+; HA     -- a-addr        Hold Area buffer
         .pword  paddr(HP_L)+PFLASH
+HA_L:
+        .byte   NFA|2
+        .ascii  "ha"
+        .align  2
+HA:
+        rcall   TIB
+        rcall	TIBSIZE
+        goto    PLUS
+
+; PAD     -- a-addr        Global Pad buffer
+        .pword  paddr(HA_L)+PFLASH
 PAD_L:
         .byte   NFA|3
         .ascii  "pad"
         .align  2
 PAD:
-        rcall   TIB
-        rcall	TIBSIZE
-        goto    PLUS
+        goto    RHERE
 
 ; BASE    -- a-addr       holds conversion radix
         .pword  paddr(PAD_L)+PFLASH
@@ -6028,12 +6063,12 @@ lastword:
         .align  2
 MARKER:
         mlit    dpSTART
-        rcall   PAD
+        mlit    dpSAVE
         mlit    MARKER_LENGTH
         rcall   WMOVE
         rcall   FLASH
         rcall   CREATE
-        rcall   PAD
+        mlit    dpSAVE
         rcall   HERE
         mlit    MARKER_LENGTH
         rcall   WMOVE

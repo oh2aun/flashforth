@@ -20,10 +20,16 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				; Serial baudrate UART1
 .equ FC1_TYPE, 1                    ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U1RTSPORT, LATB
+.equ U1RTSTRIS, TRISB
+.equ U1RTSPIN, 0xc
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 				; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                    ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 0x3
 
 ; Set to one to use the alternate UART pins. Only for dsPIC30F.
 .equ USE_ALTERNATE_UART_PINS, 1
