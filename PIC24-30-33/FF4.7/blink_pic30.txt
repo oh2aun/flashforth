@@ -1,8 +1,8 @@
 \ *******************************************************************
-\    Blinker for FlashForth 30F                                     *
-\    Filename:      blink.fth                                       *
-\    Date:          16.1.2009                                       *
-\    FlashForth:    30F4.2                                          *
+\    Filename:      blink_pic30.txt                                 *
+\    Date:          14.11.2010                                      *
+\    FlashForth:    4.7                                             *
+\    MCU:           PIC 30F                                         *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************

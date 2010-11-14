@@ -1,9 +1,9 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      ct.fth                                          *
-\    Date:          1.1.2009                                        *
-\    File Version:  3.3  4.0                                        *
-\    MCU:           PIC18F dsPIC30F                                 *
+\    Filename:      ct.txt                                          *
+\    Date:          14.11.2010                                      *
+\    File Version:  3.6  4.7                                        *
+\    MCU:           PIC 18 24 30 33                                 *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************

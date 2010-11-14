@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      see.fth                                         *
+\    Filename:      see_pic24-30-33.txt                             *
 \    Date:          10.10.2010                                      *
 \    FF Version:    4.7                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *

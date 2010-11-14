@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      math_dspic30.fth                                *
+\    Filename:      math.txt                                        *
 \    Date:          10.3.2009                                       *
 \    FF Version:    4.6                                             *
 \    MCU:           dsPIC30F                                        *

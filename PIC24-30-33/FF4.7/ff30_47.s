@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff30_47.s                                         *
-;    Date:          10.10.2010                                        *
-;    File Version:  4.7 pre                                           *
+;    Date:          14.11.2010                                        *
+;    File Version:  4.7                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -160,9 +160,6 @@ iaddr:      .space 2
 itmo:       .space 2
 hibyte:     .space 2
 iflags:     .space 2
-.ifdecl DOZEN
-dozeval:    .space 2
-.endif
 Preg:       .space 2
 ms_count:   .space 2
 intcon1dbg: .space 2
@@ -557,7 +554,7 @@ write_buffer_to_imem:
 ;; from the UART.
 ;; The assumption is that the serial line is silent then.
         rcall   wait_silence
-.ifdecl DEBUG_FLASH
+.if DEBUG_FLASH == 1
         mov     #'F', W2
         mov     W2, U1TXREG
 .endif
@@ -666,7 +663,6 @@ WARM:
 .ifdecl CLKDIV
 		clr		CLKDIV   ; Use full FRC frequency
                          ; PLL PRE/POST scalers are 2.
-        clr     dozeval
 .endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
@@ -933,8 +929,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   44
-        .ascii  "FlashForth V4.7p (C) Mikael Nordman GPL V3\r\n"
+        .byte   43
+        .ascii  "FlashForth V4.7 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -1638,7 +1634,7 @@ EEWRITE3:
 
 ; block-addr -- block-addr
 EEERASE:
-.ifdecl DEBUG_FLASH
+.if DEBUG_FLASH == 1
         mov     #'R', W2
         mov     W2, U1TXREG
 .endif
@@ -1654,7 +1650,7 @@ EEERASE:
         .pword   paddr(IFLUSH_L)+PFLASH
 FLOCK_L:
         .byte   NFA|3
-        .ascii  "fl0"
+        .ascii  "fl+"
         .align  2
 		bset	iflags, #fLOCK
 		return
@@ -1662,7 +1658,7 @@ FLOCK_L:
         .pword   paddr(FLOCK_L)+PFLASH
 FUNLOCK_L:
         .byte   NFA|3
-        .ascii  "fl1"
+        .ascii  "fl-"
         .align  2
 		bclr	iflags, #fLOCK
 		return
@@ -1874,28 +1870,6 @@ BTST__:
         return
 
         .pword  paddr(BTST__L)+PFLASH
-.ifdecl DOZEN
-DOZE_L:
-        .byte   NFA|4
-        .ascii  "doze"
-        .align  2
-DOZE:
-        bclr    CLKDIV, #DOZEN
-        mov     #0x8fff, W0
-        and     CLKDIV
-        mov.w   [W14--], W0
-        and     #7, W0
-        mov     W0, dozeval
-        sl      W0, #12, W0
-        ior     CLKDIV
-        cp0     W0
-        btss    SR, #Z
-        bset    CLKDIV, #DOZEN
-        return
-
-
-        .pword  paddr(DOZE_L)+PFLASH
-.endif
 LSHIFT_L:
         .byte   NFA|6
         .ascii  "lshift"
@@ -4159,9 +4133,27 @@ WORD:
         rcall   TUCK
         goto    CSTORE
 
+        .pword  paddr(WORD_L)+PFLASH
+ERASE_L:
+        .byte   NFA|5
+        .ascii  "erase"
+        .align  2
+ERASE_:
+        mlit    0
+        goto    FILL
+       
+        .pword  paddr(ERASE_L)+PFLASH
+BLANKS_L:
+        .byte   NFA|6
+        .ascii  "blanks"
+        .align  2
+BLANKS:
+        mlit    ' '
+        goto    FILL
+
 ; FILL  addr n c --  copy u bytes from src to dst
 ; fill rot !p>r swap for dup pc! p+ next r>p drop ;
-        .pword  paddr(WORD_L)+PFLASH
+        .pword  paddr(BLANKS_L)+PFLASH
 FILL_L:
         .byte   NFA|4
         .ascii  "fill"
@@ -4889,7 +4881,7 @@ DP_TO_EEPROM_0:
         cp0     [W14--]
         bra     z, DP_TO_EEPROM_1
         rcall   PSTORE
-.ifdecl DEBUG_FLASH
+.if DEBUG_FLASH == 1
         mov     #'E', W2
         mov     W2, U1TXREG
 .endif
@@ -4923,7 +4915,7 @@ DP_TO_EEPROM_0:
 		rcall	PFETCH
 		rcall	OVER
 		rcall	EEWRITE
-.ifdecl DEBUG_FLASH
+.if DEBUG_FLASH == 1
         mov     #'E', W2
         mov     W2, U1TXREG
 .endif
@@ -5329,7 +5321,7 @@ NONAME:
 ;   return, [
         .pword  paddr(NONAME_L)+PFLASH
 SEMICOLON_L:
-        .byte   NFA|IMMED|1
+        .byte   NFA|IMMED|COMPILE|1
         .ascii  ";"
         .align  2
                               ; Tail call optimisation
@@ -5371,7 +5363,7 @@ SEMICOLON3:
 
         .pword  paddr(SEMICOLON_L)+PFLASH
 SEMICOLONI_L:
-        .byte   NFA|IMMED|2
+        .byte   NFA|IMMED|COMPILE|2
         .ascii  ";i"
         .align  2
 SEMICOLONI:
@@ -5827,12 +5819,10 @@ MS:
         rcall   PLUS
 MS1:    
         rcall   PAUSE
-        mov     [W14++], [W14]      ; dup
-        rcall   TICKS
-        rcall   MINUS
-        rcall   ZEROLESS
-        cp0     [W14--]
-        bra     z, MS1
+        mov     [W14], W1
+        mov     ms_count, W0
+        sub     W1, W0, W0         ; time - ticks
+        bra     nn, MS1
         sub     W14, #2, W14
         return
 
@@ -5976,10 +5966,6 @@ CPU_CLK_L:
         .align  2
 FCY_:
         mov     #(FCY/1000), W0
-.ifdecl DOZEN
-        mov     dozeval, W1
-        asr     W0, W1, W0
-.endif
         mov     W0, [++W14]
         return
 

@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      idump.txt                                         *
+\    Filename:      idump_pic24-30-33.txt                             *
 \    FlashForth:    4.5                                               *
-\    MCU            PIC30F                                            *
+\    MCU            PIC 24 30 33                                      *
 \    Application:                                                     *
 \                                                                     *
 \    Author:        Pete Zawasky                                      *

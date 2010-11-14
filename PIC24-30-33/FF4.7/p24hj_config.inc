@@ -53,7 +53,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
@@ -61,7 +61,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 1
+.equ DEBUG_FLASH, 0
 
 ; Write method 1 writes to flash always before the prompt. -> Robust. More wear on the flash
 ; - Recommended for all chips if delays between characters is large.

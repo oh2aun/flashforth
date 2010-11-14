@@ -1,3 +1,18 @@
+\ *******************************************************************
+\                                                                   *
+\    Filename:      sieve.txt                                       *
+\    Date:          14.11.2010                                      *
+\    FF Version:    4.7                                             *
+\    MCU:           PIC 18 24 30 33                                 *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+\ This normal sieve requires 8 KBytes of RAM.
+\ It will not run on most PICs due to lack of memory.
+\ sieve2 and sieve3 require 1 Kbyte of RAM.
+
 -sieve
 marker -sieve
 decimal ram

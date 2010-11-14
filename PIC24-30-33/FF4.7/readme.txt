@@ -256,11 +256,22 @@ FlashForth v4.7 preliminary
 - UART2 support with TX2, RX2, RX2? TX2?.
 - The RTC interrupt example is corrected.
 - Optional faster flash and eeprom write algorithm.
-- FILL added.
+- FILL ERASE BLANKS added.
 - RP@ added
 - IDLE mode added. It reduces power consumption when 
   waiting for input from the operator on UART1.
-- DOZE control added. It limits the max power consumption
-  by reducing the cpu clock. IDLE mode power consumption is not affected.
 - All unused peripherals are disabled by the PMD registers to save power.
-  See the rtc example of how to enable the Timer2 peripheral.
+  See the interrupt example of how to enable the Timer2 peripheral.
+- Peephole optimisation. The following sequence will be removed.
+  mov W0, [++W14]
+  mov [W14--], W0
+  Test it.
+  : test 45 + ;
+  see test
+- RTS HW flow control
+- U1+ U1- U2+ U2- switches flow control on/off
+- FL+, FL- switches flash write protection on/off
+- Fcy shows the peripheral and cpu clocking frequency.
+- An experimental flash write mode that writes more seldom to flash.
+- 3 sieve implementations for speed testing.
+

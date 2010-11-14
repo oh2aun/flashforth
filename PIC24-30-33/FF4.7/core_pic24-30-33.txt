@@ -1,9 +1,8 @@
 \ *******************************************************************
-\                                                                   *
-\    Filename:      core.fth                                        *
-\    Date:          10.10.2010                                      *
+\    Filename:      core_pic24-30-33.txt                            *
+\    Date:          14.11.2010                                      *
 \    FF Version:    4.7                                             *
-\    MCU:           dsPIC30F                                        *
+\    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
@@ -25,14 +24,6 @@ hex ram
   bl word latest @ (f) 0= ?abort?
   c>n 2- dup @ 0= ?abort?
   dup flash dp ! @ latest ! ram
-;
-
-: erase  ( addr n -- )
-  0 fill
-;
-
-: blanks  ( addr n -- )
-  bl fill
 ;
 
 : ?dup ( x -- 0 | x x )

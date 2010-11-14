@@ -23,13 +23,13 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
 .equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -56,15 +56,15 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 1
+.equ DEBUG_INFO, 0
 
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 1
+.equ DEBUG_FLASH, 0
 
 ; Write method 1 writes to flash always before the prompt. -> Robust. More wear on the flash
 ; - Recommended for all chips if delays between characters is large.
