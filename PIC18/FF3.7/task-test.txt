@@ -1,0 +1,53 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      task-test.txt                                     *
+\    Date:          25.02.2010                                        *
+\    FF Version:    3.5                                               *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\
+\ Test tasks and the character bit manipulation words
+\
+single
+-lblink
+marker -lblink
+ram hex
+
+$ff82 con portc
+$ff94 con trisc
+$2 user bitmask    \ The bitmask
+$4 user delay      \ The delay time in milliseconds
+
+: lblink
+  bitmask c@ trisc mclr
+  begin
+    delay @ ms
+    bitmask c@ portc mset 
+    delay @ ms
+    bitmask c@ portc mclr
+  again
+;
+
+$0 $10 $10 $4 task: tblink
+
+: setdelay tblink delay his ! ;
+
+: tblink-init
+  ['] lblink tblink tinit
+  $4 tblink bitmask his !
+  $30 setdelay
+;
+: blink1 tblink-init tblink run ; 
+
+blink1
+
+tasks
+
+
+\ Make blink2 start after reset.
+\ ' blink1 is turnkey
+
+

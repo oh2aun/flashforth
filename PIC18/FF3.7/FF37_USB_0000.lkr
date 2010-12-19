@@ -1,0 +1,30 @@
+// File: FF37_USB_0000.lkr
+// Linker script for FlashForth+USB without bootloader.
+LIBPATH .
+
+// No bootloader  Application start at 0x0000
+CODEPAGE   NAME=code       START=0x0000         END=0xFFFFF
+
+CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
+CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
+CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
+CODEPAGE   NAME=eedata     START=0xF00000       END=0xF000FF       PROTECTED
+
+ACCESSBANK NAME=acs_ram    START=0x0            END=0x5F
+DATABANK   NAME=gpr0       START=0x60           END=0xFF
+DATABANK   NAME=gpr1       START=0x100          END=0x1FF          PROTECTED
+DATABANK   NAME=gpr2       START=0x200          END=0x2FF          PROTECTED
+DATABANK   NAME=gpr3       START=0x300          END=0x3FF          PROTECTED
+DATABANK   NAME=usbep      START=0x400          END=0x42F          PROTECTED
+DATABANK   NAME=cvars      START=0x470          END=0x49F
+DATABANK   NAME=usbbuf     START=0x4A0          END=0x4BF          PROTECTED
+DATABANK   NAME=flashbuf   START=0x4C0          END=0x4FF          PROTECTED
+DATABANK   NAME=mff0       START=0x500          END=0x5FF          PROTECTED
+DATABANK   NAME=mff1       START=0x600          END=0x6FF          PROTECTED
+DATABANK   NAME=mff2       START=0x700          END=0x7FF          PROTECTED
+ACCESSBANK NAME=accesssfr  START=0xF60          END=0xFFF          PROTECTED
+
+
+//SECTION    NAME=CONFIG     ROM=config
+//SECTION    NAME=ACS        RAM=acs_ram
+STACK      SIZE=0x10       RAM=acs_ram

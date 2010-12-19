@@ -1,0 +1,21 @@
+\ Dump can left out from the core and compiled from here
+: dump1 ( addr +n -- )
+  $10 u/
+  for
+    cr dup 4 u.r [char] : emit  \ display row address
+    $10
+    for                       \ display bytes
+      c@+ 2 u.r
+    next
+    $10 -
+    $10
+    for                       \ display ASCII
+      c@+ dup bl $7f within 0=
+      if
+        drop [char] .
+      then 
+      emit
+    next
+  next
+  drop cr
+;

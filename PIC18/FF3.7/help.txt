@@ -1,0 +1,49 @@
+-help
+marker -help
+ram hex
+
+$1b con esc
+$09 con tab
+$0d con ret
+$4000 con ahelp
+
+: h= ( caddr caddr1 u -- flag )
+  swap !p>r
+  for
+    c@+ pc@ p+ -
+    if drop false rdrop r>p exit then
+  next
+  r>p drop true
+;
+
+
+: .help ( addr -- )
+  cr
+  begin
+    c@+ dup emit ret =
+  until
+  cr drop
+;
+: help ( "name" -- )
+  bl word         \ addr
+  dup c@ 0= if words abort then
+  ahelp !p>r
+  begin
+    pause
+    @p over c@+ h= if @p .help r>p drop exit then
+    begin pc@ p+ ret = until
+    pc@ [char] | =
+  until
+  r>p drop
+;
+
+: loadhelp ( --     store help info )
+  ahelp !p>r        \ Help info stored here
+  begin
+    key
+    dup emit
+    dup pc! p+ 
+    [char] | =
+  until
+  r>p
+;
