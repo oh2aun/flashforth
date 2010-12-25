@@ -34,7 +34,7 @@ file_000=no
 file_001=no
 [FILE_INFO]
 file_000=ff18_37_usb.asm
-file_001=FF37_0000.lkr
+file_001=FF37_0800.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=generate-relocatable-code

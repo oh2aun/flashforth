@@ -20,7 +20,6 @@ hex ram
 : field@ ( x mask offset -- field )
   rot swap rshift and ;
 : u.4 4 u.r ;
-: .id ( cfa -- ) c>n c@+ f and type space ;
 
 : u.. decimal <# #s #> type hex ;
 : lookup:

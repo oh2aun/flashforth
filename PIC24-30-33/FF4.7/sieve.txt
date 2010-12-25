@@ -102,7 +102,7 @@ ram align here size3 8 / allot con flags3 inlined
         begin  
           dup size3 u< 
         while  
-          flags3 over bclr
+          flags3 over inline bclr
           over +
         repeat
         2drop 1+

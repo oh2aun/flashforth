@@ -1826,13 +1826,13 @@ BSET__L:
         .ascii  "bset"
         .align  2
 BSET__:
-        mov.w   [W14--], W1
-		mov.w	[W14--], W0
-		lsr		W1, #3, W2
-		add		W2, W0, W0
-		bclr	W0, #0
+        mov.w   [W14--], W0
+		mov.w	[W14--], W1
+		lsr		W0, #3, W2
+		add		W2, W1, W1
+		bclr	W1, #0
 		bset	SR, #C
-        bsw.c   [W0], W1
+        bsw.c   [W1], W0
         return
 
 
@@ -1843,13 +1843,13 @@ BCLR__L:
         .ascii  "bclr"
         .align  2
 BCLR__:
-        mov.w   [W14--], W1
-		mov.w   [W14--], W0
-		lsr		W1, #3, W2
-		add		W2, W0, W0
-		bclr	W0, #0
+        mov.w   [W14--], W0
+		mov.w   [W14--], W1
+		lsr		W0, #3, W2
+		add		W2, W1, W1
+		bclr	W1, #0
 		bclr	SR, #C
-        bsw.c   [W0], W1
+        bsw.c   [W1], W0
         return
 
 ; btst ( base-addr bit-index -- f )
@@ -1859,14 +1859,15 @@ BTST__L:
         .ascii  "btst"
         .align  2
 BTST__:
-        mov.w   [W14--], W1
-		mov.w	[W14--], W0
-		lsr		W1, #3, W2
-		add		W2, W0, W0
- 		bclr	W0, #0
-        btst.z  [W0], W1
-        bra     NZ, TRUE_
-		bra		FALSE_ 
+        mov.w   [W14--], W0
+		mov.w	[W14--], W1
+		lsr		W0, #3, W2
+		add		W2, W1, W1
+ 		bclr	W1, #0
+        btst.c  [W1], W0
+        rrc     W1, W1
+        asr     W1, #15, W0
+        mov     W0, [++W14]
         return
 
         .pword  paddr(BTST__L)+PFLASH
@@ -2831,10 +2832,10 @@ UMSTAR_L:
         .ascii  "um*"
         .align  2
 UMSTAR:
-        mov     [W14--], W2
-        mul.uu  W2, [W14], W0
-        mov     W0, [W14++]
-        mov     W1, [W14]
+        mov     [W14--], W0
+        mul.uu  W0, [W14], W2
+        mov     W2, [W14++]
+        mov     W3, [W14]
         return
 
         .pword  paddr(UMSTAR_L)+PFLASH
@@ -2843,10 +2844,10 @@ MSTAR_L:
         .ascii  "m*"
         .align  2
 MSTAR:
-        mov     [W14--], W2
-        mul.ss  W2, [W14], W0
-        mov     W0, [W14++]
-        mov     W1, [W14]
+        mov     [W14--], W0
+        mul.ss  W0, [W14], W2
+        mov     W2, [W14++]
+        mov     W3, [W14]
         return
 
         .pword  paddr(MSTAR_L)+PFLASH

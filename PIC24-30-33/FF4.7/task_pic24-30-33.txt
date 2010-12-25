@@ -56,7 +56,7 @@ hex ram
 : task: ( tibsize stacksize rsize addsize -- )
   flash create 
   up@ s0 - dup          \ Basic size     ts ss rs as bs bs
-  rhere + ,             \ User pointer   ts ss rs as bs
+  ram here flash + ,    \ User pointer   ts ss rs as bs
   4 for
     over c, +
   next

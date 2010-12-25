@@ -42,7 +42,7 @@ file_003=no
 file_000=ff18_37_usb.asm
 file_001=P18F2455.asm
 file_002=FF37_USB.lib
-file_003=FF37_USB_0000.lkr
+file_003=C:\FF3.7\FF37_USB_0800.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=

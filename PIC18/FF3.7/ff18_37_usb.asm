@@ -30,9 +30,9 @@
 ;**********************************************************************
 
 
-#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
+;#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
                                  ; Link with FF37_0000.lkr or FF37_USB_0000.lkr
-;#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
+#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
                                  ; Link with FF37_0800.lkr or FF37_USB_0800.lkr
 
 ;#include "p18cxxx.inc"
@@ -328,15 +328,15 @@ irq_ms:
         movlw   tmr1ms_val_lo
         movwf   TMR1L, A
         bcf     PIR1, TMR1IF, A
-        infsnz  (ms_count&h'0fff'), F, A
-        incf    (ms_count&h'0fff')+1, F, A
+        infsnz  ms_count, F, A
+        incf    ms_count+1, F, A
 #else
 #ifdef MS_TMR2 ;******************************
         btfss   PIR1, TMR2IF, A
         bra     irq_ms_end
         bcf     PIR1, TMR2IF, A
-        infsnz  (ms_count&h'0fff'), F, A
-        incf    (ms_count&h'0fff')+1, F, A
+        infsnz  ms_count, F, A
+        incf    ms_count+1, F, A
 #else
 #ifdef MS_TMR3 ;******************************
         btfss   PIR2, TMR3IF, A
@@ -1904,8 +1904,8 @@ EMPTY:
         rcall   LIT
         dw      h'000c'
         call    CMOVE
-		
 		goto	DP_TO_RAM
+		
 ;*******************************************************
         dw      L_EMPTY
 L_WARM:
@@ -1916,20 +1916,9 @@ WARM_:
 main:
 		movlw	0xf
 		iorwf	ADCON1, F, A
+#ifdef USB_CDC
 		movlw	0x14
 		movwf	UCFG, A
-#if 0
-#ifdef __18F4550
-		movlw	0xf0
-		movwf	TRISD, A
-		movlw	0x0f
-		movwf	LATD, A
-#else
-		movlw	0xf8
-		movwf	TRISC, A
-		movlw	0x07
-		movwf	LATC, A
-#endif
 #endif
 		clrf    TBLPTRU, A
 #ifdef OSCCON
@@ -1937,31 +1926,16 @@ main:
         movwf   OSCCON, A
 #endif
 
-#if 0
-        lfsr    Sptr, h'3ff'    ; Clear 1023 bytes of ram.
-WARM_0:
-        clrf    Sminus
-        
-        movf    Sp, W, A
-        iorwf   Sbank, W, A
-        bnz     WARM_0          ;  byte 0 is not zeroed, but who cares !
-#endif
-
-		clrf	ibase_lo, A
+                            ; Clear ram
 WARM_DELAY_1:
-        lfsr    Sptr, ibase_hi    ; Clear 768 bytes of ram.
+        lfsr    Sptr, 0
 WARM_DELAY_2:
-;		call	CHARS			; Just some extra delay
         clrf    Splus, A
         movf    Sbank, W, A
-        sublw   h'8'
+        sublw   h'f'
         bnz     WARM_DELAY_2
-#ifdef USB_CDC
-		decf	ibase_lo, F, A
-		bnz		WARM_DELAY_1
-#endif
-WARM:
 
+WARM:
         setf    ibase_hi, A     ; Mark flash buffer empty
 
         lfsr    Sptr, (usbuf-1)&h'0fff' ; Initalise Parameter stack
@@ -1986,7 +1960,7 @@ WARM:
         ;; Timer 2 for 1 ms system tick
         movlw   h'7d'      ; Prescale = 4, Postscale = 16
         movwf   T2CON, A
-        movlw   tmr2val
+        movlw   tmr2ms_val
         movwf   PR2, A
         bsf     PIE1, TMR2IE, A
 #else
@@ -2031,6 +2005,9 @@ WARM_2:
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
 
+#ifndef USB_CDC
+        rcall   VER
+#endif
         rcall   TURNKEY
         call    ZEROSENSE
         bz      STARTQ2
@@ -2068,7 +2045,7 @@ VER:
         db d'19',"FlashForth V3.7 USB"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'15',"FlashForth V3.7"
+        db d'17',"FlashForth V3.7\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
@@ -3341,7 +3318,7 @@ PNPLUS:
 ; UEMIT  -- addr         Address of EMIT user vector
         dw      L_PNPLUS
 L_UEMIT:
-        db      NFA|5,"uemit"
+        db      NFA|5,"'emit"
 UEMIT:
         rcall   DOUSER
         dw      uemit&h'ffff'
@@ -3350,7 +3327,7 @@ UEMIT:
 ; UKEY  -- addr         Address of KEY user vector
         dw      L_UEMIT
 L_UKEY:
-        db      NFA|4,"ukey"
+        db      NFA|4,"'key"
 UKEY:
         rcall   DOUSER
         dw      ukey&h'ffff'
@@ -3359,7 +3336,7 @@ UKEY:
 ; UKEYQ  -- addr         Address of KEYQ user vector
         dw      L_UKEY
 L_UKEYQ:
-        db      NFA|5,"ukey?"
+        db      NFA|5,"'key?"
 UKEYQ:
         rcall   DOUSER
         dw      ukeyq&h'ffff'
@@ -4114,15 +4091,16 @@ BASEQV:
 L_NUMBERQ:
         db      NFA|7,"number?"
 NUMBERQ:
-        rcall   DUP             ; a a
-        rcall   FALSE_          ; a a 0
-        rcall   SWOP            ; a 0 a
+        rcall   FALSE_          ; a 0
+        rcall   OVER            ; a 0 a
         rcall   CFETCHPP        ; a 0 a' u
         rcall   SIGNQ           ; a 0 a' u f
         rcall   TOR             ; a 0 a' u
+
         rcall   BASE
         rcall   FETCH_A
         rcall   TOR             ; a 0 a' u
+        
         rcall   OVER
         rcall   CFETCH_A
         rcall   LIT_A
@@ -4151,10 +4129,9 @@ BASEQ2:
         rcall   STORE_A         ; a n a' u
         rcall   ZEROSENSE       ; a n a'
         bz      QNUM1
-        rcall   RFROM           ; a n a' f
+        pop    ;RDROP           ; a n a'
         call    TWODROP
-        call    DROP
-        rcall   FALSE_
+        rcall   FALSE_          ; a f
         bra     QNUM3
 QNUM1:
         call    DROP            ; a n
@@ -4314,8 +4291,8 @@ IUNKNOWN:
         rcall   CFETCHPP
         call    TYPE
         rcall   FALSE_
-        rcall   QABORTQ
-        bra     IPARSEWORD
+        rcall   QABORTQ         ; Never returns
+;        bra     IPARSEWORD
 INOWORD: 
         goto    DROP
 
