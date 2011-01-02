@@ -969,12 +969,13 @@ NEQUAL:
         movf    Sminus, W, A
         andlw   NFAmask             ; MASK NFA, IMMED, INLINE, COMPILE BITS
         cpfseq  Arw, A
-        goto    TRUE_               ; NO MATCH
+        bra     NEQUAL_TRUE         ; NO MATCH
 NEQUAL0:
         rcall   ICFETCH1
         movf    Sminus, W, A
         movf    Sminus, W, A
         cpfseq  plusA, A
+NEQUAL_TRUE:
         goto    TRUE_               ; NO MATCH
 NEQUAL1:                            ; check next character
         decfsz  PCLATH, F, A
@@ -1383,8 +1384,9 @@ IS:
         call    TICK
         call    TOBODY
         rcall   FETCH
-        call    STATE
-        call    ZEROSENSE
+;        call    STATE
+;        call    ZEROSENSE
+        movf    state, W, A
         bz      IS1
         rcall   LITERAL
         rcall   LIT
@@ -4281,8 +4283,9 @@ INUMBER:
         rcall   NUMBERQ
         rcall   ZEROSENSE
         bz      IUNKNOWN
-        rcall   STATE
-        rcall   ZEROSENSE
+;        rcall   STATE
+;        rcall   ZEROSENSE
+        movf    state, W, A
         bz      IPARSEWORD
         call    LITERAL
         bra     IPARSEWORD
@@ -4437,8 +4440,9 @@ QUIT1:
         call    ACCEPT
         call    SPACE_
         rcall   INTERPRET
-        rcall   STATE
-        rcall   ZEROSENSE
+;        rcall   STATE
+;        rcall   ZEROSENSE
+        movf    state, W, A
         bnz     QUIT1
         rcall   DP_TO_EEPROM
          
@@ -4623,8 +4627,7 @@ CREATE:
         rcall   COMMAXT_A       ; Append an exeution token
         call    ALIGN
         call    HERE            ; compiles the current dataspace dp into the dictionary
-        call    CSE
-        call    ZEROSENSE
+        movf    cse, W, A
         bnz     CREATE2
         call    TWOPLUS
 CREATE2:
