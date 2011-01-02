@@ -2017,9 +2017,12 @@ WARM_2:
         rcall   XSQUOTE
         db      d'3',"ESC"
         rcall   TYPE
-#endif
+        rcall   LIT
+        dw      h'0800'
+#else
         rcall   LIT
         dw      h'2000'
+#endif
         call    MS
         rcall   KEYQ
         call    ZEROSENSE
