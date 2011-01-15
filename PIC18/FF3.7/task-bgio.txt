@@ -1,6 +1,6 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      task-test.txt                                     *
+\    Filename:      task-bgio.txt                                     *
 \    Date:          25.02.2010                                        *
 \    FF Version:    3.5                                               *
 \    Copyright:     Mikael Nordman                                    *
@@ -9,25 +9,25 @@
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
 \
-\ Test tasks and the character bit manipulation words
+\ Test I/O redirection in a background task.
 \
--bgterm
-marker -bgterm
+-bgio
+marker -bgio
 ram hex
 
-: bgterm_proc
-  ['] rx1 ukey !
-  ['] tx1 uemit !
-  ['] rx1? ukey? !
+: bgio_loop
+  ['] rx1 'key !
+  ['] tx1 'emit !
+  ['] rx1? 'key? !
   begin
     key emit
   again
 ;
 
-$60 $40 $40 $0 task: bgterm_task
-: bgterm
-  ['] bgterm_proc bgterm_task tinit
-  bgterm_task run
+$60 $40 $40 $0 task: bgio_task
+: bgio
+  ['] bgio_loop bgio_task tinit
+  bgio_task run
 ;
 
-bgterm
+bgio

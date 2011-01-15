@@ -1,4 +1,4 @@
-FlashForth V3.4 readme file
+FlashForth V3.7 readme file
 ---------------------------
 
 FlashForth is licensed acording to the GNU General Public License
@@ -227,3 +227,17 @@ FlashForth V3.6
 - Binary communication option in TX1 and RX1
 - FL0 FL1 Memory write protection
 - FT0 FT1 Disable flow control on TX1/RX1
+
+FlashForth V3.7
+---------------
+- Use FF via USB serial emulation on PIC18F2455 family.
+  USB code distributed as a library.
+- FT0 FT1 FL0 FL1 renamed to U1+ U1- FL+ FL-
+- UKEY UKEY? UEMIT renamed to 'KEY 'KEY? 'EMIT
+- COLD replaced by EMPTY and WARM
+- SAFE_CHECK replaced by write protection of kernel flash area.
+- USB TURNKEY delay is 8 seconds. 2 seconds with UART.
+- Some internal dictonary words hidden
+- Minor optimisations.
+- FF can be programmed via a bootloader.
+- Possibility to link to C-libraries

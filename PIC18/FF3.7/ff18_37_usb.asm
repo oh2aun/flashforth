@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_37_usb.asm                                   *
-;    Date:          09.09.2010                                        *
+;    Date:          17.01.2011                                        *
 ;    File Version:  3.7                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -30,12 +30,11 @@
 ;**********************************************************************
 
 
-;#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
+#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
                                  ; Link with FF37_0000.lkr or FF37_USB_0000.lkr
-#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
+;#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
                                  ; Link with FF37_0800.lkr or FF37_USB_0800.lkr
 
-;#include "p18cxxx.inc"
 #include "p18fxxxx.cfg"
 
 #ifdef USB_CDC 

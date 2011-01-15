@@ -1,5 +1,5 @@
 // File: FF37_USB_0000.lkr
-// Linker script for FlashForth+USB without bootloader.
+// Linker script for FlashForth USB without bootloader.
 LIBPATH .
 
 // No bootloader  Application start at 0x0000
