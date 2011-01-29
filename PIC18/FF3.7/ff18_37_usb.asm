@@ -39,7 +39,6 @@
 
 #ifdef USB_CDC 
 #define OPERATOR_TX  TX0
-#define OPERATOR_TXQ 0
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
 
@@ -58,7 +57,6 @@
 #else ; Normal UART
 
 #define OPERATOR_TX  TX1_
-#define OPERATOR_TXQ 0
 #define OPERATOR_RX  RX1_
 #define OPERATOR_RXQ RX1Q
 
@@ -175,10 +173,17 @@ state    res 1       ; State value. Can only be changed by []
 wflags   res 1       ; Word flags from word header                   
 RXcnt    res 1       ; Number of characters in the RX fifo
 TXcnt    res 1       ; Number of characters in the TX fifo
+#ifdef p18fxx2xx8_fix_1
+SINTCON  res 1       ; Save INTCON before disabling interrupts
+SPIE1    res 1       ; Save PIE1 before disabling interrupts
+SPIE2    res 1       ; Save PIE2 before disabling interrupts
+#endif
+#ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
 SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
+#endif
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
 #ifndef USB_CDC
@@ -239,9 +244,8 @@ utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
 
 ursize      equ d'4'          ; No return stack storage, just some parameter stack underrun protection
 
-us0         equ -d'22'        ; Start of parameter stack
-uemit       equ -d'20'
-uemitq      equ -d'18'
+us0         equ -d'20'        ; Start of parameter stack
+uemit       equ -d'18'
 ukey        equ -d'16'
 ukeyq       equ -d'14'
 utask       equ -d'12'
@@ -259,14 +263,13 @@ utibbuf     equ ustart-us0 + ursize +ussize + 2
 ursize      equ  d'62'         ; 31 cells return stack save area
 ; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 
-us0         equ -d'34'          ; Start of parameter stack
-uemit       equ -d'32'
-uemitq      equ -d'30'
+us0         equ -d'32'          ; Start of parameter stack
+uemit       equ -d'30'
 ukey        equ -d'28'
 ukeyq       equ -d'26'
 utask       equ -d'24'
 ulink       equ -d'22'
-ubase       equ -d'20'        ; ->C
+ubase       equ -d'20'          ; ->C
 utib        equ -d'18'
 ursave      equ -d'16'          ; Ptr to return stack save area
 ussave      equ -d'14'          ; Saved parameter stack pointer
@@ -479,7 +482,6 @@ WARMLIT:
         dw      u0             ; UP
         dw      usbuf-1        ; S0
         dw      OPERATOR_TX    ; EMIT vector
-        dw      OPERATOR_TXQ   ; EMIT? vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
@@ -491,7 +493,6 @@ WARMLIT:
         dw      u0             ; UP
         dw      usbuf-1        ; S0
         dw      OPERATOR_TX    ; EMIT vector
-        dw      OPERATOR_TXQ   ; EMIT? vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
@@ -878,6 +879,15 @@ wbtil2:
 #endif
         bcf     INTCON, GIE, A  ; Disable Interrupts
 
+#ifdef p18fxx2xx8_fix_1
+        movff   PIE1, SPIE1
+        movff   PIE2, SPIE2
+        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
+        clrf    INTCON, A       ; may be lost
+        clrf    PIE1, A
+        clrf    PIE2, A
+#endif
+
         movff   ibase_lo, TBLPTRL      ; Erase the flash block
         movff   ibase_hi, TBLPTRH
         bsf     EECON1, EEPGD, A
@@ -905,6 +915,12 @@ write_buffer_to_imem_2:
         decfsz  Abank, F, A
         bra     write_buffer_to_imem_1
         bcf     EECON1, WREN, A
+
+#ifdef p18fxx2xx8_fix_1
+        movff   SPIE2, PIE2
+        movff   SPIE1, PIE1
+        movff   SINTCON, INTCON
+#endif
 
         bsf     INTCON, GIE, A        
 
@@ -1300,11 +1316,17 @@ ECFETCH:
         clrf    plusS, A
         return
 asmecfetch:
+#ifdef p18fxx2xx8_fix_1
+        bcf     INTCON, GIE, A          ; 18f252 ERRATA
+#endif
         bcf     EECON1, EEPGD, A
         bcf     EECON1, CFGS, A
         bsf     EECON1, RD, A
         movf    EEDATA, W
         movwf   plusS
+#ifdef p18fxx2xx8_fix_1
+        bsf     INTCON, GIE, A          ; 18f252 ERRATA
+#endif
         return
 
 ;;; Disable writes to flash and eeprom
