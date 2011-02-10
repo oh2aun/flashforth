@@ -23,10 +23,13 @@ If you use a device programmer, use the FF37_USB_0000.lkr file
 and define CONFIG_RESET 0x0000 in ff18_37_usb.asm.
 If you use a bootloader, use the FF37_USB_0800.lkr file 
 and define CONFIG_RESET 0x0800 in ff18_37_usb.asm.
+The FF37_USB.lib requires that the processor type is set to 18f2455.
+The HEX file will still work also on 18f4455 18f2550 and 18f4550
+
+The result of the compilation is a HEX file which can then be moved
+to the target processor, either via a device programmer or a bootloader.
 
 NOTE :
 The USB VID and PID and the INF file provided with FlashForth
 are purely for test purposes and for personal use.
 
-The result of the compilation is a HEX file which can then be moved
-to the target processor, either via a device programmer or a bootloader.

@@ -2567,7 +2567,7 @@ COMMAXT:
         rcall   MINUS
         rcall   ABS 
         rcall   LIT
-        dw      0x7ff
+        dw      0x7f0
         rcall   GREATER
         rcall   ZEROSENSE
         bz      STORECF1
@@ -4128,7 +4128,7 @@ NUMBERQ:
         rcall   TOR             ; a 0 a' u
         
         rcall   OVER
-        rcall   CFETCH_A
+        rcall   CFETCH_A        ; Fetch prefix
         rcall   LIT_A
         dw      '#'
         rcall   MINUS
@@ -4142,7 +4142,8 @@ NUMBERQ:
         rcall   LIT_A
         dw      BASEQV
         rcall   PLUS
-        call    FEXECUTE
+        call    FEXECUTE        ; Modify BASE
+        
         call    ONE
         rcall   SLASHSTRING
         bra     BASEQ2
@@ -4177,7 +4178,7 @@ SWOP_A
         goto    SWOP
 
 ; TI#  -- n                      size of TIB
-; : ti# task @ 8 + @ ;
+; : ti# task @ 5 + c@ ;
         dw      L_NUMBERQ
 L_TIBSIZE:
         db      NFA|3,"ti#"
@@ -4260,7 +4261,7 @@ IPARSEWORD:
         bra     IEXECUTE        ; Not a compile only word
         rcall   STATE           ; Compile only word check
         call    XSQUOTE
-        db      d'10',"COMPILING?"
+        db      d'3',"CO?"
         rcall   QABORT
 IEXECUTE:
         bcf     FLAGS1, noclear
@@ -4307,8 +4308,6 @@ INUMBER:
         rcall   NUMBERQ
         rcall   ZEROSENSE
         bz      IUNKNOWN
-;        rcall   STATE
-;        rcall   ZEROSENSE
         movf    state, W, A
         bz      IPARSEWORD
         call    LITERAL
@@ -4317,8 +4316,10 @@ IUNKNOWN:
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         call    TYPE
-        rcall   FALSE_
-        rcall   QABORTQ         ; Never returns
+        call    XSQUOTE
+        db      5," UNK?"
+        call    TYPE
+        rcall   ABORT         ; Never returns
 ;        bra     IPARSEWORD
 INOWORD: 
         goto    DROP
@@ -4464,8 +4465,6 @@ QUIT1:
         call    ACCEPT
         call    SPACE_
         rcall   INTERPRET
-;        rcall   STATE
-;        rcall   ZEROSENSE
         movf    state, W, A
         bnz     QUIT1
         rcall   DP_TO_EEPROM
@@ -5468,7 +5467,7 @@ MARKER:
 
 ;        dw      L_RDROP
 L_DOTBASE:
-        db      NFA|1,"|"
+        db      NFA|1,"I"
 DOTBASE:
         call    BASE
         call    FETCH_A
@@ -5502,7 +5501,7 @@ MEMQADDR_N:
 ; M? -- caddr count    current data space string
 ;        dw      L_DOTBASE
 L_MEMQ:
-        db      NFA|1,"|"
+        db      NFA|1,"I"
 MEMQ:
         call    CSE
         rcall   LIT_A
