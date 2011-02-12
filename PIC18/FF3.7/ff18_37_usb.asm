@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_37_usb.asm                                   *
-;    Date:          17.01.2011                                        *
+;    Date:          10.02.2011                                        *
 ;    File Version:  3.7                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2010  Mikael Nordman
+; Copyright (C) 2011  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -289,7 +289,7 @@ u0          equ ustart-us0
 uareasize   equ -us0+ursize+ussize+utibsize + 2
 
 ;;; Start of free ram
-#ifdef USE_CDC
+#ifdef USB_CDC
 dpdata      equ h'f060'
 #else
 dpdata      equ ustart-us0+ursize+ussize+utibsize + 2
@@ -1633,7 +1633,7 @@ XXXON:
 ;if (idirty)
 ;   writebuffer_to_imem
 ;endif
-#ifdef USE_CDC
+#ifdef USB_CDC
         dw      L_RX0Q
 #else
         dw      L_PAUSE
