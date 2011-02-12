@@ -120,9 +120,10 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fCR     equ 2           ; ACCEPT: 1 CR has been received   
-fLOCK   equ 1           ; Lock writes to flash and eeprom  
-fTAILC  equ 0           ; Disable tailcall optimisation    
+fOPER   equ 3           ; 1 = Task is operator task
+fFC     equ 2           ; 0=FC, 1 = no FC                       
+ixoff   equ 1           ;                                       
+fCR     equ 0           ; ACCEPT: 1 CR has been received   
 
 ;;; FLAGS1
 slashm  equ 7           ; Division mode 0 = 32 bit , 1 = 16 bit >local
@@ -130,9 +131,9 @@ noclear equ 6           ; dont clear optimisation flags
 idup    equ 5           ; Use dupzeroequal instead of zeroequal 
 izeroeq equ 4           ; Use bnz instead of bz if zeroequal    
 istream equ 3
-fFC     equ 2           ; 0=FC, 1 = no FC                       
-ixoff   equ 1           ;                                       
-idirty  equ 0           ;                                       
+fLOCK   equ 2           ; Lock writes to flash and eeprom  
+fTAILC  equ 1           ; Disable tailcall optimisation    
+idirty  equ 0           ; Flash buffer dirty flag
 
 ;;; Memory mapping prefixes
 PRAM        equ h'f000'
@@ -275,6 +276,7 @@ ursave      equ -d'16'          ; Ptr to return stack save area
 ussave      equ -d'14'          ; Saved parameter stack pointer
 upsave      equ -d'12'          ; Saved P pointer
 urcnt       equ -d'10'          ; Number of saved return stack items
+uflags2     equ -d'9'           ; User flags
 uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
 utoin       equ -d'2'        ; ->C
@@ -389,12 +391,12 @@ irq_async_rx:
         bnc     irq_async_rx_2
         
 #ifdef FC_TYPE_SW
-        btfss   FLAGS1, fFC, A
+        btfss   FLAGS2, fFC, A
         rcall   XXOFF
 #endif
 irq_async_rx_1:
 #ifdef  HW_FC_CTS_PORT
-        btfss   FLAGS1, fFC, A
+        btfss   FLAGS2, fFC, A
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
 
@@ -436,7 +438,7 @@ irq_async_tx:
         bz      irq_async_tx_1
 
 #ifdef HW_FC_RTS_PORT
-        btfsc   FLAGS1, fFC, A
+        btfsc   FLAGS2, fFC, A
         bra     irq_async_tx_0
         btfsc   HW_FC_RTS_PORT, HW_FC_RTS_PIN, A
         bra     irq_async_tx_1
@@ -458,7 +460,7 @@ irq_async_tx_end:
 ;;; *****************************************************************
 #ifdef HW_FC_RTS_PORT
 irq_fc:
-        btfsc   FLAGS1, fFC, A
+        btfsc   FLAGS2, fFC, A
         bra     irq_fc_end
         btfsc   HW_FC_RTS_PORT, HW_FC_RTS_PIN, A ; Is it ok to send to the host
         bra     irq_fc_end
@@ -659,7 +661,7 @@ RX1Q:
         movwf   plusS
         bnz     RX1Q2
 #ifdef FC_TYPE_SW
-        btfss   FLAGS1, fFC, A
+        btfss   FLAGS2, fFC, A
         rcall   XXON
 #endif
 #ifdef  HW_FC_CTS_PORT
@@ -683,7 +685,8 @@ QUERR:
 QUERR1: movlw   '~'         ; Framing or overrun error
 QUERR3: rcall   asmemit
         bcf     RCSTA, CREN, A
-        goto     STARTQ2         ;    goto    ABORT
+        bsf     RCSTA, CREN, A
+        goto    ABORT         ;    goto    ABORT
 
 ;*******************************************************
 ;;; Multiplikation routine from the PIC datasheet adapted to FORTH.
@@ -855,11 +858,11 @@ write_buffer_to_imem:
 ;; The assumption is that the serial line is silent then.
 #ifndef USB_CDC
 #ifdef FC_TYPE_SW
-        btfss   FLAGS1, fFC, A
+        btfss   FLAGS2, fFC, A
         rcall   XXXOFF
 #endif
 #ifdef  HW_FC_CTS_PORT
-        btfss   FLAGS1, fFC, A
+        btfss   FLAGS2, fFC, A
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
 
@@ -1333,28 +1336,28 @@ asmecfetch:
         dw      L_LITERAL
 L_FLOCK:
         db      NFA|3,"fl+"
-        bsf     FLAGS2, fLOCK
+        bsf     FLAGS1, fLOCK
         return
 
 ;;; Enable writes to flash and eeprom
         dw      L_FLOCK
 L_FUNLOCK:
         db      NFA|3,"fl-"
-        bcf     FLAGS2, fLOCK
+        bcf     FLAGS1, fLOCK
         return
 
 ;;; Enable flow control
         dw      L_FUNLOCK
 L_FCON:
         db      NFA|3,"u1+"
-        bcf     FLAGS1, fFC
+        bcf     FLAGS2, fFC
         return
 
 ;;; Disable flow control
         dw      L_FCON
 L_FCOFF:
         db      NFA|3,"u1-"
-        bsf     FLAGS1, fFC
+        bsf     FLAGS2, fFC
         return
 
 ;;; Clear watchdog timer
@@ -1476,6 +1479,10 @@ PAUSE0:
         movlw   urcnt
         movff   STKPTR, TWrw
 
+        ; Save user flags
+        movlw   uflags2
+        movff   FLAGS2, TWrw
+
         ; Sp points to urbuf
         movlw   ursave
         movff   TWrw, Sp
@@ -1517,6 +1524,10 @@ pause1:
         movff   TWrw, p_lo
         movlw   upsave+1
         movff   TWrw, p_hi
+
+        ; Save user flags
+        movlw   uflags2
+        movff   TWrw, FLAGS2
 
         ; Set the return stack counter
         movlw   urcnt
@@ -1615,17 +1626,17 @@ RX0Q:
 ; ***************************************************
 #ifdef FC_TYPE_SW
 XXOFF:
-        btfsc   FLAGS1, ixoff, A
+        btfsc   FLAGS2, ixoff, A
         return
 XXXOFF: 
-        bsf     FLAGS1, ixoff, A
+        bsf     FLAGS2, ixoff, A
         movlw   XOFF
         bra     asmemit
 XXON:
-        btfss   FLAGS1, ixoff, A
+        btfss   FLAGS2, ixoff, A
         return
 XXXON:  
-        bcf     FLAGS1, ixoff, A
+        bcf     FLAGS2, ixoff, A
         movlw   XON
         bra     asmemit
 #endif
@@ -1911,7 +1922,9 @@ BTFSS_:
         
 ;;;
 LOCKED:
-        btfss   FLAGS2, fLOCK
+        btfss   FLAGS2, fOPER
+        goto    ABORT
+        btfss   FLAGS1, fLOCK
         return
         bra     ISTORERR
 
@@ -2005,6 +2018,7 @@ WARM:
         rcall   LIT
         dw      warmlitsize
         call    CMOVE
+        bsf     FLAGS2, fOPER
         rcall   FRAM
 		clrf    INTCON, A
         bsf     INTCON, PEIE, A
@@ -2022,7 +2036,7 @@ WARM_2:
         call    DP_TO_RAM
 
 #ifdef FC_TYPE_SW
-        bsf     FLAGS1, ixoff, A ; Force sending of XON in RX1?
+        bsf     FLAGS2, ixoff, A ; Force sending of XON in RX1?
 #endif
 #ifdef HW_FC_CTS_TRIS
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
@@ -2320,7 +2334,7 @@ chkramaddr:
 ISTORERR:
         call    DOTS
         rcall   XSQUOTE
-        db      5,"?ADDR"
+        db      3,"AD?"
         rcall   TYPE
         bra     STARTQ2        ; goto    ABORT
 ; !     x addr --   store x at addr in memory
@@ -4272,6 +4286,8 @@ IEXECUTE:
         bcf     FLAGS1, idup    ; Clear DUP encountered in compilation
         bra     IPARSEWORD
 ICOMPILE_1:
+        btfss   FLAGS2, fOPER
+        bra     IUNKNOWN
         bcf     FLAGS1, izeroeq ; Clear 0= encountered in compilation
         rcall   DUP_A
         rcall   LIT_A
@@ -4292,9 +4308,9 @@ ICOMPILE_2:
         bsf     FLAGS1, idup    ; Mark DUP encountered during compilation
 ICOMMAXT:
         rcall   COMMAXT_A
-        bcf     FLAGS2, fTAILC  ; Allow tailgoto optimisation
+        bcf     FLAGS1, fTAILC  ; Allow tailgoto optimisation
         btfsc   wflags, 4       ; Compile only ?
-        bsf     FLAGS2, fTAILC  ; Prevent tailgoto optimisation
+        bsf     FLAGS1, fTAILC  ; Prevent tailgoto optimisation
         bra     IPARSEWORD
 ICOMPILE:
         btfss   wflags, 5, A    ; Inline check
@@ -4312,14 +4328,13 @@ INUMBER:
         bz      IPARSEWORD
         call    LITERAL
         bra     IPARSEWORD
-IUNKNOWN: 
+IUNKNOWN:
+        rcall   DOTS 
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         call    TYPE
-        call    XSQUOTE
-        db      5," UNK?"
-        call    TYPE
-        rcall   ABORT         ; Never returns
+        rcall   FALSE_
+        rcall   QABORTQ         ; Never returns
 ;        bra     IPARSEWORD
 INOWORD: 
         goto    DROP
@@ -4491,7 +4506,6 @@ ABORT:
         rcall   S0
         rcall   FETCH_A
         call    SPSTORE
-        bsf     RCSTA, CREN, A
         goto    QUIT            ; QUIT never returns
 
 ; ?ABORT   f --       abort & print ?
@@ -4612,6 +4626,8 @@ CR:
 L_CREATE:
         db      NFA|6,"create"
 CREATE:
+        btfss   FLAGS2, fOPER
+        bra     ABORT
         rcall   BL
         rcall   WORD            ; Parse a word
 
@@ -4760,7 +4776,7 @@ L_SEMICOLON:
         db      NFA|IMMED|COMPILE|1,";"
 SEMICOLON:
         rcall   LEFTBRACKET
-        btfsc   FLAGS2, fTAILC
+        btfsc   FLAGS1, fTAILC
         bra     ADD_RETURN_1
         rcall   IHERE
         rcall   MINUS_FETCH
@@ -5098,7 +5114,7 @@ BRQ:
         call    ABS             ; rel-addr limit limit' rel-addr
         call    GREATER
         call    XSQUOTE
-        db      6,"RANGE?"
+        db      3,"BR?"
         rcall   QABORT         ;  ?RANGE ABORT if TRUE
 BRQ1:
         call    AND
@@ -5170,7 +5186,7 @@ IFC:
 L_THENC:
         db      NFA|5,"then,"
 THENC:
-        bsf     FLAGS2, fTAILC  ; Disable tail call optimisation
+        bsf     FLAGS1, fTAILC  ; Disable tail call optimisation
         rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
         rcall   TOR_A
@@ -5231,7 +5247,7 @@ AGAINC:
 L_UNTILC:
         db      NFA|6 ,"until,"
 UNTILC:
-        bsf     FLAGS2, fTAILC  ; Disable tail call optimisation
+        bsf     FLAGS1, fTAILC  ; Disable tail call optimisation
         rcall   SWOP_A
         rcall   IHERE
         call    MINUS

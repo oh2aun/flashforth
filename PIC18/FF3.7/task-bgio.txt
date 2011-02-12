@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task-bgio.txt                                     *
-\    Date:          25.02.2010                                        *
-\    FF Version:    3.5                                               *
+\    Date:          12.02.2011                                        *
+\    FF Version:    3.7                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -10,17 +10,21 @@
 \ *********************************************************************
 \
 \ Test I/O redirection in a background task.
-\
+\ Requires 1 USB-CDC serial connection and one UART connection in FF3.7
+\ Compilation, write to flash/eeprom is only allowed
+\ in the operator task.
 -bgio
 marker -bgio
 ram hex
 
 : bgio_loop
+  decimal
   ['] rx1 'key !
   ['] tx1 'emit !
   ['] rx1? 'key? !
   begin
-    key emit
+     abort
+\    tib dup 20 accept type cr
   again
 ;
 
@@ -30,4 +34,4 @@ $60 $40 $40 $0 task: bgio_task
   bgio_task run
 ;
 
-bgio
+\ bgio
