@@ -532,7 +532,7 @@ LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ; *******************************************************************
 ; EXIT --   Compile a return
-        variable link
+;        variable link
         dw      0
 L_EXIT:
         db      NFA|4,"exit"
@@ -1808,7 +1808,7 @@ AS3_DOES:
         rcall   ROT             ;  d/b a f
         rcall   ICCOMMA         ;  d/b a
         rcall   SWOP            ;  a d/b
-        rcall   TWOSTAR
+        call    TWOSTAR
         rcall   OR_A
         rcall   RFROM
 AS3_2:  
@@ -1952,26 +1952,26 @@ WARM_:
 main:
 		movlw	0xf
 		iorwf	ADCON1, F, A
+		clrf    TBLPTRU, A
 #ifdef USB_CDC
 		movlw	0x14
 		movwf	UCFG, A
 #endif
-		clrf    TBLPTRU, A
 #ifdef OSCCON
         movlw   0x70            ; Use full internal OSC frequency
         movwf   OSCCON, A
 #endif
 
                             ; Clear ram
-WARM_DELAY_1:
+WARM:
+WARM_ZERO_1:
         lfsr    Sptr, 0
-WARM_DELAY_2:
+WARM_ZERO_2:
         clrf    Splus, A
         movf    Sbank, W, A
         sublw   h'f'
-        bnz     WARM_DELAY_2
+        bnz     WARM_ZERO_2
 
-WARM:
         setf    ibase_hi, A     ; Mark flash buffer empty
 
         lfsr    Sptr, (usbuf-1)&h'0fff' ; Initalise Parameter stack
@@ -5389,7 +5389,6 @@ FOR:
         goto    SWOP
 
 ; NEXT bra-addr bc-addr --
-; ,next !bz !bra
         dw      L_FOR
 L_NEXT:
         db      NFA|IMMED|COMPILE|4,"next"
