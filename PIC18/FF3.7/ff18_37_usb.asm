@@ -182,9 +182,9 @@ SPIE2    res 1       ; Save PIE2 before disabling interrupts
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
+#endif
 SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
-#endif
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
 #ifndef USB_CDC

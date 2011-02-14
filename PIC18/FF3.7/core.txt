@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      core.txt                                          *
-\    Date:          14.2.2010                                         *
-\    FF Version:    3.4                                               *
+\    Date:          14.2.2011                                         *
+\    FF Version:    3.7                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -27,31 +27,26 @@ hex ram
   dup flash dp ! @ latest ! ram
 ;
 
-: fill ( addr n c -- ) \ fill addr to addr+n with c
-  rot !p>r swap
-  for
-    dup pc! p+
-  next
-  r>p drop 
-;
-: erase  ( addr n -- )
-  0 fill
-;
+ ( addr n c -- ) \ fill addr to addr+n with c
+: fill rot !p>r swap for dup pc! p+ next r>p drop ;
 
-: blanks  ( addr n -- )
-  bl fill
-;
+\  addr n --
+: erase  0 fill ;
 
-: ?dup ( x -- 0 | x x )
-  dup if inline dup then 
-;
+\ addr n --
+: blanks bl fill ;
 
-: pick ( xu ... x0 u -- xu ... x0 xu) 
-  2* 3 + sp@ swap - @
-;
+\ x -- 0 | x x
+: ?dup dup if inline dup then ;
 
-: in? ( nfa -- flag )
-  c@ $40 and
-;
+\ xu ... x0 u -- xu ... x0 xu
+: pick 2* 3 + sp@ swap - @ ;
+
+\ nfa -- flag
+: in? c@ $40 and ;
+
+\ addr -- addr+1 n 
+: count c@+ ;
+
 hex ram
 
