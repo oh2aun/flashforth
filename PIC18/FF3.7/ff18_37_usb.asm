@@ -120,7 +120,6 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fOPER   equ 3           ; 1 = Task is operator task
 fFC     equ 2           ; 0=FC, 1 = no FC                       
 ixoff   equ 1           ;                                       
 fCR     equ 0           ; ACCEPT: 1 CR has been received   
@@ -182,9 +181,9 @@ SPIE2    res 1       ; Save PIE2 before disabling interrupts
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
-#endif
 SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
+#endif
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
 #ifndef USB_CDC
@@ -279,7 +278,7 @@ urcnt       equ -d'10'          ; Number of saved return stack items
 uflags2     equ -d'9'           ; User flags
 uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
-utoin       equ -d'2'        ; ->C
+utoin       equ -d'2'        ; -> C
 urptr       equ d'0'            ; Top of the saved return stack
 urbuf       equ ustart-us0 + 2  ; + 2 is space for urptr
 usbuf       equ ustart-us0+ursize + 2
@@ -1479,10 +1478,6 @@ PAUSE0:
         movlw   urcnt
         movff   STKPTR, TWrw
 
-        ; Save user flags
-        movlw   uflags2
-        movff   FLAGS2, TWrw
-
         ; Sp points to urbuf
         movlw   ursave
         movff   TWrw, Sp
@@ -1525,10 +1520,6 @@ pause1:
         movlw   upsave+1
         movff   TWrw, p_hi
 
-        ; Save user flags
-        movlw   uflags2
-        movff   TWrw, FLAGS2
-
         ; Set the return stack counter
         movlw   urcnt
         movff   TWrw, TBLPTRL
@@ -1548,7 +1539,7 @@ pause2:
         movlw   ussave
         movff   TWrw, Sp
         movlw   ussave+1
-        movff   TWrw, Sbank
+        movff   TWrw, Sbank ;63
 #endif
         return
 
@@ -1922,8 +1913,6 @@ BTFSS_:
         
 ;;;
 LOCKED:
-        btfss   FLAGS2, fOPER
-        goto    ABORT
         btfss   FLAGS1, fLOCK
         return
         bra     ISTORERR
@@ -2018,7 +2007,6 @@ WARM_ZERO_2:
         rcall   LIT
         dw      warmlitsize
         call    CMOVE
-        bsf     FLAGS2, fOPER
         rcall   FRAM
 		clrf    INTCON, A
         bsf     INTCON, PEIE, A
@@ -4286,8 +4274,6 @@ IEXECUTE:
         bcf     FLAGS1, idup    ; Clear DUP encountered in compilation
         bra     IPARSEWORD
 ICOMPILE_1:
-        btfss   FLAGS2, fOPER
-        bra     IUNKNOWN
         bcf     FLAGS1, izeroeq ; Clear 0= encountered in compilation
         rcall   DUP_A
         rcall   LIT_A
@@ -4626,8 +4612,6 @@ CR:
 L_CREATE:
         db      NFA|6,"create"
 CREATE:
-        btfss   FLAGS2, fOPER
-        bra     ABORT
         rcall   BL
         rcall   WORD            ; Parse a word
 

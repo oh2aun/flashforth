@@ -86,7 +86,6 @@ hex ram
   \ taskloop-addr to return stack
   rsave @ !
   0 ul!
-  0 rcnt !
   op!                     \ run the operator task
 ;
 

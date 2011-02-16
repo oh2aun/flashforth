@@ -221,8 +221,8 @@ rbuf_rd:    .byte 2
 rbuf_lv:    .byte 2
 rbuf:       .byte rbuf_size
 
-FLAGS1:     .byte 1
-FLAGS2:     .byte 1
+FLAGS_1:     .byte 1
+FLAGS_2:     .byte 1
 Preg:       .byte 2
 ms_count:   .byte 2
 intcon1dbg: .byte 2
