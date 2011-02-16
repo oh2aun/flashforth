@@ -122,7 +122,7 @@ NFAmask equ 0x0f
 ;;; FLAGS2
 fFC     equ 2           ; 0=FC, 1 = no FC                       
 ixoff   equ 1           ;                                       
-fCR     equ 0           ; ACCEPT: 1 CR has been received   
+; fCR     equ 0           ; ACCEPT: 1 CR has been received   
 
 ;;; FLAGS1
 slashm  equ 7           ; Division mode 0 = 32 bit , 1 = 16 bit >local
@@ -159,12 +159,9 @@ TXhead   res 1       ; Head of serial TX interrupt buffer
 TXtail   res 1       ; Tail of serial TX interrupt buffer
 Tsave_lo res 1       ; Save of Tp during interrupt routine
 Tsave_hi res 1       ; Save of Tbank during interrupt routine
-SL_save  res 1       ; Sp saved during interrupt routine
-SH_save  res 1       ; Sbank saved during interrupt routine
 TPL_save res 1       ; TBLPTRL saved during interrupt
 TPH_save res 1       ; TBLPTRH saved during interrupt
 pch_save res 1       ; PCLATH save during interrupt
-TBL_save res 1       ; TABLAT saved during interrupt
 ms_count res 1       ; millisecond counter 2 bytes
 ms_cnt_h res 1       ; millisecond counter 2 bytes
 FLAGS2   res 1       ; More flags
@@ -181,9 +178,9 @@ SPIE2    res 1       ; Save PIE2 before disabling interrupts
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
+#endif
 SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
-#endif
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
 #ifndef USB_CDC
@@ -269,16 +266,16 @@ ukey        equ -d'28'
 ukeyq       equ -d'26'
 utask       equ -d'24'
 ulink       equ -d'22'
-ubase       equ -d'20'          ; ->C
+ubase       equ -d'20'
 utib        equ -d'18'
 ursave      equ -d'16'          ; Ptr to return stack save area
 ussave      equ -d'14'          ; Saved parameter stack pointer
 upsave      equ -d'12'          ; Saved P pointer
-urcnt       equ -d'10'          ; Number of saved return stack items
-uflags2     equ -d'9'           ; User flags
+urcnt       equ -d'10'          ; Number of saved return stack items BYTE
+uflg        equ -d'9'           ; User flags BYTE
 uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
-utoin       equ -d'2'        ; -> C
+utoin       equ -d'2'
 urptr       equ d'0'            ; Top of the saved return stack
 urbuf       equ ustart-us0 + 2  ; + 2 is space for urptr
 usbuf       equ ustart-us0+ursize + 2
@@ -573,11 +570,15 @@ ANDLW_:
         dw      L_ANDLW_
 L_LI:
         db      NFA|INLINE|COMPILE|2,"[i"
-        movff   TABLAT, TBL_save
         movff   TBLPTRL, TPL_save
         movff   TBLPTRH, TPH_save
-        movff   Sp, SL_save
-        movff   Sbank, SH_save
+        push
+        movf    TABLAT, W, A
+        movwf   TOSL
+        movf    Sp, W, A
+        movwf   TOSH
+        movf    Sbank, W, A 
+        movwf   TOSU
         lfsr    Sptr, irq_s0 - 1  ; 0xf05f
         return
 
@@ -585,11 +586,12 @@ L_LI:
         dw      L_LI
 L_IR:
         db      NFA|INLINE|COMPILE|2,"i]"
-        movff   SH_save, Sbank
-        movff   SL_save, Sp
+        movff   TOSU, Sbank
+        movff   TOSH, Sp
+        movff   TOSL, TABLAT
+        pop
         movff   TPL_save, TBLPTRL
         movff   TPH_save, TBLPTRH
-        movff   TBL_save, TABLAT
         return
 
 ;***************************************************
@@ -2054,7 +2056,7 @@ WARM_2:
         rcall   LIT
         dw      h'1b'
         rcall   NOTEQUAL
-        rcall   ZEROSENSE
+        call   ZEROSENSE
         bz      STARTQ2
 STARTQ1:
         rcall   TURNKEY
@@ -2717,7 +2719,10 @@ ACC1:
         movlw   CR_
         subwf   Splus, W, A
         bnz     ACC_LF
-        bsf     FLAGS2, fCR, A
+        call   TRUE_
+        rcall   FCR
+        rcall   CSTORE
+;        bsf     FLAGS2, fCR, A
         rcall   DROP
         bra     ACC6
 ACC_LF:
@@ -2726,11 +2731,19 @@ ACC_LF:
         subwf   Splus, W, A
         bnz     ACC2
         rcall   DROP
-        btfss   FLAGS2, fCR, A
-        bra     ACC6
+
+        rcall   FCR
+        rcall   CFETCH
+        rcall   ZEROSENSE
+        bz      ACC6
+;        btfss   FLAGS2, fCR, A
+;        bra     ACC6
         bra     ACC1
 ACC2:
-        bcf     FLAGS2, fCR, A
+        call   FALSE_
+        rcall   FCR
+        rcall   CSTORE
+;        bcf     FLAGS2, fCR, A
         rcall   DUP
         rcall   EMIT
         rcall   DUP
@@ -2761,6 +2774,10 @@ ACC6:
         rcall   SWOP
         goto    MINUS
 
+        db      NFA|3,"fcr"
+FCR:
+        rcall   DOUSER
+        dw      uflg
 ; TYPE    c-addr u --   type line to terminal u < $100
 ; : type for c@+ emit next drop ;
 
@@ -4314,8 +4331,7 @@ INUMBER:
         bz      IPARSEWORD
         call    LITERAL
         bra     IPARSEWORD
-IUNKNOWN:
-        rcall   DOTS 
+IUNKNOWN: 
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         call    TYPE
