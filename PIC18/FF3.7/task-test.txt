@@ -47,7 +47,7 @@ blink1
 tasks
 
 
-\ Make blink2 start after reset.
+\ Make blink1 start after reset.
 \ ' blink1 is turnkey
 
 

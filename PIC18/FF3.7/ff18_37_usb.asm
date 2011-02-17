@@ -120,9 +120,8 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fFC     equ 2           ; 0=FC, 1 = no FC                       
-ixoff   equ 1           ;                                       
-; fCR     equ 0           ; ACCEPT: 1 CR has been received   
+fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control                       
+ixoff   equ 0           ; 1=XOFF has been sent
 
 ;;; FLAGS1
 slashm  equ 7           ; Division mode 0 = 32 bit , 1 = 16 bit >local
@@ -241,12 +240,13 @@ utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
 
 ursize      equ d'4'          ; No return stack storage, just some parameter stack underrun protection
 
-us0         equ -d'20'        ; Start of parameter stack
-uemit       equ -d'18'
-ukey        equ -d'16'
-ukeyq       equ -d'14'
-utask       equ -d'12'
-ubase       equ -d'10'
+us0         equ -d'22'        ; Start of parameter stack
+uemit       equ -d'20'
+ukey        equ -d'18'
+ukeyq       equ -d'16'
+utask       equ -d'14'
+ubase       equ -d'12'
+uflg        equ -d'10'           ; ACCEPT true =  CR has been received  
 utib        equ -d'8'
 uhp         equ -d'6'
 usource     equ -d'4'         ; Two cells
@@ -272,7 +272,7 @@ ursave      equ -d'16'          ; Ptr to return stack save area
 ussave      equ -d'14'          ; Saved parameter stack pointer
 upsave      equ -d'12'          ; Saved P pointer
 urcnt       equ -d'10'          ; Number of saved return stack items BYTE
-uflg        equ -d'9'           ; User flags BYTE
+uflg        equ -d'9'           ; ACCEPT true =  CR has been received  
 uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
 utoin       equ -d'2'
@@ -695,8 +695,7 @@ QUERR3: rcall   asmemit
 ;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank
 ;;; 42 clock cycles
 umstar0:
-        movff   Sminus, TBLPTRH
-        movff   Sminus, TBLPTRL
+        rcall   SETTBLPTR
         movff   Sminus, PCLATH
         movff   Sminus, TABLAT
         push
@@ -745,17 +744,18 @@ umstar0:
 
 #define DIVIDEND_0      TOSL
 #define DIVIDEND_1      TOSH
-#define DIVIDEND_2      TBLPTRL
-#define DIVIDEND_3      TBLPTRH
-#define DIVISOR_0       TABLAT
-#define DIVISOR_1       PCLATH
+#define DIVIDEND_2      TABLAT 
+#define DIVIDEND_3      PCLATH
+#define DIVISOR_0       TBLPTRL
+#define DIVISOR_1       TBLPTRH
 #define REMAINDER_0     Srw     ; Dont change
 #define REMAINDER_1     Tp
 #define DCNT            TOSU    ;  5 bit counter
 
 umslashmod0:
-        movff   Sminus, DIVISOR_1
-        movff   Sminus, DIVISOR_0
+        rcall   SETTBLPTR
+;        movff   Sminus, DIVISOR_1
+;        movff   Sminus, DIVISOR_0
         movff   Sminus, DIVIDEND_3
         movff   Sminus, DIVIDEND_2
         bcf     FLAGS1, slashm, A   ; FIXME ! NOT RE-ENTRANT
@@ -765,8 +765,9 @@ umslashmod0:
 ;***********************************************************
 ;;; ~348 cycles for 16-bit divide. 
 uslashmod0:
-        movff   Sminus, DIVISOR_1
-        movff   Sminus, DIVISOR_0
+        rcall   SETTBLPTR
+;        movff   Sminus, DIVISOR_1
+;        movff   Sminus, DIVISOR_0
         bsf     FLAGS1, slashm, A   ; FIXME ! NOT RE-ENTRANT
         movlw   h'10'
 UMSLASHMODxx:
@@ -978,8 +979,9 @@ L_NEQUAL:
 NEQUAL:
         movf    Sminus, W, A        ; count_hi
         movff   Sminus, PCLATH      ; count_lo
-        movff   Sminus, TBLPTRH     ; NOTE! Incremented by IC@ 
-        movff   Sminus, TBLPTRL     ; c-addr2 in program rom
+        rcall   SETTBLPTR
+;        movff   Sminus, TBLPTRH     ; NOTE! Incremented by IC@ 
+;        movff   Sminus, TBLPTRL     ; c-addr2 in program rom
         movff   Sminus, Abank       ; 
         movff   Sminus, Ap          ; c-addr1 in ram
 
@@ -1210,14 +1212,16 @@ ICSTORE1:
         bsf     FLAGS1, idirty, A
         return
 
-
+SETTBLPTR:
+        movf    Sminus, W, A    ; W is used later in IFETCH
+        movwf   TBLPTRH
+        movff   Sminus, TBLPTRL
+        return
 ; I@       a-addr -- x  fetch cell from Code mem
 ; 25 cycles when fetching from buffer
 ; 18-22 cycles when pfetching directly from flash
 IFETCH:
-        movf    Sminus, W, A
-        movwf   TBLPTRH
-        movff   Sminus, TBLPTRL
+        rcall   SETTBLPTR
         cpfseq  ibase_hi
         bra     pfetch0
         movlw   h'c0'
@@ -1233,8 +1237,7 @@ IFETCH:
 
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
-        movff   Sminus, TBLPTRH
-        movff   Sminus, TBLPTRL
+        rcall   SETTBLPTR
 ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W, A
         cpfseq  ibase_hi
@@ -3553,7 +3556,7 @@ UPTR:
         dw      L_UPTR
 L_HOLD:
         db      NFA|4,"hold"
-HOLD:   call    TRUE_
+HOLD:   rcall   TRUE_
         rcall   HP
         rcall   PLUSSTORE
         rcall   HP
@@ -4458,9 +4461,26 @@ DP_TO_EEPROM_3:
         pop
         rcall   R_TO_P
         goto    DROP
+
+;***************************************************************
+        dw      L_DOTSTATUS
+L_FALSE:
+        db      NFA|INLINE|5,"false"
+FALSE_:                     ; TOS is 0000 (FALSE)
+        clrf    plusS, A         ; TOS_LO = 00
+        clrf    plusS, A         ; TOS_HI = 00
+        return
+
+        dw      L_FALSE
+L_TRUE:
+        db      NFA|INLINE|4,"true"
+TRUE_:                      ; TOS is ffff (TRUE)
+        setf    plusS, A
+        setf    plusS, A
+        return
         
 ; QUIT     --    R: i*x --    interpret from kbd
-        dw      L_DOTSTATUS
+        dw      L_TRUE
 L_QUIT:
         db      NFA|4,"quit"
 QUIT:
@@ -5079,23 +5099,6 @@ IALLOT:
         goto    PLUSSTORE
     
 
-;***************************************************************
-        dw      L_DUMP
-L_FALSE:
-        db      NFA|INLINE|5,"false"
-FALSE_:                     ; TOS is 0000 (FALSE)
-        clrf    plusS, A         ; TOS_LO = 00
-        clrf    plusS, A         ; TOS_HI = 00
-        return
-
-        dw      L_FALSE
-L_TRUE:
-        db      NFA|INLINE|4,"true"
-TRUE_:                      ; TOS is ffff (TRUE)
-        setf    plusS, A
-        setf    plusS, A
-        return
-
         
 ;***************************************************************
 ; check that the relative address is within reach of conditional branch
@@ -5104,7 +5107,7 @@ TRUE_:                      ; TOS is ffff (TRUE)
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
-        dw     L_TRUE
+        dw     L_DUMP
 L_BRQ:
         db      NFA|3,"br?"
 BRQ:
