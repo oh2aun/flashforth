@@ -5530,10 +5530,8 @@ MEMQ:
         rcall   LIT_A
         dw      NFAmask
         goto    AND
-
 end_of_dict:
 dpcode:
-
 ;****************************************************
         org h'f00000'
         de  h'ff', h'ff'

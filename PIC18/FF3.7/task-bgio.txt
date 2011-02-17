@@ -12,7 +12,9 @@
 \ Test I/O redirection in a background task.
 \ Requires 1 USB-CDC serial connection and one UART connection in FF3.7
 \ Compilation, write to flash/eeprom is only allowed
-\ in the operator task.
+\ in the operator task. 
+\ QUIT and INTERPRET does not work in a background task.
+\ ACCEPT works in a background task.
 -bgio
 marker -bgio
 ram hex
@@ -22,9 +24,9 @@ ram hex
   ['] rx1 'key !
   ['] tx1 'emit !
   ['] rx1? 'key? !
+  cr ." Starting BG task test !" cr
   begin
-     abort
-\    tib dup 20 accept type cr
+    tib dup 20 accept type cr
   again
 ;
 

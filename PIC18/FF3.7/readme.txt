@@ -241,7 +241,7 @@ FlashForth V3.7
 - Minor optimisations.
 - FF can be programmed via a bootloader.
 - Possibility to link to C-libraries
-- ABORT QUIT INTERPRET etc. can be used in all tasks.
+- ACCEPT KEY EMIT KEY? can be used also in background tasks.
   In that case revectoring of I/O words in the task is required
   Compilation and writing to flash and eeprom is only
   possible from the operator task.
