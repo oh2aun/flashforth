@@ -30,10 +30,15 @@ ram hex
   again
 ;
 
+\ Define the task area 
+\ tibSize paramStackSize returnStackSize userAreaAdditionaSize --
 $60 $40 $40 $0 task: bgio_task
+
+
+\ initalise and run the BG task
 : bgio
   ['] bgio_loop bgio_task tinit
   bgio_task run
 ;
 
-\ bgio
+bgio

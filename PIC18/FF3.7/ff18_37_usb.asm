@@ -30,9 +30,9 @@
 ;**********************************************************************
 
 
-#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
+;#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
                                  ; Link with FF37_0000.lkr or FF37_USB_0000.lkr
-;#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
+#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
                                  ; Link with FF37_0800.lkr or FF37_USB_0800.lkr
 
 #include "p18fxxxx.cfg"
@@ -216,7 +216,7 @@ TXfullBit   equ h'5'
 
 ;;; FORTH variables
 #ifdef USB_CDC
-forthVars   equ 0xf500
+forthVars   equ 0xf4c0
 #else
 forthVars   equ 0xf0d0
 #endif
@@ -305,7 +305,7 @@ dpeeprom    equ beeprom + h'000c'
 
 ;**************************************************
 #ifdef USB_CDC
-flash_buf_base udata 0x4c0
+flash_buf_base udata 0x480
 flash_buf res 0x40
 #endif
 ; Code **********************************************
@@ -475,7 +475,7 @@ irq_end:
 ;;; *************************************
 ;;; WARM user area data
 #ifdef SKIP_MULTITASKING
-warmlitsize equ d'18'
+warmlitsize equ d'20'
 WARMLIT:
         dw      u0             ; UP
         dw      usbuf-1        ; S0
@@ -484,6 +484,7 @@ WARMLIT:
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
         dw      h'0010'        ; BASE
+        dw      0              ; UFLG
         dw      utibbuf        ; TIB
 #else
 warmlitsize equ d'22'
@@ -1958,14 +1959,25 @@ main:
 
                             ; Clear ram
 WARM:
-WARM_ZERO_1:
         lfsr    Sptr, 0
+WARM_ZERO_1:
+        clrf    Splus, A
+        movf    Sbank, W, A
+#ifdef USB_CDC
+        sublw   h'4'
+#else
+        sublw   h'f'
+#endif
+        bnz     WARM_ZERO_1
+        
+#ifdef USB_CDC
+        lfsr    Sptr, h'460'
 WARM_ZERO_2:
         clrf    Splus, A
         movf    Sbank, W, A
         sublw   h'f'
         bnz     WARM_ZERO_2
-
+#endif
         setf    ibase_hi, A     ; Mark flash buffer empty
 
         lfsr    Sptr, (usbuf-1)&h'0fff' ; Initalise Parameter stack
@@ -2059,7 +2071,7 @@ WARM_2:
         rcall   LIT
         dw      h'1b'
         rcall   NOTEQUAL
-        call   ZEROSENSE
+        call    ZEROSENSE
         bz      STARTQ2
 STARTQ1:
         rcall   TURNKEY

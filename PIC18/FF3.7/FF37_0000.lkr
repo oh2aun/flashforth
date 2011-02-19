@@ -1,5 +1,6 @@
 // File: FF37_0000.lkr
 // Linker script for FlashForth without bootloader.
+// Adjust the cstack and STACK SIZE if needed.
 LIBPATH .
 
 CODEPAGE   NAME=code       START=0x0000         END=0xFFFFF
