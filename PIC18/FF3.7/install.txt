@@ -11,6 +11,7 @@ PICDEM FS USB Demo tool bootloader available from MicroChip.
 
 For operation with the UART as the OPERATOR interface,
 define a MPLAB project which compiles ff18_37_usb.asm.
+Undefine USB_CDC in the configuration file.
 If you use a device programmer, use the FF37_0000.lkr file 
 and define CONFIG_RESET 0x0000 in ff18_37_usb.asm.
 If you use a bootloader, use the FF37_0800.lkr file 
@@ -19,6 +20,7 @@ and define CONFIG_RESET 0x0800 in ff18_37_usb.asm.
 For operation with the USB CDC serial emulation as the OPERATOR
 interface, define a MPLAB project which compiles
 ff18_37_usb.asm and P18F2455.asm and links FF37_USB.lib
+Define USB_CDC in the configuration file.
 If you use a device programmer, use the FF37_USB_0000.lkr file 
 and define CONFIG_RESET 0x0000 in ff18_37_usb.asm.
 If you use a bootloader, use the FF37_USB_0800.lkr file 
