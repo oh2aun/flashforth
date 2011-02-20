@@ -228,6 +228,10 @@ FlashForth V3.6
 - FL0 FL1 Memory write protection
 - FT0 FT1 Disable flow control on TX1/RX1
 
+FlashForth V3.61
+----------------
+- Corrected short/long branch decision bug in CF,
+
 FlashForth V3.7
 ---------------
 - Use FF via USB serial emulation on PIC18F2455 family.
@@ -237,7 +241,7 @@ FlashForth V3.7
 - COLD replaced by EMPTY and WARM
 - SAFE_CHECK replaced by write protection of kernel flash area.
 - USB TURNKEY delay is 8 seconds. 2 seconds with UART.
-- Some internal dictonary words hidden
+- Some internal dictionary words hidden
 - Minor optimisations.
 - FF can be programmed via a bootloader.
 - Possibility to link to C-libraries
@@ -245,4 +249,5 @@ FlashForth V3.7
   In that case revectoring of I/O words in the task is required
   Compilation and writing to flash and eeprom is only
   possible from the operator task.
+
   

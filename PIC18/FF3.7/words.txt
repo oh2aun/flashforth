@@ -1,4 +1,4 @@
-Dictionary of FlashForth 3.6.
+Dictionary of FlashForth 3.7.
 
 !          ( x addr -- )
            Store x to addr
@@ -269,8 +269,8 @@ c>n        ( addr1 -- addr2 )
 cmove      ( addr1 addr2 u -- )
            Move u chars from addr1 to addr2
 
-cold       ( -- )
-           Make a cold start. Reset all dictionary pointers.
+empty       ( -- )
+           Reset all dictionary pointers.
 
 con        ( x "name" -- )
            Create a constant in rom as inline code
@@ -278,8 +278,9 @@ con        ( x "name" -- )
 constant   ( x "name" -- )
            Create an constant in rom with docreate as runtime
 
-cpu_clk    ( -- u )
-           Leave the cpu clock in KHz.
+Fcy        ( -- u )
+           The internal cpu & peripheral clock cycle in KHz.
+           Foscillator/4
 
 cr         ( -- )
            Emit CR LF
@@ -346,12 +347,6 @@ exit       ( -- )
 
 false      ( -- 0 )
 
-fl0        ( -- )
-           Disable writes to flash and eeprom
-
-fl1        ( -- )
-           Enable writes to flash and eeprom (Default)
-
 flash      ( -- )
            Set data section context to flash
 
@@ -362,17 +357,18 @@ find       ( c-addr -- c-addr 0/1/-1 )
            Find a word in dictionary
            Leave 1 if immediate, -1 if normal, 0 if not found
 
+fl-        ( -- )
+           Disable writes to flash and eeprom.
+
+fl+        ( -- )
+           Allow writes to flash and eeprom.
+
 for        ( u -- )              Compile Only
            Loop u times. for ... next
+           R@ gets the loop counter  u-1 ... 0
 
 forget     ( "name -- )
            Forget name
-
-ft0        ( -- )
-           Disable flow control for OPERATOR serial interface
-
-ft1        ( -- )
-           Enable flow control for OPERATOR serial interface (Default)
 
 here       ( -- addr )
            Leave the current data section dictionary pointer
@@ -444,9 +440,6 @@ leave      ( -- )             COMPILE ONLY
          
 literal    ( x -- )
            Compile a literal into the dictionary
-
-lock       ( -- )
-           Disable writes to flash and eeprom
 
 lshift     ( x1 u -- x2
            Shift x1 u bits to the left
@@ -530,13 +523,13 @@ pc@        ( -- c )
            Fetch the char pointed by the p register
 
 pad        ( -- a-addr )
-           Pad is RAM HERE $20 +
+           Pad is TIB TI# +
 
 parse	   ( c -- addr length )
            Parse a word in TIB
 
 pause      ( -- )
-           Switch task
+           Switch to the next task in the round robin task list 
 
 place      ( addr1 u addr2 -- )
            Place string from addr1 to addr2 as a counted string
@@ -585,13 +578,20 @@ run        ( task-addr -- )
            Link the task to the task list. The task
            starts running immediately.
 
-rx1        ( -- c )
-	   Receive a character from UART1.
-	   64 bytes interrupt buffer.
-	   Trigger sending of XOFF for every 8 received bytes.
+rx0        ( -- c )
+           Receive a character from the USB UART.
+           Use HW flow control
 
 rx1?       ( -- f )
-	   Leave TRUE if UART1 interrupt buffer is not empty.
+           Leave TRUE if the USB UART receive buffer is not empty.
+
+rx1        ( -- c )
+           Receive a character from UART1.
+           64 bytes interrupt buffer.
+           Trigger sending of XOFF for every 8 received bytes.
+
+rx1?       ( -- f )
+           Leave TRUE if UART1 interrupt buffer is not empty.
 
 s0         ( -- a-addr )
            Variable for start of parameter stack
@@ -650,7 +650,11 @@ task	   ( -- addr )
            Address of the task definition table
 
 task:      ( tibsize stacksize rstacksize addsize -- )
-           Define a task           
+           Define a task
+           HINT:
+           Use RAM xxx ALLOT to leave space for the PAD
+           of the prevously defined task. 
+           The OPERATOR task does not use PAD.  
 
 tinit      ( taskloop-addr task-addr -- )
            Initialise the user area and link it to a task loop
@@ -661,7 +665,10 @@ then       ( addr -- )          Compile Only
 tib        ( -- addr )     User variable
            Address of the terminal input buffer
 
-ti#        ( -- n )
+tiu        ( -- addr )     User variable
+           Terminal input buffer pointer
+
+ti#        ( -- n )        Task constant
            Size of terminal input buffer
 
 ticks      ( -- u )
@@ -681,9 +688,20 @@ turnkey    ( -- addr )           Eeprom value mirrored in ram
 type       ( c-addr u -- )
            Type line to terminal. u < $100
 
+tx0        ( c -- )
+           Send a character via the USB UART.
+           Buffered via a 15 byte send queue.
+           Sending triggered by queue full or 2 ms timeout
+
 tx1        ( c -- )
-	   Send a character to UART1.
-           Buffered via a 32 byte interrupt driven queue.
+           Send a character to UART1.
+           Buffered via a 32 byte interrupt driven send queue.
+
+u1-        ( -- )
+           Disable flow control for UART1 serial interface
+
+u1+        ( -- )
+           Enable flow control for UART1 serial interface (Default)
 
 u*/mod     ( u1 u2 u3 -- u4(remainder) u5(quotient) )
            Unsigned u1*u2/u3 with 32 bit intermediate result
@@ -706,13 +724,13 @@ u<         ( u1 u2 -- flag )
 u>         ( u1 u2 -- flag )
            Leave true flag if u1 is greater than u2
 
-uemit      ( -- addr )  User Variable
+'emit      ( -- addr )  User Variable
            EMIT vector. Default is TX1
 
-ukey       ( -- addr )  User Variable
+'key       ( -- addr )  User Variable
            KEY vector. Default is RX1
 
-ukey?      ( -- addr )  User Variable
+'key?      ( -- addr )  User Variable
            KEY? vector. Default is RX1?
 
 ulink      ( -- a-addr)
@@ -730,17 +748,14 @@ umax       ( u1 u2 -- u )
 umin       ( u1 u2 -- u )
            Leave the unsigned smaller of u1 and u2.
 
-unlock     ( -- )
-           Allow writes to flash and eeprom.
-
 until      ( flag -- )    Compile only
            begin..until
 
 up         ( -- a-addr )
            Variable holding the user pointer
 
-user       ( n "name" -- )
-           Define a user variable at offset n
+user       ( +n "name" -- )
+           Define a user variable at offset +n
 
 value      ( x "name" -- )
            Define a value
@@ -758,8 +773,8 @@ within     ( x xl xh -- flag )
            Leave true if  xl <= x < xh
 
 word       ( c -- c-addr )
-	   Parse a word in TIB and write the length into TIB
-	   Leave the address of the length byte on the stack.
+           Parse a word in TIB and write the length into TIB
+           Leave the address of the length byte on the stack.
 
 words      ( -- )
            List words
@@ -775,23 +790,14 @@ ASSEMBLER words
 The following definitions are in the core dictionary.
 The rest is in asm.fth
 
-as0        ( opcode "name" -- ) ( -- )
-           Create a zero parameter assembler word
-
 as1        ( opcode "name" -- ) ( k -- )
            Create a one parameter assembler word
-
-as2        ( opcode "name" -- ) ( f a -- )
-           Create a two parameter assembler word
 
 as3        ( opcode "name" -- ) ( f d/b a -- )
            Create a three parameter assembler word
 
 br?        ( rel-addr limit -- clipped-rel-addr )
            Clip a relative address and check for overflow
-
-br1        ( opcode "name" -- ) (rel-addr -- )
-           Create conditional branch assembler word
 
 br2        ( opcode "name" -- ) ( rel-addr -- )
            Create a relative branch assembler word

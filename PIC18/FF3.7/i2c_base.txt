@@ -41,7 +41,7 @@ ff9e con pir1
   [ trisc %011 0 bsf, ]
   [ trisc %100 0 bsf, ]
   %10000000 sspstat c!
-  [ cpu_clk #2 rshift #100 / ] literal sspadd c! \ 100 KHz i2c
+  [ Fcy #100 / ] literal sspadd c! \ 100 KHz i2c
   %00101000 sspcon1 c!  \ HW controlled mastermode i2c
   %00000000 sspcon2 c!
 ;

@@ -7,7 +7,7 @@ with the USB library and without.
 FF may also be compiled for installation via
 a device programmer (PicKit2) or a bootloader.
 The bootloadable FF has been tested with the
-PICDEM FS USB Demo tool available from MicroChip.
+PICDEM FS USB Demo tool bootloader available from MicroChip.
 
 For operation with the UART as the OPERATOR interface,
 define a MPLAB project which compiles ff18_37_usb.asm.

@@ -14,7 +14,7 @@ FlashForth source code and the INF file.
 ----------------------------------------------------------------------
 Updating VID & PID in the firmware:
 ----------------------------------------------------------------------
-Use the VID&PI of choice for your product in the following defines.
+Use the VID&PID of choice for your product in the following defines.
 #define U_PID 0xfaf0  ; Product ID used for testing FlashForth
 #define U_VID 0xfaf0  ; Vendor ID used for testing FlashForth
 
@@ -22,7 +22,7 @@ Use the VID&PI of choice for your product in the following defines.
 Updating VID & PID in the INF file:
 ----------------------------------------------------------------------
 
-Some examples require the use of an INF during device installation.
+Some operating systems require the use of an INF file during device installation.
 Each INF contains a list of VID and PID. The IDs listed in the INF
 file must match the IDs reported by each device for an installation
 to be successful.

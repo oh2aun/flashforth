@@ -30,9 +30,9 @@
 ;**********************************************************************
 
 
-;#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
+#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
                                  ; Link with FF37_0000.lkr or FF37_USB_0000.lkr
-#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
+;#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
                                  ; Link with FF37_0800.lkr or FF37_USB_0800.lkr
 
 #include "p18fxxxx.cfg"
@@ -246,14 +246,14 @@ ukey        equ -d'18'
 ukeyq       equ -d'16'
 utask       equ -d'14'
 ubase       equ -d'12'
-uflg        equ -d'10'           ; ACCEPT true =  CR has been received  
+uflg        equ -d'10'           ; ACCEPT: true =  CR has been received  
 utib        equ -d'8'
 uhp         equ -d'6'
-usource     equ -d'4'         ; Two cells
+usource     equ -d'4'            ; Two cells
 utoin       equ -d'0'
-urbuf       equ ustart-us0 + 2  ; + 2 is space for utoin
-usbuf       equ ustart-us0 + ursize + 2
-utibbuf     equ ustart-us0 + ursize +ussize + 2 
+urbuf       equ ustart-us0 + UADDSIZE + 2  ; + 2 is space for utoin
+usbuf       equ urbuf + ursize
+utibbuf     equ usbuf + ussize 
 
 #else
 
@@ -277,9 +277,9 @@ uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
 utoin       equ -d'2'
 urptr       equ d'0'            ; Top of the saved return stack
-urbuf       equ ustart-us0 + 2  ; + 2 is space for urptr
-usbuf       equ ustart-us0+ursize + 2
-utibbuf     equ ustart-us0+ursize+ussize + 2
+urbuf       equ ustart-us0 + UADDSIZE + 2  ; + 2 is space for urptr
+usbuf       equ urbuf + ursize
+utibbuf     equ usbuf + ussize
 #endif
 
 ;;;  Initial USER area pointer (operator)
@@ -1340,14 +1340,14 @@ asmecfetch:
 ;;; Disable writes to flash and eeprom
         dw      L_LITERAL
 L_FLOCK:
-        db      NFA|3,"fl+"
+        db      NFA|3,"fl-"
         bsf     FLAGS1, fLOCK
         return
 
 ;;; Enable writes to flash and eeprom
         dw      L_FLOCK
 L_FUNLOCK:
-        db      NFA|3,"fl-"
+        db      NFA|3,"fl+"
         bcf     FLAGS1, fLOCK
         return
 

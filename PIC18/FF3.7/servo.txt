@@ -1,8 +1,8 @@
 \ *********************************************************************
 \    Servo controller for FlashForth                                  *
 \    Filename:      servo.txt                                         *
-\    Date:          14.02.2010                                        *
-\    FF Version:    3.4                                               *
+\    Date:          20.02.2011                                        *
+\    FF Version:    3.7                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -40,7 +40,7 @@ ram 8 array timeout
 ram variable segment    \ The current timeout segment
 ram variable sbit       \ The current servo bit
 
-cpu_clk #1000 / #4 / con clk/us
+Fcy #1000 /          con clk/us
 0 #1500 clk/us *  -  con midhi
 0 #500 clk/us * -    con midlo
 0 #12000 clk/us * -  con endlo
