@@ -1,5 +1,8 @@
 \ Dump can left out from the core and compiled from here
 : dump1 ( addr +n -- )
+  hex cr ." ADDR :" 
+  over
+  $10 for $f and dup 2 u.r 1+ next drop
   $10 u/
   for
     cr dup 4 u.r [char] : emit  \ display row address

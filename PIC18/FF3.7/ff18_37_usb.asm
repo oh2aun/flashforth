@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_37_usb.asm                                   *
-;    Date:          10.02.2011                                        *
+;    Date:          23.02.2011                                        *
 ;    File Version:  3.7                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -231,7 +231,6 @@ upcurr      equ dpSTART+0xc         ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
 ustart      equ upcurr + 2
-uaddsize    equ 0             ; No additional user variables for OPERATOR 
 ussize      equ d'96'         ; 48 cells parameter stack
 utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
 
@@ -1545,7 +1544,7 @@ pause2:
         movlw   ussave
         movff   TWrw, Sp
         movlw   ussave+1
-        movff   TWrw, Sbank ;63
+        movff   TWrw, Sbank
 #endif
         return
 
@@ -1711,7 +1710,7 @@ OPERATOR:
         dw      OPERATOR_AREA
 OPERATOR_AREA:  
         dw      ustart-us0      ; User pointer
-        db      uaddsize, ursize
+        db      UADDSIZE, ursize
         db      ussize, utibsize
 
 ; I,   x --             append cell to Flash
@@ -2113,7 +2112,12 @@ check_sp:
         rcall   FETCH
         call    TIB
         rcall   WITHIN
-        rcall   ZEROSENSE
+ ;       rcall   ZEROSENSE
+        rcall   XSQUOTE
+        db      d'3',"SP?"
+        call    QABORT
+        return
+#if 0
         bz      check_sp_err
         return
 check_sp_err:
@@ -2124,7 +2128,7 @@ check_sp_err:
         rcall   XSQUOTE
         db      d'3',"SP?"
         bra     TYPE
-
+#endif
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         dw      L_VER
