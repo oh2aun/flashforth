@@ -235,8 +235,8 @@ FlashForth v4.6
 - Added compile option for ctrl-o. Ctrl-o warm start FF.
 - return, made visible
  
-FlashForth v4.7 preliminary
----------------------------
+FlashForth v4.7
+---------------
 - Support for all PIC24, PIC33, PIC30 devices.
   Enough memory is needed.
 - UDEFER removed
@@ -275,3 +275,11 @@ FlashForth v4.7 preliminary
 - An experimental flash write mode that writes more seldom to flash.
 - 3 sieve implementations for speed testing.
 
+FlashForth v4.71
+----------------
+- MTST bug fixed
+- UKEY, UKEY?, UEMIT -> 'KEY, 'KEY?, 'EMIT
+- ACCEPT KEY EMIT KEY? can be used also in background tasks.
+  In that case revectoring of I/O words in the task is required
+  Compilation and writing to flash and eeprom is only
+  possible from the operator task.

@@ -1,8 +1,8 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task_pic24-30-33.txt                            *
-\    Date:          14.11.2010                                      *
-\    FF Version:    4.7                                             *
+\    Filename:      task.txt                                        *
+\    Date:          12.03.2011                                      *
+\    FF Version:    4.71                                            *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -70,7 +70,7 @@ hex ram
   \ use task user area
   @+ up!                          \ a addsize-addr
   \ Pointer to task area
-  dup 2- task !
+  dup 2- task ! 0 task 2+ !
   \ rsave = uarea+cell+addsize+cell
   c@+ up@ + cell+ rot pfl - over 
                             \ rsize-addr rbuf task-adr rbuf
@@ -84,7 +84,7 @@ hex ram
   \ s0 = ssave = rsave + rsize 
   c@+ rsave @ + dup dup s0 ! ssave ! \ ssize-addr s0
   swap c@ + tiu !
-  0 ul!
+  0 ul! 
   op!                  \ run the operator task again
 ;
 

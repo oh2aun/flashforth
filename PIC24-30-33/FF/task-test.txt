@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test_pic24-33.txt                          *
+\    Filename:      task-test.txt                                   *
 \    Date:          14.11.2010                                      *
 \    FF Version:    4.7                                             *
 \    MCU:           PIC 24 33                                       *

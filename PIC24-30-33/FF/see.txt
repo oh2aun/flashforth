@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      see_pic24-30-33.txt                             *
+\    Filename:      see.txt                                         *
 \    Date:          10.10.2010                                      *
 \    FF Version:    4.7                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
@@ -15,7 +15,6 @@
 marker -see
 hex ram
 : dup@ ( addr -- addr lo hi ) dup @ ;
-7c00 dup@
 : hi@ ( addr -- addr hi ) dup cf@ nip ;
 : field@ ( x mask offset -- field )
   rot swap rshift and ;

@@ -50,7 +50,6 @@
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
-.equ iCR,     7   ; ACCEPT has found CR
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
@@ -80,15 +79,16 @@
 .equ utibsize,       82         ; 72 character TIB and 10 chars hold buffer
 
 ;;; User variables and area
-.equ us0,          - 30         ; Start of parameter stack
-.equ ur0,          - 28         ; Start of return stack
-.equ uemit,        - 26         ; User EMIT vector
-.equ ukey,         - 24         ; User KEY vector
-.equ ukeyq,        - 22         ; User KEY? vector
-.equ ulink,        - 20         ; Task link
-.equ ubase,        - 18         ; Number Base
-.equ utib,         - 16         ; TIB address
-.equ utask,        - 14         ; Task area pointer
+.equ us0,          - 32         ; Start of parameter stack
+.equ ur0,          - 30         ; Start of return stack
+.equ uemit,        - 28         ; User EMIT vector
+.equ ukey,         - 26         ; User KEY vector
+.equ ukeyq,        - 24         ; User KEY? vector
+.equ ulink,        - 22         ; Task link
+.equ ubase,        - 20         ; Number Base
+.equ utib,         - 18         ; TIB address
+.equ utask,        - 16         ; Task area pointer
+.equ uflg,         - 14         ; ACCEPT. true = CR has been received
 .equ ursave,       - 12         ; Saved return stack pointer
 .equ ussave,       - 10         ; Saved parameter stack pointer
 .equ upsave,       - 8          ; Saved P pointer
@@ -230,7 +230,7 @@ DPC:    .word      handle(KERNEL_END)+PFLASH
 .endif
 ;;; *************************************************
 ;;; WARM user area data
-.equ warmlitsize, 13
+.equ warmlitsize, 14
 WARMLIT:
         .word      0x0000                ; CSE RAM
 		.word      handle(DOTSTATUS)+PFLASH
@@ -245,6 +245,7 @@ WARMLIT:
         .word      BASE_DEFAULT          ; BASE
         .word      utibbuf               ; TIB
         .word      handle(OPERATOR_AREA)+PFLASH ; TASK
+        .word      0x0000
 ;;; *************************************************
 __OscillatorFail:
         clr     intcon1dbg
@@ -929,8 +930,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   43
-        .ascii  "FlashForth V4.7 (C) Mikael Nordman GPL V3\r\n"
+        .byte   44
+        .ascii  "FlashForth V4.71 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -1816,7 +1817,8 @@ MTST_L:
 MTST:
         mov     [W14--], W0
         mov     [W14--], W1
-        and.w   W1, [W0],[W0] 
+        and.w   W1, [W0], W0
+        mov     W0, [++W14] 
         return
 
 ; bset ( base-addr bit-index -- )
@@ -1877,9 +1879,9 @@ LSHIFT_L:
         .align  2
 LSHIFT:
         mov.w   [W14--], W0
-        mov     [W14], W1
-        sl      W1, W0, W1
-        mov     W1, [W14]
+        mov     [W14--], W1
+        sl      W1, W0, W0
+        mov     W0, [++W14]
         return
 
         .pword  paddr(LSHIFT_L)+PFLASH
@@ -1889,9 +1891,9 @@ RSHIFT_L:
         .align  2
 RSHIFT:
         mov.w   [W14--], W0
-        mov     [W14], W1
-        lsr     W1, W0, W1
-        mov     W1, [W14]
+        mov     [W14--], W1
+        lsr     W1, W0, W0
+        mov     W0, [++W14]
         return
 
         .pword  paddr(RSHIFT_L)+PFLASH
@@ -2016,7 +2018,7 @@ KEYQ:
         .pword  paddr(KEYQ_L)+PFLASH
 UEMIT_L:
         .byte   NFA|5
-        .ascii  "uemit"
+        .ascii  "'emit"
         .align  2
 UEMIT:
         rcall   DOUSER
@@ -2025,7 +2027,7 @@ UEMIT:
         .pword  paddr(UEMIT_L)+PFLASH
 UKEY_L:
         .byte   NFA|4
-        .ascii  "ukey"
+        .ascii  "'key"
         .align  2
 UKEY:
         rcall   DOUSER
@@ -2034,7 +2036,7 @@ UKEY:
         .pword  paddr(UKEY_L)+PFLASH
 UKEYQ_L:
         .byte   NFA|5
-        .ascii  "ukey?"
+        .ascii  "'key?"
         .align  2
 UKEYQ:
         rcall   DOUSER
@@ -3354,21 +3356,29 @@ ACC1:
 
         cp      W0, #0x0d   ; CR
         bra     nz, ACC_LF
-        bset    iflags, #iCR
-        bra     ACC5
+        sub     W14, #2, W14
+        
+        rcall   TRUE_
+        rcall   FCR
+        rcall   STORE
+        bra     ACC6
 ACC_LF:
         cp      W0, #0x0a   ; LF
         bra     nz, ACC2
-
-        btst    iflags, #iCR  ;LF
-        bra     z, ACC5
         sub     W14, #2, W14
+
+        rcall   FCR
+        rcall   CFETCH
+        rcall   ZEROSENSE
+        bra     z, ACC6
         bra     ACC1
 ACC2:
         mov     [W14++], [W14]      ; dup
         rcall   EMIT
 
-        bclr    iflags, #iCR    
+        rcall   FALSE_
+        rcall   FCR
+        rcall   STORE
         mov     [W14++], [W14]      ; dup
         mlit    #0x08              ; BS
         rcall   EQUAL
@@ -3391,13 +3401,18 @@ ACC3:
         rcall   NOTEQUAL
         cp0     [W14--]
         bra     nz, ACC1
-        bra     ACC6
-ACC5:
-        sub     W14, #2, W14
 ACC6:
         mov     [W14--], [W14]      ; nip
         rcall   SWOP
         goto    MINUS
+
+FCR_L:
+		.byte   NFA|3
+		.ascii  "fcr"
+		.align  2
+FCR:
+        rcall   DOUSER
+        .word   uflg
 
 ;  .id ( nfa -- ) 
         .pword  paddr(ACCEPT_L)+PFLASH

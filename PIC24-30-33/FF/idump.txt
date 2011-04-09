@@ -1,6 +1,6 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      idump_pic24-30-33.txt                             *
+\    Filename:      idump.txt                                         *
 \    FlashForth:    4.5                                               *
 \    MCU            PIC 24 30 33                                      *
 \    Application:                                                     *
