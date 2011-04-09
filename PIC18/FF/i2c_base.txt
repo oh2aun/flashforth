@@ -1,0 +1,148 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      i2c_base.txt                                      *
+\    Date:          14.02.2010                                        *
+\    FF Version:    3.4                                               *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+-i2c
+marker -i2c
+hex ram
+
+
+\ NOTE: 18F2455 and friends USB pics do NOT use PORTC for SDA,SCL.
+\ Most others do. 
+ff82 con portc
+ff94 con trisc
+
+ffc5 con sspcon2
+ffc6 con sspcon1
+ffc7 con sspstat
+ffc8 con sspadd
+ffc9 con sspbuf
+ff9e con pir1
+
+\ pir1 bits
+3 con sspif
+
+\ SSPCON2 bits
+0 con sen
+1 con rsen
+2 con pen
+3 con rcen
+4 con acken
+5 con ackdt
+6 con ackstat
+
+: i2cinit ( -- )
+  [ trisc %011 0 bsf, ]
+  [ trisc %100 0 bsf, ]
+  %10000000 sspstat c!
+  [ Fcy #100 / ] literal sspadd c! \ 100 KHz i2c
+  %00101000 sspcon1 c!  \ HW controlled mastermode i2c
+  %00000000 sspcon2 c!
+;
+
+: ssen  ( -- ) \ Send start condition enable /stretch bit
+  [  pir1 sspif a, bcf,     ]
+  [  sspcon2 sen a, bsf,    ]
+  [  begin,                 ]
+  [    pir1 sspif a, btfss, ]
+  [  again,                 ]
+;
+
+: srsen ( -- ) \ Send repeated start condition enable bit
+  [ pir1 sspif a, bcf,      ]
+  [ sspcon2 rsen a, bsf,    ]
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]
+  [ again,                  ]
+;
+: spen  ( -- ) \ Send stop bit 
+  [ pir1 sspif a, bcf,      ]
+  [ sspcon2 pen a, bsf,     ]  \ pen send stop bit
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]
+  [ again,                  ]
+;
+: srcen ( -- ) \ Send receive enable
+  [ pir1 sspif a, bcf,      ]  \ sspif clear interrupt flag
+  [ sspcon2 rcen a, bsf,    ]  \ rcen  enable receive mode
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]  \ sspif Wait for reception to complete
+  [ again,                  ]
+;
+: snoack ( -- ) \ send no ack
+  [ pir1 sspif a, bcf,      ]  \ sspif clear interrupt flag
+  [ sspcon2 ackdt a, bsf,   ]  \ ackdt no ACK
+  [ sspcon2 acken a, bsf,   ]  \ acken send ACKDT bit
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]  \ sspif Wait
+  [ again,                  ]
+;
+: sack ( -- ) \ Send ack
+  [ pir1 sspif a, bcf,      ]  \ sspif clear interrupt flag
+  [ sspcon2 ackdt a, bcf,   ]  \ ackdt ACK
+  [ sspcon2 acken a, bsf,   ]  \ acken send ACKDT bit
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]  \ sspif Wait
+  [ again,                  ]
+;
+: sspbuf! ( c -- )          \ sspbuf! takes 90 us @ 100 KHz
+  [ pir1 sspif a, bcf,      ]
+    sspbuf c!
+  [ begin,                  ]
+  [   pir1 sspif a, btfss,  ]
+  [ again,                  ]
+;
+
+\ i2c wakeslave
+\ NOTE: the 7 bit address is in bits 7-1. 
+\ Bit 0 is the R/W bit.
+
+: i2cws ( slaveaddr -- )
+  ssen
+  begin
+    dup sspbuf!
+    [ sspcon2 w, a,    movf,  ]
+    [ 1 ackstat lshift andlw, ] \ check for Acknowledge from slave
+    [ z, if,                  ]
+           drop exit
+    [ then,                   ]
+    srsen                       \ Repeated start condition
+  again
+;
+
+: i2c! ( c --  write one byte to the i2c bus )
+  sspbuf!
+  begin
+    [ sspcon2 ackstat a, btfsc, ] \ ackstat Wait for ACK from slave
+  again
+;
+: i2c@nak ( -- c ) \ read one last byte from the i2c bus
+  srcen              \ Receive enable
+  sspbuf c@          \ save data to stack
+  snoack             \ NO ACK
+  spen               \ Stop Bit Enable
+;
+: i2c@ak ( -- c c ) \ read one byte and continue
+  srcen                \ Receive enable
+  sspbuf c@            \ save data to stack
+  sack                 \ Send  ACK
+;
+
+\ Write 8-bit addr to i2c-addr
+: i2c-addr1 ( addr i2c-addr -- )
+  i2cws        \ wake slave
+  i2c!         \ addr lo byte
+;
+
+\ Write 16-bit addr to i2c-addr
+: i2c-addr2 ( addr i2c-addr -- )
+  i2cws                \ wake slave
+  dup #8 rshift i2c!    \ addr hi byte
+  $ff and i2c!        \ addr lo byte
+;

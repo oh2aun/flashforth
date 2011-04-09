@@ -1,0 +1,6 @@
+
+FLASHFORTH USER'S GUIDE
+=======================
+
+Visit http://flashforth.sourceforge.net/
+for the latest updated information

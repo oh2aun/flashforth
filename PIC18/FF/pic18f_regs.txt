@@ -1,0 +1,127 @@
+\ **********************************************************************
+\                                                                      *
+\     Filename:      pic18f_regs.txt                                   *
+\     Date:          14.2.2010                                         *
+\     FF Version:    3.4                                               *
+\     Copyright:     Mikael Nordman                                    *
+\     Author:        Mikael Nordman                                    *
+\ **********************************************************************
+\     FlashForth is licensed acording to the GNU General Public License*
+\ **********************************************************************
+\ 
+\ special function registers
+
+\ pic18f4525 pic18f4620 pic18f2525 pic18f2620
+\ pic18f4525 pic18f4620
+\ These should be (about?) the same and all 18fxxxx pics
+
+$ff80 con porta     
+$ff81 con portb     
+$ff82 con portc     
+$ff83 con portd     
+$ff84 con porte     
+$ff89 con lata      
+$ff8a con latb      
+$ff8b con latc      
+$ff8c con latd      
+$ff8d con late      
+$ff92 con trisa     
+$ff93 con trisb     
+$ff94 con trisc     
+$ff95 con trisd     
+$ff96 con trise
+$ff9b con osctune   
+$ff9d con pie1      
+$ff9e con pir1      
+$ff9f con ipr1      
+$ffa0 con pie2      
+$ffa1 con pir2      
+$ffa2 con ipr2      
+$ffa6 con eecon1    
+$ffa7 con eecon2    
+$ffa8 con eedata    
+$ffa9 con eeadr     
+$ffaa con eeadrh    
+$ffab con rcsta     
+$ffac con txsta     
+$ffad con txreg     
+$ffae con rcreg     
+$ffaf con spbrg     
+$ffb0 con spbrgh    
+$ffb1 con t3con     
+$ffb2 con tmr3l     
+$ffb3 con tmr3h     
+$ffb4 con cmcon     
+$ffb5 con cvrcon    
+$ffb6 con eccp1as
+$ffb7 con pwm1con
+$ffb8 con baudcon   
+$ffba con ccp2con   
+$ffbb con ccpr2l    
+$ffbc con ccpr2h    
+$ffbd con ccp1con   
+$ffbe con ccpr1l    
+$ffbf con ccpr1h    
+$ffc0 con adcon2    
+$ffc1 con adcon1    
+$ffc2 con adcon0    
+$ffc3 con adresl    
+$ffc4 con adresh    
+$ffc5 con sspcon2   
+$ffc6 con sspcon1   
+$ffc7 con sspstat   
+$ffc8 con sspadd    
+$ffc9 con sspbuf    
+$ffca con t2con     
+$ffcb con pr2       
+$ffcc con tmr2      
+$ffcd con t1con     
+$ffce con tmr1l     
+$ffcf con tmr1h     
+$ffd0 con rcon      
+$ffd1 con wdtcon    
+$ffd2 con hlvdcon   
+$ffd3 con osccon    
+$ffd5 con t0con     
+$ffd6 con tmr0l     
+$ffd7 con tmr0h     
+$ffd8 con status    
+$ffd9 con fsr2l     
+$ffda con fsr2h     
+$ffdb con plusw2    
+$ffdc con preinc2   
+$ffdd con postdec2  
+$ffde con postinc2
+$ffdf con indf2
+$ffe0 con bsr
+$ffe1 con fsr1l
+$ffe2 con fsr1h
+$ffe3 con plusw1
+$ffe4 con preinc1
+$ffe5 con postdec1
+$ffe6 con postinc1
+$ffe7 con indf1
+$ffe8 con wreg
+$ffe9 con fsr0l
+$ffea con fsr0h
+$ffeb con plusw0
+$ffec con preinc0
+$ffed con postdec0
+$ffee con postinc0
+$ffef con indf0
+$fff0 con intcon3
+$fff1 con intcon2
+$fff2 con intcon
+$fff3 con prodl
+$fff4 con prodh
+$fff5 con tablat
+$fff6 con tblptrl
+$fff7 con tblptrh
+$fff8 con tblptru
+$fff9 con pcl
+$fffa con pclath
+$fffb con pclatu
+$fffc con stkptr
+$fffd con tosl
+$fffe con tosh
+$ffff con tosu

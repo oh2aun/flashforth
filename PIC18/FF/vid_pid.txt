@@ -1,0 +1,32 @@
+----------------------------------------------------------------------
+Note on USB Vendor ID and Product ID:
+----------------------------------------------------------------------
+
+Each USB product must have a unique combination of Vendor ID (VID)
+and Product ID (PID). FlashForth provides test values for
+VID (0xFAF0) and PID (0xFAF0).
+
+For any commercial products you MUST obtain your own Vendor ID and Product ID !
+
+To change the VID and PID, you must update the IDs in both the
+FlashForth source code and the INF file.
+
+----------------------------------------------------------------------
+Updating VID & PID in the firmware:
+----------------------------------------------------------------------
+Use the VID&PID of choice for your product in the following defines.
+#define U_PID 0xfaf0  ; Product ID used for testing FlashForth
+#define U_VID 0xfaf0  ; Vendor ID used for testing FlashForth
+
+----------------------------------------------------------------------
+Updating VID & PID in the INF file:
+----------------------------------------------------------------------
+
+Some operating systems require the use of an INF file during device installation.
+Each INF contains a list of VID and PID. The IDs listed in the INF
+file must match the IDs reported by each device for an installation
+to be successful.
+
+Filename :
+serialcdc.inf
+----------------------------------------------------------------------
