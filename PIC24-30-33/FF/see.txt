@@ -21,6 +21,7 @@ hex ram
 : u.4 4 u.r ;
 
 : u.. decimal <# #s #> type hex ;
+
 : lookup:
   create does> swap cells + @ex ;
 

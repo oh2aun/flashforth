@@ -45,7 +45,7 @@ hex ram
 : ul@ ulink @ ;
 : ul! ulink ! ;
 : op! op@ up! ;
-
+: cell+ 2+ ; inlined
 \ access user variables of other task
 : his ( task-addr var-addr -- addr )
   up@ - swap @ + 

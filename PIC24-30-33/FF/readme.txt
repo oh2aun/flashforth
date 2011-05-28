@@ -283,3 +283,8 @@ FlashForth v4.71
   In that case revectoring of I/O words in the task is required
   Compilation and writing to flash and eeprom is only
   possible from the operator task.
+- Optimisations
+- User interrupts must be disabled if the interrupt routine is 
+  on flash page that is beeing modified. 
+  It is upto the user to recognize this.
+  

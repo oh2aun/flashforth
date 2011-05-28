@@ -4739,7 +4739,7 @@ IDP:
 
 
 ;***************************************************************
-; (DOES>)  --      run-time action of DOES>
+; (DOES>)  --      compile the run-time action of DOES>
 ;        dw     link
 ;link   set     $
         db      NFA|7,"(does>)"

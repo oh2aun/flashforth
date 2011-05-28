@@ -36,7 +36,7 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ USE_ALTERNATE_UART_PINS, 0
 
 ; Default number base
-.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
@@ -54,7 +54,7 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; - NOT WORKING CASE: If a word is executed that starts on the previous flash page
 ;   and it continues on the current flash page which has not yet been written to flash,
 ;   a reset will occur.
-.equ WRITE_METHOD, 1
+.equ WRITE_METHOD, 2
 .equ WRITE_TIMEOUT, 500
 
 ; Set to 1 to allow control-o to reset FlashForth

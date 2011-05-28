@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test.txt                                   *
-\    Date:          28.05.2011                                      *
+\    Filename:      task-test2.txt                                   *
+\    Date:          27.05.2011                                      *
 \    FF Version:    4.7                                             *
 \    MCU:           PIC 24 33                                       *
 \    Copyright:     Mikael Nordman                                  *
@@ -9,8 +9,6 @@
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
-\ It seems a nop is required between two consecutive
-\ read modify instructions on PORTB
 single
 -t1
 marker -t1
@@ -21,29 +19,27 @@ $02cc con latb
 $02ca con portb
 $02c8 con trisb
 ram variable delay
-: led9off  [ #9 portb bclr,  ] ; inlined
-: led9on   [ #9 portb bset,  ] ; inlined
-: led10off [ #10 portb bclr, ] ; inlined
-: led10on  [ #10 portb bset, ] ; inlined
+: led9off  portb #9  bclr ;
+: led9on   portb #9  bset ;
+: led10off portb #10 bclr ;
+: led10on  portb #10 bset ;
 
 40 30 30 0 task: t1
 : tloop 
   $3f adpcfg c!
   100 delay !
-  [ #9 trisb bclr, ] 
-  [ #10 trisb bclr, ] 
+  trisb #9  bclr 
+  trisb #10 bclr 
   begin 
     delay @ ms 
-    [ #10 portb btst,   ]
-    [ z, if,          ]
-        led9off
-        [ flash 0 , ram ] \ nop required 
-        led10on
-    [ else,           ] 
-        led9on
-        [ flash 0 , ram ] \ nop required
-        led10off
-    [ then,           ]
+    portb #9 btst
+    if
+      led9off
+      led10on
+    else 
+      led9on
+      led10off
+    then
   again
 ;
 
