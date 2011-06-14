@@ -288,3 +288,6 @@ FlashForth v4.71
   on flash page that is beeing modified. 
   It is upto the user to recognize this.
   
+FlashForth v4.8
+----------------
+- Double number support.

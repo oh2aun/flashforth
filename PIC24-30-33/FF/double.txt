@@ -1,0 +1,26 @@
+\ *******************************************************************
+\                                                                   *
+\    Filename:      double.txt                                      *
+\    Date:          14.06.2011                                      *
+\    FF Version:    4.8                                             *
+\    MCU:           PIC30 PIC24 PIC33 PIC18                         *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+
+: fm/mod ( d1 n1 -- n2 n3 )
+  dup >r
+  2dup xor >r
+  >r
+  dabs r@ abs um/mod
+  swap r> ?negate swap
+  r> 0< if
+    negate
+    over if
+      r@ rot - swap 1-
+    then
+  then
+  r> drop
+;

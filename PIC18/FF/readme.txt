@@ -250,4 +250,7 @@ FlashForth V3.7
   Compilation and writing to flash and eeprom is only
   possible from the operator task.
 
-  
+FlashForth V3.8
+---------------
+- Double number support
+

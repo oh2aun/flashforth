@@ -2,7 +2,7 @@
 ;                                                                     *
 ;    Filename:      ff.s                                              *
 ;    Date:          14.06.2011                                        *
-;    File Version:  4.72                                              *
+;    File Version:  4.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -943,8 +943,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   44
-        .ascii  "FlashForth V4.71 (C) Mikael Nordman GPL V3\r\n"
+        .byte   43
+        .ascii  "FlashForth V4.8 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -2586,7 +2586,17 @@ ABS:
         rcall   QNEGATE
         return
 
+;   ABS     n   --- n1      absolute value of n
         .pword  paddr(ABS_L)+PFLASH
+DABS_L:
+        .byte   NFA|4
+        .ascii  "dabs"
+        .align  2
+DABS:
+        mov     [W14++], [W14]      ; dup
+        goto    QDNEGATE
+
+        .pword  paddr(DABS_L)+PFLASH
 PLUS_L:
         .byte   NFA|INLINE|1
         .ascii  "+"
@@ -2602,12 +2612,27 @@ MPLUS_L:
         .ascii  "m+"
         .align  2
 MPLUS:
+        setm    W1
+        btss    [W14], #15
+        clr     W1
         mov     [W14--], W0
-        add     W0, [--W14], W0
-        addc    W0, #0, [++W14]
+        add     W0, [--W14], [W14++]
+        addc    W1, [W14], [W14]
         return
 
         .pword  paddr(MPLUS_L)+PFLASH
+DPLUS_L:
+        .byte   NFA|2
+        .ascii  "d+"
+        .align  2
+DPLUS:
+        mov     [W14--], W0
+        mov     [W14--], W1
+        add     W1, [--W14], [W14++]
+        addc    W0, [W14], [W14]
+        return
+
+        .pword  paddr(DPLUS_L)+PFLASH
 MINUS_L:
         .byte   NFA|INLINE|1
         .ascii  "-"
@@ -2619,6 +2644,20 @@ MINUS:
         return
 
         .pword  paddr(MINUS_L)+PFLASH
+DMINUS_L:
+        .byte   NFA|2
+        .ascii  "d-"
+        .align  2
+DMINUS:
+        mov     [W14--], W0
+        mov     [W14--], W1
+        mov     [W14--], W2
+        mov     [W14], W3
+        sub     W3, W1, [W14++]
+        subb    W2, W0, [W14]
+        return
+
+        .pword  paddr(DMINUS_L)+PFLASH
 AND_L:
         .byte   NFA|3
         .ascii  "and"
@@ -2667,6 +2706,32 @@ NEGATE:
         return
 
         .pword  paddr(NEGATE_L)+PFLASH
+DNEGATE_L:
+        .byte   NFA|7
+        .ascii  "dnegate"
+        .align  2
+DNEGATE:
+        rcall   SWOP        
+        com     [W14], [W14]
+        rcall   SWOP
+        com     [W14], [W14]
+        rcall   ONE
+        goto    MPLUS
+        
+        .pword  paddr(DNEGATE_L)+PFLASH
+QDNEGATE_L:
+        .byte   NFA|8
+        .ascii  "?dnegate"
+        .align  2
+QDNEGATE:
+        rcall   ZEROLESS
+        cp0     [W14--]
+        bra     z, QDNEGATE1
+        rcall   DNEGATE
+QDNEGATE1:
+        return        
+        
+        .pword  paddr(DNEGATE_L)+PFLASH
 ONEPLUS_L:
         .byte   NFA|INLINE|2
         .ascii  "1+"
@@ -4011,7 +4076,6 @@ UDOTR2:
         goto    SPACE_
 
 ; .     n --                    display n signed
-;   <# DUP ABS #S SWAP SIGN #> TYPE SPACE ;
         .pword  paddr(UDOTR_L)+PFLASH
 DOT_L:
         .byte   NFA|1
@@ -4029,9 +4093,40 @@ DOT:
         rcall   TYPE
         goto    SPACE_
 
+; UD.    ud --                  display ud unsigned
+        .pword  paddr(DOT_L)+PFLASH
+UDDOT_L:
+        .byte   NFA|3
+        .ascii  "ud."
+        .align  2
+UDDOT:
+        rcall   LESSNUM
+        rcall   NUMS
+        rcall   NUMGREATER
+        rcall   TYPE
+        goto    SPACE_
+
+; .     d --                    display d signed
+;   <# dup >r dabs #s r> sign #> type space ;
+        .pword  paddr(UDDOT_L)+PFLASH
+DDOT_L:
+        .byte   NFA|2
+        .ascii  "d."
+        .align  2
+DDOT:
+        rcall   LESSNUM
+        push    [W14]
+        rcall   DABS
+        rcall   NUMS
+        pop     [++W14]
+        rcall   SIGN
+        rcall   NUMGREATER
+        rcall   TYPE
+        goto    SPACE_
+
 ; DECIMAL  --         set number base to decimal
 ;   #10 BASE ! ;
-        .pword  paddr(DOT_L)+PFLASH
+        .pword  paddr(DDOT_L)+PFLASH
 DECIMAL_L:
         .byte   NFA|7
         .ascii  "decimal"
@@ -5957,23 +6052,10 @@ RDROP:
         pop     W0
         return
 
-        .pword  paddr(RDROP_L)+PFLASH
-DNEGATE_L:
-        .byte   NFA|7
-        .ascii  "dnegate"
-        .align  2
-DNEGATE:
-        rcall   SWOP        
-        com     [W14], [W14]
-        rcall   SWOP
-        com     [W14], [W14]
-        rcall   ONE
-        goto    MPLUS
-        
 ; leave clear top of return stack
 
 ; BL      -- char                 an ASCII space
-        .pword  paddr(DNEGATE_L)+PFLASH
+        .pword  paddr(RDROP_L)+PFLASH
 BL_L:
         .byte   NFA|INLINE|2
         .ascii  "bl"

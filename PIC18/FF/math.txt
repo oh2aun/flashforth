@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      math.txt                                          *
-\    Date:          14.2.2010                                         *
-\    FF Version:    3.4                                               *
+\    Date:          14.6.2011                                         *
+\    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -11,34 +11,13 @@
 \ Double and mixed math words
 
 \ s>d   n -- d single to double precision
-: s>d 
-  dup 0<
-;
-
-\ ud/mod   ud1 u2 -- u3 ud4   32/16->32 divide
-: ud/mod
-  >r 0 r@ um/mod rot rot r> um/mod rot
-;
-
-\ ud* ud1 u2 -- ud3           32*16->32 multiply
-: ud*
-  dup >r um* drop swap r> um* rot +
-;
-
-\ dnegate  d1 -- d2          32 bit negate
-: dnegate
-  swap invert swap invert 1 m+
-;
+: s>d dup 0< ;
 
 \ ?dnegate d1 n -- d2  negate d1 if n is negative
-: ?dnegate
-  0< if dnegate then
-;
+: ?dnegate 0< if dnegate then ;
 
 \ dabs   d1 -- +d2     32 bit absolute value
-: dabs
-  dup ?dnegate
-;
+: dabs dup ?dnegate ;
 
 \ m*     n1 n2 -- d    signed 16*16->32 multiply
 : m*
@@ -79,6 +58,3 @@
   >r m* r> sm/rem
 ;
 
-\ d+, d- by Andrew Smith
-: d+ ( d1 d2 -- d1+d2 ) dup >r dabs r> tuck ?negate >r ?negate m+ r> + ;
-: d- ( d1 d2 -- d1-d2 ) dnegate d+ ;

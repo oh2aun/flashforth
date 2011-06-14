@@ -2,7 +2,7 @@
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
 ;    Date:          14.06.2011                                        *
-;    File Version:  3.72                                              *
+;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -2086,10 +2086,10 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'20',"FlashForth V3.72 USB"
+        db d'19',"FlashForth V3.8 USB"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'18',"FlashForth V3.72\r\n"
+        db d'17',"FlashForth V3.8\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
@@ -4194,7 +4194,8 @@ TONUM2:
         call    ONE
         rcall   SLASHSTRING
         bra     TONUM1
-TONUM3: return
+TONUM3: 
+        return
 
 BASEQV:   
         dw      DECIMAL
