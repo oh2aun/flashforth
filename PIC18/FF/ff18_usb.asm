@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff18_37_usb.asm                                   *
-;    Date:          23.02.2011                                        *
-;    File Version:  3.7                                               *
+;    Filename:      ff18_usb.asm                                      *
+;    Date:          14.06.2011                                        *
+;    File Version:  3.72                                              *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -2086,10 +2086,10 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'19',"FlashForth V3.7 USB"
+        db d'20',"FlashForth V3.72 USB"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'17',"FlashForth V3.7\r\n"
+        db d'18',"FlashForth V3.72\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
@@ -2660,11 +2660,22 @@ TWODUP:
         rcall   OVER
         goto    OVER
 
+; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
+        dw      L_TWODUP
+L_TWOSWAP
+        db      NFA|5,"2swap"
+TWOSWAP:
+        rcall   ROT
+        rcall   TOR
+        rcall   ROT
+        rcall   RFROM
+        return
+
 ; INPUT/OUTPUT ==================================
 
 ; SPACE   --                      output a space
 ;   BL EMIT ;
-        dw      L_TWODUP
+        dw      L_TWOSWAP
 L_SPACE:
         db      NFA|5,"space"
 SPACE_:  
@@ -3563,7 +3574,7 @@ CFETCH_A:
 L_UPTR:
         db      NFA|2,"up"
 UPTR:
-        rcall   DOCREATE_A
+        call    DOCREATE_A
         dw      upcurr
 
 ; NUMERIC OUTPUT ================================
@@ -3607,43 +3618,45 @@ TODIGIT:
         dw      h'30'
         goto    PLUS
 
-; #     u1 -- u2     convert 1 digit of output
-;   BASE @ U/MOD SWAP >digit HOLD ;
+; #     ud1 -- ud2     convert 1 digit of output
+;   base @ ud/mod rot >digit hold ;
         dw      L_TODIGIT
-L_NUM:
+L_NUM
         db      NFA|1,"#"
 NUM:
         rcall   BASE
         rcall   FETCH
-        rcall   USLASHMOD
-        rcall   SWOP
+        rcall   UDSLASHMOD
+        rcall   ROT
         rcall   TODIGIT
-        rcall   HOLD
-        return
+        goto    HOLD
 
-; #S    u1 -- u2      convert remaining digits
-;   begin # dup 0= until ;
+; #S    ud1 -- ud2      convert remaining digits
+;   begin # 2dup or 0= until ;
         dw      L_NUM
 L_NUMS:
         db      NFA|2,"#s"
 NUMS:
         rcall   NUM
-        rcall   DUPZEROSENSE
+        rcall   TWODUP
+        rcall   OR
+        rcall   ZEROSENSE
         bnz     NUMS
         return
 
-; #>    u1 -- c-addr u    end conv., get string
-;   DROP HP @ PAD OVER - ;
+; #>    ud1 -- c-addr u    end conv., get string
+;   2drop hp @ pad over - ;
         dw      L_NUMS
 L_NUMGREATER:
         db      NFA|2,"#>"
 NUMGREATER:
-        rcall   DROP
+        rcall   TWODROP
         rcall   HP
         rcall   FETCH
         rcall   PAD
         rcall   OVER
         goto    MINUS
+
 
 ; SIGN  n --               add minus sign if n<0
 ;   0< IF 2D HOLD THEN ; 
@@ -3661,19 +3674,20 @@ SIGN1:
         return
 
 ; U.    u --                  display u unsigned
-;   <# #S #> TYPE SPACE ;
+;   <# 0 #S #> TYPE SPACE ;
         dw      L_SIGN
 L_UDOT:
         db      NFA|2,"u."
 UDOT:
         rcall   LESSNUM
+        call    FALSE_
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
         goto    SPACE_
 
 ; U.R    u +n --      display u unsigned in field of n. 1<n<=255 
-;     <# 1- for # next #s #> type space ;
+;    0 swap <# 1- for # next #s #> type space ;
         dw      L_UDOT
 L_UDOTR:
         db      NFA|3,"u.r"
@@ -3681,8 +3695,9 @@ UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
         rcall   TOR
+        call    FALSE_
         bra     UDOTR2
-UDOTR1: 
+UDOTR1:
         rcall   NUM
 UDOTR2: 
         decf    TOSL, F, A      ;  XNEXT
@@ -3701,8 +3716,9 @@ L_DOT:
 DOT:    rcall   LESSNUM
         rcall   DUP
         rcall   ABS
+        call    FALSE_
         rcall   NUMS
-        rcall   SWOP
+        rcall   ROT
         rcall   SIGN
         rcall   NUMGREATER
         rcall   TYPE
@@ -4024,7 +4040,7 @@ findi2:
         rcall   SWOP
         rcall   IMMEDQ
         rcall   ZEROEQUAL
-        rcall   ONE
+        call    ONE
         rcall   OR
 findi3: 
 		return
@@ -4115,31 +4131,66 @@ SIGNQ:
         rcall   RFROM
 QSIGN1: return
 
-; >NUMBER  n adr u -- n' adr' u'
-;                       convert string to number
+; UD*  ud u -- ud
         dw      L_SIGNQ
+L_UDSTAR:
+        db      NFA|3,"ud*"
+UDSTAR:
+        rcall   DUP
+        rcall   TOR
+        rcall   UMSTAR
+        rcall   DROP
+        rcall   SWOP
+        rcall   RFROM
+        rcall   UMSTAR
+        rcall   ROT
+        goto    PLUS
+        
+; UD/MOD  ud u --u(rem) ud(quot)
+        dw      L_UDSTAR
+L_UDSLASHMOD:
+        db      NFA|6,"ud/mod"
+UDSLASHMOD:
+        rcall   TOR
+        rcall   FALSE_
+        rcall   RFETCH
+        rcall   UMSLASHMOD
+        rcall   ROT
+        rcall   ROT
+        rcall   RFROM
+        rcall   UMSLASHMOD
+        goto    ROT
+        
+; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
+;                       convert string to number
+        dw      L_UDSLASHMOD
 L_TONUMBER:
         db      NFA|7,">number"
 TONUMBER:
 TONUM1:
-        rcall   DUPZEROSENSE      ; n adr u
+        rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
-        rcall   OVER               ; n adr u adr 
-        rcall   CFETCH_A           ; n adr u c
-        rcall   DIGITQ             ; n adr u m f
-        rcall   ZEROSENSE          ; n adr u m
+        rcall   TOR
+        rcall   DUP
+        rcall   TOR             ; ud.l ud.h adr
+        rcall   CFETCH_A
+        rcall   DIGITQ          ; ud.l ud.h digit flag
+        rcall   ZEROSENSE
         bnz     TONUM2
-        goto    DROP               ; n adr u
-TONUM2:
-        rcall   TOR                ; n adr u 
-        rcall   ROT                ; adr u n 
+        rcall   DROP
+        rcall   RFROM
+        rcall   RFROM
+        bra     TONUM3
+TONUM2: 
+        rcall   TOR             ; ud.l ud.h digit
         rcall   BASE
-        rcall   FETCH_A              ; adr u n base  
-        rcall   STAR               ; adr u n''  
-        rcall   RFROM              ; adr u n'' m
-        rcall   PLUS               ; adr u n' 
-        rcall   ROT
-        rcall   ROT                ; n' adr u  
+        rcall   FETCH_A
+        rcall   UDSTAR
+        rcall   RFROM
+        rcall   MPLUS
+        rcall   RFROM
+        rcall   RFROM
+        
         call    ONE
         rcall   SLASHSTRING
         bra     TONUM1
@@ -4149,24 +4200,29 @@ BASEQV:
         dw      DECIMAL
         dw      HEX
         dw      BIN
-; NUMBER?  c-addr -- n -1      string->number
+
+
+; NUMBER?  c-addr -- n 1
+;                 -- dl dh 2
 ;                 -- c-addr 0  if convert error
         dw      L_TONUMBER
 L_NUMBERQ:
         db      NFA|7,"number?"
 NUMBERQ:
-        rcall   FALSE_          ; a 0
-        rcall   OVER            ; a 0 a
-        rcall   CFETCHPP        ; a 0 a' u
-        rcall   SIGNQ           ; a 0 a' u f
-        rcall   TOR             ; a 0 a' u
+        rcall   DUP             ; a a
+        rcall   FALSE_          ; a a 0 0
+        rcall   FALSE_          ; a a 0 0
+        rcall   ROT             ; a 0 0 a
+        rcall   CFETCHPP        ; a 0 0 a' u
+        rcall   SIGNQ           ; a 0 0 a' u f
+        rcall   TOR             ; a 0 0 a' u
 
         rcall   BASE
         rcall   FETCH_A
-        rcall   TOR             ; a 0 a' u
+        rcall   TOR             ; a 0 0 a' u
         
-        rcall   OVER
-        rcall   CFETCH_A        ; Fetch prefix
+        call    OVER
+        rcall   CFETCH_A
         rcall   LIT_A
         dw      '#'
         rcall   MINUS
@@ -4177,39 +4233,65 @@ NUMBERQ:
         rcall   ZEROSENSE
         bz      BASEQ1
         call    CELLS
+        
         rcall   LIT_A
         dw      BASEQV
         rcall   PLUS
-        call    FEXECUTE        ; Modify BASE
-        
+        call    FEXECUTE
+
         call    ONE
         rcall   SLASHSTRING
         bra     BASEQ2
 BASEQ1:
         call    DROP
-BASEQ2: 
-        rcall   TONUMBER        ; a n a' u
-        rcall   RFROM           ; a n a' u oldbase
-        rcall   BASE            ; a n a' u oldbase addr
-        rcall   STORE_A         ; a n a' u
-        rcall   ZEROSENSE       ; a n a'
-        bz      QNUM1
-        pop    ;RDROP           ; a n a'
+BASEQ2:                         ; a 0 0 a' u
+        rcall   TONUMBER        ; a ud.l ud.h  a' u
+        call    RFROM           ; a ud.l ud.h  a' u oldbase
+        rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
+        rcall   STORE_A         ; a ud.l ud.h  a' u
+
+        rcall   DUP
+        rcall   TWOMINUS
+        rcall   ZEROLESS        ; a ud.l ud.h  a' u f
+        rcall   ZEROSENSE       ; a ud.l ud.h  a' u
+        bnz     QNUMD
+QNUM_ERR:                       ; Not a number
+        call    RFROM           ; a ud.l ud.h a' u sign
+        call    DROP
         call    TWODROP
-        rcall   FALSE_          ; a f
+QNUM_ERR1:      
+        call    TWODROP
+        rcall   FALSE_          ; a 0           Not a number
         bra     QNUM3
-QNUM1:
-        call    DROP            ; a n
-        rcall   NIP             ; n
-        rcall   RFROM           ; n f
+QNUMD:                          ; Double number
+                                ; a ud.l ud.h a' u
+        call    TWOSWAP         ; a a' u ud.l ud.h 
+        call    RFROM           ; a a' u ud.l ud.d sign
         rcall   ZEROSENSE
-        bz      QNUM2
-        rcall   NEGATE
-QNUM2:  
-        rcall   TRUE_
+        bz      QNUMD1
+        call    DNEGATE
+QNUMD1: 
+        call    TWOSWAP         ; a d.l d.h a' u
+        rcall   ZEROSENSE       ; a d.l d.h a'
+        bz      QNUM1
+        call    CFETCH
+        rcall   LIT_A
+        dw      '.'
+        rcall   MINUS
+        rcall   ZEROSENSE       ; a d.l d.h
+        bnz     QNUM_ERR1
+        call    ROT             ; d.l d.h a
+        call    DROP            ; d.l d.h
+        rcall   LIT_A           ; 
+        dw      2               ; d.l ud.h 2    Double number
+        bra     QNUM3
+QNUM1:                          ; single precision dumber
+                                ; a ud.l ud.h  a'
+        call    TWODROP         ; a n
+        rcall   NIP             ; n
+        call    ONE             ; n 1           Single number
 QNUM3:  
         return
-
 
         db      NFA|4,"swap"
 SWOP_A
@@ -4225,7 +4307,7 @@ TIBSIZE:
         rcall   FETCH_A
         movlw   h'5'
         call    WTOS
-        rcall   PLUS
+        call    PLUS
         goto    CFETCH
 
 ; TIB     -- a-addr        Terminal Input Buffer
@@ -4289,7 +4371,7 @@ IPARSEWORD:
         rcall   ONEPLUS         ; 0 = normal 2 = immediate
         rcall   STATE
         rcall   ZEROEQUAL
-        rcall   OR
+        call    OR
         rcall   ZEROSENSE
         bz      ICOMPILE_1      ; Compile a word
         
@@ -4344,18 +4426,31 @@ INUMBER:
         bcf     FLAGS1, idup    ; Clear DUP encountered in compilation
         call    DROP
         rcall   NUMBERQ
-        rcall   ZEROSENSE
+        rcall   DUPZEROSENSE
         bz      IUNKNOWN
-        movf    state, W, A
-        bz      IPARSEWORD
+        rcall   STATE
+        rcall   ZEROSENSE
+        bz      INUMBER1
+        movf    Sminus, W, A
+        btfss   Sminus, 1, A
+        bra     ISINGLE
+IDOUBLE:
+        rcall   SWOP_A
+        call    LITERAL
+ISINGLE:        
         call    LITERAL
         bra     IPARSEWORD
+
+INUMBER1:
+        call    DROP
+        bra     IPARSEWORD
+
 IUNKNOWN: 
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         call    TYPE
         rcall   FALSE_
-        rcall   QABORTQ         ; Never returns
+        rcall   QABORTQ         ; Never returns & resets the stacks
 ;        bra     IPARSEWORD
 INOWORD: 
         goto    DROP
@@ -4405,12 +4500,12 @@ DOTSTATUS:
         rcall   LIT_A
         dw      h'003c'
         call    EMIT
-        rcall   DOTBASE
+        call    DOTBASE
         call    EMIT
         rcall   LIT_A
         dw      h'002C'
         call    EMIT
-        rcall   MEMQ
+        call    MEMQ
         call    TYPE
         rcall   LIT_A
         dw      h'003e'
@@ -4450,7 +4545,7 @@ DP_TO_RAM:
 DP_TO_EEPROM:
         rcall   LIT_A
         dw      dp_start
-        rcall   STORE_P_TO_R
+        call    STORE_P_TO_R
         rcall   INI
         rcall   LIT_A
         dw      5
@@ -4459,12 +4554,12 @@ DP_TO_EEPROM:
 DP_TO_EEPROM_0: 
         rcall   FETCHPP
         call    DUP
-        rcall   PFETCH
+        call    PFETCH
         call    NOTEQUAL
         movf    Sminus, W
         iorwf   Sminus, W
         bz      DP_TO_EEPROM_1
-        rcall   PSTORE
+        call    PSTORE
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         call    DROP
@@ -4475,7 +4570,7 @@ DP_TO_EEPROM_3:
         decf    TOSL, F
         bc      DP_TO_EEPROM_0
         pop
-        rcall   R_TO_P
+        call    R_TO_P
         goto    DROP
 
 ;***************************************************************
@@ -4562,7 +4657,7 @@ L_QABORT:
         db      NFA|6,"?abort"
 QABORT:
         call    ROT
-        rcall   ZEROSENSE
+        call    ZEROSENSE
         bnz     QABO1
 QABORT1:        
 		call	SPACE_
@@ -4669,11 +4764,11 @@ CREATE:
 
         rcall   DUP_A           ; Remember parsed word at rhere
         rcall   FIND
-        rcall   NIP
+        call    NIP
         call    ZEROEQUAL
         rcall   QABORTQ         ; ABORT if word has already been defined
         rcall   DUP_A           ; Check the word length 
-        rcall   CFETCH_A
+        call    CFETCH_A
         call    ONE
         rcall   LIT_A
         dw      h'10'
@@ -4690,7 +4785,7 @@ CREATE:
         rcall   STORE_A         ; str len ihere
         rcall   PLACE           ; 
         rcall   IHERE           ; ihere
-        rcall   CFETCH_A
+        call    CFETCH_A
         rcall   LIT_A
         dw      NFA
         rcall   SHB
@@ -4910,7 +5005,7 @@ LATEST:
 L_S0:
         db      NFA|2,"s0"
 S0:
-        rcall   DOUSER
+        call    DOUSER
         dw      us0&h'ffff'
         
 ; ini -- a-addr       ini variable contains the user-start xt
@@ -5048,7 +5143,7 @@ DOTS1:
         call    LESS
         call    ZEROSENSE
         bnz     DOTS2
-        rcall   FETCHPP
+        call    FETCHPP
         call    UDOT
         bra     DOTS1
 DOTS2:  
@@ -5077,7 +5172,7 @@ DUMP1:
         dw      h'10'
         rcall   TOR_A
 DUMP2:
-        rcall   CFETCHPP
+        call    CFETCHPP
         rcall   LIT_A
         dw      2
         call    UDOTR
@@ -5448,8 +5543,46 @@ RDROP:
         pop
         return
 
-;***************************************************
+; DNEGATE  +d -- -d
         dw      L_RDROP
+L_DNEGATE:
+        db      NFA|7,"dnegate"
+DNEGATE:
+        call    SWOP
+        call    INVERT
+        call    SWOP
+        call    INVERT
+        call    ONE
+        goto    MPLUS
+        
+
+; D+       d d -- d         add double to double
+        dw      L_DNEGATE
+L_DPLUS
+        db      NFA|2,"d+"
+DPLUS:
+        movff   Sminus, TBLPTRH
+        movff   Sminus, TBLPTRL
+        movff   Sminus, Tp
+        movff   Sminus, TABLAT
+        
+        movlw   4
+        subwf   Sp, F, A
+        movlw   0
+        subwfb  Sbank, F, A
+
+        movf    TABLAT, W, A
+        addwf   plusS, F, A
+        movf    Tp, W, A
+        addwfc  plusS, F, A
+        movf    TBLPTRL, W, A
+        addwfc  plusS, F, A
+        movf    TBLPTRH, W, A
+        addwfc  plusS, F, A
+        return
+
+;***************************************************
+        dw      L_DPLUS
 L_FETCH_P:
         db      NFA|2,"@p"
 FETCH_P:
@@ -5538,12 +5671,12 @@ L_MEMQ:
         db      NFA|1,"I"
 MEMQ:
         call    CSE
-        rcall   LIT_A
+        call    LIT_A
         dw      MEMQADDR_N
         call    PLUS
         call    FETCH_A
         call    CFETCHPP
-        rcall   LIT_A
+        call    LIT_A
         dw      NFAmask
         goto    AND
 end_of_dict:

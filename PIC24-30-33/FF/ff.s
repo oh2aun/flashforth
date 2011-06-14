@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff30_47.s                                         *
-;    Date:          28.05.2011                                        *
-;    File Version:  4.71                                              *
+;    Filename:      ff.s                                              *
+;    Date:          14.06.2011                                        *
+;    File Version:  4.72                                              *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -35,6 +35,22 @@
         mov     #\lval, w0
         mov     w0, [++w14]
 .endm
+;..............................................................................
+;Global Declarations:
+;..............................................................................
+.global __reset
+.global __T1Interrupt
+.global __U1TXInterrupt
+.global __U1RXInterrupt
+.global __U2TXInterrupt
+.global __U2RXInterrupt
+.global __OscillatorFail
+.global __AddressError
+.global __StackError
+.global __MathError
+.ifdecl INTTREG
+.global __DefaultInterrupt
+.endif
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -200,29 +216,10 @@ ustart:     .space uareasize ; The operator user area
             .align 0x100
 uarea_dbg:  .space 0x100
 .endif
-;..............................................................................
-;Global Declarations:
-;..............................................................................
-.global __reset
-.global __T1Interrupt
-.global __U1TXInterrupt
-.global __U1RXInterrupt
-.global __U2TXInterrupt
-.global __U2RXInterrupt
-.global __OscillatorFail
-.global __AddressError
-.global __StackError
-.global __MathError
-.ifdecl INTTREG
-.global __DefaultInterrupt
-.endif
+
 ; Start of code !
-;.text
-.section ff_init, code
+.text
 ;;; *************************************
-__reset:
-        bra WARM
-        nop         ; Adding nop here removes the linking problem
 ;;; COLD dictionary data
 COLDLIT:
 STARTV: .word      0
@@ -286,7 +283,9 @@ __T1Interrupt:
 
 __U1RXInterrupt:
         push.s
+.ifdef PEEPROM
         push    TBLPAG
+.endif
         inc2    W14, W14
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
@@ -341,7 +340,9 @@ __U1RXInterrupt3:
         bra     __U1RXInterrupt0
 __U1RXTXIRQ_END:
         sub     W14, #2, W14
+.ifdef PEEPROM
         pop     TBLPAG
+.endif
 ALT_INT_EXIT:
         pop.s
         retfie
@@ -356,7 +357,9 @@ U1RX_ERR1:
 
 __U1TXInterrupt:
         push.s
+.ifdef PEEPROM
         push    TBLPAG
+.endif
         add     W14, #2, W14
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
@@ -377,7 +380,9 @@ __U1TXInterrupt3:
 .ifdecl _U2RXREG
 __U2RXInterrupt:
         push.s
+.ifdef PEEPROM
         push    TBLPAG
+.endif
         inc2    W14, W14
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
@@ -442,7 +447,9 @@ U2RX_ERR1:
 
 __U2TXInterrupt:
         push.s
+.ifdef PEEPROM
         push    TBLPAG
+.endif
         add     W14, #2, W14
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
@@ -550,7 +557,9 @@ wbti_init:
         mov.w   #ibufh, W1 ; High byte buffer
         mov.w   ibase, W2
         mov.w   #IBUFLEN2, W4
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
         tblwtl  W2, [W2]          ; Set page address
         return
 
@@ -665,6 +674,7 @@ RESET_FF:
 RESET_FF_1:
         reset
 
+__reset:
 WARM:
 .ifdecl CLKDIV
         clr     CLKDIV   ; Use full FRC frequency
@@ -1052,7 +1062,7 @@ INTERRUPT_STORE:
         mov     #PFLASH, W1
         mov     [W14], W2
         sub     W2, W1, [W14]
-        clr     W11             ; hibyte
+        clr     W3             ; hibyte
         rcall   ISTORE_RAW
         rcall   IFLUSH
         return
@@ -1088,9 +1098,10 @@ BRACKETI:
 .ifndecl INTTREG
         push.s          ; W0...W3
 .endif
+.ifdef PEEPROM
         push    TBLPAG  ; Used by eeprom access
-        push    W13     ; Preg
-        
+.endif
+        push    W13     ; Preg        
         push    RCOUNT  ; used by repeat
         add     W14, #2, W14
         return
@@ -1105,7 +1116,9 @@ IBRACKET:
         sub     W14, #2, W14
         pop     RCOUNT  ; used by repeat
         pop     W13     ; Preg
+.ifdef PEEPROM
         pop     TBLPAG  ; Used by eeprom access
+.endif
 .ifndecl INTTREG
         pop.s           ; W0...W3
 .endif
@@ -1288,7 +1301,7 @@ CF_STORE_L:
         .align  2
 CF_STORE:
         rcall   SWOP
-        mov     [W14--], W11
+        mov     [W14--], W3
         rcall   CFISTORE
         return
 
@@ -1332,7 +1345,7 @@ AS_COMMA:
         bra     AS_COMMA2
 .endif        
 AS_COMMA1:
-        mov     W0, W11          ; hibyte
+        mov     W0, W3          ; hibyte
         mov     W0, W10
         mov     [W14], W12
         rcall   IHERE           ; must not trash W11 = hibyte
@@ -1394,7 +1407,7 @@ BFLUSH:
 ; data addr IC! Address is in W0
 ICSTORE:
         rcall   ISTORE_ADDRCHK
-        clr     W11              ; hibyte
+        clr     W3               ; hibyte
         rcall   ISTORE_SUB
         mov.b   W1, [W0]
         return
@@ -1404,7 +1417,7 @@ CFISTORE:
         mov     [W14--], W0
         bra     ISTORECF
 ISTORE:
-        clr     W11
+        clr     W3
 ISTORECF:
         rcall   ISTORE_ADDRCHK
 ISTORE_RAW:
@@ -1417,7 +1430,9 @@ ISTORE_SUB:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddr       ; W0 = addr, iaddr = addr
-        rcall   iupdatebuf
+        push    W3
+        rcall   iupdatebuf      ; uses w3
+        pop     W3
         mov     iaddr, W0
         
         mov     #IBUFSIZEL-1, W1
@@ -1426,7 +1441,7 @@ ISTORE_SUB:
         mov     #ibufh, W1
         add     W1, W0, W0
 
-        mov.b   W11, [W0]        ; hibyte
+        mov.b   W3, [W0]        ; hibyte
 
         mov     #ibufl, W1
         add     W2, W1, W0
@@ -1492,7 +1507,9 @@ IFETCH:
         return
         
 IFETCH_INIT:
+.ifdef PEEPROM
         clr      TBLPAG
+.endif
         mov      #PFLASH, W1
         sub      W0, W1, W0
         mov      ibase, W1
@@ -1592,7 +1609,9 @@ EEREAD:
         sub     W0, W1, W0
         mov     #0x400, W1
         add     W0, W1, W0      ; W0 = endof flash page.
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
 EEREAD1:
         tblrdl  [--W0], W1
         inc     W1, W1
@@ -1613,7 +1632,9 @@ EEINIT:
 ;        db      NFA|3,"ee!"
 EEWRITE:
         rcall   wait_silence
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
         mov     [W14], W0
         mov     #PFLASH, W1
         sub     W0, W1, W0
@@ -2414,7 +2435,9 @@ DOCREATE_L:
         .align  2
 DOCREATE:
         mov.w   [W15-4], W0
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
         tblrdl  [W0], [++W14]
         sub     #4, W15
         return
@@ -2429,7 +2452,9 @@ DODOES:
         pop     W0
         pop     W1
         pop     W1
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
         tblrdl  [W1], [++W14]
         goto    W0
 
@@ -2936,7 +2961,9 @@ USER:
 DOUSER:
         pop     W0
         pop     W0
+.ifdef PEEPROM
         clr     TBLPAG
+.endif
         tblrdl  [W0], W0
         add     upcurr, WREG
         mov     W0, [++W14]
@@ -3257,6 +3284,18 @@ TWODUP_L:
 TWODUP:
         rcall   OVER
         goto    OVER
+
+        .pword  paddr(TWODUP_L)+PFLASH
+TWOSWAP_L:
+        .byte   NFA|5
+        .ascii  "2swap"
+        .align  2
+TWOSWAP:
+        rcall   ROT
+        push    [W14--]
+        rcall   ROT
+        pop     [++W14]
+        return
 
         .pword  paddr(TWODUP_L)+PFLASH
 CR_L:
@@ -3714,8 +3753,44 @@ SLASH:
         mov     W0, [++W14]
         return
 
-;   NIP x1 x2 -- x2         NIP
+; UD*  ud u -- ud
         .pword  paddr(SLASH_L)+PFLASH
+L_UDSTAR:
+        .byte   NFA|3
+        .ascii  "ud*"
+        .align  2
+UDSTAR:
+        rcall   DUP
+        push    [W14--]
+        rcall   UMSTAR
+        rcall   DROP
+        rcall   SWOP
+        pop     [++W14]
+        rcall   UMSTAR
+        rcall   ROT
+        goto    PLUS
+        
+; UD/MOD  ud u --u(rem) ud(quot)
+        .pword  paddr(L_UDSTAR)+PFLASH
+L_UDSLASHMOD:
+        .byte   NFA|6
+        .ascii  "ud/mod"
+        .align  2
+UDSLASHMOD:
+        push    [W14--]
+        rcall   FALSE_
+        mov     [W15-2], W0
+        mov     W0, [++W14]
+        rcall   UMSLASHMOD
+        rcall   ROT
+        rcall   ROT
+        pop     [++W14]
+        rcall   UMSLASHMOD
+        goto    ROT
+        
+
+;   NIP x1 x2 -- x2         NIP
+        .pword  paddr(L_UDSLASHMOD)+PFLASH
 NIP_L:
         .byte   NFA|INLINE|3
         .ascii  "nip" 
@@ -3835,8 +3910,8 @@ TODIGIT:
         mlit    #0x30
         goto    PLUS
 
-; #     u1 -- u2     convert 1 digit of output
-;   BASE @ U/MOD SWAP >digit HOLD ;
+; #     ud1 -- ud2     convert 1 digit of output
+;   BASE @ Ud/MOD rot >digit HOLD ;
         .pword  paddr(TODIGIT_L)+PFLASH
 NUM_L:
         .byte   NFA|1
@@ -3845,8 +3920,8 @@ NUM_L:
 NUM:
         rcall   BASE
         rcall   FETCH
-        rcall   USLASHMOD
-        rcall   SWOP
+        rcall   UDSLASHMOD
+        rcall   ROT
         rcall   TODIGIT
         goto    HOLD
 
@@ -3859,7 +3934,9 @@ NUMS_L:
         .align  2
 NUMS:
         rcall   NUM
-        cp0     [W14]
+        rcall   TWODUP
+        rcall   OR
+        cp0     [W14--]
         bra     nz, NUMS
         return
 
@@ -3871,7 +3948,7 @@ NUMGREATER_L:
         .ascii  "#>"
         .align  2
 NUMGREATER:
-        sub     W14, #2, W14
+        sub     W14, #4, W14
         rcall   HP
         rcall   FETCH
         rcall   HA
@@ -3903,6 +3980,7 @@ UDOT_L:
         .align  2
 UDOT:
         rcall   LESSNUM
+        rcall   FALSE_
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -3919,6 +3997,7 @@ UDOTR:
         rcall   LESSNUM
         dec     [W14], [W14]
         push    [W14--]
+        rcall   FALSE_
         bra     UDOTR2
 UDOTR1: 
         rcall   NUM
@@ -3942,8 +4021,9 @@ DOT:
         rcall   LESSNUM
         mov     [W14++], [W14]      ; dup
         rcall   ABS
+        rcall   FALSE_
         rcall   NUMS
-        rcall   SWOP
+        rcall   ROT
         rcall   SIGN
         rcall   NUMGREATER
         rcall   TYPE
@@ -4438,6 +4518,133 @@ SIGNQ:
         rcall   SLASHSTRING
         pop     [++W14]
 QSIGN1: return
+.if 1
+; >NUMBER  0 0  adr u -- ud.l ud.h  adr' u'
+;                       convert string to number
+        .pword  paddr(SIGNQ_L)+PFLASH
+TONUMBER_L:
+        .byte   NFA|7
+        .ascii  ">number"
+        .align  2
+TONUMBER:
+TONUM1:
+        cp0     [W14]           ; ud.l ud.h  adr u
+        bra     z, TONUM3
+        push    [W14--]
+        push    [W14]
+        rcall   CFETCH
+        rcall   DIGITQ
+        cp0     [W14--]
+        bra     nz, TONUM2
+        sub     W14, #2, W14
+        pop     [++W14]
+        pop     [++W14]
+        bra     TONUM3
+TONUM2:
+        push    [W14--]            ; ud.l ud.h digit 
+        rcall   BASE
+        rcall   FETCH
+        rcall   UDSTAR
+        pop     [++W14]
+        rcall   MPLUS
+        pop     [++W14]
+        pop     [++W14]  
+        rcall   ONE
+        rcall   SLASHSTRING
+        bra     TONUM1
+TONUM3: 
+        return
+
+BASEQV:   
+        .word      handle(DECIMAL)+PFLASH
+        .word      handle(HEX)+PFLASH
+        .word      handle(BIN)+PFLASH
+; NUMBER?  c-addr -- n 1      string->number
+;                 -- dl du 2   string-> double number
+;                 -- c-addr 0  if convert error
+        .pword  paddr(TONUMBER_L)+PFLASH
+NUMBERQ_L:
+        .byte   NFA|7
+        .ascii  "number?"
+        .align  2
+NUMBERQ:
+        mov     [W14++], [W14]  ; a a
+        rcall   FALSE_          ; a a 0
+        rcall   FALSE_          ; a a 0 0 
+        rcall   ROT             ; a 0 0 a
+        rcall   CFETCHPP        ; a 0 0 a' u
+        rcall   SIGNQ           ; a 0 0 a' u f
+        push    [W14--]         ; a 0 a' u
+        rcall   BASE
+        rcall   FETCH
+        push    [W14--]        ; a 0 0 a' u
+        rcall   OVER
+        rcall   CFETCH
+        mlit    '#'
+        rcall   MINUS
+        mov     [W14++], [W14]      ; dup
+        mlit    3
+        rcall   ULESS
+        cp0     [W14--]
+        bra     z, BASEQ1
+        sl      [W14], [W14]        ; CELLS
+        mlit    handle(BASEQV)+PFLASH
+        rcall   PLUS
+        rcall   FEXECUTE
+        rcall   ONE
+        rcall   SLASHSTRING
+        bra     BASEQ2
+BASEQ1:
+        sub     W14, #2, W14
+BASEQ2: 
+        rcall   TONUMBER        ; a ud.l ud.h  a' u
+        pop     [++W14]         ; a ud.l ud.h  a' u oldbase
+        rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
+        rcall   STORE           ; a ud.l ud.h  a' u
+        
+        mov     [W14++], [W14]
+        dec2    [W14], [W14]
+        rcall   ZEROLESS
+        cp0     [W14--]         ; a ud.l ud.h  a' u
+        bra     nz, QNUMD
+        
+QNUM_ERR:                       ; Not a number
+        pop     [++W14]         ; a ud.l ud.h a' u sign
+        sub     W14, #6, W14
+QNUM_ERR1:      
+        sub     W14, #4, W14
+        rcall   FALSE_          ; a 0           Not a number
+        bra     QNUM3
+
+QNUMD:                          ; Double number
+                                ; a ud.l ud.h a' u
+        rcall   TWOSWAP         ; a a' u ud.l ud.h 
+        pop     [++W14]         ; a a' u ud.l ud.d sign
+        cp0     [W14--]
+        bra     z, QNUMD1
+        rcall   DNEGATE
+QNUMD1: 
+        rcall   TWOSWAP         ; a d.l d.h a' u
+        cp0     [W14--]         ; a d.l d.h a'
+        bra     z, QNUM1
+        rcall   CFETCH
+        mlit    '.'
+        rcall   MINUS
+        cp0     [W14--]         ; a d.l d.h
+        bra     nz, QNUM_ERR1
+        rcall   ROT             ; d.l d.h a
+        sub     W14, #2, W14    ; d.l d.h
+        mlit    2               ; d.l ud.h 2    Double number
+        bra     QNUM3
+QNUM1:                          ; single precision dumber
+                                ; a ud.l ud.h  a'
+        rcall   TWODROP         ; a n
+        rcall   NIP             ; n
+        rcall   ONE             ; n 1           Single number
+QNUM3:  
+        return
+
+.else
 
 ; >NUMBER  n adr u -- n' adr' u'
 ;                       convert string to number
@@ -4535,7 +4742,7 @@ QNUM2:
 QNUM3:  
         return
 
-
+.endif
 ; TIBSIZE  -- n                      size of TIB
 ; CONSTANT
         .pword  paddr(NUMBERQ_L)+PFLASH
@@ -4639,7 +4846,7 @@ INTER1:
         bra     z, INTER6
         rcall   FIND
         cp0     [W14]
-        bra     z, INTER4
+        bra     z, INUMBER
         inc     [W14], [W14]
         rcall   STATE
         rcall   ZEROEQUAL
@@ -4718,25 +4925,34 @@ INTERCALL:
         rcall   COMMAXT           ; Compile a call
         bra     INTER1
 
-INTER4:                           ; Convert to number
-        bclr    iflags, #tailcall ; allow tailcall optimisation
-        bclr    iflags, #izeroeq ; Clear 0= encountered in compilation
-        bclr    iflags, #idup    ; Clear DUP encountered in compilation
+INUMBER:                           ; Convert to number
+        bclr    iflags, #tailcall  ; allow tailcall optimisation
+        bclr    iflags, #izeroeq   ; Clear 0= encountered in compilation
+        bclr    iflags, #idup      ; Clear DUP encountered in compilation
         sub     W14, #2, W14
         rcall   NUMBERQ
-        cp0     [W14--]
-        bra     z, INTER5
+        cp0     [W14]
+        bra     z, IUNKNOWN
         rcall   STATE
         cp0     [W14--]
-        bra     z, INTER1
-        rcall   LITERAL 
+        bra     z, INUMBER1
+        btss    [W14--], #1
+        bra     ISINGLE
+IDOUBLE:
+        rcall   SWOP
+        rcall   LITERAL
+ISINGLE:
+        rcall   LITERAL
         bra     INTER1
-INTER5:                        ; ?????
+INUMBER1:
+        sub     W14, #2, W14
+        bra     INTER1
+IUNKNOWN:                        ; ?????
         rcall   CFETCHPP
         rcall   TYPE
         rcall   TRUE_
         rcall   QABORTQ
-        bra     INTER1
+;        bra     INTER1
 INTER6: 
         sub     W14, #2, W14
         return
@@ -5741,10 +5957,23 @@ RDROP:
         pop     W0
         return
 
+        .pword  paddr(RDROP_L)+PFLASH
+DNEGATE_L:
+        .byte   NFA|7
+        .ascii  "dnegate"
+        .align  2
+DNEGATE:
+        rcall   SWOP        
+        com     [W14], [W14]
+        rcall   SWOP
+        com     [W14], [W14]
+        rcall   ONE
+        goto    MPLUS
+        
 ; leave clear top of return stack
 
 ; BL      -- char                 an ASCII space
-        .pword  paddr(RDROP_L)+PFLASH
+        .pword  paddr(DNEGATE_L)+PFLASH
 BL_L:
         .byte   NFA|INLINE|2
         .ascii  "bl"

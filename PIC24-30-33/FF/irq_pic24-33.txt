@@ -23,7 +23,7 @@
 \ So it is recommended to fully program the flash page
 \ before user defined interrupts are enabled.
 \ Or alternatively advance the flash dp to another flash page
-\ before programming more into device. $400 flash allot 
+\ before programming more into device. E.g. $400 flash allot 
 
 \ Disable the alternate interrupts and switch back to IVT.
 iec0 t2ie bclr ivt
