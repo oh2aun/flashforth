@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          14.06.2011                                        *
+;    Date:          17.06.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -3041,17 +3041,17 @@ PLUS:
 L_MPLUS:
         db      NFA|2,"m+"
 MPLUS:
-        movf    Sminus, W, A
-        bn      MPLUS1
         clrf    TABLAT, A
-        bra     MPLUS2
-MPLUS1:
+        movf    Sminus, W, A
+        bnn     MPLUS1
         setf    TABLAT, A
-MPLUS2:
+MPLUS1:
         movwf   TBLPTRH, A
         movff   Sminus, TBLPTRL
         movlw   4
         subwf   Sp, F, A
+        movlw   0
+        subwfb  Sbank, F, A
 
         movf    TBLPTRL, W, A
         addwf   plusS, F, A
@@ -3321,11 +3321,13 @@ STORE_P_TO_R:
         movwf   Tp
         movf    TOSH, W
         movwf   PCLATH            ; Save the return address
+        
         movf    p_lo, W, A
         movwf   TOSL, A
         movf    p_hi, W, A        ; Push the previous pointer
         movwf   TOSH, A
         rcall   STORE_P           ; Set the new pointer 
+        
         movf    Tp, W, A
         movwf   PCL, A
 ;***************************************************
@@ -3337,11 +3339,13 @@ R_TO_P:
         movwf   Tp, A
         movf    TOSH, W, A
         movwf   PCLATH, A           ; Save the return address
+        
         pop                         ; previous pointer ->TOS
         movf    TOSL, W, A
         movwf   p_lo, A
         movf    TOSH, W, A
         movwf   p_hi, A             ; restore previous pointer
+        
         pop
         movf    Tp, W, A
         movwf   PCL, A
@@ -4151,15 +4155,19 @@ UDSTAR:
 L_UDSLASHMOD:
         db      NFA|6,"ud/mod"
 UDSLASHMOD:
-        rcall   TOR
-        rcall   FALSE_
-        rcall   RFETCH
-        rcall   UMSLASHMOD
-        rcall   ROT
-        rcall   ROT
-        rcall   RFROM
-        rcall   UMSLASHMOD
-        goto    ROT
+        rcall   TOR             ; ud.l ud.h 
+        rcall   FALSE_          ; ud.l ud.h 0
+        ;rcall   RFETCH          ; ud.l ud.h 0 u
+        movf    TOSL, W, A
+        movwf   plusS
+        movf    TOSH, W, A
+        movwf   plusS
+        rcall   UMSLASHMOD      ; ud.l r.h q.h
+        rcall   ROT             ; r.h q.h ud.l
+        rcall   ROT             ; q.h ud.l r.h
+        rcall   RFROM           ; q.h ud.l r.h u
+        rcall   UMSLASHMOD      ; q.h r.l q.l
+        goto    ROT             ; r.l q.l q.h
         
 ; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
 ;                       convert string to number
@@ -5562,26 +5570,25 @@ DNEGATE:
 L_DPLUS
         db      NFA|2,"d+"
 DPLUS:
-        movff   Sminus, TBLPTRH
-        movff   Sminus, TBLPTRL
-        movff   Sminus, Tp
-        movff   Sminus, TABLAT
-        
-        movlw   4
+        movlw   7
         subwf   Sp, F, A
         movlw   0
         subwfb  Sbank, F, A
-
-        movf    TABLAT, W, A
-        addwf   plusS, F, A
-        movf    Tp, W, A
-        addwfc  plusS, F, A
-        movf    TBLPTRL, W, A
-        addwfc  plusS, F, A
-        movf    TBLPTRH, W, A
-        addwfc  plusS, F, A
+        
+        movlw   4
+        movf    SWrw, W, A
+        addwf   Splus, F, A
+        movlw   4
+        movf    SWrw, W, A
+        addwfc  Splus, F, A
+        movlw   4
+        movf    SWrw, W, A
+        addwfc  Splus, F, A
+        movlw   4
+        movf    SWrw, W, A
+        addwfc  Srw, F, A
+        
         return
-
 ;***************************************************
         dw      L_DPLUS
 L_FETCH_P:
