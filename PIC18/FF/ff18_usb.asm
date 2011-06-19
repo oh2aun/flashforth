@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          17.06.2011                                        *
+;    Date:          18.06.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -739,8 +739,8 @@ umstar0:
         return
 
 ;***********************************************************
-;;; ~674 cycles for 32- bit division
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank
+;;; 320 - 384 cycles for 16 or 32 bit division
+;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp TOSL TOSH TOSU
 
 #define DIVIDEND_0      TOSL
 #define DIVIDEND_1      TOSH
@@ -748,74 +748,56 @@ umstar0:
 #define DIVIDEND_3      PCLATH
 #define DIVISOR_0       TBLPTRL
 #define DIVISOR_1       TBLPTRH
-#define REMAINDER_0     Srw     ; Dont change
-#define REMAINDER_1     Tp
 #define DCNT            TOSU    ;  5 bit counter
 
 umslashmod0:
-        rcall   SETTBLPTR
-;        movff   Sminus, DIVISOR_1
-;        movff   Sminus, DIVISOR_0
+        rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
         movff   Sminus, DIVIDEND_3
         movff   Sminus, DIVIDEND_2
-        bcf     FLAGS1, slashm, A   ; FIXME ! NOT RE-ENTRANT
-        movlw   h'20'           ; Precaution, TOSU, 5 bit counter, loops 32 times.
-        bra     UMSLASHMODxx
-        
-;***********************************************************
-;;; ~348 cycles for 16-bit divide. 
+        bra     UMSLASHMOD0
 uslashmod0:
-        rcall   SETTBLPTR
-;        movff   Sminus, DIVISOR_1
-;        movff   Sminus, DIVISOR_0
-        bsf     FLAGS1, slashm, A   ; FIXME ! NOT RE-ENTRANT
-        movlw   h'10'
-UMSLASHMODxx:
+        rcall   SETTBLPTR   ; divisor
+        clrf    DIVIDEND_3
+        clrf    DIVIDEND_2
+UMSLASHMOD0:
         push
-        movwf   DCNT, A
         movf    Sminus, W, A
         movwf   DIVIDEND_1, A
-        movf    Srw, W, A
+        movf    Sminus, W, A
         movwf   DIVIDEND_0, A
-        clrf    REMAINDER_0, A
-        clrf    REMAINDER_1, A  ; 16-bit 18 cycles , 32-bit  19 cycles
-UMSLASHMOD0:
-
+        movlw   h'10'
+        movwf   DCNT, A             ; 21
 UMSLASHMOD1:
+        clrf    Tp, A
         bcf     STATUS, C, A
         rlcf    DIVIDEND_0, F, A
         rlcf    DIVIDEND_1, F, A
-        btfss   FLAGS1, slashm, A
         rlcf    DIVIDEND_2, F, A
-        btfss   FLAGS1, slashm, A
         rlcf    DIVIDEND_3, F, A
-        rlcf    REMAINDER_0, F, A
-        rlcf    REMAINDER_1, F, A
-        bc      UMSLASHMOD3
+        rlcf    Tp, F, A
 
-        movf    DIVISOR_1, W, A
-        subwf   REMAINDER_1, W, A
-        bnz     UMSLASHMOD2
         movf    DIVISOR_0, W, A
-        subwf   REMAINDER_0, W, A
+        subwf   DIVIDEND_2, W, A 
+        movf    DIVISOR_1, W, A
+        subwfb  DIVIDEND_3, W, A
+        movlw   0
+        subwfb  Tp, W, A
+        bnc     UMSLASHMOD2
+
+        movf    DIVISOR_0, W, A
+        subwf   DIVIDEND_2, F, A
+        movf    DIVISOR_1, W, A
+        subwfb  DIVIDEND_3, F, A
+        bsf     DIVIDEND_0, 0, A
 UMSLASHMOD2:
-        bnc     UMSLASHMOD4     ; Remainder >= divisor ?
-UMSLASHMOD3:
-        movf    DIVISOR_0, W, A
-        subwf   REMAINDER_0, F, A
-        movf    DIVISOR_1, W, A
-        subwfb  REMAINDER_1, F, A ; Remainder = remainder - divisor
-        bsf     DIVIDEND_0, 0, A   ; A = A | 1
-UMSLASHMOD4:
         decfsz  DCNT, F, A
-        bra     UMSLASHMOD1     ; 16-bit 16*(~20) = 320 , 32-bit 32*(~20) = 640 cycles
-;       movff   REMAINDER_0, Srw
-        movff   REMAINDER_1, plusS
-        movff   DIVIDEND_0, plusS  ;  quotient
+        bra     UMSLASHMOD1        ; 16*(18-22) = ~320
+        movff   DIVIDEND_2, plusS  ; remainder
+        movff   DIVIDEND_3, plusS
+        movff   DIVIDEND_0, plusS  ; quotient
         movff   DIVIDEND_1, plusS
         pop
         return                  ; 11 cycles 
-
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
 ;   if (idirty)
@@ -3462,7 +3444,7 @@ UMSLASHMOD:
         dw      L_UMSLASHMOD
 L_USLASHMOD:
         db      NFA|5,"u/mod"
-USLASHMOD: 
+USLASHMOD:
         goto    uslashmod0
 
 ; *      n1|u1 n2|u2 -- n3|u3      16*16->16 multiply
@@ -3684,7 +3666,7 @@ L_UDOT:
         db      NFA|2,"u."
 UDOT:
         rcall   LESSNUM
-        call    FALSE_
+        rcall   FALSE_
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -3699,7 +3681,7 @@ UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
         rcall   TOR
-        call    FALSE_
+        rcall   FALSE_
         bra     UDOTR2
 UDOTR1:
         rcall   NUM
@@ -3720,7 +3702,7 @@ L_DOT:
 DOT:    rcall   LESSNUM
         rcall   DUP
         rcall   ABS
-        call    FALSE_
+        rcall   FALSE_
         rcall   NUMS
         rcall   ROT
         rcall   SIGN
@@ -5552,8 +5534,17 @@ RDROP:
         pop
         return
 
-; DNEGATE  +d -- -d
+; S>D  n -- d
         dw      L_RDROP
+L_STOD:
+        db      NFA|3,"s>d"
+STOD:
+        call    DUP
+        goto    ZEROLESS
+        
+
+; DNEGATE  +d -- -d
+        dw      L_STOD
 L_DNEGATE:
         db      NFA|7,"dnegate"
 DNEGATE:
@@ -5565,8 +5556,28 @@ DNEGATE:
         goto    MPLUS
         
 
-; D+       d d -- d         add double to double
+; DNEGATE  d -n -- -d
         dw      L_DNEGATE
+L_QDNEGATE:
+        db      NFA|8,"?dnegate"
+QDNEGATE:
+        call    ZEROLESS
+        call    ZEROSENSE
+        bz      QDNEGATE1
+        rcall   DNEGATE
+QDNEGATE1:
+        return
+
+; DABS  -d -- d
+        dw      L_QDNEGATE
+L_DABS:
+        db      NFA|4,"dabs"
+DABS:
+        call    DUP
+        goto    DNEGATE
+
+; D+       d d -- d         add double to double
+        dw      L_DABS
 L_DPLUS
         db      NFA|2,"d+"
 DPLUS:
@@ -5589,8 +5600,44 @@ DPLUS:
         addwfc  Srw, F, A
         
         return
-;***************************************************
+        
+; D-    d1 d2 -- d3        double minus
         dw      L_DPLUS
+L_DMINUS:
+        db      NFA|2,"d-"
+DMINUS:
+        rcall   DNEGATE
+        goto    DPLUS
+
+; UD.       ud --         unsigned double dot
+        dw      L_DMINUS
+L_UDDOT:
+        db      NFA|3,"ud."
+UDDOT:
+        call    LESSNUM
+        call    NUMS
+        call    NUMGREATER
+        call    TYPE
+        goto    SPACE_
+        
+; D.       d --         signed double dot
+        dw      L_UDDOT
+L_DDOT:
+        db      NFA|2,"d."
+DDOT:
+        call    LESSNUM
+        call    DUP
+        call    TOR
+        rcall   DABS
+        call    NUMS
+        call    RFROM
+        call    SIGN
+        call    NUMGREATER
+        call    TYPE
+        goto    SPACE_
+
+;***************************************************
+        dw      L_DDOT
 L_FETCH_P:
         db      NFA|2,"@p"
 FETCH_P:
@@ -5629,15 +5676,15 @@ MARKER:
         call    LIT
         dw      dp_start
         call    HERE
-        rcall   TEN
+        call    TEN
         call    CMOVE
-        rcall   TEN
+        call    TEN
         call    ALLOT
         call    FRAM
         rcall   XDOES
         call    DODOES
         rcall   INI
-        rcall   TEN
+        call    TEN
         goto    CMOVE
 
 ;        dw      L_RDROP
