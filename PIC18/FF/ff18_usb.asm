@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          18.06.2011                                        *
+;    Date:          19.06.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -5574,7 +5574,8 @@ L_DABS:
         db      NFA|4,"dabs"
 DABS:
         call    DUP
-        goto    DNEGATE
+        goto    QDNEGATE
+
 
 ; D+       d d -- d         add double to double
         dw      L_DABS
@@ -5609,8 +5610,106 @@ DMINUS:
         rcall   DNEGATE
         goto    DPLUS
 
-; UD.       ud --         unsigned double dot
+; D2/    d1 -- d2        double divide by 2
         dw      L_DMINUS
+L_DTWOSLASH:
+        db      NFA|3,"d2/"
+DTWOSLASH:
+        bcf     STATUS, C, A
+        btfsc   Srw, 7, A
+        bsf     STATUS, C, A
+        rrcf    Sminus, F, A
+        rrcf    Sminus, F, A
+        rrcf    Sminus, F, A
+        rrcf    Splus, F, A
+        movf    Splus, W, A
+        movf    Splus, W, A
+        return
+
+; D2*    d1 -- d2        double multiply by 2
+        dw      L_DTWOSLASH
+L_DTWOSTAR:
+        db      NFA|3,"d2*"
+DTWOSTAR:
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        bcf     STATUS, C, A
+        rlcf    Splus, F, A
+        rlcf    Splus, F, A
+        rlcf    Splus, F, A
+        rlcf    Srw, F, A
+        return
+        
+; DINVERT    d1 -- d2        double invert
+        dw      L_DTWOSTAR
+L_DINVERT:
+        db      NFA|7,"dinvert"
+DINVERT:
+        movlw   h'ff'
+        xorwf   Sminus, F, A
+        xorwf   Sminus, F, A
+        xorwf   Sminus, F, A
+        xorwf   Splus, F, A
+        movf    Splus, W, A
+        movf    Splus, W, A
+        return        
+        
+; D0=    d1 -- f        double zeroequal
+        dw      L_DINVERT
+L_DZEROEQUAL:
+        db      NFA|3,"d0="
+DZEROEQUAL:
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        iorwf   Sminus, W, A
+        iorwf   Sminus, W, A
+        bnz     DZEROLESS_FALSE
+DZEROEQUAL_TRUE:
+        goto    TRUE_
+
+; D0<    d1 -- f        double zeroless
+        dw      L_DZEROEQUAL
+L_DZEROLESS:
+        db      NFA|3,"d0<"
+DZEROLESS:
+        movf    Sminus, W, A
+        movf    Sminus, F, A
+        movf    Sminus, F, A
+        movf    Sminus, F, A
+        addlw   0
+        bn      DZEROEQUAL_TRUE
+DZEROLESS_FALSE:
+        goto    FALSE_
+        
+        
+; D=    d1 d2 -- f        double equal
+        dw      L_DZEROLESS
+L_DEQUAL:
+        db      NFA|2,"d="
+DEQUAL:
+        rcall   DMINUS
+        goto    DZEROEQUAL
+        
+; D<    d1 d2 -- f        double less than
+        dw      L_DEQUAL
+L_DLESS:
+        db      NFA|2,"d<"
+DLESS:
+        rcall   DMINUS
+        goto    DZEROLESS
+
+; D>    d1 d2 -- f        double greater than
+        dw      L_DLESS
+L_DGREATER:
+        db      NFA|2,"d>"
+DGREATER:
+        call    TWOSWAP
+        goto    DLESS
+
+
+; UD.       ud --         unsigned double dot
+        dw      L_DGREATER
 L_UDDOT:
         db      NFA|3,"ud."
 UDDOT:
