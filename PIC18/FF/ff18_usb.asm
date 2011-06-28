@@ -754,11 +754,6 @@ umslashmod0:
         rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
         movff   Sminus, DIVIDEND_3
         movff   Sminus, DIVIDEND_2
-        bra     UMSLASHMOD0
-uslashmod0:
-        rcall   SETTBLPTR   ; divisor
-        clrf    DIVIDEND_3
-        clrf    DIVIDEND_2
 UMSLASHMOD0:
         push
         movf    Sminus, W, A
@@ -766,7 +761,7 @@ UMSLASHMOD0:
         movf    Sminus, W, A
         movwf   DIVIDEND_0, A
         movlw   h'10'
-        movwf   DCNT, A             ; 21
+        movwf   DCNT, A             ; 19
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     STATUS, C, A
@@ -993,8 +988,9 @@ NEQUAL2:
 L_SKIP:
         db      NFA|4,"skip"
 SKIP:
-        movf    Sminus, W, A
-        movff   Sminus, TBLPTRL ; c character
+        rcall   SETTBLPTR
+;        movf    Sminus, W, A
+;        movff   Sminus, TBLPTRL ; c character
         movf    Sminus, W, A    ; skip count_hi
         movf    Sminus, W, A
         movwf   PCLATH, A       ; count_lo
@@ -1038,8 +1034,9 @@ SKIP4:
 L_SCAN:
         db      NFA|4,"scan"
 SCAN:
-        movf    Sminus, W, A
-        movff   Sminus, TBLPTRL     ; c character
+        rcall   SETTBLPTR
+;        movf    Sminus, W, A
+;        movff   Sminus, TBLPTRL     ; c character
         movf    Sminus, W, A        ; count_hi
         movf    Sminus, W, A        ; count_lo
         movwf   PCLATH, A
@@ -3023,6 +3020,9 @@ PLUS:
 L_MPLUS:
         db      NFA|2,"m+"
 MPLUS:
+        call    STOD
+        goto    DPLUS
+#if 0
         clrf    TABLAT, A
         movf    Sminus, W, A
         bnn     MPLUS1
@@ -3043,7 +3043,7 @@ MPLUS1:
         addwfc  plusS, F, A
         addwfc  plusS, F, A
         return
-
+#endif
 ;   -   n1/u1 n2/u2 -- n3/u3 n3 = n1 - n2 
         dw      L_MPLUS
 L_MINUS:
@@ -3445,7 +3445,9 @@ UMSLASHMOD:
 L_USLASHMOD:
         db      NFA|5,"u/mod"
 USLASHMOD:
-        goto    uslashmod0
+        rcall   FALSE_
+        rcall   SWOP
+        goto    umslashmod0
 
 ; *      n1|u1 n2|u2 -- n3|u3      16*16->16 multiply
 ;   um* drop ;
@@ -5539,8 +5541,9 @@ RDROP:
 L_STOD:
         db      NFA|3,"s>d"
 STOD:
-        call    DUP
-        goto    ZEROLESS
+        btfsc   Splus, 7, A
+        goto    test_true        
+        goto    test_false
         
 
 ; DNEGATE  +d -- -d

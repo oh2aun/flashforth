@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          14.06.2011                                        *
+;    Date:          28.06.2011                                        *
 ;    File Version:  4.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2626,10 +2626,10 @@ DPLUS_L:
         .ascii  "d+"
         .align  2
 DPLUS:
-        mov     [W14--], W0
         mov     [W14--], W1
-        add     W1, [--W14], [W14++]
-        addc    W0, [W14], [W14]
+        mov     [W14--], W0
+        add     W0, [W14], [W14++]
+        addc    W1, [W14], [W14]
         return
 
         .pword  paddr(DPLUS_L)+PFLASH
@@ -2697,6 +2697,16 @@ INVERT:
         return
 
         .pword  paddr(INVERT_L)+PFLASH
+DINVERT_L:
+        .byte   NFA|INLINE|7
+        .ascii  "dinvert"
+        .align  2
+DINVERT:
+        com     [W14], [W14--]
+        com     [W14], [W14++]
+        return
+
+        .pword  paddr(DINVERT_L)+PFLASH
 NEGATE_L:
         .byte   NFA|INLINE|6
         .ascii  "negate"
@@ -2777,6 +2787,16 @@ TWOSTAR:
         return
 
         .pword  paddr(TWOSTAR_L)+PFLASH
+DTWOSTAR_L:
+        .byte   NFA|INLINE|3
+        .ascii  "d2*"
+        .align  2
+DTWOSTAR:
+        sl      [--W14], [W14]        ; 2* msb -> c, 0 -> lsb
+        rlc     [++W14], [W14]
+        return
+
+        .pword  paddr(DTWOSTAR_L)+PFLASH
 TWOSLASH_L:
         .byte   NFA|INLINE|2
         .ascii  "2/"
@@ -2786,6 +2806,16 @@ TWOSLASH:
         return
 
         .pword  paddr(TWOSLASH_L)+PFLASH
+DTWOSLASH_L:
+        .byte   NFA|INLINE|3
+        .ascii  "d2/"
+        .align  2
+DTWOSLASH:
+        asr     [W14], [W14--]		; 2/ lsb -> c
+        rrc     [W14], [W14++]		; 2/ c -> msb
+        return
+
+        .pword  paddr(DTWOSLASH_L)+PFLASH
 ZEROEQUAL_L:
         .byte   NFA|2
         .ascii  "0="
@@ -2798,6 +2828,17 @@ test_true:
         return
 
         .pword  paddr(ZEROEQUAL_L)+PFLASH
+DZEROEQUAL_L:
+        .byte   NFA|3
+        .ascii  "d0="
+        .align  2
+DZEROEQUAL:
+        mov     [W14--], W0
+        ior     W0, [W14], [W14]
+        bra     nz, test_false
+        goto	test_true
+
+        .pword  paddr(DZEROEQUAL_L)+PFLASH
 ZEROLESS_L:
         .byte   NFA|2
         .ascii  "0<"
@@ -2810,6 +2851,16 @@ test_false:
         return
 
         .pword  paddr(ZEROLESS_L)+PFLASH
+DZEROLESS_L:
+        .byte   NFA|3
+        .ascii  "d0<"
+        .align  2
+DZEROLESS:
+        cp0     [W14--]
+        bra     n, test_true
+        goto	test_false
+
+        .pword  paddr(DZEROLESS_L)+PFLASH
 STORE_P_L:
         .byte   NFA|INLINE|2
         .ascii  "!p"
@@ -3695,8 +3746,18 @@ EQUAL:
         bra     Z, test_true
         bra     test_false
 
-;   <       n1 n2 -- flag       return true if n1 < n2
+;   =       d1 d2 -- flag       return true if d1 = d2
         .pword  paddr(EQUAL_L)+PFLASH
+DEQUAL_L:
+        .byte   NFA|2
+        .ascii  "d=" 
+        .align  2
+DEQUAL:
+        rcall   DMINUS
+        goto    DZEROEQUAL
+
+;   <       n1 n2 -- flag       return true if n1 < n2
+        .pword  paddr(DEQUAL_L)+PFLASH
 LESS_L:
         .byte   NFA|1
         .ascii  "<" 
@@ -3707,8 +3768,18 @@ LESS:
         bra     GT, test_true
         bra     test_false
 
-;   >       n1 n2 -- flag      return true if n1 > n2
+;   <       d1 d2 -- flag       return true if d1 < d2
         .pword  paddr(LESS_L)+PFLASH
+DLESS_L:
+        .byte   NFA|2
+        .ascii  "d<" 
+        .align  2
+DLESS:
+        rcall   DMINUS
+        goto    DZEROLESS
+
+;   >       n1 n2 -- flag      return true if n1 > n2
+        .pword  paddr(DLESS_L)+PFLASH
 GREATER_L:
         .byte   NFA|1
         .ascii  ">" 
@@ -3719,8 +3790,18 @@ GREATER:
         bra     LT, test_true
         bra     test_false
 
-;   U<      u1 u2 -- flag       test unsigned less
+;   >       d1 d2 -- flag      return true if d1 > d2
         .pword  paddr(GREATER_L)+PFLASH
+DGREATER_L:
+        .byte   NFA|2
+        .ascii  "d>" 
+        .align  2
+DGREATER:
+        rcall   TWOSWAP
+        goto    DLESS
+
+;   U<      u1 u2 -- flag       test unsigned less
+        .pword  paddr(DGREATER_L)+PFLASH
 ULESS_L:
         .byte   NFA|2
         .ascii  "u<" 
