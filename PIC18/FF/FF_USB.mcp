@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F2550
+device=PIC18F2455
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -42,7 +42,7 @@ file_003=no
 file_000=ff18_usb.asm
 file_001=P18F2455.asm
 file_002=FF_USB.lib
-file_003=FF_USB_0000.lkr
+file_003=FF_USB_0800.lkr
 [SUITE_INFO]
 suite_guid={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 suite_state=
