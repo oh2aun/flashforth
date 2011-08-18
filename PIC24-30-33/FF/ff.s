@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          28.06.2011                                        *
+;    Date:          18.08.2011                                        *
 ;    File Version:  4.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -5124,6 +5124,7 @@ INUMBER1:
         sub     W14, #2, W14
         bra     INTER1
 IUNKNOWN:                        ; ?????
+        dec2    W14, W14
         rcall   CFETCHPP
         rcall   TYPE
         rcall   TRUE_
