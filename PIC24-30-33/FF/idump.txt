@@ -1,13 +1,13 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      idump.txt                                         *
-\    FlashForth:    4.5                                               *
+\    FlashForth:    4.8                                               *
 \    MCU            PIC 24 30 33                                      *
 \    Application:                                                     *
 \                                                                     *
 \    Author:        Pete Zawasky                                      *
 \    Created:       Friday, February 06 2009 - 9:40  ppz              *
-\    Last Edit      Wednesday, February 25 2009      min              *
+\    Last Edit      Friday, August 19 2011      min                   *
 \                                                                     *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
@@ -24,7 +24,7 @@ marker -idump
 \
 \ u.r+  ( u +n -- )    \ display u unsigned in field of +n
                        \ with no trailing space
-: u.r+  <# 1- for # next #s #> type ;
+: u.r+  0 swap <# 1- for # next #s #> type ;
 
 \ Instruction Memory Dump.
 \
