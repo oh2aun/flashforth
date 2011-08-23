@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          5.10.2010                                         *
+;    Date:          23.8.2011                                         *
 ;    File Version:  0.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2010  Mikael Nordman
+; Copyright (C) 2011  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -151,7 +151,7 @@
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000  ; 4 Kbytes of ram
-.equ PFLASH  = 0x1000  ; 56 Kbytes of flash + 4 Kbytes hidden boot flash
+.equ PFLASH  = 0x1000  ; 56 Kbytes of flash + 8 Kbytes hidden boot flash
 .equ PEEPROM = 0xf000  ; 4 Kbytes of eeprom
 
 ;;; Sizes of the serial RX and TX character queues
@@ -609,6 +609,25 @@ TX1Q:
 RX1:
 RX1Q:
 
+UEMIT_L:
+        .db     NFA|5,"'emit"
+UEMIT_:
+        rcall   DOUSER
+        .dw     uemit
+
+UKEY_L:
+        .db     NFA|4,"'key",0      
+UKEY_:
+        rcall   DOUSER
+        .dw     ukey
+
+UKEYQ_L:
+        .db     NFA|5,"'keyq"
+UKEYQ_:
+        rcall   DOUSER
+        .dw     ukeyq
+
+
 OPERATOR_L:
         .db     NFA|8,"operator",0
 OPERATOR:
@@ -634,7 +653,6 @@ IALLOT:
 CELL:
 CALL_:
 RCALL_:
-ABS_:
 ZEROSENSE:
 COMMAXT_L:
         .db     NFA|3, "cf,"
@@ -719,6 +737,14 @@ FEXECUTE_L:
 FEXECUTE:
         rcall   FETCH
         jmp     EXECUTE
+
+EXIT_L:
+        .db     NFA|COMPILE|4,"exit"
+EXIT:
+        pop     t0
+        pop     t0
+        ret
+        
 
 VARIABLE_L:
         .db     NFA|8,"variable",0
@@ -1105,7 +1131,19 @@ DUP:
         pushtos
         ret
 
+;   ABS     n   --- n1      absolute value of n
 ABS_L:
+        .db     NFA|3,"abs"
+ABS_:
+        rcall   DUP
+        jmp     QNEGATE
+
+DABS_L:
+        .db     NFA|4,"dabs",0
+DABS:
+        rcall   DUP
+        jmp     QDNEGATE
+
         .dw     ABS_L+PFLASH
 PLUS_L:
         .db     NFA|1, "+"
@@ -1136,6 +1174,12 @@ MPLUS:
         st      -Y, t0
         ret
 
+DPLUS_L:
+        .db     NFA|2,"d+",0
+DPLUS:
+        ;FIXME
+        ret
+
         .dw     MPLUS_L+PFLASH
 MINUS_L:
         .db     NFA|1, "-"
@@ -1147,6 +1191,10 @@ MINUS:
         movw    tosl, t0
         ret
 
+DMINUS_L:
+        .db     NFA|2,"d-",0
+DMINUS:
+        ret
 
         .dw     ONEMINUS_L+PFLASH
 AND_L:
@@ -1187,6 +1235,15 @@ INVERT:
         ret
 
         .dw     INVERT_L+PFLASH
+DINVERT_L:
+        .db     NFA|7, "dinvert"
+DINVERT:
+        com     tosl
+        com     tosh
+        ;FIXME
+        ret
+
+        .dw     DINVERT_L+PFLASH
 NEGATE_L:
         .db     NFA|6, "negate",0
 NEGATE:
@@ -1194,6 +1251,22 @@ NEGATE:
         jmp     ONEPLUS
 
         .dw     NEGATE_L+PFLASH
+DNEGATE_L:
+        .db     NFA|7, "dnegate"
+DNEGATE:
+        ;FIXME
+        rcall   INVERT
+        jmp     ONEPLUS
+
+        .dw     NEGATE_L+PFLASH
+QDNEGATE_L:
+        .db     NFA|8, "?dnegate",0
+QDNEGATE:
+        ;FIXME
+        rcall   INVERT
+        jmp     ONEPLUS
+
+        .dw     DNEGATE_L+PFLASH
 ONEPLUS_L:
         .db     NFA|INLINE|2, "1+",0
 ONEPLUS:
@@ -1222,13 +1295,6 @@ TWOMINUS:
         ret
 
         .dw     TWOMINUS_L+PFLASH
-TOBODY_L:
-        .db     NFA|INLINE|5, ">body"
-TOBODY:
-        adiw    tosl, 4
-        ret
-
-        .dw     TOBODY_L+PFLASH
 TWOSTAR_L:
         .db     NFA|INLINE|2, "2*",0
 TWOSTAR:
@@ -1236,7 +1302,16 @@ TWOSTAR:
         rol     tosh
         ret
 
-        .dw     TWOSTAR_L+PFLASH
+        .dw     TOBODY_L+PFLASH
+DTWOSTAR_L:
+        .db     NFA|INLINE|3, "d2*"
+DTWOSTAR:
+        ;FIXME
+        lsl     tosl
+        rol     tosh
+        ret
+
+        .dw     DTWOSTAR_L+PFLASH
 TWOSLASH_L:
         .db     NFA|INLINE|2, "2/",0
 TWOSLASH:
@@ -1245,8 +1320,17 @@ TWOSLASH:
         ret
 
         .dw     TWOSLASH_L+PFLASH
+DTWOSLASH_L:
+        .db     NFA|INLINE|3, "d2/"
+DTWOSLASH:
+        ; FIXME
+        asr     tosh
+        ror     tosl
+        ret
+
+        .dw     DTWOSLASH_L+PFLASH
 ZEROEQUAL_L:
-        .db     NFA|COMPILE|2, "0=",0
+        .db     NFA|2, "0=",0
 ZEROEQUAL:      
         or      tosh, tosl
         brne    ZEROEQUAL_1
@@ -1256,9 +1340,13 @@ TRUE_F:
 ZEROEQUAL_1:
         ret
 
+DZEROEQUAL_L:
+        .db     NFA|3,"d0="
+DZEROEQUAL:
+        ; FIXME
         .dw     ZEROEQUAL_L+PFLASH
 ZEROLESS_L:
-        .db     NFA|COMPILE|2, "0<",0
+        .db     NFA|2, "0<",0
 ZEROLESS:
         tst     tosh
         brmi    TRUE_F
@@ -1266,7 +1354,11 @@ FALSE_F:
         clr     tosh
         clr     tosl
         ret
-        
+
+DZEROLESS_L:
+        .db     NFA|3,"d0<"
+DZEROLESS:
+        ;FIXME
 EQUAL_L:
         .db     NFA|1, "="
 EQUAL:
@@ -1390,23 +1482,53 @@ PNPLUS:
         poptos
         ret
 
-UEMIT_L:
-        .db     NFA|5,"uemit"
-UEMIT_:
-        rcall   DOUSER
-        .dw     uemit
 
-UKEY_L:
-        .db     NFA|4,"ukey",0      
-UKEY_:
-        rcall   DOUSER
-        .dw     ukey
+STOD_L:
+        .db     NFA|3,"s>d"
+STOD:
+        rcall   DUP
+        jmp     ZEROLESS
 
-UKEYQ_L:
-        .db     NFA|5,"ukeyq"
-UKEYQ_:
-        rcall   DOUSER
-        .dw     ukeyq
+UMSTAR_L:
+        .db     NFA|3,"um*"
+UMSTAR:
+        ; fixme
+        ret
+
+MSTAR_L:
+        .db     NFA|2,"m*",0
+        ; fixme
+        ret
+
+UMSLASHMOD_L:
+        .db     NFA|6,"um/mod",0
+UMSLASHMOD:
+        ; fixme
+        ret
+
+SMSLASHREM_L:
+        .db     NFA|6,"sm/rem",0
+SMSLASHREM:
+        ;fixme
+        ret
+
+USLASHMOD_L:
+        .db     NFA|5,"u/mod"
+USLASHMOD:
+        ; fixme
+        ret
+
+SLASHMOD_L:
+        .db     NFA|4,"/mod",0
+SLASHMOD:
+        ; fixme
+        ret
+
+MOD_L:
+        .db     NFA|3,"mod"
+MOD:
+        ; fixme
+        ret
 
 USER_L:
         .db     NFA|4,"user",0
@@ -1422,6 +1544,80 @@ DOUSER:
         add     tosl, upl
         adc     tosh, uph
         ret
+
+VALUE_L:
+        .db     NFA|5,"value"
+VALUE:
+        rcall   CREATE
+        rcall   COMMA
+        rcall   XDOES
+VALUE_DOES:
+        rcall   DODOES
+        jmp     FETCH
+
+DEFER_L:
+        .db     NFA|5,"defer"
+DEFER:
+        rcall   CREATE
+        rcall   DOLIT
+        .dw     ABORT+PFLASH
+        rcall   COMMA
+        rcall   XDOES
+DEFER_DOES:
+        rcall   DODOES
+        jmp     FEXECUTE
+
+IS_L:
+        .db     NFA|2,"is",0
+IS:
+        rcall   TICK
+        rcall   TWOPLUS
+        rcall   FETCH
+        rcall   STATE
+        rcall   ZEROSENSE
+        breq    IS1
+        rcall   LITERAL
+        rcall   DOLIT
+        .dw     STORE+PFLASH
+        rcall   COMMAXT
+        rjmp    IS2
+IS1:
+        rcall   STORE
+IS2:
+        ret
+
+        .dw     IS_L+PFLASH
+TO_L:
+        .db     NFA|2,"to",0
+TO:
+        jmp     IS
+
+
+        .dw     TO_L+PFLASH
+TOBODY_L:
+        .db     NFA|INLINE|5, ">body"
+TOBODY:
+        adiw    tosl, 4
+        ret
+
+PFLASH_L:
+        .db     NFA|3,"pfl"
+PFLASH_:
+        rcall   DOCREATE
+        .dw     PFLASH    
+
+FLASH_L:
+        .db     NFA|5,"flash"
+FLASH:
+
+
+EEPROM_L:
+        .db     NFA|6,"eeprom",0
+EEPROM_:
+
+RAM_L:
+        .db     NFA|3,"ram"
+RAM_:
 
 CREATE:
 
