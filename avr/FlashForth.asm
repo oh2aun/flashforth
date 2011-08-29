@@ -234,7 +234,7 @@ dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
-sect:       .byte 2 ; Current data section 0=flash, 1=eeprom, 2=ram
+cse:        .byte 2 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 2 ; Compilation state
 upcurr:     .byte 2 ; Current USER area pointer
 ustart:     .byte uareasize ; The operator user area
@@ -650,7 +650,6 @@ ICOMMA:
         ret
 IHERE:
 IALLOT:
-CELL:
 CALL_:
 RCALL_:
 ZEROSENSE:
@@ -1609,15 +1608,83 @@ PFLASH_:
 FLASH_L:
         .db     NFA|5,"flash"
 FLASH:
-
+        ldi     t0, 0
+        sts     cse, t0
+        ret
 
 EEPROM_L:
         .db     NFA|6,"eeprom",0
 EEPROM_:
+        ldi     t0, 2
+        sts     cse, t0
+        ret
+
 
 RAM_L:
         .db     NFA|3,"ram"
 RAM_:
+        ldi     t0, 4
+        sts     cse, t0
+        ret
+
+CSE_L:
+        .db     NFA|3,"cse"
+CSE_:
+        pushtos
+        lds     tosl, cse
+        clr     tosh
+        ret
+
+IDP_L:
+        .db     NFA|3,"idp"
+IDP:
+        rcall   DOCREATE
+        .dw     dpFLASH
+
+DP_L:
+        .db     NFA|2,"dp",0
+DP:
+        rcall   DOLIT
+        .dw     dpRAM
+        rcall   CSE_
+        jmp     PLUS
+
+HERE_L:
+        .db     NFA|4,"here",0
+HERE:
+        rcall   DP
+        jmp     FETCH
+
+COMMA_L:
+        .db     NFA|1,","
+COMMA:
+        rcall   HERE
+        rcall   STORE
+        rcall   CELL
+        jmp     ALLOT
+
+CCOMMA_L:
+        .db     NFA|2,"c,",0
+CCOMMA:
+        rcall   HERE
+        rcall   CSTORE
+        rcall   ONE
+        jmp     ALLOT
+
+CELL_L:
+        .db     NFA|4,"cell",0
+CELL:
+        rcall   DOCREATE
+        .dw     2
+
+ALIGN_L:
+        .db     NFA|5,"align"
+ALIGN:
+        rcall   HERE
+        rcall   ALIGNED
+        rcall   DP
+        jmp     STORE
+
 
 CREATE:
 
@@ -1627,7 +1694,7 @@ COLON:
 SEMICOLON:
 
 XDOES:
-DP:
+
 
 XNEXT_DEC:
         ldd     t0, y+3
