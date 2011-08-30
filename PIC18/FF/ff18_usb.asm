@@ -141,10 +141,7 @@ PEEPROM     equ h'ec00'
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
 
-ff_acs   udata_acs   ; Variables in Access Ram
-#ifndef USB_CDC
-flash_buf res 0x40
-#endif
+FORTH_VARS  udata_acs   ; Variables in Access Ram
 ibase_lo res 1       ; Memory address of ibuffer
 ibase_hi res 1       ; Memory address of ibuffer
 iaddr_lo res 1       ; Instruction Memory access address 
@@ -182,55 +179,34 @@ SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
-#ifndef USB_CDC
-ff_ram   udata 0x060  ; USB_CDC will use access ram
-#endif
-
+IRQ_STACK udata
 irq_s0   res h'10'   ; Interrupt parameter stack. 8 cells deep
 
-#ifdef USB_CDC
-ff_uart udata 0x700
-;;; The UART interface interrupt buffer areas
-;;; RXbuf is 127 bytes.  TXbuf is 127 bytes.
-;;; 
-RXbufmask   equ h'7f'
-RXbuf       res RXbufmask+1 ;equ h'700'
-RXfullBit   equ h'7'
 
-TXbufmask   equ h'7f'
-TXbuf       res TXbufmask+1 ;equ h'780'
-TXfullBit   equ h'7'
-#else
-ff_uart udata 0x070
 ;;; The UART interface interrupt buffer areas
 ;;; RXbuf is 63 bytes.  TXbuf is 31 bytes.
-;;; 
+;;;
+UART_RX udata 
 RXbufmask   equ h'3f'
 RXbuf       res RXbufmask+1 ; h'070'
 RXfullBit   equ h'6'
 
+UART_TX udata
 TXbufmask   equ h'1f'
 TXbuf       res TXbufmask+1 ; h'0b0
 TXfullBit   equ h'5'
-#endif
 
 ;;; FORTH variables
-#ifdef USB_CDC
-forthVars   equ 0xf4c0
-#else
-forthVars   equ 0xf0d0
-#endif
-
-dpSTART     equ forthVars
-dpFLASH     equ dpSTART+0x2          ; DP's and LATEST in RAM
-dpEEPROM    equ dpSTART+0x4
-dpRAM       equ dpSTART+0x6
-dpLATEST    equ dpSTART+0x8
-irq_v       equ dpSTART+0xa         ; Interrupt vector
-upcurr      equ dpSTART+0xc         ; Current USER area pointer
+USER_AREA udata
+dpSTART     res 2
+dpFLASH     res 2
+dpEEPROM    res 2 
+dpRAM       res 2
+dpLATEST    res 2
+irq_v       res 2         ; Interrupt vector
+upcurr      res 2         ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
-ustart      equ upcurr + 2
 ussize      equ d'96'         ; 48 cells parameter stack
 utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
 
@@ -250,7 +226,7 @@ utib        equ -d'8'
 uhp         equ -d'6'
 usource     equ -d'4'            ; Two cells
 utoin       equ -d'0'
-urbuf       equ ustart-us0 + UADDSIZE + 2  ; + 2 is space for utoin
+urbuf       equ upcurr-us0 + UADDSIZE + 2  ; + 2 is space for utoin
 usbuf       equ urbuf + ursize
 utibbuf     equ usbuf + ussize 
 
@@ -276,21 +252,19 @@ uhp         equ -d'8'
 usource     equ -d'6'           ; Two cells
 utoin       equ -d'2'
 urptr       equ d'0'            ; Top of the saved return stack
-urbuf       equ ustart-us0 + UADDSIZE + 2  ; + 2 is space for urptr
-usbuf       equ urbuf + ursize
-utibbuf     equ usbuf + ussize
+uvars       res -us0
+u0          res 2 + UADDSIZE
+urbuf       res ursize
+usbuf       res ussize
+utibbuf     res utibsize
 #endif
 
 ;;;  Initial USER area pointer (operator)
-u0          equ ustart-us0
 uareasize   equ -us0+ursize+ussize+utibsize + 2
 
 ;;; Start of free ram
-#ifdef USB_CDC
-dpdata      equ h'f060'
-#else
-dpdata      equ ustart-us0+ursize+ussize+utibsize + 2
-#endif
+HERE udata
+dpdata      res 2
 
 ;;; Variables in EEPROM
 beeprom     equ PEEPROM
@@ -303,10 +277,9 @@ prompt      equ beeprom + h'000a' ; Deferred prompt action
 dpeeprom    equ beeprom + h'000c'
 
 ;**************************************************
-#ifdef USB_CDC
-flash_buf_base udata 0x480
+FLASH_BUF udata_acs
 flash_buf res 0x40
-#endif
+
 ; Code **********************************************
         code
         org     CONFIG_RESET
@@ -356,7 +329,7 @@ irq_ms_end:
         movff   Tp, Tsave_lo
         movff   Tbank, Tsave_hi
 irq_user:
-        lfsr    Tptr, irq_v&0xfff
+        lfsr    Tptr, irq_v
         movf    Tplus, W
         iorwf   Trw, W
         bz      irq_user_skip
@@ -476,7 +449,7 @@ irq_end:
 #ifdef SKIP_MULTITASKING
 warmlitsize equ d'20'
 WARMLIT:
-        dw      u0             ; UP
+        dw      u0+h'f000'     ; UP
         dw      usbuf-1        ; S0
         dw      OPERATOR_TX    ; EMIT vector
         dw      OPERATOR_RX    ; KEY vector
@@ -488,16 +461,16 @@ WARMLIT:
 #else
 warmlitsize equ d'22'
 WARMLIT:
-        dw      u0             ; UP
-        dw      usbuf-1        ; S0
+        dw      u0+h'f000'     ; UP
+        dw      usbuf+h'efff'; S0
         dw      OPERATOR_TX    ; EMIT vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
-        dw      u0             ; ULINK
+        dw      u0+h'f000'     ; ULINK
         dw      h'0010'        ; BASE
-        dw      utibbuf        ; TIB
-        dw      urbuf          ; RSAVE
+        dw      utibbuf+h'f000'; TIB
+        dw      urbuf+h'f000'  ; RSAVE
 #endif
 ;;; **************************************
 
@@ -523,7 +496,7 @@ device_dsc:
 STARTV: dw      h'0000'
 DPC:    dw      dp_user_dictionary
 DPE:    dw      dpeeprom
-DPD:    dw      dpdata
+DPD:    dw      dpdata+h'f000'
 LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ; *******************************************************************
@@ -1096,7 +1069,7 @@ L_IRQ_V:
         db      NFA|3,"irq"
 IRQ_V:
         call    VALUE_DOES      ; Must be call for IS to work
-        dw      irq_v
+        dw      irq_v+h'f000'
 
 ; LITERAL  x --           compile literal x as native code
         dw      L_IRQ_V
@@ -1410,7 +1383,7 @@ L_TURNKEY:
         db      NFA|7,"turnkey"
 TURNKEY:
         call    VALUE_DOES      ; Must be call for IS to work.
-        dw      dpSTART
+        dw      dpSTART+h'f000'
 
 ;;; *******************************************************
 ; PAUSE  --     switch task
@@ -1443,8 +1416,8 @@ PAUSE0:
 
 #ifndef SKIP_MULTITASKING
         ; Set user pointer in Tp, Tbank (FSR1)
-        movff   upcurr&h'fff', Tp
-        movff   (upcurr+1)&h'fff', Tbank
+        movff   upcurr, Tp
+        movff   (upcurr+1), Tbank
         
         ; Save parameter stack pointer
         movlw   ussave
@@ -1486,13 +1459,13 @@ pause1:
 
         ; Move to the next user area
         movlw   ulink
-        movff   TWrw, upcurr&h'fff'
+        movff   TWrw, upcurr
         movlw   ulink+1
-        movff   TWrw, (upcurr+1)&h'fff'
+        movff   TWrw, (upcurr+1)
 
         ; Put new user pointer in Tp, Tbank
-        movff   upcurr&h'fff', Tp
-        movff   (upcurr+1)&h'fff', Tbank
+        movff   upcurr, Tp
+        movff   (upcurr+1), Tbank
 
         ; Set the return stack restore pointer urptr in Sp
         movff   Tplus, Sp
@@ -1688,7 +1661,7 @@ OPERATOR:
         call    DOCREATE        ; Must be a call !
         dw      OPERATOR_AREA
 OPERATOR_AREA:  
-        dw      ustart-us0      ; User pointer
+        dw      u0+h'f000'      ; User pointer
         db      UADDSIZE, ursize
         db      ussize, utibsize
 
@@ -1958,7 +1931,7 @@ WARM_ZERO_2:
 #endif
         setf    ibase_hi, A     ; Mark flash buffer empty
 
-        lfsr    Sptr, (usbuf-1)&h'0fff' ; Initalise Parameter stack
+        lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
 
         movlw   spbrgval
         movwf   SPBRG, A
@@ -3563,7 +3536,7 @@ L_UPTR:
         db      NFA|2,"up"
 UPTR:
         call    DOCREATE_A
-        dw      upcurr
+        dw      upcurr+h'f000'
 
 ; NUMERIC OUTPUT ================================
 ; HOLD  char --        add char to output string
@@ -3822,11 +3795,11 @@ DOUSER:
         movwf   TBLPTRH, A
         tblrd*+
         movf    TABLAT, W, A
-        movff   upcurr&h'fff', plusS
+        movff   upcurr, plusS
         addwf   Srw, F, A
         tblrd*+
         movf    TABLAT, W, A       ; 
-        movff   (upcurr+1)&h'fff', plusS
+        movff   (upcurr+1), plusS
         addwfc  Srw, F, A
         pop                         ; return to the callers caller
         return  
@@ -4824,7 +4797,7 @@ POSTPONE1:
         db      NFA|3,"idp"
 IDP:
         rcall   DOCREATE_A
-        dw      dpFLASH
+        dw      dpFLASH+h'f000'
 
 
 ;***************************************************************
@@ -4992,7 +4965,7 @@ L_LATEST:
         db      NFA|6,"latest"
 LATEST:
         rcall   DOCREATE_A
-        dw      dpLATEST
+        dw      dpLATEST+h'f000'
 
 ; S0       -- a-addr      start of parameter stack
         dw      L_LATEST
@@ -5009,7 +4982,7 @@ S0:
         db      NFA|3,"ini"
 INI:
         rcall   DOCREATE_A
-        dw      dpSTART
+        dw      dpSTART+h'f000'
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
         dw      L_S0
