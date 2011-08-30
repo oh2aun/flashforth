@@ -253,4 +253,6 @@ FlashForth V3.7
 FlashForth V3.8
 ---------------
 - Double number support
+- The USB version can also run with USB disconnected.
+
 
