@@ -1261,8 +1261,7 @@ EFETCH:
         movff   Sminus, EEADR
         rcall   asmecfetch
         incf    EEADR,F,A
-        rcall   asmecfetch
-        return
+        bra     asmecfetch
 
 ; EC@      addr -- c  fetch char from data EEPROM
 ECFETCH:
@@ -1364,8 +1363,6 @@ IS:
         call    TICK
         call    TOBODY
         rcall   FETCH
-;        call    STATE
-;        call    ZEROSENSE
         movf    state, W, A
         bz      IS1
         rcall   LITERAL
@@ -2064,23 +2061,10 @@ check_sp:
         rcall   FETCH
         call    TIB
         rcall   WITHIN
- ;       rcall   ZEROSENSE
         rcall   XSQUOTE
         db      d'3',"SP?"
         call    QABORT
         return
-#if 0
-        bz      check_sp_err
-        return
-check_sp_err:
-        call    DP_TO_RAM
-        call    S0
-        rcall   FETCH
-        rcall   SPSTORE
-        rcall   XSQUOTE
-        db      d'3',"SP?"
-        bra     TYPE
-#endif
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         dw      L_VER
