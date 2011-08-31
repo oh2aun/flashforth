@@ -197,7 +197,7 @@ TXbuf       res TXbufmask+1 ; h'0b0
 TXfullBit   equ h'5'
 
 ;;; FORTH variables
-USER_AREA udata
+USER_AREA udata  ;; 0x122 bytes, coordinate witk linker file
 dpSTART     res 2
 dpFLASH     res 2
 dpEEPROM    res 2 
