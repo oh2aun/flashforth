@@ -1,9 +1,11 @@
-// File: FF37_USB_0000.lkr
+// File: FF_USB_0000_p18f14k50.lkr
 // Linker script for FlashForth USB without bootloader.
 LIBPATH .
 
 // No bootloader  Application start at 0x0000
-CODEPAGE   NAME=code       START=0x0000         END=0xFFFFF
+CODEPAGE   NAME=code       START=0x0000         END=0x02BBF
+CODEPAGE   NAME=code1      START=0x2BC0         END=0x02BFF        PROTECTED
+CODEPAGE   NAME=code2      START=0x2C00         END=0xFFFFF        PROTECTED
 
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
@@ -36,3 +38,5 @@ SECTION NAME=C_VARS       RAM=cvars
 SECTION NAME=HERE         RAM=ram_dp
 SECTION NAME=IRQ_STACK    RAM=irqstack
 SECTION NAME=USB_BUF      RAM=usbbuf
+SECTION NAME=FF_END_CODE  ROM=code1
+SECTION NAME=FF_DP        ROM=code2

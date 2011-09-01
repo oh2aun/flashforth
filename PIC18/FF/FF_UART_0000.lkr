@@ -3,7 +3,9 @@
 // Adjust the cstack and STACK SIZE if needed.
 LIBPATH .
 
-CODEPAGE   NAME=code       START=0x0000         END=0xFFFFF
+CODEPAGE   NAME=code       START=0x0000         END=0x021D7
+CODEPAGE   NAME=code1      START=0x21D8         END=0x021FF        PROTECTED
+CODEPAGE   NAME=code2      START=0x2200         END=0xFFFFF        PROTECTED
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
 CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
@@ -11,22 +13,16 @@ CODEPAGE   NAME=eedata     START=0xF00000       END=0xF000FF       PROTECTED
 
 ACCESSBANK NAME=flashbuf   START=0x0            END=0x3F           PROTECTED
 ACCESSBANK NAME=acs_ram    START=0x40           END=0x5F
-DATABANK   NAME=irqstack   START=0x60           END=0x6F           PROTECTED
-DATABANK   NAME=uarttx     START=0x70           END=0x8F           PROTECTED
-DATABANK   NAME=uartrx     START=0x90           END=0xCF           PROTECTED
-DATABANK   NAME=userarea   START=0xD0           END=0x1F1          PROTECTED
-DATABANK   NAME=ram_dp     START=0x1f2          END=0x2FF          PROTECTED
+DATABANK   NAME=irqstack   START=0x60           END=0x1FF           PROTECTED
 DATABANK   NAME=cstack     START=0x3F0          END=0x3FF          PROTECTED
 ACCESSBANK NAME=accesssfr  START=0xF60          END=0xFFF          PROTECTED
 
 
 //SECTION    NAME=CONFIG     ROM=config
-STACK   SIZE=0x10         RAM=cstack
+STACK   SIZE=0x10         RAM=cstack      // Just an example
 SECTION NAME=FLASH_BUF    RAM=flashbuf
 SECTION NAME=FORTH_VARS   RAM=acs_ram
-SECTION NAME=UART_RX      RAM=uartrx
-SECTION NAME=UART_TX      RAM=uarttx
-SECTION NAME=USER_AREA    RAM=userarea
-SECTION NAME=HERE         RAM=ram_dp
 SECTION NAME=IRQ_STACK    RAM=irqstack
+SECTION NAME=FF_END_CODE  ROM=code1
+SECTION NAME=FF_DP        ROM=code2
 

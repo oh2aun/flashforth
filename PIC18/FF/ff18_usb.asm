@@ -62,6 +62,16 @@
 
 #endif
 
+RX_OVFL_BIT macro buf_size
+            local bitno = 0
+            local size = buf_size
+            while size > 1
+                bitno += 1
+                size /= 2
+            endw
+            btfss   RXcnt, #v(bitno), A
+            endm
+            
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Ap  - Temporary Ram Pointer
@@ -140,6 +150,8 @@ PEEPROM     equ h'ec00'
 ;****************************************************
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
+FLASH_BUF udata_acs
+flash_buf res 0x40
 
 FORTH_VARS  udata_acs   ; Variables in Access Ram
 ibase_lo res 1       ; Memory address of ibuffer
@@ -180,24 +192,30 @@ SbankF   res 1
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
 IRQ_STACK udata
-irq_s0   res h'10'   ; Interrupt parameter stack. 8 cells deep
+irq_s0   res h'10'   ; Multiple of h'10'. Interrupt parameter stack. 8 cells deep
 
 
 ;;; The UART interface interrupt buffer areas
 ;;; RXbuf is 63 bytes.  TXbuf is 31 bytes.
-;;;
+;;; Valid sizes: multiple of 2
+#ifdef USB_CDC
 UART_RX udata 
-RXbufmask   equ h'3f'
-RXbuf       res RXbufmask+1 ; h'070'
-RXfullBit   equ h'6'
+#endif
+RXbufmask   equ RX1_BUF_SIZE - 1
+RXbuf       res RX1_BUF_SIZE
+RXfullBit   equ h'4'
 
+#ifdef USB_CDC
 UART_TX udata
-TXbufmask   equ h'1f'
-TXbuf       res TXbufmask+1 ; h'0b0
-TXfullBit   equ h'5'
+#endif
+TXbufmask   equ h'3'
+TXbuf       res TXbufmask+1
+TXfullBit   equ h'2'
 
 ;;; FORTH variables
+#ifdef USB_CDC
 USER_AREA udata  ;; 0x122 bytes, coordinate witk linker file
+#endif
 dpSTART     res 2
 dpFLASH     res 2
 dpEEPROM    res 2 
@@ -207,7 +225,7 @@ irq_v       res 2         ; Interrupt vector
 upcurr      res 2         ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
-ussize      equ d'96'         ; 48 cells parameter stack
+ussize      equ d'64'         ; 32 cells parameter stack
 utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
 
 ;;; User variables and area 
@@ -232,7 +250,7 @@ utibbuf     equ usbuf + ussize
 
 #else
 
-ursize      equ  d'62'         ; 31 cells return stack save area
+ursize      equ  d'30'         ; 15 cells return stack save area
 ; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 
 us0         equ -d'32'          ; Start of parameter stack
@@ -263,7 +281,9 @@ utibbuf     res utibsize
 uareasize   equ -us0+ursize+ussize+utibsize + 2
 
 ;;; Start of free ram
+#ifdef USB_CDC
 HERE udata
+#endif
 dpdata      res 2
 
 ;;; Variables in EEPROM
@@ -277,20 +297,15 @@ prompt      equ beeprom + h'000a' ; Deferred prompt action
 dpeeprom    equ beeprom + h'000c'
 
 ;**************************************************
-FLASH_BUF udata_acs
-flash_buf res 0x40
-
 ; Code **********************************************
         code
-        org     CONFIG_RESET
-        nop                      ; 18f252/18f258 ERRATA
+        ; Note MPLAB inserts a nop here automagically
+        ;nop                      ; 18f252/18f258 ERRATA
         clrf    STKPTR, A
         goto    main 
-
 ;;***************************************************
 ;; Interrupt routines
 ;; 1 millisecond tick counter
-        org		CONFIG_RESET+0x0008
 irq_ms:
 #ifdef MS_TMR1  ;****************************
         btfss   PIR1, TMR1IF, A
@@ -385,9 +400,10 @@ irq_async_rx_3:
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
         incf    RXcnt, F, A
-        btfss   RXcnt, RXfullBit, A     ;  Buffer overflow if 64 or more in buffer  
+;        btfss   RXcnt, RX_OVFL_BIT, A     ;  Buffer overflow ? 
+        RX_OVFL_BIT RX1_BUF_SIZE
         bra     irq_async_rx_4
-        movlw   '|'                     ;  Buffer overflow if 64 or more in buffer
+        movlw   '|'                     ;  Buffer overflow 
         rcall   asmemit
         decf    RXcnt, F, A
         decf    RXhead, F, A
@@ -494,7 +510,7 @@ device_dsc:
 
 ;;; COLD dictionary data
 STARTV: dw      h'0000'
-DPC:    dw      dp_user_dictionary
+DPC:    dw      dpcode     ; dp_user_dictionary
 DPE:    dw      dpeeprom
 DPD:    dw      dpdata+h'f000'
 LW:     dw      lastword
@@ -2043,7 +2059,7 @@ VER:
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
-		movlw	(dp_user_dictionary>>8) ;
+		movlw	HIGH dpcode ;(dp_user_dictionary>>8) ;
 		subwf	Srw, W, A
         btfsc   STATUS, N, A
 		bra     ISTORERR
@@ -5775,7 +5791,10 @@ DOTBASEEND:
         movwf   Srw, A
         clrf    plusS, A
         return
-;;; 
+;;;**************************************
+;;; The USB code lib goes here in between
+;;;**************************************
+FF_END_CODE code
 MEMQADDR_N:
         dw      ROM_N
         dw      EROM_N
@@ -5786,15 +5805,17 @@ L_MEMQ:
         db      NFA|1,"I"
 MEMQ:
         call    CSE
-        call    LIT_A
+        call    LIT
         dw      MEMQADDR_N
         call    PLUS
         call    FETCH_A
         call    CFETCHPP
-        call    LIT_A
+        call    LIT
         dw      NFAmask
         goto    AND
 end_of_dict:
+
+FF_DP code
 dpcode:
 ;****************************************************
         org h'f00000'
