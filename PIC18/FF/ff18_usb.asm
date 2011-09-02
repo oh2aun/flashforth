@@ -62,7 +62,7 @@
 
 #endif
 
-RX_OVFL_BIT macro buf_size
+RX_FULL_BIT macro buf_size
             local bitno = 0
             local size = buf_size
             while size > 1
@@ -72,6 +72,16 @@ RX_OVFL_BIT macro buf_size
             btfss   RXcnt, #v(bitno), A
             endm
             
+TX_FULL_BIT macro buf_size
+            local bitno = 0
+            local size = buf_size
+            while size > 1
+                bitno += 1
+                size /= 2
+            endw
+            btfsc   TXcnt, #v(bitno), A
+            endm
+
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Ap  - Temporary Ram Pointer
@@ -208,8 +218,8 @@ RXfullBit   equ h'4'
 #ifdef USB_CDC
 UART_TX udata
 #endif
-TXbufmask   equ h'3'
-TXbuf       res TXbufmask+1
+TXbufmask   equ TX1_BUF_SIZE - 1
+TXbuf       res TX1_BUF_SIZE
 TXfullBit   equ h'2'
 
 ;;; FORTH variables
@@ -225,8 +235,8 @@ irq_v       res 2         ; Interrupt vector
 upcurr      res 2         ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
-ussize      equ d'64'         ; 32 cells parameter stack
-utibsize    equ d'84'         ; 74 character TIB and 10 char hold buffer
+ussize      equ PARAMETER_STACK_SIZE
+utibsize    equ TIB_SIZE + HOLD_SIZE
 
 ;;; User variables and area 
 #ifdef SKIP_MULTITASKING
@@ -244,13 +254,15 @@ utib        equ -d'8'
 uhp         equ -d'6'
 usource     equ -d'4'            ; Two cells
 utoin       equ -d'0'
-urbuf       equ upcurr-us0 + UADDSIZE + 2  ; + 2 is space for utoin
-usbuf       equ urbuf + ursize
-utibbuf     equ usbuf + ussize 
+uvars       res -us0
+u0          res 2 + UADDSIZE
+urbuf       res ursize
+usbuf       res ussize
+utibbuf     res utibsize
 
-#else
+#else  ; Support multi tasking
 
-ursize      equ  d'30'         ; 15 cells return stack save area
+ursize      equ  RETURN_STACK_SAVE_SIZE
 ; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 
 us0         equ -d'32'          ; Start of parameter stack
@@ -400,8 +412,8 @@ irq_async_rx_3:
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
         incf    RXcnt, F, A
-;        btfss   RXcnt, RX_OVFL_BIT, A     ;  Buffer overflow ? 
-        RX_OVFL_BIT RX1_BUF_SIZE
+;        btfss   RXcnt, RX_OVFL_BIT, A     ;  Buffer full ? 
+        RX_FULL_BIT RX1_BUF_SIZE
         bra     irq_async_rx_4
         movlw   '|'                     ;  Buffer overflow 
         rcall   asmemit
@@ -590,7 +602,8 @@ L_TX1_:
         db      NFA|3,"tx1"
 TX1_:
         rcall   PAUSE                   ; Try other tasks
-        btfsc   TXcnt, TXfullBit, A     ; Queue full?
+;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
+        TX_FULL_BIT TX1_BUF_SIZE
         bra     TX1_
         
         movf    Sminus, W
