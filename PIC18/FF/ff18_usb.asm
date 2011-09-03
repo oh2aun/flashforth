@@ -201,6 +201,7 @@ SpF      res 1       ; Save Forth Sp during C context
 SbankF   res 1
 acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
 
+
 IRQ_STACK udata
 irq_s0   res h'10'   ; Multiple of h'10'. Interrupt parameter stack. 8 cells deep
 
@@ -231,8 +232,8 @@ dpFLASH     res 2
 dpEEPROM    res 2 
 dpRAM       res 2
 dpLATEST    res 2
-irq_v       res 2         ; Interrupt vector
-upcurr      res 2         ; Current USER area pointer
+irq_v       res 2       ; Interrupt vector
+upcurr      res 2       ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
 ussize      equ PARAMETER_STACK_SIZE
@@ -310,7 +311,7 @@ dpeeprom    equ beeprom + h'000c'
 
 ;**************************************************
 ; Code **********************************************
-        code
+FF_RESET code
         ; Note MPLAB inserts a nop here automagically
         ;nop                      ; 18f252/18f258 ERRATA
         clrf    STKPTR, A
@@ -318,6 +319,7 @@ dpeeprom    equ beeprom + h'000c'
 ;;***************************************************
 ;; Interrupt routines
 ;; 1 millisecond tick counter
+FF_INTERRUPT code
 irq_ms:
 #ifdef MS_TMR1  ;****************************
         btfss   PIR1, TMR1IF, A
@@ -850,15 +852,15 @@ write_buffer_to_imem:
 wbtil:
         bcf     FLAGS1, istream, A
         movlw   write_delay   ;  This loop takes about 20 milliseconds
-        movwf   Tp, A
+        movwf   Tbank, A
 wbtil1:
-        clrf    Ap, A
+        clrf    Tp, A
 wbtil2: 
         btfsc   FLAGS1, istream, A ; Check for UART receive activity.
         bra     wbtil
-        decfsz  Ap, F, A
-        bra     wbtil2             ; 1250 cycles = 78 us @ 64 MHz XTAL 
         decfsz  Tp, F, A
+        bra     wbtil2             ; 1250 cycles = 78 us @ 64 MHz XTAL 
+        decfsz  Tbank, F, A
         bra     wbtil1             ; 20 ms @ 64 MHz XTAL @ write_delay = 255
 #endif
         bcf     INTCON, GIE, A  ; Disable Interrupts

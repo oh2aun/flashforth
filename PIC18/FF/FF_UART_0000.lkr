@@ -3,7 +3,8 @@
 // Adjust the cstack and STACK SIZE if needed.
 LIBPATH .
 
-CODEPAGE   NAME=code       START=0x0000         END=0x021D7
+CODEPAGE   NAME=coder      START=0x0000         END=0x00007
+CODEPAGE   NAME=codei      START=0x0008         END=0x021D7
 CODEPAGE   NAME=code1      START=0x21D8         END=0x021FF        PROTECTED
 CODEPAGE   NAME=code2      START=0x2200         END=0xFFFFF        PROTECTED
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
@@ -23,6 +24,8 @@ STACK   SIZE=0x10         RAM=cstack      // Just an example
 SECTION NAME=FLASH_BUF    RAM=flashbuf
 SECTION NAME=FORTH_VARS   RAM=acs_ram
 SECTION NAME=IRQ_STACK    RAM=irqstack
+SECTION NAME=FF_RESET     ROM=coder
+SECTION NAME=FF_INTERRUPT ROM=codei
 SECTION NAME=FF_END_CODE  ROM=code1
 SECTION NAME=FF_DP        ROM=code2
 
