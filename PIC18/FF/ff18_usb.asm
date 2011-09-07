@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          30.08.2011                                        *
+;    Date:          07.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -30,11 +30,7 @@
 ;**********************************************************************
 
 
-#define CONFIG_RESET     0x0000  ; No bootloader, application start at 0x0000
-                                 ; Link with FF37_0000.lkr or FF37_USB_0000.lkr
-;#define CONFIG_RESET     0x0800  ; Bootloader, application start at 0x0800
-                                 ; Link with FF37_0800.lkr or FF37_USB_0800.lkr
-
+#include "p18f-main.cfg"
 #include "p18fxxxx.cfg"
 
 #ifdef USB_CDC 
@@ -66,8 +62,8 @@ RX_FULL_BIT macro buf_size
             local bitno = 0
             local size = buf_size
             while size > 1
-                bitno += 1
-                size /= 2
+bitno += 1
+size /= 2
             endw
             btfss   RXcnt, #v(bitno), A
             endm
@@ -76,12 +72,11 @@ TX_FULL_BIT macro buf_size
             local bitno = 0
             local size = buf_size
             while size > 1
-                bitno += 1
-                size /= 2
+bitno += 1
+size /= 2
             endw
             btfsc   TXcnt, #v(bitno), A
             endm
-
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Ap  - Temporary Ram Pointer
@@ -428,6 +423,7 @@ irq_async_rx_4:
 irq_async_rx_end:  
 ;;; *******************************************************************************
 ;;; UART TX interrupt routine
+#if TX1_BUF_SIZE > 0
 irq_async_tx:
         btfss   PIR1, TXIF, A
         bra     irq_async_tx_end
@@ -455,6 +451,7 @@ irq_async_tx_0:
 irq_async_tx_1: 
         bcf     PIE1, TXIE, A           ;  Disable TX interrupts. Queue is empty
 irq_async_tx_end:
+#endif
 ;;; *****************************************************************
 #ifdef HW_FC_RTS_PORT
 irq_fc:
@@ -603,6 +600,18 @@ L_IR:
 L_TX1_:
         db      NFA|3,"tx1"
 TX1_:
+#if TX1_BUF_SIZE == 0
+        rcall   PAUSE                   ; Try other tasks
+        btfss   PIR1, TXIF, A
+        bra     TX1_
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+#ifndef USE_8BIT_ASCII
+        andlw   h'7f'
+#endif
+        movwf   TXREG, A
+        return
+#else
         rcall   PAUSE                   ; Try other tasks
 ;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
@@ -627,7 +636,7 @@ TX1_:
         bsf     INTCON, GIE, A  ; Enable interrupts
         bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
         return
-
+#endif
 ;***************************************************
 ; RX1    -- c    get character from the serial line
         dw      L_TX1_
