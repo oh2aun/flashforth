@@ -601,9 +601,15 @@ L_TX1_:
         db      NFA|3,"tx1"
 TX1_:
 #if TX1_BUF_SIZE == 0
-        rcall   PAUSE                   ; Try other tasks
         btfss   PIR1, TXIF, A
-        bra     TX1_
+        bra     TX1_LOOP
+        rcall   TX1_SEND
+        bra     PAUSE          ; Pause during a character is sent out
+TX1_LOOP:
+        rcall   PAUSE
+        btfss   PIR1, TXIF, A
+        bra     TX1_LOOP       ; Dont pause if paused before sending.
+TX1_SEND:
         movf    Sminus, W, A
         movf    Sminus, W, A
 #ifndef USE_8BIT_ASCII
@@ -611,6 +617,7 @@ TX1_:
 #endif
         movwf   TXREG, A
         return
+
 #else
         rcall   PAUSE                   ; Try other tasks
 ;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
