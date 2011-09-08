@@ -1,4 +1,4 @@
-FlashForth V3.7 readme file
+FlashForth readme file
 ---------------------------
 
 FlashForth is licensed acording to the GNU General Public License
@@ -254,5 +254,9 @@ FlashForth V3.8
 ---------------
 - Double number support
 - The USB version can also run with USB disconnected.
+- Unbuffered UART TX option
+- Configuration of buffer sizes from configuration file
+- 
+
 
 
