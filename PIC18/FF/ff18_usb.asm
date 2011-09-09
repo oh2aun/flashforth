@@ -1598,9 +1598,6 @@ L_RX0:
 RX0:
         rcall   PAUSE
         call    keyUSBUSART
-        addlw   0
-        bz      RX0
-RX0_1:
         movwf   plusS, A
 		clrf    plusS, A
 		return
