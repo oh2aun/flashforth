@@ -1176,9 +1176,8 @@ pcfetch0:
         movff   TABLAT, plusS
         clrf    plusS, A
         return
-
-; I!       x a-addr --    store cell in Code mem
-ISTORE:
+        
+ISTORE_SETUP:
         rcall   LOCKED
 ; check that writes are not to the kernel code
         rcall   ISTORECHK
@@ -1191,7 +1190,11 @@ ISTORE:
         andlw   0x3f
 		lfsr    Tptr, flash_buf
         addwf   Tp, F, A
-
+        return
+        
+; I!       x a-addr --    store cell in Code mem
+ISTORE:
+        rcall   ISTORE_SETUP
         movff   Sminus, plusT
         swapf   Tminus, W, A
 
@@ -1199,19 +1202,7 @@ ISTORE:
 
 ; IC!       x addr --    store byte in Code mem
 ICSTORE:
-        rcall   LOCKED
-; check that writes are not to the kernel code
-        rcall   ISTORECHK
-; check if row is already in buffer
-        movff   Sminus, iaddr_hi
-        movff   Sminus, iaddr_lo
-        rcall   iupdatebuf
-;write_byte_to_buffer
-        movf    iaddr_lo, W, A
-        andlw   0x3f
-		lfsr    Tptr, flash_buf
-        addwf   Tp, F, A
-
+        rcall   ISTORE_SETUP
         swapf   Sminus, W, A
 ICSTORE1:
         movff   Sminus, Trw
@@ -2986,7 +2977,13 @@ ROT:
 ; 12 cycles
         dw      L_ROT
 L_TOR:
-        db      NFA|COMPILE|2,">r"
+        db      NFA|INLINE|COMPILE|2,">r"
+        push
+        movf    Sminus, W, A
+        movwf   TOSH, A
+        movf    Sminus, W, A
+        movwf   TOSL, A
+        return
 TOR:
         movf    TOSL, W
         movwf   Tp
@@ -3003,7 +3000,13 @@ TOR:
 ; 12 cycles
         dw      L_TOR
 L_RFROM:
-        db      NFA|COMPILE|2,"r>"
+        db      NFA|INLINE|COMPILE|2,"r>"
+        movf    TOSL, W
+        movwf   plusS
+        movf    TOSH, W
+        movwf   plusS
+        pop
+        return        
 RFROM:
         movf    TOSH, W
         movwf   PCLATH    ; Save the return address
