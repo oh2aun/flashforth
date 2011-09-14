@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          25.09.2011                                        *
+;    Date:          14.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -144,7 +144,6 @@ fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
 
 ;;; FLAGS1
-slashm  equ 7           ; Division mode 0 = 32 bit , 1 = 16 bit >local
 noclear equ 6           ; dont clear optimisation flags         
 idup    equ 5           ; Use dupzeroequal instead of zeroequal 
 izeroeq equ 4           ; Use bnz instead of bz if zeroequal    
@@ -485,25 +484,25 @@ irq_end:
 warmlitsize equ d'20'
 WARMLIT:
         dw      u0+h'f000'     ; UP
-        dw      usbuf-1        ; S0
+        dw      usbuf+h'efff'  ; S0
         dw      OPERATOR_TX    ; EMIT vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
-        dw      h'0010'        ; BASE
+        dw      DEFAULT_BASE   ; BASE
         dw      0              ; UFLG
-        dw      utibbuf        ; TIB
+        dw      utibbuf+h'f000'; TIB
 #else
 warmlitsize equ d'22'
 WARMLIT:
         dw      u0+h'f000'     ; UP
-        dw      usbuf+h'efff'; S0
+        dw      usbuf+h'efff'  ; S0
         dw      OPERATOR_TX    ; EMIT vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
         dw      u0+h'f000'     ; ULINK
-        dw      h'0010'        ; BASE
+        dw      DEFAULT_BASE   ; BASE
         dw      utibbuf+h'f000'; TIB
         dw      urbuf+h'f000'  ; RSAVE
 #endif

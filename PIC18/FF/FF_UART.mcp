@@ -34,7 +34,7 @@ file_000=no
 file_001=no
 [FILE_INFO]
 file_000=ff18_usb.asm
-file_001=FF_UART_0000.lkr
+file_001=FF_0000.lkr
 [SUITE_INFO]
 suite_guid={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 suite_state=

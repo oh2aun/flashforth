@@ -1,4 +1,4 @@
-Dictionary of FlashForth 3.7.
+Dictionary of FlashForth 3.8.
 
 !          ( x addr -- )
            Store x to addr
@@ -9,17 +9,26 @@ Dictionary of FlashForth 3.7.
 !p>r       ( addr -- )   Compile Only
            Push contents of p to return stack and stor addr to p
 
-#          ( u1 -- u2 )  Compile Only
+#          ( ud1 -- ud2 )  Compile Only
            Convert 1 digit to formatted numeric string
 
-#>         ( u1 -- c-addr u )    Compile Only
+#>         ( ud1 -- c-addr u )    Compile Only
            Leave address and count of formatted numeric string
 
-#s         ( u1 -- u2 )  Compile Only
+#s         ( ud1 -- ud2 )  Compile Only
            Convert remaining digits to formatted numeric output
 
 '          ( -- xt )
            Parse word and find it in dictionary
+
+'emit      ( -- addr )  User Variable
+           EMIT vector. Default is TX1
+
+'key       ( -- addr )  User Variable
+           KEY vector. Default is RX1
+
+'key?      ( -- addr )  User Variable
+           KEY? vector. Default is RX1?
 
 'source    ( -- a-addr )     User Variable 
            Current input source
@@ -29,6 +38,10 @@ Dictionary of FlashForth 3.7.
 
 *          (u1/n1 u2/n2 -- u3/n3
            Signed and unsigned 16*16->16 bit multiplikation
+
+*/mod      ( n1 n2 n3 -- rem quot )
+           Multiply n1 with n2 and divide with n3 via 32-bit 
+           intermediate result
 
 +          ( n1 n2 -- n3 )
            Add n1 to n2
@@ -60,6 +73,9 @@ Dictionary of FlashForth 3.7.
 
 /          ( n1 n2 -- n3 )
            16/16->16 bit division
+           
+/mod       ( n n  -- rem quot )
+           16/16 -> 16-bit signed division.
 
 /string    ( addr u n -- addr+n u-n )
            Trim string
@@ -140,7 +156,7 @@ Dictionary of FlashForth 3.7.
 >in        ( -- a-addr )      User Variable
            Holds offset into tib
 
->number    ( n1 addr1 u1 -- n2 addr2 u2 )
+>number    ( ud  addr1 u1 -- ud addr2 u2 )
            Convert string to number
 
 >pr        ( c -- c )
@@ -155,6 +171,9 @@ Dictionary of FlashForth 3.7.
 ?abort?    ( flag -- )
            If flag is false output ? and abort
 
+?dnegate   ( d n -- d )
+           Negate d if n is negative
+           
 ?negate    ( n1 n2 -- n3 )
            Negate n1 if n2 is negative
 
@@ -269,18 +288,11 @@ c>n        ( addr1 -- addr2 )
 cmove      ( addr1 addr2 u -- )
            Move u chars from addr1 to addr2
 
-empty       ( -- )
-           Reset all dictionary pointers.
-
 con        ( x "name" -- )
            Create a constant in rom as inline code
 
 constant   ( x "name" -- )
            Create an constant in rom with docreate as runtime
-
-Fcy        ( -- u )
-           The internal cpu & peripheral clock cycle in KHz.
-           Foscillator/4
 
 cr         ( -- )
            Emit CR LF
@@ -291,6 +303,39 @@ create     ( "name" -- )
 
 cwd        ( -- )
            Clear the WatchDog counter.
+           
+d+         ( d d -- d )
+           Add double numbers
+           
+d-         ( d d -- d )
+           Subtract double numbers
+           
+d.         ( d -- )
+           Display signed double number.
+           
+d0=        ( d -- f )
+           True if d equals zero
+           
+d0<        ( d -- f )
+           True if d is negative
+           
+d<         ( d d -- f )
+           True if less than
+           
+d=         ( d d -- f )
+           True if equal
+
+d>         ( d d -- f )
+           True if greater than
+           
+d2*        ( d -- d )
+           Multiply by 2
+
+d2/        ( d -- d )
+           Divide by 2
+
+dabs       ( d - +d )
+           Absolute value
 
 decimal    ( -- )
            Set numeric base to decimal 10.
@@ -303,7 +348,13 @@ di         ( -- )
 
 digit?     ( c -- n flag )
            Convert char to a digit according to base
+           
+dinvert    ( ud -- ud )
+           Invert double number
 
+dnegate    ( d -- -d )
+           Negate double number
+           
 does>      ( -- )                   Compile Only
            Define the runtime action of a created word.
 
@@ -336,6 +387,9 @@ emit       ( c -- )
            Emit c to the serial port FIFO. FIFO is 46 chars.
            Executes pause.
 
+empty       ( -- )
+           Reset all dictionary pointers.
+
 evaluate   ( c-addr n -- )
            Evaluate buffer
 
@@ -346,6 +400,10 @@ exit       ( -- )
            Exit from a word.
 
 false      ( -- 0 )
+
+Fcy        ( -- u )
+           The internal cpu & peripheral clock cycle in KHz.
+           Foscillator/4
 
 flash      ( -- )
            Set data section context to flash
@@ -363,6 +421,9 @@ fl-        ( -- )
 fl+        ( -- )
            Allow writes to flash and eeprom.
 
+fm/mod     (d n -- rem quot )
+           Floored 32/16 -> 16-bit division
+           
 for        ( u -- )              Compile Only
            Loop u times. for ... next
            R@ gets the loop counter  u-1 ... 0
@@ -447,25 +508,31 @@ lshift     ( x1 u -- x2
 m+         ( d1 n -- d2 )
            Add double number d1 to n
 
+m*         ( n n -- d )
+           Signed 16*16->32 multiply
+           
 marker     ( "name" -- )
            Mark a dictionary state
 
 max        ( n1 n2 -- n3 )
            Leave max of n1 and n2
 
-mclr       ( mask ram-addr -- )
+mclr       ( byte-mask byte-ram-addr -- )
            AND the contents of caddr with the complement of mask
 
 min        ( n1 n2 -- n3 )
            Leave min of n1 and n2
 
+mod        ( n1 n2 -- remainder )
+           Remainder of n1 divided by n2
+           
 ms         ( +n -- )
            Pause for +n milliseconds
 
-mset       ( mask ram-caddr -- )
+mset       ( byte-mask byte-ram-caddr -- )
            OR the contents of caddr with mask.
 
-mtst       ( mask addr -- x )
+mtst       ( byte-mask byte-addr -- x )
            AND the contents of caddr with mask
 
 n=         ( c-addr nfa u -- flag )
@@ -486,11 +553,12 @@ n>l        ( nfa -- lfa )
 nip        ( x1 x2 -- x2 )
            Remove x1 from the stack
 
-number?    ( c-addr -- n/c-addr flag )
+number?    ( c-addr -- n/d/c-addr flag )
            Convert string to number
            # is decimal prefix
            $ is hexadecimal prefix
            % is binary prefix
+           Flag: 0=error, 1=double, 2=single
 
 operator   ( -- addr )
            Leave the address of the operator task
@@ -593,6 +661,9 @@ rx1        ( -- c )
 rx1?       ( -- f )
            Leave TRUE if UART1 interrupt buffer is not empty.
 
+s>d        ( n -- d )
+           Sign extend single to double precision number
+           
 s0         ( -- a-addr )
            Variable for start of parameter stack
 
@@ -616,6 +687,9 @@ skip       ( c-addr u c -- c-addr' u' )
            Skip string until c not encountered.
            c-addr must point to ram. u<255
 
+sm/rem     ( d n -- rem quot )
+           Symmetric 32/16 -> 16 bit division
+           
 sp@        ( -- addr )
            Leave parameter stack pointer
 
@@ -724,14 +798,14 @@ u<         ( u1 u2 -- flag )
 u>         ( u1 u2 -- flag )
            Leave true flag if u1 is greater than u2
 
-'emit      ( -- addr )  User Variable
-           EMIT vector. Default is TX1
+ud.        ( ud -- )
+           Display unsigned double number
+           
+ud*        ( ud u -- ud )
+           Unsigned 32x16 -> 32 bit multiply
 
-'key       ( -- addr )  User Variable
-           KEY vector. Default is RX1
-
-'key?      ( -- addr )  User Variable
-           KEY? vector. Default is RX1?
+ud/mod     ( ud u -- u(remainder) ud(quotient)
+           unsigned 32/16 -> 32 bit division
 
 ulink      ( -- a-addr)
            Link to next task

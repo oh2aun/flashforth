@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      math.txt                                          *
-\    Date:          14.6.2011                                         *
+\    Date:          14.9.2011                                         *
 \    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -9,15 +9,6 @@
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
 \ Double and mixed math words
-
-\ s>d   n -- d single to double precision
-: s>d dup 0< ;
-
-\ ?dnegate d1 n -- d2  negate d1 if n is negative
-: ?dnegate 0< if dnegate then ;
-
-\ dabs   d1 -- +d2     32 bit absolute value
-: dabs dup ?dnegate ;
 
 \ m*     n1 n2 -- d    signed 16*16->32 multiply
 : m*
