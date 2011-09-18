@@ -1,4 +1,4 @@
-Dictionary of FlashForth 4.7 on dsPIC 30, 33 and PIC 24
+Dictionary of FlashForth 4.8 on dsPIC 30, 33 and PIC 24
 
 !          ( x addr -- )
            Store x to addr

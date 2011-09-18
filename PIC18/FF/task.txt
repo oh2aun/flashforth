@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task.txt                                          *
-\    Date:          10.03.2010                                        *
-\    FF Version:    3.5                                               *
+\    Date:          18.09.2011                                        *
+\    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -93,7 +93,7 @@ hex ram
 \ May only be executed from the operator task
 \ task-addr -- 
 : run
-  @ up! ul@ 0=                 \ Already running ?
+  @ up! ul@ 0=                 \ Already running
   if
     up@                        \ task-uarea
     op! ul@                    \ task-uarea operator-ulink
@@ -128,12 +128,12 @@ hex ram
 \ End all tasks except the operator task
 \ May only be executed from the operator task
 : single ( -- )
-  ul@ op@ <>                \ Are there any running tasks ?
+  ul@ op@ <>                \ Are there any running tasks
   if 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
     begin
-      ul@ op@ <>            \ is this the last linked user area ?
+      ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
       up!                   \ and move to next user area
