@@ -27,6 +27,7 @@ $4 user delay      \ The delay time in milliseconds
     delay @ ms
     bitmask c@ portc mset 
     delay @ ms
+    pause
     bitmask c@ portc mclr
   again
 ;
@@ -42,12 +43,12 @@ $0 $10 $20 $4 task: tblink
 ;
 : blink1 tblink-init tblink run ; 
 
-blink1
+ blink1
 
-tasks
+ tasks
 
 
 \ Make blink1 start after reset.
-' blink1 is turnkey
+ ' blink1 is turnkey
 
-
+cr decimal load . cr

@@ -249,6 +249,9 @@ bin        ( -- )
 bl         ( -- c )
            Ascii space
 
+busy       ( -- )
+           Cpu idle mode not allowed
+           
 c!         ( c addr -- )
            Store c to addr
 
@@ -452,6 +455,9 @@ i,         ( x -- )
 ic,        ( c -- )
            Append c to the flash data section.
 
+idle       ( -- )
+           Cpu idle is allowed
+           
 if         ( -- a-addr )        Compile Only 
            if ... else ... then
 
@@ -502,6 +508,10 @@ leave      ( -- )             COMPILE ONLY
 literal    ( x -- )
            Compile a literal into the dictionary
 
+load       ( -- n )
+           Leave the cpu load on the stack.
+           Updated every 256 milliseconds.
+           
 lshift     ( x1 u -- x2
            Shift x1 u bits to the left
 

@@ -5,9 +5,9 @@ LIBPATH .
 // Bootloader  Application start at 0x0800
 CODEPAGE   NAME=protect    START=0x0000         END=0x7FF          PROTECTED
 CODEPAGE   NAME=coder      START=0x0800         END=0x0807
-CODEPAGE   NAME=codei      START=0x0808         END=0x033D7
-CODEPAGE   NAME=code1      START=0x33D8         END=0x033FF        PROTECTED
-CODEPAGE   NAME=code2      START=0x3400         END=0xFFFFF        PROTECTED
+CODEPAGE   NAME=codei      START=0x0808         END=0x034D7
+CODEPAGE   NAME=code1      START=0x34D8         END=0x034FF        PROTECTED
+CODEPAGE   NAME=code2      START=0x3500         END=0xFFFFF        PROTECTED
 
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED

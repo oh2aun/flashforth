@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          14.09.2011                                        *
+;    Date:          21.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -80,7 +80,7 @@ TX_FULL_BIT macro buf_size
 bitno += 1
 size /= 2
             endw
-            btfsc   TXcnt, #v(bitno), A
+            btfss   TXcnt, #v(bitno), A
             endm
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
@@ -140,6 +140,7 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
+fLOAD   equ 2           ; 256 mS Load sample available
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control                       
 ixoff   equ 0           ; 1=XOFF has been sent
 
@@ -174,19 +175,18 @@ RXhead   res 1       ; Head of serial RX interrupt buffer
 RXtail   res 1       ; Tail of serial RX interrupt buffer
 TXhead   res 1       ; Head of serial TX interrupt buffer
 TXtail   res 1       ; Tail of serial TX interrupt buffer
-Tsave_lo res 1       ; Save of Tp during interrupt routine
-Tsave_hi res 1       ; Save of Tbank during interrupt routine
-TPL_save res 1       ; TBLPTRL saved during interrupt
-TPH_save res 1       ; TBLPTRH saved during interrupt
-pch_save res 1       ; PCLATH save during interrupt
 ms_count res 1       ; millisecond counter 2 bytes
 ms_cnt_h res 1       ; millisecond counter 2 bytes
 FLAGS2   res 1       ; More flags
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
-wflags   res 1       ; Word flags from word header                   
+wflags   res 1       ; Word flags from word header
+status   res 1       ; if zero, cpu idle is allowed (f056)
 RXcnt    res 1       ; Number of characters in the RX fifo
 TXcnt    res 1       ; Number of characters in the TX fifo
+load_acc res 3
+load     res 1       ; CPU load
+
 #ifdef p18fxx2xx8_fix_1
 SINTCON  res 1       ; Save INTCON before disabling interrupts
 SPIE1    res 1       ; Save PIE1 before disabling interrupts
@@ -250,8 +250,9 @@ ukey        equ -d'18'
 ukeyq       equ -d'16'
 utask       equ -d'14'
 ubase       equ -d'12'
-uflg        equ -d'10'           ; ACCEPT: true =  CR has been received  
-utib        equ -d'8'
+utib        equ -d'10'
+uflg        equ -d'8'            ; ACCEPT: true =  CR has been received  
+ustatus     equ -d'7'
 uhp         equ -d'6'
 usource     equ -d'4'            ; Two cells
 utoin       equ -d'0'
@@ -266,22 +267,19 @@ utibbuf     res utibsize
 ursize      equ  RETURN_STACK_SAVE_SIZE
 ; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 
-us0         equ -d'32'          ; Start of parameter stack
-uemit       equ -d'30'
-ukey        equ -d'28'
-ukeyq       equ -d'26'
-utask       equ -d'24'
-ulink       equ -d'22'
-ubase       equ -d'20'
-utib        equ -d'18'
-ursave      equ -d'16'          ; Ptr to return stack save area
-ussave      equ -d'14'          ; Saved parameter stack pointer
-upsave      equ -d'12'          ; Saved P pointer
-urcnt       equ -d'10'          ; Number of saved return stack items BYTE
-uflg        equ -d'9'           ; ACCEPT true =  CR has been received  
-uhp         equ -d'8'
-usource     equ -d'6'           ; Two cells
-utoin       equ -d'2'
+us0         equ -d'26'          ; Start of parameter stack
+uemit       equ -d'24'
+ukey        equ -d'22'
+ukeyq       equ -d'20'
+utask       equ -d'18'
+ubase       equ -d'16'
+utib        equ -d'14'
+uflg        equ -d'12'           ; ACCEPT true =  CR has been received  
+ustatus     equ -d'11'
+uhp         equ -d'10'
+usource     equ -d'8'           ; Two cells
+utoin       equ -d'4'
+ulink       equ -d'2'
 urptr       equ d'0'            ; Top of the saved return stack
 uvars       res -us0
 u0          res 2 + UADDSIZE
@@ -314,7 +312,7 @@ dpeeprom    equ beeprom + h'000c'
 ;**************************************************
 ; Code **********************************************
 FF_RESET code
-        ; Note MPLAB inserts a nop here automagically
+        ; Note: MPLAB inserts a nop here automagically
         ;nop                      ; 18f252/18f258 ERRATA
         clrf    STKPTR, A
         goto    main 
@@ -322,6 +320,13 @@ FF_RESET code
 ;; Interrupt routines
 ;; 1 millisecond tick counter
 FF_INTERRUPT code
+#ifdef IDLEN
+#ifdef IDLE_MODE
+#ifdef CPU_LOAD
+        bsf     T0CON, TMR0ON, A
+#endif
+#endif
+#endif
 irq_ms:
 #ifdef MS_TMR1  ;****************************
         btfss   PIR1, TMR1IF, A
@@ -354,18 +359,43 @@ irq_ms:
 #endif
 #endif
 #endif
+#ifdef IDLEN
+#ifdef IDLE_MODE
+#ifdef CPU_LOAD
+        btfsc   FLAGS2, fLOAD, A
+        bra     irq_ms_end
+        movf    TMR0L, W
+        addwf   load_acc, F, A
+        movf    TMR0H, W
+        addwfc  load_acc+1, F, A
+        movlw   0
+        addwfc  load_acc+2, F, A
+        bcf     T0CON, TMR0ON, A
+        clrf    TMR0H, A
+        clrf    TMR0L, A
+        bsf     T0CON, TMR0ON, A
+        movf    ms_count, W, A
+        bnz     irq_ms_end
+        bsf     FLAGS2, fLOAD, A
+#endif
+#endif
+#endif
 irq_ms_end:
 ;;; *************************************************        
 ;;; Save Tp and Tbank and PCLATH
-        movff   Tp, Tsave_lo
-        movff   Tbank, Tsave_hi
+        push
+        movf    Tp, W, A
+        movwf   TOSL, A
+        movf    Tbank, W, A
+        movwf   TOSU, A    
 irq_user:
         lfsr    Tptr, irq_v
         movf    Tplus, W
         iorwf   Trw, W
         bz      irq_user_skip
                 
-        movff   PCLATH, pch_save
+        movf    PCLATH, W, A
+        movwf   TOSH, A
 
         movf    Tminus, W
         movwf   PCLATH
@@ -373,7 +403,7 @@ irq_user:
         movwf   PCL              ; Now the interrupt routine is executing
 
 irq_user_end:                    ; The user interrupt must jump to here.
-        movff   pch_save, PCLATH ; Restore PCLATH
+        movff   TOSH, PCLATH     ; Restore PCLATH
 irq_user_skip:
 
 ;;; ************************************************
@@ -473,15 +503,15 @@ irq_fc_end:
 #endif
 ;;; *****************************************************************
 ;; Restore Tp and Tbank
-        movff   Tsave_hi, Tbank
-        movff   Tsave_lo, Tp
+        movff   TOSU, Tbank
+        movff   TOSL, Tp
+        pop
 irq_end:
         retfie  1
 ; *******************************************************************
 ;;; *************************************
 ;;; WARM user area data
-#ifdef SKIP_MULTITASKING
-warmlitsize equ d'20'
+warmlitsize equ d'18'
 WARMLIT:
         dw      u0+h'f000'     ; UP
         dw      usbuf+h'efff'  ; S0
@@ -490,22 +520,8 @@ WARMLIT:
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
         dw      DEFAULT_BASE   ; BASE
-        dw      0              ; UFLG
         dw      utibbuf+h'f000'; TIB
-#else
-warmlitsize equ d'22'
-WARMLIT:
-        dw      u0+h'f000'     ; UP
-        dw      usbuf+h'efff'  ; S0
-        dw      OPERATOR_TX    ; EMIT vector
-        dw      OPERATOR_RX    ; KEY vector
-        dw      OPERATOR_RXQ   ; KEY? vector
-        dw      OPERATOR_AREA  ; TASK vector 
-        dw      u0+h'f000'     ; ULINK
-        dw      DEFAULT_BASE   ; BASE
-        dw      utibbuf+h'f000'; TIB
-        dw      urbuf+h'f000'  ; RSAVE
-#endif
+        dw      0               ; ustatus & uflg
 ;;; **************************************
 
 #ifdef USB_CDC
@@ -526,7 +542,7 @@ device_dsc:
                           ; Number of possible configurations
 #endif
 
-;;; COLD dictionary data
+;;; EMPTY dictionary data
 STARTV: dw      h'0000'
 DPC:    dw      dpcode     ; dp_user_dictionary
 DPE:    dw      dpeeprom
@@ -534,6 +550,7 @@ DPD:    dw      dpdata+h'f000'
 LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ; *******************************************************************
+
 ; EXIT --   Compile a return
 ;        variable link
         dw      0
@@ -543,8 +560,55 @@ EXIT:
         pop
         return
 
-; a, ( -- 0 ) Force Access bank
+; idle
         dw      L_EXIT
+L_IDLE:
+        db      NFA|4,"idle"
+IDLE:
+#ifdef IDLEN
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        tstfsz  TWrw, A
+        decf    status, F, A
+        clrf    TWrw, A
+#endif
+#endif
+        return
+        
+; busy
+        dw      L_IDLE
+L_BUSY:
+        db      NFA|4,"busy"
+BUSY:
+#ifdef IDLEN
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        bnz     BUSY1
+        incf    status, F, A
+        setf    TWrw, A
+BUSY1:
+        return
+
+IDLE_HELP:
+        movff   upcurr, Tp
+        movff   (upcurr+1), Tbank
+        movlw   ustatus
+        movf    TWrw, F, A
+        return
+#endif
+#endif
+        
+; busy
+        dw      L_BUSY
+L_LOAD:
+        db      NFA|4,"load"
+LOAD:
+        movff   load, plusS
+        clrf    plusS
+        return
+        
+; a, ( -- 0 ) Force Access bank
+        dw      L_LOAD
 L_A_:
         db      NFA|2,"a,"
 A_:
@@ -577,8 +641,11 @@ ANDLW_:
         dw      L_ANDLW_
 L_LI:
         db      NFA|INLINE|COMPILE|2,"[i"
-        movff   TBLPTRL, TPL_save
-        movff   TBLPTRH, TPH_save
+        push
+        movf    TBLPTRL, W, A
+        movwf   TOSL, A
+        movf    TBLPTRH, W, A
+        movwf   TOSH, A
         push
         movf    TABLAT, W, A
         movwf   TOSL
@@ -597,8 +664,9 @@ L_IR:
         movff   TOSH, Sp
         movff   TOSL, TABLAT
         pop
-        movff   TPL_save, TBLPTRL
-        movff   TPH_save, TBLPTRH
+        movff   TOSL, TBLPTRL
+        movff   TOSH, TBLPTRH
+        pop
         return
 
 ;***************************************************
@@ -613,10 +681,12 @@ TX1_:
         rcall   TX1_SEND
         bra     PAUSE          ; Pause during a character is sent out
 TX1_LOOP:
+        rcall   IDLE
         rcall   PAUSE
         btfss   PIR1, TXIF, A
         bra     TX1_LOOP       ; Dont pause if paused before sending.
 TX1_SEND:
+        rcall   BUSY
         movf    Sminus, W, A
         movf    Sminus, W, A
 #ifndef USE_8BIT_ASCII
@@ -629,8 +699,12 @@ TX1_SEND:
         rcall   PAUSE                   ; Try other tasks
 ;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
+        bra     TX1_2
+        rcall   IDLE
         bra     TX1_
         
+TX1_2:
+        rcall   BUSY
         movf    Sminus, W
 #ifndef USE_8BIT_ASCII
         movlw   h'7f'
@@ -685,9 +759,11 @@ RX1_:
 L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
+        rcall   BUSY
         movf    RXcnt, W, A
         movwf   plusS
         bnz     RX1Q2
+        rcall   IDLE
 #ifdef FC_TYPE_SW
         btfss   FLAGS2, fFC, A
         rcall   XXON
@@ -1468,90 +1544,112 @@ BLINK_USB_STATUS_END:
 		rcall   TX0_SEND
 PAUSE0:
 #endif
+#ifdef IDLEN
+#ifdef IDLE_MODE
+#ifdef CPU_LOAD
+        btfss   FLAGS2, fLOAD, A
+        bra     PAUSE_IDLE0
+        bcf     FLAGS2, fLOAD, A
+        bcf     INTCON, GIE, A
+        movff   load_acc, plusS
+        movff   load_acc+1, plusS
+        movff   load_acc+2, plusS
+        clrf    plusS, A
+        clrf    load_acc, A
+        clrf    load_acc+1, A
+        clrf    load_acc+2, A
+        bsf     INTCON, GIE, A
+        rcall   LIT
+        dw      clock / d'1570'
+        call    UMSLASHMOD
+        call    NIP
+        movf    Sminus, W, A
+        movff   Sminus, load
+PAUSE_IDLE0:
+#endif
+        movf    status, W, A
+        bnz     PAUSE_IDLE1        
+        bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
+        bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
+        sleep
+PAUSE_IDLE1:
+#endif
+#endif
 
+PAUSE000:
 #ifndef SKIP_MULTITASKING
         ; Set user pointer in Tp, Tbank (FSR1)
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
         
+        ; Set save area pointer in Ap, Abank (FSR2)
+        movff   Tplus, Ap
+        movff   Trw, Abank
+        
         ; Save parameter stack pointer
-        movlw   ussave
-        movff   Sp, TWrw
-        movlw   ussave+1
-        movff   Sbank, TWrw
+        movff   Sp, Aplus
+        movff   Sbank, Aplus
 
         ; Save P pointer
-        movlw   upsave
-        movff   p_lo, TWrw
-        movlw   upsave+1
-        movff   p_hi, TWrw
+        movff   p_lo, Aplus
+        movff   p_hi, Aplus
  
-        ; Save return stack counter
-        movlw   urcnt
-        movff   STKPTR, TWrw
-
-        ; Sp points to urbuf
-        movlw   ursave
-        movff   TWrw, Sp
-        movlw   ursave+1
-        movff   TWrw, Sbank
+        ; Remember the return stack counter
+        movff   STKPTR, TBLPTRL 
 
         ; Save the return stack
 pause1:
         movf    TOSL, W
-        movwf   Splus
+        movwf   Aplus
         movf    TOSH, W
-        movwf   Splus
+        movwf   Aplus
         decfsz  STKPTR, F, A
         bra     pause1
 
-        ; Point to the top item of the saved return stack
-        movf    Sminus, W, A
+        ; Save the return stack counter
+        movff   TBLPTRL, Arw
 
         ; Save the saved return stack pointer urptr
-        movff   Sp, Tplus
-        movff   Sbank, Tminus
+        movff   Abank, Tminus
+        movff   Ap, Tminus
 
         ; Move to the next user area
-        movlw   ulink
-        movff   TWrw, upcurr
-        movlw   ulink+1
-        movff   TWrw, (upcurr+1)
+        movff   Tminus, (upcurr+1)
+        movff   Tminus, (upcurr)
 
         ; Put new user pointer in Tp, Tbank
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
 
-        ; Set the return stack restore pointer urptr in Sp
-        movff   Tplus, Sp
-        movff   Tminus, Sbank
-
-        ; Restore the P pointer
-        movlw   upsave
-        movff   TWrw, p_lo
-        movlw   upsave+1
-        movff   TWrw, p_hi
+        ; Set the return stack restore pointer  in Ap
+        movff   Tplus, Ap
+        movff   Tminus, Abank
 
         ; Set the return stack counter
-        movlw   urcnt
-        movff   TWrw, TBLPTRL
+        movff   Aminus, TBLPTRL
 
         ; Restore the return stack
 pause2:
         push
-        movf    Sminus, W, A
+        movf    Aminus, W, A
         movwf   TOSH, A
-        movf    Sminus, W, A
+        movf    Aminus, W, A
         movwf   TOSL, A
 
         decfsz  TBLPTRL, F, A
         bra     pause2
 
+        ; Restore the P pointer
+        movff   Aminus, p_hi
+        movff   Aminus, p_lo
+
         ; Restore the parameter stack pointer
-        movlw   ussave
-        movff   TWrw, Sp
-        movlw   ussave+1
-        movff   TWrw, Sbank
+        movff   Aminus, Sbank
+        movff   Arw, Sp
+        
+        ; Save the save area pointer
+        movff   Ap, Tplus
+        movff   Abank, Tminus ;
 #endif
         return
 
@@ -1573,8 +1671,10 @@ TX0:
 		bra     TX0_0                ; Put char in USB buffer if UB TX is ready
 
 		clrf    TX0cnt, A
+		rcall   IDLE
         bra     TX0                  ; PAUSE if the USB TX is not ready
 TX0_0:
+        rcall   BUSY
         movff   ms_count, TX0tmr
 		incf    TX0tmr, F, A
 		incf    TX0tmr, F, A
@@ -1611,7 +1711,11 @@ RX0:
         rcall   PAUSE
         call    keyUSBUSART
         addlw   0x0
-        bz      RX0
+        bnz     RX0_2
+        rcall   IDLE
+        bra     RX0
+RX0_2:
+        rcall   BUSY
         movff   keyCHAR, plusS
         clrf    plusS, A
 #if 0
@@ -1639,6 +1743,7 @@ RX0Q:
         movwf   plusS, A
         clrf    plusS, A
         return
+
 #if 0
         banksel ep3Bo
         btfsc   ep3Bo, 0x7, BANKED
@@ -1866,7 +1971,7 @@ BR3:
 BR3_DOES:
         rcall   DODOES          ; abs-addr opcode
         rcall   TOR             ; abs-addr
-        rcall   TWOSLASH        ; abs-addr
+        call    TWOSLASH        ; abs-addr
         rcall   DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      h'ff'
@@ -2020,7 +2125,12 @@ WARM_ZERO_2:
         movlw   b'10010000'
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
-        
+
+#ifdef CPU_LOAD
+        movlw   h'08'           ; TMR0 used for CPU_LOAD
+        movwf   T0CON           ; prescale = 1
+
+#endif
 #ifdef MS_TMR1
         movlw   h'81'           ; prescale = 1
         movwf   T1CON, A
@@ -2052,6 +2162,20 @@ WARM_ZERO_2:
         rcall   LIT
         dw      warmlitsize
         call    CMOVE
+        
+#ifndef SKIP_MULTITASKING
+        rcall   LIT
+        dw      u0+h'f000'     ; ULINK
+        call    ULINK
+        rcall   STORE
+        
+        rcall   LIT
+        dw      urbuf+h'f000'  ; RSAVE
+        call    UPTR
+        rcall   FETCH
+        rcall   STORE
+#endif
+        call    BUSY
         rcall   FRAM
 		clrf    INTCON, A
         bsf     INTCON, PEIE, A
@@ -2758,6 +2882,9 @@ ACCEPT:
         rcall   OVER
         rcall   PLUS
         rcall   OVER
+        call    FALSE_
+        rcall   FCR
+        rcall   CSTORE
 ACC1:
         rcall   KEY
 
@@ -2769,7 +2896,6 @@ ACC1:
         call   TRUE_
         rcall   FCR
         rcall   CSTORE
-;        bsf     FLAGS2, fCR, A
         rcall   DROP
         bra     ACC6
 ACC_LF:
@@ -2783,14 +2909,11 @@ ACC_LF:
         rcall   CFETCH
         rcall   ZEROSENSE
         bz      ACC6
-;        btfss   FLAGS2, fCR, A
-;        bra     ACC6
         bra     ACC1
 ACC2:
         call   FALSE_
         rcall   FCR
         rcall   CSTORE
-;        bcf     FLAGS2, fCR, A
         rcall   DUP
         rcall   EMIT
         rcall   DUP
@@ -3612,7 +3735,7 @@ CFETCH_A:
 L_UPTR:
         db      NFA|2,"up"
 UPTR:
-        call    DOCREATE_A
+        rcall   DOCREATE_A
         dw      upcurr+h'f000'
 
 ; NUMERIC OUTPUT ================================
@@ -3800,30 +3923,9 @@ L_ULINK:
 ULINK:  rcall   DOUSER
         dw      ulink&h'ffff'
 
-; RSAVE   -- a-addr     Return stack save area
-        dw      L_ULINK
-L_RSAVE:
-        db      NFA|5,"rsave"
-RSAVE:  rcall   DOUSER
-        dw      ursave&h'ffff'
-
-; SSAVE   -- a-addr     Saved parameter stack pointer
-        dw      L_RSAVE      
-L_SSAVE:
-        db      NFA|5,"ssave"
-SSAVE:  rcall   DOUSER
-        dw      ussave&h'ffff'
-
-; RCNT   -- a-addr   Number of saved return stack items
-        dw      L_SSAVE
-L_RCNT:
-        db      NFA|4,"rcnt"
-RCNT:   rcall   DOUSER
-        dw      urcnt&h'ffff'
-
 
 ; TASK       -- a-addr              TASK pointer
-        dw      L_RCNT
+        dw      L_ULINK
 #else
 		dw		L_BIN
 #endif
@@ -4078,7 +4180,7 @@ findi2:
         rcall   SWOP
         rcall   IMMEDQ
         rcall   ZEROEQUAL
-        call    ONE
+        rcall   ONE
         rcall   OR
 findi3: 
 		return
@@ -4264,8 +4366,9 @@ NUMBERQ:
         rcall   FETCH_A
         rcall   TOR             ; a 0 0 a' u
         
-        call    OVER
+        rcall   OVER
         rcall   CFETCH_A
+        
         rcall   LIT_A
         dw      '#'
         rcall   MINUS
@@ -4289,7 +4392,7 @@ BASEQ1:
         call    DROP
 BASEQ2:                         ; a 0 0 a' u
         rcall   TONUMBER        ; a ud.l ud.h  a' u
-        call    RFROM           ; a ud.l ud.h  a' u oldbase
+        rcall   RFROM           ; a ud.l ud.h  a' u oldbase
         rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
         rcall   STORE_A         ; a ud.l ud.h  a' u
 
@@ -4299,7 +4402,7 @@ BASEQ2:                         ; a 0 0 a' u
         rcall   ZEROSENSE       ; a ud.l ud.h  a' u
         bnz     QNUMD
 QNUM_ERR:                       ; Not a number
-        call    RFROM           ; a ud.l ud.h a' u sign
+        rcall   RFROM           ; a ud.l ud.h a' u sign
         call    DROP
         call    TWODROP
 QNUM_ERR1:      
@@ -4309,7 +4412,7 @@ QNUM_ERR1:
 QNUMD:                          ; Double number
                                 ; a ud.l ud.h a' u
         call    TWOSWAP         ; a a' u ud.l ud.h 
-        call    RFROM           ; a a' u ud.l ud.d sign
+        rcall   RFROM           ; a a' u ud.l ud.d sign
         rcall   ZEROSENSE
         bz      QNUMD1
         call    DNEGATE
@@ -4350,7 +4453,7 @@ TIBSIZE:
         rcall   FETCH_A
         movlw   h'5'
         call    WTOS
-        call    PLUS
+        rcall   PLUS
         goto    CFETCH
 
 ; TIB     -- a-addr        Terminal Input Buffer
@@ -4598,12 +4701,12 @@ DP_TO_EEPROM:
 DP_TO_EEPROM_0: 
         rcall   FETCHPP
         call    DUP
-        call    PFETCH
+        rcall   PFETCH
         call    NOTEQUAL
         movf    Sminus, W
         iorwf   Sminus, W
         bz      DP_TO_EEPROM_1
-        call    PSTORE
+        rcall   PSTORE
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         call    DROP
@@ -5074,7 +5177,7 @@ TICKS:
         
 ; ms  +n --      Pause for n millisconds
 ; : ms ( +n -- )     
-;   ticks -
+;   ticks +
 ;   begin
 ;     pause dup ticks - 0<
 ;   until drop ;
@@ -5086,6 +5189,7 @@ MS:
         rcall   TICKS
         call    PLUS
 MS1:    
+        call    IDLE
         call    PAUSE
         rcall   DUP_A
         rcall   TICKS
@@ -5094,6 +5198,7 @@ MS1:
         movf    Sminus, W, A
         iorwf   Sminus, W, A
         bz      MS1
+        call    BUSY
         goto    DROP
 
 ;  .id ( nfa -- ) 
@@ -5194,6 +5299,7 @@ DOTS2:
         goto    TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
+#ifndef SKIP_DUMP
         dw      L_DOTS
 L_DUMP:
         db      NFA|4,"dump"
@@ -5244,7 +5350,7 @@ DUMP7:
         bc      DUMP1
         pop
         goto    DROP
-
+#endif
 ; IALLOT   n --    allocate n bytes in ROM
 ;       dw      link
 ;link   set     $
@@ -5262,7 +5368,11 @@ IALLOT:
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
+#ifndef SKIP_DUMP
         dw     L_DUMP
+#else
+        dw      L_DOTS
+#endif
 L_BRQ:
         db      NFA|3,"br?"
 BRQ:
@@ -5602,10 +5712,7 @@ STOD:
 L_DNEGATE:
         db      NFA|7,"dnegate"
 DNEGATE:
-        call    SWOP
-        call    INVERT
-        call    SWOP
-        call    INVERT
+        rcall   DINVERT
         call    ONE
         goto    MPLUS
         

@@ -1,5 +1,5 @@
 \ Dump can left out from the core and compiled from here
-: dump1 ( addr +n -- )
+: dump ( addr +n -- )
   hex cr ." ADDR :" 
   over
   $10 for $f and dup 2 u.r 1+ next drop

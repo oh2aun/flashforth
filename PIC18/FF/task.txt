@@ -73,19 +73,25 @@ hex ram
 : tinit \ taskloop-addr task-addr -- 
   \ use task user area
   @+ up!                            \ a t+2
-  \ Pointer to task area
-  dup 2- task !
-  \ rsave = uarea+cell+addsize
-  c@+ up@ + cell+ dup rsave !        \ a t+4 rbuf
-  \ Make space for one return adress on the stack
-  1+ up@ ! 1 rcnt !                 \ a t+4
-  \ s0 = ssave = rsave + ssize - 1 
-  c@+ rsave @ + 1- dup s0 ! ssave !  \ a t+6
-  \ tib = rsave + rsize
-  c@ s0 @ + 1+ tiu !                 \ a
-  \ taskloop-addr to return stack
-  rsave @ !
-  0 ul!
+  ul@ 0=                 \ Already running
+  if                     \ Pointer to task area
+    dup 2- task !
+    \ save area = uarea+cell+addsize
+    c@+ up@ + cell+ !p>r                \ a t+3 
+    \ s0 = rsave + ssize - 1 
+    c@+ @p + 1- dup s0 !                \ a t+4
+    p! p2+                              \ s0 to save area
+    p2+                                 \ dummy P to save area
+    \ tib = rsave + rsize
+    c@ s0 @ + 1+ tiu !                  \ a
+    p! p2+         \ taskloop-addr to save area
+    1 pc!          \ return stack size to save area
+    @p up@ !       \ end of save area to restore pointer
+    0 ul!          \ no link yet
+    r>p
+  else
+    2drop
+  then
   op!                     \ run the operator task
 ;
 
@@ -100,6 +106,7 @@ hex ram
     over ul!      
     swap up! ul! 
   then
+  busy
   op!                          \ run operator task
 ;
 
@@ -122,6 +129,7 @@ hex ram
     swap up!                  \ next-uarea
     ul!                       \ 
   then
+  idle
   op!
 ;
 
@@ -132,6 +140,7 @@ hex ram
   if 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
+    idle
     begin
       ul@ op@ <>            \ is this the last linked user area
     while
