@@ -44,7 +44,11 @@
         extern USBCheckBusStatus
         extern USBDriverService
         extern cdc_data_tx
+        extern cdc_data_rx
         extern usb_device_state
+        extern ep3Bi
+        extern ep3Bo
+        extern keyCHAR
         global irq_ms
         global main
         global ms_count
@@ -214,10 +218,11 @@ RXfullBit   equ h'4'
 #ifdef USB_CDC
 UART_TX udata
 #endif
+#if TX1_BUF_SIZE > 0
 TXbufmask   equ TX1_BUF_SIZE - 1
 TXbuf       res TX1_BUF_SIZE
 TXfullBit   equ h'2'
-
+#endif
 ;;; FORTH variables
 #ifdef USB_CDC
 USER_AREA udata  ;; 0x122 bytes, coordinate witk linker file
@@ -1557,8 +1562,8 @@ TX0:
 		sublw   h'6'                 ;discard char if USB not in CONFIGURED_STATE
 		bnz     TX0_1
 
-		movlb   h'4'                 ; 
-		btfss   h'1c', 7, BANKED     ; BD3.STAT.UOWN
+        banksel ep3Bi
+		btfss   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
 		bra     TX0_0                ; Put char in USB buffer if UB TX is ready
 
 		clrf    TX0cnt, A
@@ -1576,14 +1581,15 @@ TX0_0:
         subwf   TX0cnt, W, A
         bnz     TX0_2
 TX0_SEND:                            ; Called from PAUSE in case of timeout
-		movff   TX0cnt, h'41d'
-		movlb   h'4'                 ; 
+        banksel ep3Bi
+		movf    TX0cnt, W, A
+		movwf   ep3Bi+1, BANKED      ; BD3.COUNTER
 		movlw   0x40
-        ANDWF   0x1c, F, BANKED
-        BTG     0x1c, 0x6, BANKED
+        ANDWF   ep3Bi, F, BANKED     ; BD3.STAT
+        BTG     ep3Bi, 0x6, BANKED
         MOVLW   0x88
-        IORWF   0x1c, F, BANKED
-        clrf    TX0cnt
+        IORWF   ep3Bi, F, BANKED     ; BD3.STAT
+        clrf    TX0cnt, A
         return
 TX0_1:
 		movf	Sminus, W, A
@@ -1598,8 +1604,24 @@ L_RX0:
 RX0:
         rcall   PAUSE
         call    keyUSBUSART
-        movwf   plusS, A
-		clrf    plusS, A
+        addlw   0x0
+        bz      RX0
+        movff   keyCHAR, plusS
+        clrf    plusS, A
+#if 0
+        rcall   RX0Q
+        call    ZEROSENSE
+        bz      RX0
+        movff   cdc_data_rx, plusS
+        clrf    plusS, A
+        movlw   1
+        movwf   ep3Bo+1, BANKED
+        movlw   0x40
+        andwf   ep3Bo, F, BANKED
+        btg     ep3Bo, 0x6, BANKED
+        movlw   0x88
+        iorwf   ep3Bo, BANKED
+#endif
 		return
 ;***************************************************
 ; KEY?  -- f    return true if a char is waiting
@@ -1609,8 +1631,17 @@ L_RX0Q:
 RX0Q:
         call    keyQUSBUSART
         movwf   plusS, A
-		clrf    plusS, A
-		return
+        clrf    plusS, A
+        return
+#if 0
+        banksel ep3Bo
+        btfsc   ep3Bo, 0x7, BANKED
+RX0Q1:
+        goto    FALSE_
+        decf    ep3Bo+1, W, BANKED
+        bnz     RX0Q1
+        goto    TRUE_
+#endif
 #endif
 ; ***************************************************
 #ifdef FC_TYPE_SW
@@ -2729,6 +2760,7 @@ ACC1:
         movlw   CR_
         subwf   Splus, W, A
         bnz     ACC_LF
+        
         call   TRUE_
         rcall   FCR
         rcall   CSTORE
