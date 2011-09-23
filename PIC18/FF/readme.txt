@@ -260,6 +260,7 @@ FlashForth V3.8
 - Configuration of turnkey delay from configuration file
 - CPU idle mode power save. IDLE BUSY words.
 - CPU load measurement. LOAD fetches the load of the previous 256 ms period.
+- Load indicator LED option
 
 
 

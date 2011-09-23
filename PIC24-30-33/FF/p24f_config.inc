@@ -39,10 +39,33 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
-;.equ CPU_LOAD_TRIS, TRISB
-;.equ CPU_LOAD_PORT, PORTB
-;.equ CPU_LOAD_BIT, 8
-;.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+.equ CPU_LOAD_LED, 0       ; set to 0 to disable
+.equ CPU_LOAD_TRIS, TRISB
+.equ CPU_LOAD_PORT, PORTB
+.equ CPU_LOAD_BIT, 8
+.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+
+; Define the startup delay for turnkey words. Milliseconds
+.equ TURNKEY_DELAY, 2000  ; milliseconds
+
+; UART buffer sizes
+.equ TX1_BUF_SIZE, 16
+.equ RX1_BUF_SIZE, 32
+.equ RX1_OFF_FILL, 16   ; Fill level for XOFF
+
+.equ TX2_BUF_SIZE, 16
+.equ RX2_BUF_SIZE, 32
+.equ RX2_OFF_FILL, 16   ; Fill level for XOFF
+
+;;; USER AREA sizes for the OPERATOR task
+.equ RETURN_STACK_SIZE, 96           ; 48 cells return stack
+.equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
+.equ TIB_SIZE, 74                    ; 74 chars tib size
+.equ HOLD_SIZE, 10                   ; 10 chars hold area
+
+;;; Storage space for OPERATOR uservariables 2 and upwards
+;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
+.equ UADDSIZE, 0
 
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0

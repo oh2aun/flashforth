@@ -39,6 +39,9 @@ Dictionary of FlashForth 3.8.
 *          (u1/n1 u2/n2 -- u3/n3
            Signed and unsigned 16*16->16 bit multiplikation
 
+*/         ( n1 n2 n3 -- quotient )
+           Multiply n1 and n2 and divide with n3. 32 bit intermediate result.
+
 */mod      ( n1 n2 n3 -- rem quot )
            Multiply n1 with n2 and divide with n3 via 32-bit 
            intermediate result
@@ -113,11 +116,20 @@ Dictionary of FlashForth 3.8.
 2!         ( x1 x2 a-addr -- )
            Store two cells
 
+2constant  ( x x "name" -- )
+           Define a double constant
+
 2drop      ( x1 x2 -- )
            Drop two cells
 
 2dup       ( x1 x2  -- x1 x2 x1 x2 )
            Duplicate two top cells
+
+2literal   ( x x -- )
+           Compile a double literl 
+
+2variable ( "name" -- )
+          Define a double variable
 
 :          ( "name" -- )
            Begin a colon definition
@@ -160,7 +172,8 @@ Dictionary of FlashForth 3.8.
            Convert string to number
 
 >pr        ( c -- c )
-           Convert char to printable
+           Convert a character to a graphic ASCII value.
+           Non-graphic characters are converted to a dot.
 
 >r         ( x -- ) ( R: -- x )  Compile Only
            Push x from the parameter stack to the return stack
@@ -408,6 +421,12 @@ Fcy        ( -- u )
            The internal cpu & peripheral clock cycle in KHz.
            Foscillator/4
 
+fl-        ( -- )
+           Disable writes to flash and eeprom.
+
+fl+        ( -- )
+           Allow writes to flash and eeprom.
+
 flash      ( -- )
            Set data section context to flash
 
@@ -417,12 +436,6 @@ fill       ( c-addr u c -- )
 find       ( c-addr -- c-addr 0/1/-1 )
            Find a word in dictionary
            Leave 1 if immediate, -1 if normal, 0 if not found
-
-fl-        ( -- )
-           Disable writes to flash and eeprom.
-
-fl+        ( -- )
-           Allow writes to flash and eeprom.
 
 fm/mod     (d n -- rem quot )
            Floored 32/16 -> 16-bit division
@@ -558,7 +571,7 @@ next       ( bra-addr bc-addr -- )      Compile Only
 n>c        ( nfa -- cfa )
 
 n>l        ( nfa -- lfa )
-           Use 2- instead
+           Convert nfa to lfa. Use 2- instead
 
 nip        ( x1 x2 -- x2 )
            Remove x1 from the stack
@@ -601,7 +614,10 @@ pc@        ( -- c )
            Fetch the char pointed by the p register
 
 pad        ( -- a-addr )
-           Pad is TIB TI# +
+           : pad tib ti# + ;
+           Each task has its own pad.
+           If needed the user must allocate it separately with allot for each task
+           FF core does not use the pad.
 
 parse	   ( c -- addr length )
            Parse a word in TIB
@@ -646,9 +662,6 @@ repeat     ( addr2 addr1 -- )    Compile Only
 rot        ( x1 x2 x3 -- x2 x3 x1 )
            Rotate three top stack items
 
-rsave      ( -- a-addr )  User variable
-           Return stack save area
-
 rshift     ( x1 u -- x2 )
            Shift x1 u bits to the right
 
@@ -665,8 +678,6 @@ rx1?       ( -- f )
 
 rx1        ( -- c )
            Receive a character from UART1.
-           64 bytes interrupt buffer.
-           Trigger sending of XOFF for every 8 received bytes.
 
 rx1?       ( -- f )
            Leave TRUE if UART1 interrupt buffer is not empty.
@@ -720,9 +731,6 @@ space      ( -- )
 
 spaces     ( n -- )
            Emit n space characters
-
-ssave      ( -- a-addr )        User Variable
-           Saved return stack pointer
 
 state      ( -- flag )         
            Compilation state. Flag that can only be changed by [ ] 

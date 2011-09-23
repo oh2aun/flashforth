@@ -48,7 +48,6 @@ file_020=.
 file_021=.
 file_022=.
 file_023=.
-file_024=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -74,7 +73,6 @@ file_020=no
 file_021=no
 file_022=no
 file_023=no
-file_024=no
 [OTHER_FILES]
 file_000=no
 file_001=yes
@@ -100,7 +98,6 @@ file_020=yes
 file_021=yes
 file_022=yes
 file_023=yes
-file_024=yes
 [FILE_INFO]
 file_000=ff.s
 file_001=registers.txt
@@ -118,15 +115,14 @@ file_012=irq_pic30.txt
 file_013=jt.txt
 file_014=jt-test.txt
 file_015=license.txt
-file_016=math.txt
-file_017=readme.txt
-file_018=see.txt
-file_019=sieve3.txt
-file_020=sieve.txt
-file_021=task.txt
-file_022=task-test2.txt
-file_023=double.txt
-file_024=words.txt
+file_016=readme.txt
+file_017=see.txt
+file_018=sieve3.txt
+file_019=sieve.txt
+file_020=task.txt
+file_021=task-test2.txt
+file_022=double.txt
+file_023=words.txt
 [SUITE_INFO]
 suite_guid={F62E444C-B232-4066-9AB0-A6F4E5261396}
 suite_state=

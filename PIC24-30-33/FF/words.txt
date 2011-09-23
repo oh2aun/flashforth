@@ -61,6 +61,9 @@ Dictionary of FlashForth 4.8 on dsPIC 30, 33 and PIC 24
 /          ( n1 n2 -- n3 )
            16/16->16 bit division
 
+/mod       ( n n  -- rem quot )
+           16/16 -> 16-bit signed division.
+
 /string    ( addr u n -- addr+n u-n )
            Trim string
 
@@ -96,12 +99,21 @@ Dictionary of FlashForth 4.8 on dsPIC 30, 33 and PIC 24
 
 2!         ( x1 x2 a-addr -- )
            Store two cells
+           
+2constant  ( x x "name" -- )
+           Define a double constant
 
 2drop      ( x1 x2 -- )
            Drop two cells
 
 2dup       ( x1 x2  -- x1 x2 x1 x2 )
            Duplicate two top cells
+
+2literal   ( x x -- )
+           Compile a double literl 
+
+2variable ( "name" -- )
+          Define a double variable
 
 :          ( "name" -- )
            Begin a colon definition
@@ -147,7 +159,7 @@ Dictionary of FlashForth 4.8 on dsPIC 30, 33 and PIC 24
 >in        ( -- a-addr )      User Variable
            Holds offset into tib
 
->number    ( n1 addr1 u1 -- n2 addr2 u2 )
+>number    ( ud addr1 u1 -- ud addr2 u2 )
            Convert string to number
 
 >pr        ( c -- c' )
@@ -163,6 +175,9 @@ Dictionary of FlashForth 4.8 on dsPIC 30, 33 and PIC 24
 ?abort?    ( flag -- )
            If flag is true output ? and abort
 
+?dnegate   ( d n -- d )
+           Negate d if n is negative
+           
 ?negate    ( n1 n2 -- n3 )
            Negate n1 if n2 is negative
 
@@ -336,6 +351,39 @@ create     ( "name" -- )
 cwd        ( -- )
            Clear the WatchDog counter.
 
+d+         ( d d -- d )
+           Add double numbers
+           
+d-         ( d d -- d )
+           Subtract double numbers
+           
+d.         ( d -- )
+           Display signed double number.
+           
+d0=        ( d -- f )
+           True if d equals zero
+           
+d0<        ( d -- f )
+           True if d is negative
+           
+d<         ( d d -- f )
+           True if less than
+           
+d=         ( d d -- f )
+           True if equal
+
+d>         ( d d -- f )
+           True if greater than
+           
+d2*        ( d -- d )
+           Multiply by 2
+
+d2/        ( d -- d )
+           Divide by 2
+
+dabs       ( d - +d )
+           Absolute value
+
 decimal    ( -- )
            Set numeric base to decimal 10.
 
@@ -348,6 +396,12 @@ di         ( -- )
 digit?     ( c -- n flag )
            Convert char to a digit according to base
 
+dinvert    ( ud -- ud )
+           Invert double number
+
+dnegate    ( d -- -d )
+           Negate double number
+           
 does>      ( -- )
            Define the runtime action of a created word.
 
@@ -402,6 +456,12 @@ false      ( -- 0 )
 Fcy        ( -- u )
            Leave the CPU MIPS and peripheral clock in KHz
 
+fl-        ( -- )
+           Disable writes to flash and eeprom.
+
+fl+        ( -- )
+           Allow writes to flash and eeprom.
+
 flash      ( -- )
            Set data section context to flash
 
@@ -417,9 +477,6 @@ for        ( u -- )
 
 forget     ( "name -- )
            Forget name
-
-ha         ( -- addr )
-           Hold Area. Same as end of TIB.
 
 here       ( -- addr )
            Leave the current data section dictionary pointer
@@ -541,8 +598,9 @@ n=         ( c-addr nfa u -- flag )
 n>c        ( nfa --  cfa )
            Convert nfa to cfa
 
-2-         ( nfa -- lfa )
-           Convert nfa to lfa
+n>l        ( nfa -- lfa )
+           Convert nfa to lfa. Use 2- instead
+           
 negate     ( n -- -n )
            negate n
 
@@ -558,6 +616,7 @@ number?    ( c-addr -- n/c-addr flag )
            # is decimal prefix
            $ is hexadecimal prefix
            % is binary prefix
+           Flag: 0=error, 1=double, 2=single
 
 operator   ( -- addr )
            Leave the address of the operator task
@@ -590,10 +649,13 @@ pc@        ( -- c )
            Fetch the char pointed by the p register
 
 pad        ( -- addr )
-           Pad is ram here
+           : pad tib ti# + ;
+           Each task has its own pad.
+           If needed the user must allocate it separately with allot for each task
+           FF core does not use the pad.
 
 pause      ( -- )
-           Switch task
+           Switch to the next task in the round robin task list
 
 place      ( addr1 u addr2 -- )
            Place string from addr1 to addr2 as a counted string
@@ -639,7 +701,7 @@ rot        ( x1 x2 x3 -- x2 x3 x1 )
            Rotate three top stack items
 
 rsave      ( -- a-addr )  User variable
-           Return stack save area
+           Return stack saved pointer
 
 rshift     ( x1 u -- x2 )
            Shift x1 u bits to the right
@@ -685,6 +747,9 @@ single     ( -- )
 skip       ( c-addr u c -- c-addr' u' )
            Skip string until c not encountered.
 
+sm/rem     ( d n -- rem quot )
+           Symmetric 32/16 -> 16 bit division
+           
 sp@        ( -- addr )
            Leave parameter stack pointer
 
@@ -707,7 +772,7 @@ spaces     ( n -- )
            Emit n space characters
 
 ssave      ( -- a-addr )        User Variable
-           Saved return stack pointer
+           Saved parameter stack pointer
 
 state      ( -- flag )
            Compilation state: Read only value.
@@ -814,6 +879,15 @@ u2-        ( -- )
 
 u2txq      ( -- queue-addr )
            Leave the address of the queue for UART2
+
+ud.        ( ud -- )
+           Display unsigned double number
+           
+ud*        ( ud u -- ud )
+           Unsigned 32x16 -> 32 bit multiply
+
+ud/mod     ( ud u -- u(remainder) ud(quotient)
+           unsigned 32/16 -> 32 bit division
 
 ulink      ( -- a-addr)
            Link to next task

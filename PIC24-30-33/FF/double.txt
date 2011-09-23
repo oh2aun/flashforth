@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      double.txt                                      *
-\    Date:          14.06.2011                                      *
+\    Date:          23.09.2011                                      *
 \    FF Version:    4.8                                             *
 \    MCU:           PIC30 PIC24 PIC33 PIC18                         *
 \    Copyright:     Mikael Nordman                                  *
@@ -9,6 +9,18 @@
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
+
+: 2literal ( x x -- )
+  swap postpone literal postpone literal postpone ; ; immediate
+
+: 2constant ( x x "name" -- )
+  swap con postpone literal ;
+
+: 2variable ( "name" -- )
+  variable cell allot ;
+  
+: */ ( n1 n2 n3 -- quotient )
+  */mod nip ;
 
 : fm/mod ( d1 n1 -- n2 n3 )
   dup >r

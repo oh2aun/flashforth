@@ -291,6 +291,7 @@ FlashForth v4.71
 FlashForth v4.8
 ----------------
 - Double number support.
-- IDLE mode power save, works also with multitasking, IDLE, BUSY.
-- CPU load measurement, LOAD.
+- Configuration of buffer sizes from configuration file
+- IDLE mode power save, works also with multitasking. IDLE, BUSY words.
+- CPU load measurement, LOAD fetches the load of the previous 256 ms period.
 - Load indicator LED option

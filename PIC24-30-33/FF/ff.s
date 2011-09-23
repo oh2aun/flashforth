@@ -61,7 +61,6 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
-.equ fLOAD,   13  ; 256 ms load count is ready
 .equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
@@ -81,19 +80,8 @@
 
 
 .equ IVECSIZE, 64
-;;; Sizes of the serial RX and TX character queues
-.equ rbuf_size1,      32
-.equ rbuf_level1_off, 16
-.equ tbuf_size1,      16
-.equ rbuf_size2,      32
-.equ rbuf_level2_off, 8
-.equ tbuf_size2,      32
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ uaddsize,       0          ; No additional user variables 
-.equ ursize,         96         ; 48 cells return stack size ( 2 cells per rcall )
-.equ ussize,         96         ; 48 cells parameter stack
-.equ utibsize,       82         ; 72 character TIB and 10 chars hold buffer
 
 ;;; User variables and area
 .equ us0,          - 32         ; Start of parameter stack
@@ -113,17 +101,17 @@
 .equ usource,      - 6          ; Two cells
 .equ utoin,        - 2          ; Input stream
 .equ uhp,            0          ; Hold pointer
-.equ urbuf,        ustart-us0 + 2               ; return stack
-.equ usbuf,        ustart-us0+ursize + 2        ; Parameter stack
+.equ urbuf,        ustart-us0 + UADDSIZE + 2        ; return stack
+.equ usbuf,        urbuf + RETURN_STACK_SIZE        ; Parameter stack
 .equ usbuf0,       usbuf - 2
-.equ utibbuf,      ustart-us0+ursize+ussize + 2 ; Terminal Input buffer
+.equ utibbuf,      usbuf + PARAMETER_STACK_SIZE ; Terminal Input buffer
 
 ;;;  Initial USER area pointer (operator)
 .equ u0,           ustart-us0
-.equ uareasize,    -us0+ursize+ussize+utibsize + 2
+.equ uareasize,    -us0+RETURN_STACK_SIZE+PARAMETER_STACK_SIZE+TIB_SIZE+HOLD_SIZE+UADDSIZE+2
 
 ;;; Start of free ram
-.equ dpdata,       ustart-us0+ursize+ussize+utibsize + 2
+.equ dpdata,       ustart+uareasize
 
 ;;; Variables in EEPROM
 .ifdef PEEPROM
@@ -146,14 +134,14 @@ tbuf_len1:   .space 2
 tbuf_wr1:    .space 2
 tbuf_rd1:    .space 2
 tbuf_lv1:    .space 2
-tbuf1:       .space tbuf_size1
+tbuf1:       .space TX1_BUF_SIZE
 
 rxqueue1:
 rbuf_len1:   .space 2
 rbuf_wr1:    .space 2
 rbuf_rd1:    .space 2
 rbuf_lv1:    .space 2
-rbuf1:       .space rbuf_size1
+rbuf1:       .space RX1_BUF_SIZE
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -162,14 +150,14 @@ tbuf_len2:   .space 2
 tbuf_wr2:    .space 2
 tbuf_rd2:    .space 2
 tbuf_lv2:    .space 2
-tbuf2:       .space tbuf_size2
+tbuf2:       .space TX2_BUF_SIZE
 
 rxqueue2:
 rbuf_len2:   .space 2
 rbuf_wr2:    .space 2
 rbuf_rd2:    .space 2
 rbuf_lv2:    .space 2
-rbuf2:       .space rbuf_size2
+rbuf2:       .space RX2_BUF_SIZE
 .endif
 .endif
 
@@ -359,7 +347,7 @@ __U1RXInterrupt2:
         bset    iflags, #ixoff1
 .else
 .if  FC1_TYPE == 2
-        mov     #rbuf_level1_off, W0
+        mov     #RX1_OFF_FILL, W0
         cp      rbuf_lv1
         bra     n, __U1RXInterrupt3
         bset    U1RTSPORT, #U1RTSPIN
@@ -456,7 +444,7 @@ __U2RXInterrupt2:
         bset    iflags, #ixoff2
 .else
 .if  FC2_TYPE == 2
-        mov     #rbuf_level2_off, W0
+        mov     #RX2_OFF_FILL, W0
         cp      rbuf_lv2
         bra     n, __U2RXInterrupt3
         bset    U2RTSPORT, #U2RTSPIN
@@ -1078,7 +1066,7 @@ PAUSE:
 .if IDLE_MODE == 1
         cp0     status
         bra     nz, PAUSE_BUSY
-.ifdecl CPU_LOAD_PORT
+.if CPU_LOAD_LED == 1
         bclr    CPU_LOAD_TRIS, #CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 0
         bset    CPU_LOAD_PORT, #CPU_LOAD_BIT
@@ -1088,7 +1076,7 @@ PAUSE:
 .endif
         pwrsav  #1             ; Go to IDLE mode to save power.
 PAUSE_BUSY:
-.ifdecl CPU_LOAD_PORT
+.if CPU_LOAD_LED == 1
 .if CPU_LOAD_LED_POLARITY == 0
         bclr    CPU_LOAD_PORT, #CPU_LOAD_BIT
 .else
@@ -1260,10 +1248,10 @@ OPERATOR:
         .pword  paddr(OPERATOR_AREA)+PFLASH
 OPERATOR_AREA: 
         .word   ustart-us0      ; user pointer
-        .byte   uaddsize
-        .byte   ursize
-        .byte   ussize
-        .byte   utibsize
+        .byte   UADDSIZE
+        .byte   RETURN_STACK_SIZE
+        .byte   PARAMETER_STACK_SIZE
+        .byte   TIB_SIZE+HOLD_SIZE
 
 
 ;  rcall, ( rel-addr -- )
@@ -2301,7 +2289,7 @@ U1TXQUEUE:
         return
 U1TXQUEUE_DATA:
         .word   txqueue1
-        .word   tbuf_size1-1
+        .word   TX1_BUF_SIZE-1
 
         .pword  paddr(U1TXQUEUE_L)+PFLASH
 U1RXQUEUE_L:
@@ -2313,7 +2301,7 @@ U1RXQUEUE:
         return
 U1RXQUEUE_DATA:
         .word   rxqueue1
-        .word   rbuf_size1-1
+        .word   RX1_BUF_SIZE-1
 
         .pword  paddr(U1RXQUEUE_L)+PFLASH
 TX1_L:
@@ -2404,7 +2392,7 @@ U2TXQUEUE:
         return
 U2TXQUEUE_DATA:
         .word   txqueue2
-        .word   tbuf_size2-1
+        .word   TX2_BUF_SIZE-1
 
         .pword  paddr(U2TXQUEUE_L)+PFLASH
 U2RXQUEUE_L:
@@ -2416,7 +2404,7 @@ U2RXQUEUE:
         return
 U2RXQUEUE_DATA:
         .word   rxqueue2
-        .word   rbuf_size2-1
+        .word   RX2_BUF_SIZE-1
 
         .pword  paddr(U2RXQUEUE_L)+PFLASH
 TX2_L:
@@ -2735,10 +2723,11 @@ DPLUS_L:
         .ascii  "d+"
         .align  2
 DPLUS:
-        mov     [W14--], W1
         mov     [W14--], W0
-        add     W0, [W14], [W14++]
-        addc    W1, [W14], [W14]
+        mov     [W14--], W1
+        mov     [W14--], W2
+        add     W1, [W14], [W14++]
+        addc    W0, W2, [W14]
         return
 
         .pword  paddr(DPLUS_L)+PFLASH
@@ -2850,7 +2839,7 @@ QDNEGATE:
 QDNEGATE1:
         return        
         
-        .pword  paddr(DNEGATE_L)+PFLASH
+        .pword  paddr(QDNEGATE_L)+PFLASH
 ONEPLUS_L:
         .byte   NFA|INLINE|2
         .ascii  "1+"
@@ -4144,7 +4133,7 @@ LESSNUM_L:
         .ascii  "<#" 
         .align  2
 LESSNUM: 
-        rcall   HA
+        rcall   PAD
         rcall   HP
         goto    STORE
 
@@ -4206,7 +4195,7 @@ NUMGREATER:
         sub     W14, #4, W14
         rcall   HP
         rcall   FETCH
-        rcall   HA
+        rcall   PAD
         rcall   OVER
         goto    MINUS
 
@@ -4398,25 +4387,16 @@ HP:
         rcall   DOUSER
         .word   uhp
 
-; HA     -- a-addr        Hold Area buffer
+; PAD     -- a-addr        User PAD buffer
         .pword  paddr(HP_L)+PFLASH
-HA_L:
-        .byte   NFA|2
-        .ascii  "ha"
-        .align  2
-HA:
-        rcall   TIB
-        rcall   TIBSIZE
-        goto    PLUS
-
-; PAD     -- a-addr        Global Pad buffer
-        .pword  paddr(HA_L)+PFLASH
 PAD_L:
         .byte   NFA|3
         .ascii  "pad"
         .align  2
 PAD:
-        goto    RHERE
+        rcall   TIB
+        rcall   TIBSIZE
+        goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
         .pword  paddr(PAD_L)+PFLASH
@@ -5511,7 +5491,7 @@ QUIT1:
         rcall   TIB
         mov     [W14++], [W14]      ; dup
         rcall   TIBSIZE
-        mlit    0xA                 ; Reserve 10 bytes for hold buffer
+        mlit    HOLD_SIZE             ; Reserve  for hold buffer
         rcall   MINUS
         rcall   ACCEPT
 
