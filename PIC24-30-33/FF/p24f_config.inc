@@ -32,6 +32,18 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 ; Default number base
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
+; Set to 1 for power save when CPU is idle
+.equ IDLE_MODE, 1
+
+; Set to 1 for CPU load measurement
+.equ CPU_LOAD, 1
+
+; CPU load indicator led definitions
+;.equ CPU_LOAD_TRIS, TRISB
+;.equ CPU_LOAD_PORT, PORTB
+;.equ CPU_LOAD_BIT, 8
+;.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+
 ; Set to 1 for extra debug info after an exception reset
 .equ DEBUG_INFO, 0
 

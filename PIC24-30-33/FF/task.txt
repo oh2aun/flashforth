@@ -1,8 +1,8 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          12.03.2011                                      *
-\    FF Version:    4.71                                            *
+\    Date:          23.09.2011                                      *
+\    FF Version:    4.8                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -98,6 +98,7 @@ hex ram
     over ul!      
     swap up! ul! 
   then
+  busy
   op!                          \ run operator task
 ;
 
@@ -120,18 +121,20 @@ hex ram
     swap up!                \ next-uarea
     ul!                     \ 
   then
+  idle
   op!
 ;
 
 \ End all tasks except the operator task
 \ May only be executed from the operator task
 : single ( -- )
-  ul@ op@ <>                \ Are there any running tasks ?
+  ul@ op@ <>                \ Are there any running tasks
   if 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
+    idle
     begin
-      ul@ op@ <>            \ is this the last linked user area ?
+      ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
       up!                   \ and move to next user area

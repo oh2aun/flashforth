@@ -291,3 +291,6 @@ FlashForth v4.71
 FlashForth v4.8
 ----------------
 - Double number support.
+- IDLE mode power save, works also with multitasking, IDLE, BUSY.
+- CPU load measurement, LOAD.
+- Load indicator LED option

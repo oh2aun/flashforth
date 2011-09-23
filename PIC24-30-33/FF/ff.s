@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          18.08.2011                                        *
+;    Date:          23.09.2011                                        *
 ;    File Version:  4.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -61,6 +61,7 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
+.equ fLOAD,   13  ; 256 ms load count is ready
 .equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
@@ -105,6 +106,7 @@
 .equ utib,         - 18         ; TIB address
 .equ utask,        - 16         ; Task area pointer
 .equ uflg,         - 14         ; ACCEPT. true = CR has been received
+.equ ustatus,      - 13         ; IDLE / BUSY
 .equ ursave,       - 12         ; Saved return stack pointer
 .equ ussave,       - 10         ; Saved parameter stack pointer
 .equ upsave,       - 8          ; Saved P pointer
@@ -174,6 +176,10 @@ rbuf2:       .space rbuf_size2
 ibase:      .space 2
 iaddr:      .space 2
 iflags:     .space 2
+status:     .space 2        ; 0 = allow CPU idle 
+load:       .space 2
+load_acc:   .space 4
+
 ms_count:   .space 2
 intcon1dbg: .space 2
 
@@ -279,6 +285,32 @@ __T1Interrupt:
         bset    INTCON1, #NSTDIS
         bclr    IFS0, #T1IF
         inc     ms_count
+
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1        
+        push.s
+        mov     TMR3, W0
+        clr     TMR3
+        
+        add     load_acc
+        clr     W0
+        addc    load_acc+2
+        
+        cp0.b   ms_count
+        bra     nz, RETFIE_T1_0
+        
+        mov     #FCY/3126, W2
+        mov     load_acc+2, W1
+        mov     load_acc, W0
+        clr     load_acc
+        clr     load_acc+2
+        repeat  #17
+        div.ud  W0, W2
+        mov     W0, load
+RETFIE_T1_0:
+        pop.s
+.endif
+.endif
         retfie
 
 __U1RXInterrupt:
@@ -640,8 +672,49 @@ LITERAL:
         mov     W1, [++W14]
         rcall   AS_COMMA
         return
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
         .pword   paddr(LITERAL_L)+PFLASH
+IDLE_L:
+        .byte   NFA|4
+        .ascii  "idle"
+        .align 2
+IDLE_:
+        mov     #ustatus, W0
+        add     upcurr, WREG
+        cp0.b   [W0]
+        bra     z, IDLE_1
+        dec     status
+        clr.b   [W0]
+IDLE_1:
+        return
+        
+        .pword   paddr(IDLE_L)+PFLASH
+BUSY_L:
+        .byte   NFA|4
+        .ascii  "busy"
+        .align 2
+BUSY_:
+        mov     #ustatus, W0
+        add     upcurr, WREG
+        cp0.b   [W0]
+        bra     nz, BUSY_1
+        inc     status
+        setm.b  [W0]
+BUSY_1:
+        return
+        
+        .pword   paddr(BUSY_L)+PFLASH
+LOAD_L:
+        .byte   NFA|4
+        .ascii  "load"
+        .align 2
+LOAD_:
+        mov     load, WREG
+        mov     W0, [++W14]
+        return
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        .pword   paddr(LOAD_L)+PFLASH
 COLD_L:
         .byte   NFA|5
         .ascii  "empty"
@@ -696,7 +769,7 @@ WARM:
         mov     #usbuf0, W14
         setm    ibase
         clr     iflags
-
+        clr     status
 .ifdecl INTTREG
         mov     #IVECTAB, W0
         mov     #IVECSIZE, W1
@@ -761,6 +834,15 @@ PLL_NOT_IN_USE:
         mov     W0, PR1
         mov     #0x8000, W0
         mov     W0, T1CON
+
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1
+; Configure CPU load counter timer3
+        bclr    PMD1, #T3MD
+        mov     #0xA010, W0    ; Stop timer3 in idle mode, prescaler = 8
+        mov     W0, T3CON
+.endif
+.endif
 
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
@@ -993,6 +1075,27 @@ PAUSE_L:
         .align 2
 PAUSE:
         clrwdt
+.if IDLE_MODE == 1
+        cp0     status
+        bra     nz, PAUSE_BUSY
+.ifdecl CPU_LOAD_PORT
+        bclr    CPU_LOAD_TRIS, #CPU_LOAD_BIT
+.if CPU_LOAD_LED_POLARITY == 0
+        bset    CPU_LOAD_PORT, #CPU_LOAD_BIT
+.else
+        bclr    CPU_LOAD_PORT, #CPU_LOAD_BIT
+.endif
+.endif
+        pwrsav  #1             ; Go to IDLE mode to save power.
+PAUSE_BUSY:
+.ifdecl CPU_LOAD_PORT
+.if CPU_LOAD_LED_POLARITY == 0
+        bclr    CPU_LOAD_PORT, #CPU_LOAD_BIT
+.else
+        bset    CPU_LOAD_PORT, #CPU_LOAD_BIT
+.endif
+.endif
+.endif
 .if WRITE_METHOD == 2
         mov     #u0, W0
         sub     upcurr, WREG
@@ -2219,9 +2322,12 @@ TX1_L:
         .align  2
 TX1:    
         rcall   PAUSE
+        rcall   IDLE_
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
+TX1_1:
+        rcall   BUSY_
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
         rcall   U1TXQUEUE
@@ -2262,13 +2368,12 @@ RX1Q_L:
         .ascii  "rx1?"
         .align  2
 RX1Q:
+        rcall   BUSY_
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14]
         bra     nz, RX1Q1
-
-        pwrsav  #1             ; Go to IDLE mode to save power.
-        
+        rcall   IDLE_        
         btsc    iflags, #fFC1
         bra     RX1Q1      
 .if FC1_TYPE == 1
@@ -2320,9 +2425,11 @@ TX2_L:
         .align  2
 TX2:    
         rcall   PAUSE
+        rcall   IDLE_
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
+        rcall   BUSY_
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
         rcall   U2TXQUEUE
@@ -2363,10 +2470,12 @@ RX2Q_L:
         .ascii  "rx2?"
         .align  2
 RX2Q:
+        rcall   BUSY_
         mlit    handle(U2RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14]
         bra     nz, RX2Q1
+        rcall   IDLE_
         btss    iflags, #fFC2
         bra     RX2Q1      
 .if FC2_TYPE == 1
@@ -3517,7 +3626,7 @@ ACC1:
         
         rcall   TRUE_
         rcall   FCR
-        rcall   STORE
+        rcall   CSTORE
         bra     ACC6
 ACC_LF:
         cp      W0, #0x0a   ; LF
@@ -3535,7 +3644,7 @@ ACC2:
 
         rcall   FALSE_
         rcall   FCR
-        rcall   STORE
+        rcall   CSTORE
         mov     [W14++], [W14]      ; dup
         mlit    #0x08              ; BS
         rcall   EQUAL
@@ -6227,13 +6336,14 @@ MS:
         rcall   TICKS
         rcall   PLUS
 MS1:    
+        rcall   IDLE_
         rcall   PAUSE
         mov     [W14], W1
         mov     ms_count, W0
         sub     W1, W0, W0         ; time - ticks
         bra     nn, MS1
         sub     W14, #2, W14
-        return
+        goto    BUSY_
 
  ; WORDS    --          list all words in dict.
         .pword  paddr(MS_L)+PFLASH

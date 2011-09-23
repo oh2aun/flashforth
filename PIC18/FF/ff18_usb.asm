@@ -1570,7 +1570,9 @@ PAUSE_IDLE0:
         movf    status, W, A
         bnz     PAUSE_IDLE1        
         bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
+#ifdef CPU_LOAD
         bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
+#endif
         sleep
 PAUSE_IDLE1:
 #endif
