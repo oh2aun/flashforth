@@ -295,7 +295,9 @@ uareasize   equ -us0+ursize+ussize+utibsize + 2
 
 ;;; Start of free ram
 #ifdef USB_CDC
+#ifndef __18F14K50
 HERE udata
+#endif
 #endif
 dpdata      res 2
 
@@ -1451,6 +1453,19 @@ PAUSE:
 
         call    USBCheckBusStatus
         call    USBDriverService
+#if 0
+        movf    ms_count, W, A
+        bnz     BLINK_USB_STATUS_END
+		lfsr    Tptr, usb_device_state
+		clrf    LATC, A
+        btfsc   Trw, 0, A
+        bsf     LATC, 3, A
+        btfsc   Trw, 1, A
+        bsf     LATC, 6, A
+        btfsc   Trw, 2, A
+        bsf     LATC, 7, A
+BLINK_USB_STATUS_END:
+#endif
         movff   SpF, Sp
         movff   SbankF, Sbank       ; Restore Forth stack pointer
 
@@ -1987,14 +2002,14 @@ WARM_ZERO_1:
         clrf    Splus, A
         movf    Sbank, W, A
 #ifdef USB_CDC
-        sublw   h'4'
+        sublw   h'2'
 #else
         sublw   h'f'
 #endif
         bnz     WARM_ZERO_1
         
 #ifdef USB_CDC
-        lfsr    Sptr, h'460'
+        lfsr    Sptr, h'260'
 WARM_ZERO_2:
         clrf    Splus, A
         movf    Sbank, W, A
@@ -2037,7 +2052,6 @@ WARM_ZERO_2:
 #endif
 #endif
 #endif
-
         movlw   h'1f'
         movwf   RCON, A
 
@@ -2081,10 +2095,10 @@ WARM_2:
         db      d'3',"ESC"
         rcall   TYPE
         rcall   LIT
-        dw      h'0800'
+        dw      TURNKEY_DELAY_UART
 #else
         rcall   LIT
-        dw      h'2000'
+        dw      TURNKEY_DELAY_USB
 #endif
         call    MS
         rcall   KEYQ

@@ -9,6 +9,10 @@ a device programmer (PicKit2) or a bootloader.
 The bootloadable FF has been tested with the
 PICDEM FS USB Demo tool bootloader available from MicroChip.
 
+The common configuration parameters are in p18f-main.cfg.
+The configuration bits and the USB definitions are in the
+device specific configuration files.
+
 For operation with the UART as the OPERATOR interface,
 define a MPLAB project which compiles ff18_usb.asm.
 Undefine USB_CDC in the configuration file.
@@ -20,7 +24,7 @@ and define CONFIG_RESET 0x0800 in p18f-main.cfg.
 For operation with the USB CDC serial emulation as the OPERATOR
 interface, define a MPLAB project which compiles
 ff18_usb.asm and P18F_USB_REG.asm and links FF_USB_xxxx.lib
-Define USB_CDC in the configuration file.
+Define USB_CDC in the configuration file.(p18f14k50.cfg, p18f3455-2550-4455-4550.cfg)
 If you use a device programmer, use the FF_USB_0000.lkr file 
 and define CONFIG_RESET 0x0000 in p18f-main.cfg.
 If you use a bootloader, use the FF_USB_0800.lkr file 
