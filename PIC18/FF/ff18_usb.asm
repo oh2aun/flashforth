@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          21.09.2011                                        *
+;    Date:          24.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1569,12 +1569,27 @@ PAUSE_IDLE0:
 #endif
         movf    status, W, A
         bnz     PAUSE_IDLE1        
+#if CPU_LOAD_LED == 1
+		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+#if CPU_LOAD_LED_POLARITY == 1
+		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+#else
+		bsf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+#endif
+#endif
         bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
 #ifdef CPU_LOAD
         bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
 #endif
         sleep
 PAUSE_IDLE1:
+#if CPU_LOAD_LED == 1
+#if CPU_LOAD_LED_POLARITY == 1
+		bsf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+#else
+		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+#endif
+#endif
 #endif
 #endif
 
