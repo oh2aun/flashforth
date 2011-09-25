@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          24.09.2011                                        *
+;    Date:          25.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -587,8 +587,13 @@ BUSY:
         incf    status, F, A
         setf    TWrw, A
 BUSY1:
+#endif
+#endif
         return
 
+
+#ifdef IDLEN
+#ifdef IDLE_MODE
 IDLE_HELP:
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
@@ -1570,7 +1575,7 @@ PAUSE_IDLE0:
         movf    status, W, A
         bnz     PAUSE_IDLE1        
 #if CPU_LOAD_LED == 1
-		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
+		bcf		CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == 1
 		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
@@ -2143,11 +2148,13 @@ WARM_ZERO_2:
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
 
-#ifdef CPU_LOAD
+#ifdef IDLE_MODE
         movlw   h'08'           ; TMR0 used for CPU_LOAD
         movwf   T0CON           ; prescale = 1
-
 #endif
+		movlw	d'100'
+		movwf	load, A
+
 #ifdef MS_TMR1
         movlw   h'81'           ; prescale = 1
         movwf   T1CON, A
