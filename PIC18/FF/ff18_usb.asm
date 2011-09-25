@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          07.09.2011                                        *
+;    Date:          25.09.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -45,6 +45,7 @@
         extern USBDriverService
         extern cdc_data_tx
         extern cdc_data_rx
+        extern cdc_notice
         extern usb_device_state
         extern ep3Bi
         extern ep3Bo
@@ -1998,21 +1999,21 @@ main:
                             ; Clear ram
 WARM:
         lfsr    Sptr, 0
+#ifdef USB_CDC
+        lfsr    Tptr, cdc_notice
+#else
+        lfsr    Tptr, h'0f00'
+#endif
 WARM_ZERO_1:
         clrf    Splus, A
         movf    Sbank, W, A
-#ifdef USB_CDC
-        sublw   h'2'
-#else
-        sublw   h'f'
-#endif
+        subwf   Tbank, W, A
         bnz     WARM_ZERO_1
         
 #ifdef USB_CDC
-        lfsr    Sptr, h'260'
 WARM_ZERO_2:
-        clrf    Splus, A
-        movf    Sbank, W, A
+        clrf    Tplus, A
+        movf    Tbank, W, A
         sublw   h'f'
         bnz     WARM_ZERO_2
 #endif

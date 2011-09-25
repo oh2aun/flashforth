@@ -256,7 +256,9 @@ FlashForth V3.8
 - The USB version can also run with USB disconnected.
 - Unbuffered UART TX option
 - Configuration of buffer sizes from configuration file
-- PIC18F14K50 USB serial emulation.
+- 18F14K50, 18F2553, 18F2458, 18F4458, 18F4553 USB serial emulation.
+- Configuration of turnkey delay from configartion file
+
 
 
 
