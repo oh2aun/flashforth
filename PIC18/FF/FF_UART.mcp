@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F2550
+device=PIC18F4550
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
