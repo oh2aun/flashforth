@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          25.09.2011                                        *
+;    Date:          01.10.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2906,9 +2906,6 @@ ACCEPT:
         rcall   OVER
         rcall   PLUS
         rcall   OVER
-        call    FALSE_
-        rcall   FCR
-        rcall   CSTORE
 ACC1:
         rcall   KEY
 
