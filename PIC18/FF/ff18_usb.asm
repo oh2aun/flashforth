@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          01.10.2011                                        *
+;    Date:          04.10.2011                                        *
 ;    File Version:  3.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2143,7 +2143,13 @@ WARM_ZERO_2:
 ; TX enable
         movlw   b'00100100'
         movwf   TXSTA, A
+
 ; RX enable
+#ifdef ANSELH
+#ifdef ANS11
+		bcf		ANSELH, ANS11, A ; Enable digital RB5 for RX  
+#endif
+#endif
         movlw   b'10010000'
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
