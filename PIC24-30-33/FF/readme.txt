@@ -295,3 +295,4 @@ FlashForth v4.8
 - IDLE mode power save, works also with multitasking. IDLE, BUSY words.
 - CPU load measurement, LOAD fetches the load of the previous 256 ms period.
 - Load indicator LED option
+- 2CON, 2VARIABLE

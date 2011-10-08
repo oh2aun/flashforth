@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          23.09.2011                                      *
+\    Date:          08.10.2011                                      *
 \    FF Version:    4.8                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
@@ -84,7 +84,8 @@ hex ram
   \ s0 = ssave = rsave + rsize 
   c@+ rsave @ + dup dup s0 ! ssave ! \ ssize-addr s0
   swap c@ + tiu !
-  0 ul! 
+  0 ul!
+  0 up@  #14 - !
   op!                  \ run the operator task again
 ;
 
@@ -98,7 +99,7 @@ hex ram
     over ul!      
     swap up! ul! 
   then
-  busy
+  busy                         \ mark the task as busy
   op!                          \ run operator task
 ;
 
@@ -121,7 +122,7 @@ hex ram
     swap up!                \ next-uarea
     ul!                     \ 
   then
-  idle
+  idle                      \ mark the task as idle
   op!
 ;
 
@@ -132,11 +133,11 @@ hex ram
   if 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
-    idle
     begin
       ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
+      idle                  \ mark the task as idle
       up!                   \ and move to next user area
     repeat
     0 ul!

@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task.txt                                          *
-\    Date:          18.09.2011                                        *
+\    Date:          08.10.2011                                        *
 \    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -88,6 +88,7 @@ hex ram
     1 pc!          \ return stack size to save area
     @p up@ !       \ end of save area to restore pointer
     0 ul!          \ no link yet
+    0 up@ #12 - !  \ set idle status
     r>p
   else
     2drop
@@ -106,7 +107,7 @@ hex ram
     over ul!      
     swap up! ul! 
   then
-  busy
+  busy                         \ mark the task as busy
   op!                          \ run operator task
 ;
 
@@ -129,7 +130,7 @@ hex ram
     swap up!                  \ next-uarea
     ul!                       \ 
   then
-  idle
+  idle                        \ mark the task as idle
   op!
 ;
 
@@ -140,11 +141,11 @@ hex ram
   if 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
-    idle
     begin
       ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
+      idle                  \ mark the task as idle
       up!                   \ and move to next user area
     repeat
     0 ul!

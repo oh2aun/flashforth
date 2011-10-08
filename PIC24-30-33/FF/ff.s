@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          23.09.2011                                        *
+;    Date:          08.10.2011                                        *
 ;    File Version:  4.8                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2010  Mikael Nordman
+; Copyright (C) 2011  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1439,7 +1439,7 @@ AS_COMMA1:
         mov     W0, W3          ; hibyte
         mov     W0, W10
         mov     [W14], W12
-        rcall   IHERE           ; must not trash W11 = hibyte
+        rcall   IHERE
         rcall   CFISTORE
         rcall   CELL
         rcall   IALLOT
@@ -3257,12 +3257,22 @@ VARIABLE_L:
         .byte   NFA|8
         .ascii  "variable"
         .align  2
-VARIABLE:
+VARIABLE_:
         rcall   CREATE
         rcall   CELL
         goto    ALLOT
 
         .pword  paddr(VARIABLE_L)+PFLASH
+TWOVARIABLE_L:
+        .byte   NFA|9
+        .ascii  "2variable"
+        .align  2
+TWOVARIABLE:
+        rcall   VARIABLE_
+        rcall   CELL
+        goto    ALLOT
+
+        .pword  paddr(TWOVARIABLE_L)+PFLASH
 CONSTANT_L:
         .byte   NFA|8
         .ascii  "constant"
@@ -3280,12 +3290,23 @@ CON_L:
         .ascii  "con"
         .align  2
 CON_:
-        rcall   CREATE
-        rcall   STORCOLON
+        rcall   COLON
         rcall   LITERAL
         goto    SEMICOLON
 
         .pword  paddr(CON_L)+PFLASH
+TWOCON_L:
+        .byte   NFA|4
+        .ascii  "2con"
+        .align  2
+TWOCON_:
+        rcall   SWOP
+        rcall   COLON
+        rcall   LITERAL
+        rcall   LITERAL
+        goto    SEMICOLON
+
+        .pword  paddr(TWOCON_L)+PFLASH
 PFLASH_L:
         .byte   NFA|3
         .ascii  "pfl"
@@ -6485,6 +6506,7 @@ FALSE_:                     ; TOS is 0000 (FALSE)
 
         .pword  paddr(FALSE_L)+PFLASH
 TRUE_L:
+kernellink:
         .byte   NFA|INLINE|4
         .ascii  "true"
         .align  2
@@ -6492,10 +6514,10 @@ TRUE_:                      ; TOS is ffff (TRUE)
         setm    [++W14]
         return
 
-        .pword  paddr(TRUE_L)+PFLASH
+;        .pword  paddr(TRUE_L)+PFLASH
 DOTBASE_L:
-        .byte   NFA|2
-        .ascii  "b?"
+;        .byte   NFA|2
+;        .ascii  "b?"
         .align  2
 DOTBASE:
         rcall   BASE
@@ -6531,11 +6553,10 @@ MEMQADDR_N:
         .word   handle(FLASH_L)+PFLASH
 
 ; -- caddr count    current data space string
-        .word   handle(DOTBASE_L)+PFLASH
+;        .word   handle(DOTBASE_L)+PFLASH
 MEMQ_L:
-kernellink:
-        .byte   NFA|2
-        .ascii  "m?"
+;        .byte   NFA|2
+;        .ascii  "m?"
         .align  2
 MEMQ:
         rcall   CSE

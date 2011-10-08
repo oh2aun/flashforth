@@ -1525,19 +1525,7 @@ PAUSE:
 
         call    USBCheckBusStatus
         call    USBDriverService
-#if 0
-        movf    ms_count, W, A
-        bnz     BLINK_USB_STATUS_END
-		lfsr    Tptr, usb_device_state
-		clrf    LATC, A
-        btfsc   Trw, 0, A
-        bsf     LATC, 3, A
-        btfsc   Trw, 1, A
-        bsf     LATC, 6, A
-        btfsc   Trw, 2, A
-        bsf     LATC, 7, A
-BLINK_USB_STATUS_END:
-#endif
+
         movff   SpF, Sp
         movff   SbankF, Sbank       ; Restore Forth stack pointer
 
@@ -1739,6 +1727,13 @@ RX0:
 RX0_2:
         rcall   BUSY
         movff   keyCHAR, plusS
+#ifdef CTRL_O_WARM_RESET
+        movlw   0xf
+        subwf   Srw, W, A
+        bnz     RX0_3
+        bra     WARM
+RX0_3:
+#endif
         clrf    plusS, A
 #if 0
         rcall   RX0Q
@@ -2229,22 +2224,16 @@ WARM_2:
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
 
-#ifndef USB_CDC
         rcall   VER
-#endif
+
         rcall   TURNKEY
         call    ZEROSENSE
         bz      STARTQ2
-#ifndef USB_CDC
         rcall   XSQUOTE
         db      d'3',"ESC"
         rcall   TYPE
         rcall   LIT
-        dw      TURNKEY_DELAY_UART
-#else
-        rcall   LIT
-        dw      TURNKEY_DELAY_USB
-#endif
+        dw      TURNKEY_DELAY
         call    MS
         rcall   KEYQ
         call    ZEROSENSE
@@ -2269,7 +2258,7 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'19',"FlashForth V3.8 USB"
+        db d'21',"FlashForth V3.8 USB\r\n"
 #else
          ;        1234567890123456789012345678901234567890
         db d'17',"FlashForth V3.8\r\n"
@@ -2388,11 +2377,20 @@ VARIABLE_:
         goto    ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
                         ; runtime is DOCREATE
 
+        dw      L_VARIABLE
+L_2VARIABLE:
+        db      NFA|9,"2variable"
+TWOVARIABLE_:
+        call    VARIABLE_
+        rcall   CELL    ; 2
+        goto    ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
+                        ; runtime is DOCREATE
+
 ;******************************************************
 ; CONSTANT x name --      define a Forth constant
 ;  : CREATE  CELL NEGATE IALLOT I, ;
 ; Note that the constant is stored in flash.
-        dw      L_VARIABLE
+        dw      L_2VARIABLE
 L_CONSTANT:
         db      NFA|8,"constant"
 CONSTANT_:
@@ -2411,6 +2409,16 @@ L_CON:
         db      NFA|3,"con"
 CON:
         call    COLON         ; Create a word header
+        rcall   LITERAL       ; Append the constant value  as inline literal
+        goto    SEMICOLON     ; Compile return
+
+        dw      L_CON
+L_2CON:
+        db      NFA|4,"2con"
+TWOCON:
+        rcall   SWOP
+        call    COLON         ; Create a word header
+        rcall   LITERAL       ; Append the constant value  as inline literal
         rcall   LITERAL       ; Append the constant value  as inline literal
         goto    SEMICOLON     ; Compile return
 
@@ -2461,7 +2469,7 @@ DODOES:
         movwf   PCL, A
     
 ;   SP@     -- addr         get parameter stack pointer
-        dw      L_CON
+        dw      L_2CON
 L_SPFETCH:
         db      NFA|3,"sp@"
 SPFETCH:
@@ -3098,41 +3106,15 @@ OVER:
 L_ROT:
         db      NFA|3,"rot"
 ROT:
-#if 0
-; 26 cycles, 24 instructions
-        movlw   -4
-        movff   SWrw, TBLPTRH
-        movf    Sminus, F, A
-        movff   SWrw, TBLPTRL
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-        movlw   -3
-        movff   Splus, SWrw
-        movff   Splus, SWrw
-        movff   Splus, SWrw
-        movff   Splus, SWrw
-        movf    Sminus, W, A
-        movff   TBLPTRH, Sminus
-        movff   TBLPTRL, Splus
-        return
-#else
-; 34+24+4=62  cycles, 4 instructions    
         rcall   TOR
         rcall   SWOP
         rcall   RFROM
         goto    SWOP
-#endif
 ;   >R       x --   R: -- x   push to return stack
 ; 12 cycles
         dw      L_ROT
 L_TOR:
-        db      NFA|INLINE|COMPILE|2,">r"
-        push
-        movf    Sminus, W, A
-        movwf   TOSH, A
-        movf    Sminus, W, A
-        movwf   TOSL, A
-        return
+        db      NFA|COMPILE|2,">r"
 TOR:
         movf    TOSL, W
         movwf   Tp
@@ -3149,13 +3131,7 @@ TOR:
 ; 12 cycles
         dw      L_TOR
 L_RFROM:
-        db      NFA|INLINE|COMPILE|2,"r>"
-        movf    TOSL, W
-        movwf   plusS
-        movf    TOSH, W
-        movwf   plusS
-        pop
-        return        
+        db      NFA|COMPILE|2,"r>"
 RFROM:
         movf    TOSH, W
         movwf   PCLATH    ; Save the return address
