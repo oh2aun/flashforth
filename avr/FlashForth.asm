@@ -33,41 +33,44 @@
 .include "m128def.inc"
 ; Macros
 
-  .def zerol = r2
-  .def zeroh = r3
+;  .def zerol = r2
+;  .def zeroh = r3
   .def upl = r4
   .def uph = r5
 
-  .def al  = r6
-  .def ah  = r7
-  .def bl  = r8
-  .def bh  = r9
+;  .def al  = r6
+;  .def ah  = r7
+;  .def bl  = r8
+  .def wflags  = r9
 
-  .def ibase =r12
-  .def ibasel=r12
-  .def ibaseh=r13
-  .def iaddr =r14
-  .def iaddrl=r14
-  .def iaddrh=r15
+  .def ibase =r10
+  .def ibasel=r10
+  .def ibaseh=r11
+  .def iaddr =r12
+  .def iaddrl=r12
+  .def iaddrh=r13
 
   .def t0 = r16
   .def t1 = r17
   .def t2 = r18
   .def t3 = r19
 
-  .def i_lo = r10
-  .def i_hi = r11
-  .def p_lo = r20
-  .def p_hi = r21
+  .def il = r26
+  .def ih = r27
+  .def pl = r20
+  .def ph = r21
 
-  .def flags0 = r22
-  .def flags1 = r23
+  .def FLAGS1 = r22
+  .def FLAGS2 = r23
   .def tos  = r24
-  .def tosl = r24  ; ParameterStackLow
-  .def tosh = r25  ; ParameterStackHi
-;  .def spl = r28  ; StackPointer Ylo
-;  .def sph = r29  ; StackPointer Yhi
-   
+  .def tosl = r24
+  .def tosh = r25
+;  xl = r26
+;  xh = r27
+;  yl = r28  ; StackPointer Ylo
+;  yh = r29  ; StackPointer Yhi
+;  zl = r30
+;  zh = r31
 
 .macro poptos 
     ld tosl, Y+
@@ -115,7 +118,8 @@
 .endif
 .endmacro
 
-
+#define FC_TYPE_SW
+#define clock 8000000  ; 8 MHz 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -124,30 +128,45 @@
 .equ flashPageMask=0x00      ; One byte, no mask needed on 8 bit processor
 
 
+
 ; Forth word header flags
 .equ NFA= 0x80      ; Name field mask
 .equ IMMED= 0x40    ; Immediate mask
 .equ INLINE= 0x20   ; Inline mask
 .equ COMPILE= 0x10  ; Compile only mask
-.equ NFL= 0xf       ; Name field length mask
+.equ NFAmask= 0xf       ; Name field length mask
 
-; flags0
-.equ iCR=     7     ; ACCEPT has found CR
-.equ noclear= 6     ; dont clear optimisation flags 
-.equ idup=    5     ; Use dupzeroequal instead of zeroequal
-.equ izeroeq= 4     ; Use bnz instead of bz if zeroequal
-.equ istream= 3
-.equ idoxoff= 2
+; FLAGS2
+.equ fLOAD=   2           ; 256 mS Load sample available
+.equ fLOAD_m= 0x02
+.equ fFC=     1           ; 0=Flow Control, 1 = no Flow Control                       
+.equ fFc_m=   0x01
 .equ ixoff=   1
+.equ ixoff_m=0x02
+
+; FLAGS1
+.equ noclear= 6     ; dont clear optimisation flags 
+.equ noclear_m=0x40
+.equ idup=    5     ; Use dupzeroequal instead of zeroequal
+.equ idup_m=  0x20
+.equ izeroeq= 4     ; Use brne instead of breq if zeroequal
+.equ izeroeq_m=0x10
+.equ istream= 3
+.equ istream_m= 0x08
+.equ fLOCK=     2
+.equ fLOCK_m=   0x04
+.equ fTAILC=    1
+.equ fTAILC_m=  0x02
 .equ idirty=  0
-
-
-; Task flags
-.equ running= 0
+.equ idirty_m=0x01
 
 ;;; For Flow Control
 .equ XON=   0x11
 .equ XOFF=  0x13
+
+.equ CR_=0x0d
+.equ LF_=0x0a
+.equ BS_=0x08
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000  ; 4 Kbytes of ram
@@ -160,13 +179,13 @@
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
-.equ ursize=       72         ; 36 cells return stack size ( 2 cells per rcall )
+.equ ursize=       72         ; 36 cells ret stack size ( 2 cells per rcall )
 .equ ussize=       72         ; 36 cells parameter stack
 .equ utibsize=     72         ; 72 character Terminal Input buffer
 
 ;;; User variables and area
 .equ us0=          - 30         ; Start of parameter stack
-.equ ur0=          - 28         ; Start of return stack
+.equ ur0=          - 28         ; Start of ret stack
 .equ uemit=        - 26         ; User EMIT vector
 .equ uemitq_=      - 24         ; User EMIT? vector
 .equ ukey=         - 22         ; User KEY vector
@@ -174,23 +193,15 @@
 .equ ulink=        - 18         ; Task link
 .equ ubase=        - 16         ; Number Base
 .equ utib=         - 14         ; TIB address
+.equ ustatus=      - 12
+.equ uflg=         - 12
 .equ utask=        - 12         ; Task area pointer
-.equ ursave=       - 10         ; Saved return stack pointer
+.equ ursave=       - 10         ; Saved ret stack pointer
 .equ ussave=       - 8          ; Saved parameter stack pointer
 .equ usource=      - 6          ; Two cells
 .equ utoin=        - 2          ; Input stream
 .equ uhp=            0          ; Hold pointer
-.equ urbuf=        -us0 + 2               ; return stack
-.equ usbuf=        ustart-us0+ursize + 2        ; Parameter stack
-.equ usbuf0=       usbuf - 2
-.equ utibbuf=      ustart-us0+ursize+ussize + 2 ; Terminal Input buffer
 
-;;;  Initial USER area pointer (operator)
-.equ u0=           ustart-us0
-.equ uareasize=    -us0+ursize+ussize+utibsize + 2
-
-;;; Start of free ram
-.equ dpdata=       ustart-us0+ursize+ussize+utibsize + 2
 
 ;;; Variables in EEPROM
 .equ eeprom=       PEEPROM
@@ -221,8 +232,6 @@ rbuf_rd:    .byte 2
 rbuf_lv:    .byte 2
 rbuf:       .byte rbuf_size
 
-FLAGS_1:     .byte 1
-FLAGS_2:     .byte 1
 Preg:       .byte 2
 ms_count:   .byte 2
 intcon1dbg: .byte 2
@@ -234,57 +243,75 @@ dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
-cse:        .byte 2 ; Current data section 0=flash, 1=eeprom, 2=ram
-state:      .byte 2 ; Compilation state
+cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
+state:      .byte 1 ; Compilation state
 upcurr:     .byte 2 ; Current USER area pointer
-ustart:     .byte uareasize ; The operator user area
+uvars:      .byte   (-us0)
+up0:        .byte   2
+urbuf:      .byte   ursize
+usbuf:      .byte   ussize
+utibbuf:    .byte   utibsize
+dpdata:     .byte   2
+;ustart:     .byte uareasize ; The operator user area
 
 .cseg
 .org 0
-RESET_:     .dw  WARM
-INT0_:      .dw  RESET_FF
-INT1_:      .dw  RESET_FF
-INT2_:      .dw  RESET_FF
-INT3_:      .dw  RESET_FF
-INT4_:      .dw  RESET_FF
-INT5_:      .dw  RESET_FF
-INT6_:      .dw  RESET_FF
-INT7_:      .dw  RESET_FF
-TIMER2COMP_: .dw RESET_FF
-TIMER2OVF_:  .dw RESET_FF
-TIMER1CAPT_: .dw RESET_FF
-TIMER1COMPA_: .dw RESET_FF
-TIMER1COMPB_: .dw RESET_FF
-TIMER1OVF_:   .dw RESET_FF
-TIMER0COMP_:  .dw RESET_FF
-SPISTC_:      .dw RESET_FF
-USART0RX_:    .dw RESET_FF
-USART0UDRE_:  .dw RESET_FF
-USART0TX_:    .dw RESET_FF
-ADC_:         .dw RESET_FF
-EEREADY_:     .dw RESET_FF
-ANALOGCOMP_:  .dw RESET_FF
-TIMER1COMPC_: .dw RESET_FF
-TIMER3CAPT_:  .dw RESET_FF
-TIMER3COMPA_: .dw RESET_FF
-TIMER3COMPB_: .dw RESET_FF
-TIMER3COMPC_: .dw RESET_FF
-TIMER3OVF_:   .dw RESET_FF
-USART1RX_:    .dw RESET_FF
-USART1UDRE_:  .dw RESET_FF
-USART1TX_:    .dw RESET_FF
-TWI_:         .dw RESET_FF
-SPMREADY_:    .dw RESET_FF
+RESET_:     jmp  WARM_
+INT0_:      jmp  RESET_FF
+INT1_:      jmp  RESET_FF
+INT2_:      jmp  RESET_FF
+INT3_:      jmp  RESET_FF
+INT4_:      jmp  RESET_FF
+INT5_:      jmp  RESET_FF
+INT6_:      jmp  RESET_FF
+INT7_:      jmp  RESET_FF
+TIMER2COMP_:   jmp RESET_FF
+TIMER2OVF_:    jmp RESET_FF
+TIMER1CAPT_:   jmp RESET_FF
+TIMER1COMPA_:  jmp RESET_FF
+TIMER1COMPB_:  jmp RESET_FF
+TIMER1OVF_:    jmp RESET_FF
+TIMER0COMP_:   jmp RESET_FF
+SPISTC_:       jmp RESET_FF
+USART0RX_:     jmp RESET_FF
+USART0UDRE_:   jmp RESET_FF
+USART0TX_:     jmp RESET_FF
+ADC_:          jmp RESET_FF
+EEREADY_:      jmp RESET_FF
+ANALOGCOMP_:   jmp RESET_FF
+TIMER1COMPC_:  jmp RESET_FF
+TIMER3CAPT_:   jmp RESET_FF
+TIMER3COMPA_:  jmp RESET_FF
+TIMER3COMPB_:  jmp RESET_FF
+TIMER3COMPC_:  jmp RESET_FF
+TIMER3OVF_:    jmp RESET_FF
+USART1RX_:     jmp RESET_FF
+USART1UDRE_:   jmp RESET_FF
+USART1TX_:     jmp RESET_FF
+TWI_:          jmp RESET_FF
+SPMREADY_:     jmp RESET_FF
 
 
 RESET_FF:
-        
-WARM_L:
-WARM:
-        nop
+        jmp     RESET_FF        
 
+
+;;; *************************************************
+;;; WARM user area data
+.equ warmlitsize= 18
+WARMLIT:
+        .dw      usbuf+ussize-2        ; S0
+        .dw      urbuf+ursize-2        ; R0
+        .dw      TX1_+PFLASH
+        .dw      RX1_+PFLASH
+        .dw      RX1Q+PFLASH
+        .dw      OPERATOR_AREA+PFLASH  ; TASK
+        .dw      0x0010                ; BASE
+        .dw      utibbuf               ; TIB
+        .dw      0                     ; ustatus & uflg
+;;; *************************************************
 ;;; *************************************
-;;; COLD dictionary data
+;;; EMPTY dictionary data
 .equ coldlitsize= 6
 ;.section user_eedata
 COLDLIT:
@@ -294,25 +321,316 @@ DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     .dw      lastword+PFLASH
 STAT:   .dw      DOTSTATUS+PFLASH
-;;; *************************************************
-;;; WARM user area data
-.equ warmlitsize= 13
-WARMLIT:
-        .dw      0x0002                ; CSE RAM
-        .dw      0x0000                ; STATE
-        .dw      u0                    ; UP
-        .dw      usbuf0                ; S0
-        .dw      urbuf                 ; R0
-        .dw      TX1+PFLASH
-        .dw      TX1Q+PFLASH
-        .dw      RX1+PFLASH
-        .dw      RX1Q+PFLASH
-        .dw      u0                    ; ULINK
-        .dw      0x0010                ; BASE
-        .dw      utibbuf               ; TIB
-        .dw      OPERATOR_AREA+PFLASH  ; TASK
-;;; *************************************************
 
+; EXIT --   Compile a return
+;        variable link
+        .dw     0
+L_EXIT:
+        .db     NFA|4,"exit",0
+EXIT:
+        pop     t0
+        pop     t0
+        ret
+
+; idle
+        .dw     L_EXIT
+L_IDLE:
+        .db     NFA|4,"idle",0
+IDLE:
+#ifdef IDLEN
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        tstfsz  TWrw, A
+        decf    status, F, A
+        clrf    TWrw, A
+#endif
+#endif
+        ret
+        
+; busy
+        .dw     L_IDLE
+L_BUSY:
+        .db     NFA|4,"busy",0
+BUSY:
+#ifdef IDLEN
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        bnz     BUSY1
+        incf    status, F, A
+        setf    TWrw, A
+BUSY1:
+#endif
+#endif
+        ret
+
+
+#ifdef IDLEN
+#ifdef IDLE_MODE
+IDLE_HELP:
+        movff   upcurr, Tp
+        movff   (upcurr+1), Tbank
+        movlw   ustatus
+        movf    TWrw, F, A
+        ret
+#endif
+#endif
+        
+; busy
+        .dw     L_BUSY
+L_LOAD:
+        .db     NFA|4,"load",0
+LOAD:
+        call    CELL
+        ret
+        
+; [i   --    Save registers for the Forth interrupt context
+        .dw     L_LOAD
+L_LI:
+        .db     NFA|INLINE|COMPILE|2,"[i",0
+        ret
+
+; i]   --    Restore registers for the Forth interrupt context
+        .dw     L_LI
+L_IR:
+        .db     NFA|INLINE|COMPILE|2,"i]",0
+        ret
+
+;***************************************************
+; TX1   c --    output character to the TX1 buffer
+        .dw     L_IR
+L_TX1_:
+        .db     NFA|3,"tx1"
+TX1_:
+#if 0
+#if TX1_BUF_SIZE == 0
+        btfss   PIR1, TXIF, A
+        bra     TX1_LOOP
+        rcall   TX1_SEND
+        bra     PAUSE          ; Pause during a character is sent out
+TX1_LOOP:
+        rcall   IDLE
+        rcall   PAUSE
+        btfss   PIR1, TXIF, A
+        bra     TX1_LOOP       ; Dont pause if paused before sending.
+TX1_SEND:
+        rcall   BUSY
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+#ifndef USE_8BIT_ASCII
+        andlw   h'7f'
+#endif
+        movwf   TXREG, A
+        return
+
+#else
+        rcall   PAUSE                   ; Try other tasks
+;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
+        TX_FULL_BIT TX1_BUF_SIZE
+        bra     TX1_2
+        rcall   IDLE
+        bra     TX1_
+        
+TX1_2:
+        rcall   BUSY
+        movf    Sminus, W
+#ifndef USE_8BIT_ASCII
+        movlw   h'7f'
+        andwf   Srw, F, A
+#endif
+        lfsr    Tptr, TXbuf
+        movf    TXhead, W, A
+        movff   Sminus, TWrw
+        
+        bcf     INTCON, GIE, A
+
+        incf    TXhead, F, A
+        movlw   TXbufmask
+        andwf   TXhead, F, A
+        incf    TXcnt, F, A
+
+        bsf     INTCON, GIE, A  ; Enable interrupts
+        bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
+        return
+#endif
+#endif
+;***************************************************
+; RX1    -- c    get character from the serial line
+        .dw     L_TX1_
+L_RX1_:
+        .db     NFA|3,"rx1"
+RX1_:
+#if 0
+        rcall   PAUSE
+        rcall   QUERR
+        rcall   RX1Q
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        bz      RX1_
+
+        lfsr    Tptr, RXbuf
+        movf    RXtail, W, A
+        movff   TWrw, plusS    ;  Take a char from the buffer
+        clrf    plusS, A
+
+        bcf     INTCON, GIE, A
+
+        incf    RXtail, F, A
+        movlw   RXbufmask
+        andwf   RXtail, F, A
+        decf    RXcnt, F, A
+
+        bsf     INTCON, GIE, A
+        return
+#endif
+;***************************************************
+; RX1?  -- n    return the number of characters in queue
+        .dw     L_RX1_
+L_RX1Q:
+        .db     NFA|4,"rx1?",0
+RX1Q:
+#if 0
+        rcall   BUSY
+        movf    RXcnt, W, A
+        movwf   plusS
+        bnz     RX1Q2
+        rcall   IDLE
+#ifdef FC_TYPE_SW
+        btfss   FLAGS2, fFC, A
+        rcall   XXON
+#endif
+#ifdef  HW_FC_CTS_PORT
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
+#endif
+RX1Q2:
+        clrf    plusS
+        return
+#endif
+;***************************************************
+; ?UERR -- f    print message and ABORT if UART framing or overrun error occured
+;       dw      link
+;link   set     $
+        .db     NFA|1,"~"
+QUERR:
+#if 0
+        btfsc   RCSTA, FERR, A
+        bra     QUERR1
+        btfsc   RCSTA, OERR, A
+        bra     QUERR1
+        return
+QUERR1: movlw   '~'         ; Framing or overrun error
+QUERR3: rcall   asmemit
+        bcf     RCSTA, CREN, A
+        bsf     RCSTA, CREN, A
+        goto    ABORT         ;    goto    ABORT
+#endif
+;*******************************************************
+;;; Multiplikation routine from the PIC datasheet adapted to FORTH.
+;;; Uses the interrupt safe temporary registers:
+;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank
+;;; 42 clock cycles
+umstar0:
+#if 0
+        rcall   SETTBLPTR
+        movff   Sminus, PCLATH
+        movff   Sminus, TABLAT
+        push
+        movf    TBLPTRL, W, A
+        mulwf   TABLAT, A       ; ARG1L * ARG2L ->
+                                ; PRODH:PRODL
+        movff   PRODL, plusS
+        movff   PRODH, plusS
+
+        movf    TBLPTRH, W, A
+        mulwf   PCLATH, A       ; ARG1H * ARG2H ->
+                                ; PRODH:PRODL
+        movf    PRODL, W, A
+        movwf   TOSL, A
+        movf    PRODH, W, A
+        movwf   TOSH, A
+
+        movf    TBLPTRL, W, A
+        mulwf   PCLATH, A       ; ARG1L * ARG2H ->
+                                ; PRODH:PRODL
+        movf    PRODL, W, A
+        addwf   Srw, F, A
+        movf    PRODH, W, A
+        addwfc  TOSL, F, A
+        clrf    WREG, A
+        addwfc  TOSH, F, A
+
+        movf    TBLPTRH, W, A   
+        mulwf   TABLAT, A       ; ARG1H * ARG2L ->
+                                ; PRODH:PRODL
+        movf    PRODL, W, A     ;
+        addwf   Srw, F, A       ; Add cross
+        movf    PRODH, W, A     ; products
+        addwfc  TOSL, F, A
+        clrf    WREG, A
+        addwfc  TOSH, F, A
+
+        movff   TOSL, plusS
+        movff   TOSH, plusS
+        pop
+#endif
+        ret
+
+;***********************************************************
+;;; 320 - 384 cycles for 16 or 32 bit division
+;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp TOSL TOSH TOSU
+#if 0
+#define DIVIDEND_0      TOSL
+#define DIVIDEND_1      TOSH
+#define DIVIDEND_2      TABLAT 
+#define DIVIDEND_3      PCLATH
+#define DIVISOR_0       TBLPTRL
+#define DIVISOR_1       TBLPTRH
+#define DCNT            TOSU    ;  5 bit counter
+#endif
+umslashmod0:
+#if 0
+        rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
+        movff   Sminus, DIVIDEND_3
+        movff   Sminus, DIVIDEND_2
+UMSLASHMOD0:
+        push
+        movf    Sminus, W, A
+        movwf   DIVIDEND_1, A
+        movf    Sminus, W, A
+        movwf   DIVIDEND_0, A
+        movlw   h'10'
+        movwf   DCNT, A             ; 19
+UMSLASHMOD1:
+        clrf    Tp, A
+        bcf     STATUS, C, A
+        rlcf    DIVIDEND_0, F, A
+        rlcf    DIVIDEND_1, F, A
+        rlcf    DIVIDEND_2, F, A
+        rlcf    DIVIDEND_3, F, A
+        rlcf    Tp, F, A
+
+        movf    DIVISOR_0, W, A
+        subwf   DIVIDEND_2, W, A 
+        movf    DIVISOR_1, W, A
+        subwfb  DIVIDEND_3, W, A
+        movlw   0
+        subwfb  Tp, W, A
+        bnc     UMSLASHMOD2
+
+        movf    DIVISOR_0, W, A
+        subwf   DIVIDEND_2, F, A
+        movf    DIVISOR_1, W, A
+        subwfb  DIVIDEND_3, F, A
+        bsf     DIVIDEND_0, 0, A
+UMSLASHMOD2:
+        decfsz  DCNT, F, A
+        bra     UMSLASHMOD1        ; 16*(18-22) = ~320
+        movff   DIVIDEND_2, plusS  ; remainder
+        movff   DIVIDEND_3, plusS
+        movff   DIVIDEND_0, plusS  ; quotient
+        movff   DIVIDEND_1, plusS
+        pop
+#endif
+        ret
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
@@ -366,12 +684,12 @@ IWRITE_BUFFER1:
         ld      r1, x+
         ldi     t3, (1<<SPMEN)
         rcall   DO_SPM
-        adiw    ZH:ZL, 2
+        adiw    zl, 2
         subi    t0, 2
         brne    IWRITE_BUFFER1
 
         ; execute page write
-        subi    ZL, low(PAGESIZEB) ;restore pointer
+        subi    zl, low(PAGESIZEB) ;restore pointer
         ldi     t3, (1<<PGWRT) | (1<<SPMEN)
         rcall   DO_SPM
         ; re-enable the RWW section
@@ -390,7 +708,7 @@ IWRITE_BUFFER2:
         subi    t0, 1
         brne    IWRITE_BUFFER2
 #endif
-        ; return to RWW section
+        ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
         lds     t0, SPMCSR
@@ -411,12 +729,218 @@ DO_SPM:
         spm
         out     SREG, t2
         ret
-;*****************************************************************
-IFLUSH:
-        sbrc    flags1, idirty
-        rjmp    IWRITE_BUFFER
+
+;***************************************************
+asmemit:
+#if 0
+        btfss   PIR1, TXIF, A
+        bra     asmemit
+        btfss   PIR1, TXIF, A
+        bra     asmemit
+asmemit1:
+        movwf   TXREG, A
+#endif
         ret
 
+;***************************************************
+; N=    c-addr nfa u -- n   string:name cmp
+;             n=0: s1==s2, n=ffff: s1!=s2
+; N= is specificly used for finding dictionary entries
+; It can also be used for comparing strings shorter than 16 characters,
+; but the first string must be in ram and the second in program memory.
+        .dw     L_RX1Q
+L_NEQUAL:
+        .db     NFA|2,"n=",0
+NEQUAL:
+#if 0
+        movf    Sminus, W, A        ; count_hi
+        movff   Sminus, PCLATH      ; count_lo
+        rcall   SETTBLPTR
+;        movff   Sminus, TBLPTRH     ; NOTE! Incremented by IC@ 
+;        movff   Sminus, TBLPTRL     ; c-addr2 in program rom
+        movff   Sminus, Abank       ; 
+        movff   Sminus, Ap          ; c-addr1 in ram
+
+        rcall   ICFETCH1            ; ICFETCH1 uses Tp, Tbank (=FSR1)
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        andlw   NFAmask             ; MASK NFA, IMMED, INLINE, COMPILE BITS
+        cpfseq  Arw, A
+        bra     NEQUAL_TRUE         ; NO MATCH
+NEQUAL0:
+        rcall   ICFETCH1
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        cpfseq  plusA, A
+NEQUAL_TRUE:
+        goto    TRUE_               ; NO MATCH
+NEQUAL1:                            ; check next character
+        decfsz  PCLATH, F, A
+        bra     NEQUAL0
+NEQUAL2:
+        goto    FALSE_              ; MATCH
+#endif
+; SKIP   c-addr u c -- c-addr' u'
+;                          skip matching chars
+; u (count) must be smaller than 256
+        .dw     L_NEQUAL
+L_SKIP:
+        .db     NFA|4,"skip",0
+SKIP:
+#if 0
+        rcall   SETTBLPTR
+;        movf    Sminus, W, A
+;        movff   Sminus, TBLPTRL ; c character
+        movf    Sminus, W, A    ; skip count_hi
+        movf    Sminus, W, A
+        movwf   PCLATH, A       ; count_lo
+        movff   Sminus, Tbank
+        movff   Sminus, Tp      ; c-addr
+        bz      SKIP4           ; zero flag comes from the previous movf
+SKIP0:
+        movlw   0x9             ; SKIP TAB
+        subwf   Trw, W, A
+        bz      SKIP1
+
+        movf    Trw, W, A
+        subwf   TBLPTRL, W, A
+        bnz     SKIP4
+SKIP1:                          ; check next character
+        movf    Tplus, W, A
+
+        decfsz  PCLATH, F, A
+        bra     SKIP0
+        swapf   Tminus, W, A
+SKIP4:
+                                ; found start of word
+                                ; restore the stack
+        movff   Tp, plusS
+        movf    Tbank, W, A
+        iorlw   h'f0'
+        movwf   plusS, A
+        movff   PCLATH, plusS
+        clrf    plusS, W
+#endif
+        ret
+
+; SCAN   c-addr u c -- c-addr' u'
+;                          find matching chars
+; u(count) must be smaller than 256
+; TAB will always give a match. This works OK
+; with tabbed source files that have space as a delimiter.
+; When using scan with other delimiters there may be 
+; problems, because TAB will always terminate the scan.
+
+        .dw     L_SKIP
+L_SCAN:
+        .db     NFA|4,"scan",0
+SCAN:
+#if 0
+        rcall   SETTBLPTR
+;        movf    Sminus, W, A
+;        movff   Sminus, TBLPTRL     ; c character
+        movf    Sminus, W, A        ; count_hi
+        movf    Sminus, W, A        ; count_lo
+        movwf   PCLATH, A
+        bz      SCAN4
+        movff   Sminus, Tbank
+        movff   Sminus, Tp          ; c-addr
+SCAN0:
+        movf    Trw, W, A
+        subwf   TBLPTRL, W, A
+        bz      SCAN3               ; Found a match
+SCAN1:
+        movf    Trw, W, A
+        sublw   h'9'                ; Check for TAB
+        bz      SCAN3               ; TAB is handled as the delimiter c .
+SCAN2:
+        movf    Tplus, W, A         ; check next character
+        decfsz  PCLATH, F, A
+        bra     SCAN0
+SCAN3:                              ; found start of word
+                                    ; restore the stack
+        movff   Tp, plusS
+        movf    Tbank, W, A
+        iorlw   h'f0'
+        movwf   plusS, A
+SCAN4:
+        movff   PCLATH, plusS
+        clrf    plusS, A
+#endif
+        ret
+
+; ei  ( -- )    Enable interrupts
+        .dw     L_SCAN
+L_EI:
+        .db     NFA|INLINE|2,"ei",0
+        sei
+        ret
+        
+; di  ( -- )    Disable interrupts
+        .dw     L_EI
+L_DI:
+        .db     NFA|INLINE|2,"di",0
+        cli
+        ret
+        
+; ;i  ( -- )    End definition of user interrupt routine
+        .dw     L_DI
+L_IRQ_SEMI:
+        .db     NFA|IMMED|2,";i",0
+IRQ_SEMI:
+        rcall   DOLIT
+        .dw     irq_user_end
+        rcall   JMP_
+        jmp     LEFTBRACKET
+irq_user_end: ;DUMMY
+
+; IRQ   --      VALUE for the interrupt vector
+        .dw     L_IRQ_SEMI
+L_IRQ_V:
+        .db     NFA|3,"irq"
+IRQ_V:
+        call    VALUE_DOES      ; Must be call for IS to work
+        .dw     irq_v
+
+; DOLITERAL  x --           compile DOLITeral x as native code
+        .dw     L_IRQ_V+PFLASH
+LITERAL_L:
+        .db     NFA|IMMED|7,"literal"
+LITERAL:
+        pushtos
+        ldi     tosl, 0x9a      ; savettos
+        ldi     tosh, 0x93      ; savettos
+        rcall   ICOMMA
+        ldi     tosl, 0x8a      ; savettos
+        ldi     tosh, 0x93      ; savettos
+        rcall   ICOMMA
+        poptos
+        rcall   DUP
+        mov     tosh, tosl
+        swap    tosh
+        andi    tosh, 0xf
+        andi    tosl, 0xf
+        ori     tosh, 0xe0
+        ori     tosl, 0x80
+        rcall   ICOMMA
+        poptos
+        mov     tosl, tosh
+        swap    tosh
+        andi    tosh, 0xf
+        andi    tosl, 0xf
+        ori     tosh, 0xe0
+        ori     tosl, 0x90
+        jmp     ICOMMA
+
+#if 0
+LITERALruntime:
+        st      -Y, tosh    ; 0x939a
+        st      -Y, tosl    ; 0x938a
+        ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
+        ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
+#endif
+
+;*****************************************************************
 ISTORE:
         movw    iaddr, tos
         rcall   IUPDATEBUF
@@ -431,7 +955,7 @@ ISTORE:
         poptos
         ret
 
-        .dw     WARM_L+PFLASH
+        .dw     LITERAL_L+PFLASH
 STORE_L:
         .db     NFA|1, "!"
 STORE:
@@ -497,7 +1021,7 @@ FETCH_L:
         .db     NFA|1, "@"
 FETCH:
         cpi     tosh, 0x01
-        brmi    FETCH_RAM
+        brpl    FETCH_RAM
         cpi     tosh, 0xe0
         brmi    IFETCH
         rjmp    EFETCH
@@ -604,55 +1128,605 @@ ECSTORE:
         poptos
         ret
 
-TX1:
-TX1Q:
-RX1:
-RX1Q:
+;;; Disable writes to flash and eeprom
+        .dw     CSTORE_L
+L_FLOCK:
+        .db     NFA|3,"fl-"
+        sbr     FLAGS1, fLOCK_m
+        ret
 
-UEMIT_L:
-        .db     NFA|5,"'emit"
-UEMIT_:
-        rcall   DOUSER
-        .dw     uemit
+;;; Enable writes to flash and eeprom
+        .dw     L_FLOCK
+L_FUNLOCK:
+        .db     NFA|3,"fl+"
+        cbr     FLAGS1, fLOCK_m
+        ret
 
-UKEY_L:
-        .db     NFA|4,"'key",0      
-UKEY_:
-        rcall   DOUSER
-        .dw     ukey
+;;; Enable flow control
+        .dw     L_FUNLOCK
+L_FCON:
+        .db     NFA|3,"u1+"
+        cbr     FLAGS2, fFC_m
+        ret
 
-UKEYQ_L:
-        .db     NFA|5,"'keyq"
-UKEYQ_:
-        rcall   DOUSER
-        .dw     ukeyq
+;;; Disable flow control
+        .dw     L_FCON
+L_FCOFF:
+        .db     NFA|3,"u1-"
+        sbr     FLAGS2, fFC_m
+        ret
+
+;;; Clear watchdog timer
+        .dw     L_FCOFF
+L_CWD:
+        .db     NFA|INLINE|3,"cwd"
+        wdr
+        ret
+
+VALUE_L:
+        .db     NFA|5,"value"
+VALUE:
+        call    CREATE
+        rcall   COMMA
+        call    XDOES
+VALUE_DOES:
+        rcall   DODOES
+        jmp     FETCH
+
+DEFER_L:
+        .db     NFA|5,"defer"
+DEFER:
+        call    CREATE
+        rcall   DOLIT
+        .dw     ABORT+PFLASH
+        rcall   COMMA
+        call    XDOES
+DEFER_DOES:
+        rcall   DODOES
+        jmp     FEXECUTE
+
+IS_L:
+        .db     NFA|2,"is",0
+IS:
+        rcall    TICK
+        rcall    TWOPLUS
+        rcall   FETCH
+        rcall   STATE
+        rcall   ZEROSENSE
+        breq    IS1
+        rcall   DOLIT
+        rcall   DOLIT
+        .dw     STORE+PFLASH
+        rcall   COMMAXT
+        rjmp    IS2
+IS1:
+        rcall   STORE
+IS2:
+        ret
+
+        .dw     IS_L+PFLASH
+TO_L:
+        .db     NFA|2,"to",0
+TO:
+        jmp     IS
+
+        .dw     TO_L+PFLASH
+L_TURNKEY:
+        .db     NFA|7,"turnkey"
+TURNKEY:
+        call    VALUE_DOES      ; Must be call for IS to work.
+        .dw     dpSTART
+
+;;; *******************************************************
+; PAUSE  --     switch task
+;;;  38 us @ 12 MHz, 11,4 us @ 40 Mhz  9us at 48 Mhz  ( with 4 cells on return stack )
+;;; save stack to current uarea, link -> up, restore stack
+        .dw     L_TURNKEY
+L_PAUSE:
+        .db     NFA|5,"pause"
+PAUSE:
+        ret
 
 
-OPERATOR_L:
+#ifdef FC_TYPE_SW
+XXOFF:
+        sbrc    FLAGS2, ixoff
+        ret
+XXXOFF: 
+        sbr     FLAGS2, ixoff_m
+        ldi     t0, XOFF
+        rjmp    asmemit
+XXON:
+        sbrs    FLAGS2, ixoff
+        ret
+XXXON:  
+        cbr     FLAGS2, ixoff_m
+        ldi     t0, XON
+        rjmp    asmemit
+#endif
+
+L_IFLUSH:
+        .db     NFA|6,"iflush",0
+IFLUSH:
+        sbrc    flags1, idirty
+        rjmp    IWRITE_BUFFER
+        ret
+
+; *********************************************
+; Bit masking 8 bits, only for ram addresses !
+; : mset ( mask addr -- )
+;   dup >r c@ swap or r> c!
+; ;
+        .dw     L_IFLUSH
+L_MSET:
+        .db     NFA|4,"mset",0
+MSET:
+        ret
+        
+; : mclr  ( mask addr -- )
+;  dup >r c@ swap invert and r> c!
+; ;
+        .dw     L_MSET
+L_MCLR:
+        .db     NFA|4,"mclr",0
+MCLR_:
+        ret
+
+; : mtst ( mask addr -- flag )
+;   c@ and 
+; ;
+        .dw     L_MCLR
+L_MTST:
+        .db     NFA|4,"mtst",0
+MTST:
+        rcall   CFETCH
+        jmp     AND_
+
+        .dw     L_MTST
+L_CPUCLK:
+        .db     NFA|3,"Fcy"
+        rcall   DOCREATE
+        .dw     clock / 1000
+
+        .dw     L_MTST
+L_OPERATOR:
         .db     NFA|8,"operator",0
 OPERATOR:
         rcall   DOCREATE
         .dw     OPERATOR_AREA+PFLASH
 OPERATOR_AREA:
-        .dw     ustart-us0
+        .dw     up0
         .dw     uaddsize
         .dw     ursize
         .dw     ussize
         .dw     utibsize
 
-ICOMMA_L:
+        .dw     L_OPERATOR
+L_ICOMMA:
         .db     NFA|2, "i,",0
 ICOMMA:
         rcall   IHERE
         rcall   STORE
         rcall   CELL
-        rcall   IALLOT
+        jmp     IALLOT
         ret
-IHERE:
-IALLOT:
+
+;   IHERE ! 1 CHARS IALLOT ;
+        .dw     L_ICOMMA
+L_ICCOMMA:
+        .db     NFA|3,"ic,"
+ICCOMMA:
+        rcall   IHERE_P
+        rcall   CSTORE
+        rcall   ONE
+        jmp     IALLOT
+
+;   LSHIFT      x1 u -- x2
+        .dw     L_ICCOMMA
+L_LSHIFT:
+        .db     NFA|6,"lshift",0
+LSHIFT:
+        ret
+
+;   RSHIFT      x1 u -- x2
+        .dw     L_LSHIFT
+L_RSHIFT:
+        .db     NFA|6,"rshift",0
+RSHIFT:
+        ret
+
+;*******************************************************
+; Assembler
+;*******************************************************
+
+JMP_:
 CALL_:
 RCALL_:
-ZEROSENSE:
+
+        .dw     L_RSHIFT
+L_EMPTY:
+        .db     NFA|5,"empty"
+EMPTY:
+        rcall   DOLIT
+        .dw     STARTV
+        rcall   DOLIT
+        .dw     dp_start
+        rcall   DOLIT
+        .dw     0x000c
+        call    CMOVE
+		jmp 	DP_TO_RAM
+		
+;*******************************************************
+        .dw     L_EMPTY
+WARM_L:
+        .db     NFA|4,"warm",0
+WARM_:  
+; Zero memory
+; Init Stack pointer
+        ldi     yl, low(usbuf)
+        ldi     yh, high(usbuf)
+
+; Init Return stack pointer
+        ldi     t0, low(urbuf)
+        ldi     t1, high(urbuf)
+        out     spl, t0
+        out     sph, t1
+; Init user pointer
+        ldi     t0, low(up0)
+        ldi     t1, high(up0)
+        movw    upl, t0
+; init warm literals
+        rcall   DOLIT
+        .dw     WARMLIT
+        call    S0
+        rcall   DOLIT
+        .dw     warmlitsize
+        call    CMOVE
+        
+
+; Init ms timer
+; Init UART
+; Init 
+        jmp     ABORT
+;*******************************************************
+        .dw     WARM_L
+L_VER:
+		.db		NFA|3,"ver"
+VER:
+        rcall   XSQUOTE
+         ;        1234567890123456789012345678901234567890
+        .db 17,"FlashForth V3.8\r\n"
+        jmp     TYPE
+
+;;; Check parameter stack pointer
+        .db     NFA|3,"sp?"
+check_sp:
+        rcall   SPFETCH
+        call    S0
+        rcall   FETCH
+        call    TIB
+        rcall   WITHIN
+        rcall   XSQUOTE
+        .db     3,"SP?"
+        call    QABORT
+        ret
+;***************************************************
+; EMIT  c --    output character to the emit vector
+        .dw     L_VER
+L_EMIT:
+        .db     NFA|4,"emit",0
+EMIT:
+        rcall   UEMIT_
+        jmp     FEXECUTE
+
+;***************************************************
+; KEY   -- c    get char from UKEY vector
+        .dw     L_EMIT
+L_KEY:
+        .db     NFA|3,"key"
+KEY:
+        rcall   UKEY_
+        jmp     FEXECUTE
+
+;***************************************************
+; KEY   -- c    get char from UKEY vector
+        .dw     L_KEY
+L_KEYQ:
+        .db     NFA|4,"key?",0
+KEYQ:
+        rcall   UKEYQ_
+        jmp     FEXECUTE
+
+;***************************************************
+; LIT   -- x    fetch inline 16 bit literal to the stack
+
+DOLIT_L:
+        .db     NFA|3, "lit"
+DOLIT:
+        pushtos
+        pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
+        lpm     tosl, z+
+        lpm     tosh, z+
+        lsr     zh
+        ror     zl
+        ijmp    ; (z)
+
+        .dw     L_KEYQ
+L_EXECUTE:
+        .db     NFA|7,"execute"
+EXECUTE:
+        movw    zl, tosl
+        poptos
+        lsr     zh
+        ror     zl
+        ijmp
+
+        .dw     L_EXECUTE
+L_FEXECUTE:
+        .db     NFA|3,"@ex"
+FEXECUTE:
+        rcall   FETCH
+        jmp     EXECUTE
+
+        .dw     L_FEXECUTE
+L_VARIABLE:
+        .db     NFA|8,"variable",0
+VARIABLE_:
+        rcall   CREATE
+        rcall   CELL
+        jmp     ALLOT
+
+        .dw     L_VARIABLE
+L_2VARIABLE:
+        .db     NFA|9,"2variable"
+TWOVARIABLE_:
+        rcall   VARIABLE_
+        rcall   CELL    ; 2
+        jmp     ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
+                        ; runtime is DOCREATE
+        .dw     L_2VARIABLE
+L_CONSTANT:
+        .db     NFA|8,"constant",0
+CONSTANT_:
+        call    CREATE
+        rcall   CELL
+        call    NEGATE
+        call    IALLOT
+        jmp     ICOMMA
+
+        .dw     L_CONSTANT
+L_CON:
+        .db     NFA|3,"con"
+CON:
+        rcall   COLON
+        rcall   LITERAL
+        jmp     SEMICOLON
+
+        .dw     L_CON
+L_2CON:
+        .db     NFA|4,"2con",0
+TWOCON:
+        rcall   SWOP
+        call    COLON         ; Create a word header
+        rcall   LITERAL       ; Append the constant value  as inline literal
+        rcall   LITERAL       ; Append the constant value  as inline literal
+        jmp     SEMICOLON     ; Compile return
+
+
+; DOCREATE, code action of CREATE
+; Fetch the next cell from program memory to the parameter stack
+DOCREATE_L:
+        .db     NFA|3, "(c)"
+DOCREATE:
+        pushtos
+        pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
+        lpm     tosl, z+
+        lpm     tosh, z+
+        lsr     zh
+        ror     zl
+        ijmp
+
+TOS_TO_I:
+        pop     zh
+        pop     zl
+        push    ih
+        push    il
+        movw    il, tosl
+        ld      tosl, Y+
+        ld      tosh, Y+
+        ijmp
+
+;;; Resolve the runtime action of the word created by using does>
+DODOES_L:
+        .db     NFA|3, "(d)"
+DODOES:
+        pop     xh
+        pop     xl
+        pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
+        pushtos
+        lpm     tosl, z+
+        lpm     tosh, z+
+        movw    z, x
+        ijmp    ; (z)
+
+;   SP@     -- addr         get parameter stack pointer
+        .dw     L_2CON
+L_SPFETCH:
+        .db     NFA|3,"sp@"
+SPFETCH:
+        movw    z, y
+        pushtos
+        movw    tosl, z
+        ret
+
+;   SP!     addr --         store stack pointer
+        .db     NFA|3,"sp!"
+SPSTORE:
+        movw    y, tosl
+        ret
+
+;   RPEMPTY     -- EMPTY THE RETURN STACK       
+        .db     NFA|3,"rp0"
+RPEMPTY:
+        ret;FIXME
+
+
+; DICTIONARY POINTER FOR the current section
+; Flash -- sets the data section to flash
+        .dw     L_SPFETCH
+L_FLASH:
+ROM_N:  
+        .db     NFA|5,"flash"
+ROM:
+        clr     t0
+        sts     cse, t0
+        ret
+
+; EEPROM -- sets the data section to EEPROM data memory
+        .dw     L_FLASH
+L_EEPROM:
+EROM_N: 
+        .db     NFA|6,"eeprom",0
+EROM:
+        ldi     t0, 2
+        sts     cse, t0
+        ret
+        
+; RAM -- sets the data section to RAM memory
+        .dw     L_EEPROM
+L_RAM:
+FRAM_N: 
+        .db     NFA|3,"ram"
+FRAM:
+        ldi     t0, 4
+        sts     cse, t0
+        ret
+
+; DP    -- a-addr          
+; Fetched from EEPROM
+        .dw     L_RAM
+L_DP:
+        .db     NFA|2,"dp",0
+DP:
+        call    IDP
+        rcall   CSE_
+        jmp     PLUS
+
+
+;;; 
+        .db     NFA|3,"cse"
+CSE_:
+        pushtos
+        lds     tosl, cse
+        clr     tosh
+        ret
+
+; HERE    -- addr    get current data space ptr
+;   DP @ ;
+        .dw     L_DP
+L_HERE:
+        .db     NFA|4,"here",0
+HERE:
+        rcall   DP
+        jmp     FETCH
+
+        .db     NFA|5,"ihere"
+IHERE_P: 
+        jmp    IHERE
+; ,   x --             append cell to current data space
+;   HERE ! CELL ALLOT ;
+        .dw     L_HERE
+L_COMMA:
+        .db     NFA|1,","
+COMMA:
+        rcall   HERE
+        rcall   STORE
+        rcall   CELL
+        jmp     ALLOT
+
+; C,  c --             append char to current data space
+;   HERE C! 1 ALLOT ;
+        .dw     L_COMMA 
+L_CCOMMA:
+        .db     NFA|2,"c,",0
+CCOMMA:
+        rcall   HERE
+        rcall   CSTORE
+        rcall   ONE
+        jmp     ALLOT
+
+
+; CELL     -- n                 size of one cell
+        .dw     L_CCOMMA
+L_CELL:
+        .db     NFA|INLINE|4,"cell",0
+CELL:
+        pushtos
+        ldi     tosl, 2
+        ldi     tosh, 0
+        ret
+
+; ALIGN    --                         align DP
+        .dw     L_CELL
+L_ALIGN:
+        .db     NFA|5,"align"
+ALIGN:
+        rcall   HERE
+        rcall   ALIGNED
+        rcall   DP
+        jmp     STORE
+
+; ALIGNED  addr -- a-addr       align given addr
+        .dw     L_ALIGN
+L_ALIGNED:
+        .db     NFA|7,"aligned"
+ALIGNED:
+        adiw    tosl, 1
+        rcall   DOLIT
+        .dw     0xfffe
+        jmp     AND_
+
+; CELL+    a-addr1 -- a-addr2      add cell size
+;   2 + ;
+        .dw     L_ALIGNED
+L_CELLPLUS:
+        .db     NFA|5,"cell+"
+CELLPLUS:
+        adiw    tosl, 2
+        ret
+
+; CELLS    n1 -- n2            cells->adrs units
+        .dw     L_CELLPLUS
+L_CELLS:
+        .db     NFA|5,"cells"
+CELLS:
+        lsl     tosl
+        rol     tosh
+        ret
+
+; CHAR+    c-addr1 -- c-addr2   add char size
+        .dw     L_CELLS
+L_CHARPLUS:
+        .db     NFA|5,"char+"
+CHARPLUS:
+        adiw    tosl, 1
+        ret
+
+; CHARS    n1 -- n2            chars->adrs units
+        .dw     L_CHARPLUS
+L_CHARS:
+        .db     NFA|INLINE|5,"chars"
+CHARS:  ret
+
 COMMAXT_L:
         .db     NFA|3, "cf,"
 COMMAXT:
@@ -676,143 +1750,10 @@ STORECF1:
 STORECF2:
         ret
 
-; LITERAL  x --           compile literal x as native code
-        .dw     OPERATOR_L+PFLASH
-LITERAL_L:
-        .db     NFA|IMMED|7,"literal"
-LITERAL:
-        pushtos
-        ldi     tosl, 0x9a      ; savettos
-        ldi     tosh, 0x93      ; savettos
-        rcall   ICOMMA
-        ldi     tosl, 0x8a      ; savettos
-        ldi     tosh, 0x93      ; savettos
-        rcall   ICOMMA
-        poptos
-        rcall   DUP
-        mov     tosh, tosl
-        swap    tosh
-        andi    tosh, 0xf
-        andi    tosl, 0xf
-        ori     tosh, 0xe0
-        ori     tosl, 0x80
-        rcall   ICOMMA
-        poptos
-        mov     tosl, tosh
-        swap    tosh
-        andi    tosh, 0xf
-        andi    tosl, 0xf
-        ori     tosh, 0xe0
-        ori     tosl, 0x90
-        jmp     ICOMMA
-
-#if 0
-LITERALruntime:
-        st      -Y, tosh    ; 0x939a
-        st      -Y, tosl    ; 0x938a
-        ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
-        ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
-#endif
-
-DOLIT_L:
-        .db     NFA|3, "lit"
-DOLIT:
-        pop     zl
-        pop     zh
-        pushtos
-        lpm     tosl, z+
-        lpm     tosh, z+
-        ijmp    ; (z)
-
-EXECUTE_L:
-        .db     NFA|7,"execute"
-EXECUTE:
-        movw    zl, tosl
-        poptos
-        ijmp
-
-FEXECUTE_L:
-        .db     NFA|3,"@ex"
-FEXECUTE:
-        rcall   FETCH
-        jmp     EXECUTE
-
-EXIT_L:
-        .db     NFA|COMPILE|4,"exit"
-EXIT:
-        pop     t0
-        pop     t0
-        ret
-        
-
-VARIABLE_L:
-        .db     NFA|8,"variable",0
-VARIABLE:
-        rcall   CREATE
-        rcall   CELL
-        jmp     ALLOT
-
-CONSTANT_L:
-        .db     NFA|8,"constant",0
-CONSTANT_:
-        rcall   CREATE
-        rcall   CELL
-        rcall   NEGATE
-        rcall   IALLOT
-        jmp     ICOMMA
-
-CON_L:
-        .db     NFA|3,"con"
-CON:
-        rcall   COLON
-        rcall   LITERAL
-        jmp     SEMICOLON
-
-DOCREATE_L:
-        .db     NFA|3, "(c)"
-DOCREATE:
-        pop     zl
-        pop     zh
-        pushtos
-        lpm     tosl, z+
-        lpm     tosh, z+
-        ret
-      
-DODOES_L:
-        .db     NFA|3, "(d)"
-DODOES:
-        pop     xl
-        pop     xh
-        pop     zl
-        pop     zh
-        pushtos
-        lpm     tosl, z+
-        lpm     tosh, z+
-        movw    z, x
-        ijmp    ; (z)
-
-SPFETCH_L:
-        .db     NFA|3,"sp@"
-SPFETCH:
-        movw    z, y
-        pushtos
-        movw    tosl, z
-        ret
-
-        .db     NFA|3,"sp!"
-SPSTORE:
-        movw    y, tosl
-        ret
-
-        .db     NFA|3,"rp0"
-RPEMPTY:
-        ret;FIXME
-
-
 
 ; !COLON   --       change code field to docolon
 ;   -6 IALLOT ; 
-;       dw      link
+;       .dw    link
 ;link   set     $
         .db     NFA|6,"!colon",0
 STORCOLON:
@@ -859,21 +1800,32 @@ TWODROP:
 ; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
 ;   OVER OVER ;
         .dw     TWODROP_L
-TWODUP_L:
+L_TWODUP:
         .db     NFA|4,"2dup",0
 TWODUP:
         rcall   OVER
         jmp     OVER
 
+; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
+        .dw     L_TWODUP
+L_TWOSWAP:
+        .db     NFA|5,"2swap"
+TWOSWAP:
+        rcall   ROT
+        rcall   TOR
+        rcall   ROT
+        rcall   RFROM
+        ret
+
 ; INPUT/OUTPUT ==================================
 
 ; SPACE   --                      output a space
 ;   BL EMIT ;
-        .dw     TWODUP_L
+        .dw     L_TWOSWAP
 SPACE_L:
         .db     NFA|5,"space"
 SPACE_:  
-        call    BL_
+        call    BL
         jmp     EMIT
 
 ; SPACES   n --                  output n spaces
@@ -922,53 +1874,59 @@ UMAX1:  jmp     DROP
 ONE_L:
         .db     NFA|INLINE|1,"1"
 ONE:
-
+        pushtos
+        ldi     tosl, 1
+        ldi     tosh, 0
+        ret
 
 ; ACCEPT  c-addr +n -- +n'  get line from terminal
         .dw     ONE_L
 ACCEPT_L:
         .db     NFA|6,"accept",0
 ACCEPT:
-#if 0
         rcall   OVER
         rcall   PLUS
         rcall   OVER
 ACC1:
         rcall   KEY
 
-        movf    Sminus, W, A
-        movlw   CR_
-        subwf   Splus, W, A
-        bnz     ACC_LF
-        bsf     FLAGS2, fCR, A
+        cpi     tosl, CR_
+        brne    ACC_LF
+        
+        call    TRUE_
+        rcall   FCR
+        rcall   CSTORE
         rcall   DROP
-        bra     ACC6
+        rjmp    ACC6
 ACC_LF:
-        movf    Sminus, W, A
-        movlw   LF_
-        subwf   Splus, W, A
-        bnz     ACC2
+        cpi     tosl, LF_
+        brne    ACC2
         rcall   DROP
-        btfss   FLAGS2, fCR, A
-        bra     ACC6
-        bra     ACC1
+
+        rcall   FCR
+        rcall   CFETCH
+        rcall   ZEROSENSE
+        breq    ACC6
+        rjmp    ACC1
 ACC2:
-        bcf     FLAGS2, fCR, A
+        call   FALSE_
+        rcall   FCR
+        rcall   CSTORE
         rcall   DUP
         rcall   EMIT
         rcall   DUP
-        rcall   LIT
-        dw      BS_
+        rcall   DOLIT
+        .dw     BS_
         rcall   EQUAL
         rcall   ZEROSENSE
-        bz      ACC3
+        breq    ACC3
         rcall   DROP
         rcall   ONEMINUS
         rcall   TOR
         rcall   OVER
         rcall   RFROM
         rcall   UMAX
-        bra     ACC1
+        rjmp    ACC1
 ACC3:
         rcall   OVER
         rcall   CSTORE
@@ -978,12 +1936,18 @@ ACC3:
         rcall   TWODUP
         rcall   NOTEQUAL
         rcall   ZEROSENSE
-        bnz     ACC1
+        brne     ACC1
 ACC6:
         rcall   NIP
         rcall   SWOP
-        goto    MINUS
-#endif
+        jmp     MINUS
+
+        .db     NFA|3,"fcr"
+FCR:
+        rcall   DOUSER
+        .dw     uflg
+
+
 ; TYPE    c-addr u --   type line to terminal u < $100
 ; : type for c@+ emit next drop ;
 
@@ -991,23 +1955,21 @@ ACC6:
 TYPE_L:
         .db     NFA|4,"type",0
 TYPE:
-        push    tosh
-        push    tosl
-        poptos
-        rjmp    TYPE2           ; XFOR
+        rcall   TOS_TO_I
+        rjmp    TYPE2       ; XFOR
 TYPE1:  
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        call    XNEXT_DEC
-        brpl    TYPE1
-        pop     t0
-        pop     t0          ; UNNEXT
+        sbiw    il, 1
+        brpl    TYPE1       ; XNEXT
+        pop     ih
+        pop     il
         jmp     DROP
 
 
 ; (S"    -- c-addr u      run-time code for S"
-;       dw      link
+;       .dw    link
 ;link    set     $
         .db      NFA|3,"(s",0x22
 XSQUOTE:
@@ -1016,13 +1978,13 @@ XSQUOTE:
         rcall   TWODUP
         rcall   PLUS
         rcall   ALIGNED
-        rcall   TOR       ; do NOT goto TOR!
+        rcall   TOR       ; do NOT jmp  TOR!
         ret
 
 SQUOTE_L:
         .db      NFA|IMMED|COMPILE|2,"s",0x22,0
 SQUOTE:
-        rcall   LIT
+        rcall   DOLIT
         .dw      XSQUOTE
         rcall   COMMAXT
         rcall   ROM
@@ -1033,7 +1995,7 @@ SQUOTE:
 CQUOTE_L:
         .db     NFA|2,",",0x22,0
 CQUOTE: 
-        rcall   LIT
+        rcall   DOLIT
         .dw     0x22
         rcall   PARSE
         rcall   HERE
@@ -1093,33 +2055,33 @@ ROT:
 TOR_L:
         .db     NFA|COMPILE|2,">r",0
 TOR:
-        pop     zl
         pop     zh
-        push    tosh
+        pop     zl
         push    tosl
+        push    tosh
         poptos
         ijmp
 
 RFROM_L:
         .db     NFA|COMPILE|2,"r>",0
 RFROM:
-        pop     zl
         pop     zh
+        pop     zl
         pushtos
-        pop     tosl
         pop     tosh
+        pop     tosl
         ijmp
 
 RFETCH_L:
         .db     NFA|COMPILE|2,"r@",0
 RFETCH:
-        pop     zl
         pop     zh
+        pop     zl
         pushtos
-        pop     tosl
         pop     tosh
-        push    tosh
+        pop     tosl
         push    tosl
+        push    tosh
         ijmp
 
 
@@ -1136,12 +2098,6 @@ ABS_L:
 ABS_:
         rcall   DUP
         jmp     QNEGATE
-
-DABS_L:
-        .db     NFA|4,"dabs",0
-DABS:
-        rcall   DUP
-        jmp     QDNEGATE
 
         .dw     ABS_L+PFLASH
 PLUS_L:
@@ -1173,11 +2129,6 @@ MPLUS:
         st      -Y, t0
         ret
 
-DPLUS_L:
-        .db     NFA|2,"d+",0
-DPLUS:
-        ;FIXME
-        ret
 
         .dw     MPLUS_L+PFLASH
 MINUS_L:
@@ -1188,11 +2139,6 @@ MINUS:
         sub     t0, tosl
         sbc     t1, tosh
         movw    tosl, t0
-        ret
-
-DMINUS_L:
-        .db     NFA|2,"d-",0
-DMINUS:
         ret
 
         .dw     ONEMINUS_L+PFLASH
@@ -1234,34 +2180,9 @@ INVERT:
         ret
 
         .dw     INVERT_L+PFLASH
-DINVERT_L:
-        .db     NFA|7, "dinvert"
-DINVERT:
-        com     tosl
-        com     tosh
-        ;FIXME
-        ret
-
-        .dw     DINVERT_L+PFLASH
 NEGATE_L:
         .db     NFA|6, "negate",0
 NEGATE:
-        rcall   INVERT
-        jmp     ONEPLUS
-
-        .dw     NEGATE_L+PFLASH
-DNEGATE_L:
-        .db     NFA|7, "dnegate"
-DNEGATE:
-        ;FIXME
-        rcall   INVERT
-        jmp     ONEPLUS
-
-        .dw     NEGATE_L+PFLASH
-QDNEGATE_L:
-        .db     NFA|8, "?dnegate",0
-QDNEGATE:
-        ;FIXME
         rcall   INVERT
         jmp     ONEPLUS
 
@@ -1287,25 +2208,16 @@ TWOPLUS:
         ret
 
         .dw     TWOPLUS_L+PFLASH
-TWOMINUS_L:
-        .db     NFA|INLINE|2, "2-",0
-TWOMINUS:
-        sbiw    tosl, 2
-        ret
-
-        .dw     TWOMINUS_L+PFLASH
-TWOSTAR_L:
-        .db     NFA|INLINE|2, "2*",0
-TWOSTAR:
-        lsl     tosl
-        rol     tosh
+TOBODY_L:
+        .db     NFA|INLINE|5, ">body"
+TOBODY:
+        adiw    tosl, 4
         ret
 
         .dw     TOBODY_L+PFLASH
-DTWOSTAR_L:
-        .db     NFA|INLINE|3, "d2*"
-DTWOSTAR:
-        ;FIXME
+TWOSTAR_L:
+        .db     NFA|INLINE|2, "2*",0
+TWOSTAR:
         lsl     tosl
         rol     tosh
         ret
@@ -1318,14 +2230,30 @@ TWOSLASH:
         ror     tosl
         ret
 
-        .dw     TWOSLASH_L+PFLASH
-DTWOSLASH_L:
-        .db     NFA|INLINE|3, "d2/"
-DTWOSLASH:
-        ; FIXME
-        asr     tosh
-        ror     tosl
-        ret
+PLUSSTORE_L:
+        .db     NFA|2,"+!",0
+PLUSSTORE:
+        rcall   SWOP
+        rcall   OVER
+        rcall   FETCH
+        rcall   PLUS
+        rcall   SWOP
+        jmp     STORE
+
+WITHIN_L:
+        .db     NFA|6,"within",0
+WITHIN:
+        rcall   OVER
+        rcall   MINUS
+        rcall   TOR
+        rcall   MINUS
+        rcall   RFROM
+        jmp     ULESS
+
+NOTEQUAL_L:
+        .db     NFA|2,"<>",0
+NOTEQUAL:
+        jmp     XOR_
 
         .dw     DTWOSLASH_L+PFLASH
 ZEROEQUAL_L:
@@ -1339,10 +2267,6 @@ TRUE_F:
 ZEROEQUAL_1:
         ret
 
-DZEROEQUAL_L:
-        .db     NFA|3,"d0="
-DZEROEQUAL:
-        ; FIXME
         .dw     ZEROEQUAL_L+PFLASH
 ZEROLESS_L:
         .db     NFA|2, "0<",0
@@ -1354,10 +2278,6 @@ FALSE_F:
         clr     tosl
         ret
 
-DZEROLESS_L:
-        .db     NFA|3,"d0<"
-DZEROLESS:
-        ;FIXME
 EQUAL_L:
         .db     NFA|1, "="
 EQUAL:
@@ -1389,311 +2309,1762 @@ UGREATER:
         rcall   SWOP
         jmp     ULESS
 
-PLUSSTORE_L:
-        .db     NFA|2,"+!",0
-PLUSSTORE:
-        rcall   SWOP
-        rcall   OVER
-        rcall   FETCH
-        rcall   PLUS
-        rcall   SWOP
-        jmp     STORE
-
-WITHIN_L:
-        .db     NFA|6,"within",0
-WITHIN:
-        rcall   OVER
-        rcall   MINUS
-        rcall   TOR
-        rcall   MINUS
-        rcall   RFROM
-        jmp     ULESS
-
 STORE_P_L:
         .db     NFA|2,"!p",0
 STORE_P:
-        movw    p_lo, tosl
+        movw    pl, tosl
         poptos
         ret
 
 STORE_P_TO_R_L:
         .db     NFA|COMPILE|4,"!p>r",0
 STORE_P_TO_R:
-        pop     zl
         pop     zh
-        push    p_hi
-        push    p_lo
-        movw    p_lo, tosl
+        pop     zl
+        push    pl
+        push    ph
+        movw    pl, tosl
         poptos
         ijmp
 
 R_TO_P_L:
         .db     NFA|COMPILE|3,"r>p"
 R_TO_P:
-        pop     zl
         pop     zh
-        pop     p_lo
-        pop     p_hi
+        pop     zl
+        pop     ph
+        pop     pl
         ijmp
 
 PFETCH_L:
         .db     NFA|2,"p@",0
 PFETCH:
         pushtos
-        movw    tosl, p_lo
+        movw    tosl, pl
         jmp     FETCH
 
 PSTORE_L:
         .db     NFA|2,"p!",0
 PSTORE:
         pushtos
-        movw    tosl, p_lo
+        movw    tosl, pl
         jmp     STORE
 
 PCSTORE_L:
         .db     NFA|3,"pc!"
 PCSTORE:
         pushtos
-        movw    tosl, p_lo
+        movw    tosl, pl
         jmp     CSTORE
-
-PCFETCH_L:
-        .db     NFA|3,"pc@"
-PCFETCH:
-        pushtos
-        movw    tosl, p_lo
-        jmp     CFETCH
 
 PPLUS_L:
         .db     NFA|2,"p+",0
 PPLUS:
-        inc     p_lo
+        inc     pl
         brne    PPLUS1
-        inc     p_hi
+        inc     ph
 PPLUS1:
         ret
 
 PNPLUS_L:
         .db     NFA|3,"p++"
 PNPLUS:
-        add     p_lo, tosl
-        adc     p_hi, tosh
+        add     pl, tosl
+        adc     ph, tosh
         poptos
         ret
 
 
-STOD_L:
-        .db     NFA|3,"s>d"
-STOD:
-        rcall   DUP
-        jmp     ZEROLESS
+        .db     NFA|5,"'emit"
+UEMIT_:
+        rcall   DOUSER
+        .dw     uemit
+        
+        .db     NFA|4,"'key",0
+UKEY_:
+        rcall   DOUSER
+        .dw     ukey
+
+        .db     NFA|5,"'key?"
+UKEYQ_:
+        rcall   DOUSER
+        .dw     ukeyq
+
+        .db     NFA|3,"?0="
+ZEROSENSE:
+        sbiw    tosl, 0
+        poptos
+        ret
+
+        .db     NFA|3,"d0="
+DUPZEROSENSE:
+        sbiw    tosl, 0
+        ret
 
 UMSTAR_L:
         .db     NFA|3,"um*"
 UMSTAR:
-        ; fixme
-        ret
-
-MSTAR_L:
-        .db     NFA|2,"m*",0
-        ; fixme
-        ret
+        jmp     umstar0
 
 UMSLASHMOD_L:
         .db     NFA|6,"um/mod",0
 UMSLASHMOD:
-        ; fixme
-        ret
+        jmp     umslashmod0
 
-SMSLASHREM_L:
-        .db     NFA|6,"sm/rem",0
-SMSLASHREM:
-        ;fixme
-        ret
 
 USLASHMOD_L:
         .db     NFA|5,"u/mod"
 USLASHMOD:
-        ; fixme
+        rcall   FALSE_
+        rcall   SWOP
+        jmp     umslashmod0
+
+
+        .db     NFA|1,"*"
+STAR: 
+        rcall   UMSTAR
+        jmp     DROP
+
+        .db     NFA|2,"u/",0
+USLASH:
+        rcall   USLASHMOD
+        jmp     NIP
+
+        .db     NFA|6,"u*/mod",0
+USSMOD:
+        rcall   TOR
+        rcall   UMSTAR
+        rcall   RFROM
+        jmp     UMSLASHMOD
+
+        .db     NFA|1,"/"
+SLASH: 
+        rcall   TWODUP
+        rcall   XOR_
+        rcall   TOR
+        rcall   ABS_
+        rcall   SWOP
+        rcall   ABS_
+        rcall   SWOP
+        rcall   USLASH
+        rcall   RFROM
+        jmp     QNEGATE
+
+        .db     NFA|3,"nip"
+NIP:
+        rcall   SWOP
+        jmp     DROP
+    
+        .db     NFA|4,"tuck",0
+TUCK:
+        rcall   SWOP
+        jmp     OVER
+
+        .db     NFA|7,"?negate"
+QNEGATE:
+        rcall   ZEROLESS
+        rcall   ZEROSENSE
+        breq    QNEGATE1
+        rcall   NEGATE
+QNEGATE1:
         ret
 
-SLASHMOD_L:
-        .db     NFA|4,"/mod",0
-SLASHMOD:
-        ; fixme
+        .db     NFA|3,"max"
+MAX:    rcall   TWODUP
+        rcall   LESS
+        rcall   ZEROSENSE
+        breq    max1
+        rcall   SWOP
+max1:   jmp     DROP
+
+        .db     NFA|3,"min"
+MIN:    rcall   TWODUP
+        rcall   GREATER
+        rcall   ZEROSENSE
+        breq    min1
+        rcall   SWOP
+min1:   jmp     DROP
+
+        .db     NFA|2,"c@",0
+CFETCH_A:       
+        rjmp    CFETCH
+
+        .db     NFA|2,"up",0
+UPTR:   rcall   DOCREATE_A
+        .dw     upcurr
+
+        .db     NFA|4,"hold",0
+HOLD:   rcall   TRUE_
+        rcall   HP
+        rcall   PLUSSTORE
+        rcall   HP
+        rcall   FETCH
+        jmp     CSTORE
+
+; <#    --              begin numeric conversion
+;   PAD HP ! ;          (initialize Hold Pointer)
+        .db     NFA|2,"<#",0
+LESSNUM: 
+        rcall   PAD
+        rcall   HP
+        jmp     STORE
+
+; >digit   n -- c            convert to 0..9a..z
+        .db     NFA|6,">digit",0
+TODIGIT: 
+        rcall   DUP
+        rcall   DOLIT_A
+        .dw     9
+        rcall   GREATER
+        rcall   DOLIT_A
+        .dw     0x27
+        rcall   AND_
+        rcall   PLUS
+        rcall   DOLIT_A
+        .dw     0x30
+        jmp     PLUS
+
+; #     ud1 -- ud2     convert 1 digit of output
+;   base @ ud/mod rot >digit hold ;
+        .db     NFA|1,"#"
+NUM:
+        rcall   BASE
+        rcall   FETCH
+        rcall   UDSLASHMOD
+        rcall   ROT
+        rcall   TODIGIT
+        jmp     HOLD
+
+; #S    ud1 -- ud2      convert remaining digits
+;   begin # 2dup or 0= until ;
+        .db     NFA|2,"#s",0
+NUMS:
+        rcall   NUM
+        rcall   TWODUP
+        rcall   OR_
+        rcall   ZEROSENSE
+        brne    NUMS
         ret
 
-MOD_L:
-        .db     NFA|3,"mod"
-MOD:
-        ; fixme
+; #>    ud1 -- c-addr u    end conv., get string
+;   2drop hp @ pad over - ;
+        .db     NFA|2,"#>", 0
+NUMGREATER:
+        rcall   TWODROP
+        rcall   HP
+        rcall   FETCH
+        rcall   PAD
+        rcall   OVER
+        jmp     MINUS
+
+; SIGN  n --               add minus sign if n<0
+;   0< IF 2D HOLD THEN ; 
+        .db     NFA|4,"sign",0
+SIGN:   
+        rcall   ZEROLESS
+        rcall   ZEROSENSE
+        breq    SIGN1
+        rcall   DOLIT_A
+        .dw     0x2D
+        rcall   HOLD
+SIGN1:
         ret
 
-USER_L:
+; U.    u --                  display u unsigned
+;   <# 0 #S #> TYPE SPACE ;
+L_UDOT:
+        .db     NFA|2,"u.",0
+UDOT:
+        rcall   LESSNUM
+        rcall   FALSE_
+        rcall   NUMS
+        rcall   NUMGREATER
+        rcall   TYPE
+        jmp     SPACE_
+
+
+; U.R    u +n --      display u unsigned in field of n. 1<n<=255 
+;    0 swap <# 1- for # next #s #> type space ;
+        .dw     L_UDOT
+L_UDOTR:
+        .db     NFA|3,"u.r"
+UDOTR:
+        rcall   LESSNUM
+        rcall   ONEMINUS
+        rcall   TOS_TO_I
+        rcall   FALSE_
+        rjmp    UDOTR2
+UDOTR1:
+        rcall   NUM
+UDOTR2: 
+        sbiw    il, 1
+        brpl    UDOTR1
+        pop     ih
+        pop     il
+        rcall   NUMS
+        rcall   NUMGREATER
+        rcall   TYPE
+        jmp     SPACE_
+
+; .     n --                    display n signed
+;   <# DUP ABS #S SWAP SIGN #> TYPE SPACE ;
+        .db     NFA|1,"."
+DOT:    rcall   LESSNUM
+        rcall   DUP
+        rcall   ABS_
+        rcall   FALSE_
+        rcall   NUMS
+        rcall   ROT
+        rcall   SIGN
+        rcall   NUMGREATER
+        rcall   TYPE
+        jmp     SPACE_
+
+L_DECIMAL:
+        .db     NFA|7,"decimal"
+DECIMAL: 
+        rcall   TEN
+        rcall   BASE
+        jmp     STORE
+
+; HEX     --              set number base to hex
+;   #16 BASE ! ;
+        .dw     L_DECIMAL
+L_HEX:
+        .db     NFA|3,"hex"
+HEX:
+        rcall   DOLIT_A
+        .dw     16
+        rcall   BASE
+        jmp     STORE
+
+; BIN     --              set number base to binary
+;   #2 BASE ! ;
+        .dw     L_HEX
+L_BIN:
+        .db     NFA|3,"bin"
+BIN:    rcall   CELL
+        rcall   BASE
+        jmp     STORE
+
+#ifndef SKIP_MULTITASKING
+; ULINK   -- a-addr     link to next task
+        .dw     L_BIN
+L_ULINK:
+        .db     NFA|5,"ulink"
+ULINK_: rcall   DOUSER
+        .dw     ulink
+
+
+; TASK       -- a-addr              TASK pointer
+        .dw     L_ULINK
+#else
+		.dw		L_BIN
+#endif
+L_TASK:
+        .db     NFA|4,"task",0
+TASK:   rcall   DOUSER
+        .dw     utask
+
+
+; HP       -- a-addr                HOLD pointer
+        .dw     L_TASK
+L_HP:
+        .db     NFA|2,"hp",0
+HP:     rcall   DOUSER
+        .dw     uhp
+
+; PAD     -- a-addr        User Pad buffer
+        .dw     L_HP
+L_PAD:
+        .db     NFA|3,"pad"
+PAD:
+        rcall   TIB
+        rcall   TIBSIZE
+        jmp     PLUS
+
+; BASE    -- a-addr       holds conversion radix
+        .dw     L_PAD
+L_BASE:
+        .db     NFA|4,"base",0
+BASE:
+        rcall   DOUSER
+        .dw     ubase
+
+; USER   n --
+L_USER:
         .db     NFA|4,"user",0
 USER:
         rcall   CONSTANT_
         rcall   XDOES
 DOUSER:
         pushtos
-        pop     zl
         pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
         lpm     tosl, z+
         lpm     tosh, z+
         add     tosl, upl
         adc     tosh, uph
         ret
 
-VALUE_L:
-        .db     NFA|5,"value"
-VALUE:
-        rcall   CREATE
-        rcall   COMMA
-        rcall   XDOES
-VALUE_DOES:
-        rcall   DODOES
+; SOURCE   -- adr n         current input buffer
+;   'SOURCE 2@ ;        length is at higher adrs
+        .dw     L_USER
+L_SOURCE:
+        .db     NFA|6,"source",0
+SOURCE:
+        rcall   TICKSOURCE
+        jmp     TWOFETCH
+
+; /STRING  a u n -- a+n u-n          trim string
+;   swap over - >r + r>
+        .dw      L_SOURCE
+L_SLASHSTRING:
+        .db     NFA|7,"/string"
+SLASHSTRING:
+        rcall   SWOP
+        rcall   OVER
+        rcall   MINUS
+        rcall   TOR
+        rcall   PLUS
+        rcall   RFROM
+        ret
+
+; \     Skip the rest of the line
+        .dw     L_SLASHSTRING
+L_BSLASH:
+        .db     NFA|IMMED|1,0x5c
+BSLASH:
+        rcall   SOURCE
+        rcall   TOIN
+        rcall   STORE_A
+        sbr     FLAGS1, noclear ; dont clear flags in case of \
+        jmp     DROP
+
+; PARSE  char -- c-addr u
+        .dw     L_BSLASH
+L_PARSE:
+        .db     NFA|5,"parse"
+PARSE:
+        rcall   DUP             ; c c
+        rcall   SOURCE          ; c c a u
+        rcall   TOIN            ; c c a u a
+        rcall   FETCH_A         ; c c a u n
+        rcall   SLASHSTRING     ; c c a u   new tib addr/len
+        rcall   DUP             ; c c a u u
+        rcall   TOR             ; c c a u                  R: u (new tib len
+        rcall   ROT             ; c a u c
+        call    SKIP            ; c a u        
+        rcall   OVER            ; c a u a
+        rcall   TOR             ; c a u                    R: u a (start of word
+        rcall   ROT             ; a u c
+        call    SCAN            ; a u      end of word, tib left       
+        rcall   DUPZEROSENSE
+        breq    PARSE1
+        rcall   ONEMINUS
+PARSE1: rcall   RFROM           ; a u a
+        rcall   RFROM           ; a u a u
+        rcall   ROT             ; a a u u
+        rcall   MINUS           ; a a n  ( addition to toin
+        rcall   TOIN
+        rcall   PLUSSTORE       ; aend astart
+        rcall   TUCK            ; astart aend astart
+        jmp     MINUS           ; astart wlen
+     
+
+; WORD   char -- c-addr        word delimited by char and/or TAB
+        .dw     L_PARSE
+L_WORD:
+        .db     NFA|4,"word",0
+WORD:
+        rcall   PARSE           ; c-addr wlen
+        rcall   SWOP
+        rcall   ONEMINUS
+        rcall   TUCK
+        jmp     CSTORE          ; Write the length into the TIB ! 
+
+; CMOVE  src dst u --  copy u bytes from src to dst
+; cmove swap !p for c@+ pc! p+ next drop ;
+        .dw     L_WORD
+L_CMOVE:
+        .db     NFA|5,"cmove"
+CMOVE:
+        rcall   SWOP
+        rcall   STORE_P_TO_R
+        rcall   TOS_TO_I
+        rjmp    CMOVE2
+CMOVE1:
+        rcall   CFETCHPP
+        rcall   PCSTORE
+        rcall   PPLUS
+CMOVE2:
+        sbiw    il, 1
+        brpl    CMOVE1
+        pop     ih
+        pop     il
+        rcall   R_TO_P
+        jmp     DROP
+
+
+; place  src n dst --     place as counted str
+        .dw     L_CMOVE
+L_PLACE:
+        .db     NFA|5,"place"
+PLACE: 
+        rcall   TWODUP
+        call    CSTORE
+        call    CHARPLUS
+        rcall   SWOP
+        jmp     CMOVE
+
+; :     c@+ ( addr -- addr+1 n ) dup 1+ swap c@ ;
+        .dw     L_PLACE
+L_CFETCHPP:
+        .db     NFA|3,"c@+"
+CFETCHPP:
+        rcall   DUP
+        rcall   ONEPLUS
+        rcall   SWOP
+        jmp     CFETCH
+
+; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
+        .dw     L_CFETCHPP
+L_FETCHPP:
+        .db     NFA|2,"@+",0
+FETCHPP:
+        rcall   DUP
+        rcall   TWOPLUS
+        rcall   SWOP
         jmp     FETCH
 
-DEFER_L:
-        .db     NFA|5,"defer"
-DEFER:
-        rcall   CREATE
-        rcall   DOLIT
-        .dw     ABORT+PFLASH
-        rcall   COMMA
-        rcall   XDOES
-DEFER_DOES:
-        rcall   DODOES
-        jmp     FEXECUTE
+        .db     NFA|1,"!"
+STORE_A:        
+        jmp     STORE
 
-IS_L:
-        .db     NFA|2,"is",0
-IS:
-        rcall   TICK
-        rcall   TWOPLUS
-        rcall   FETCH
+; N>C   nfa -- cfa    name adr -> code field
+        .dw    L_FETCHPP
+L_NTOC:
+        .db     NFA|3,"n>c"
+NFATOCFA:
+        rcall   CFETCHPP
+        rcall   DOLIT_A
+        .dw     0x0f
+        rcall   AND_
+        rcall   PLUS
+        jmp     ALIGNED
+
+; C>N   cfa -- nfa    code field addr -> name field addr
+        .dw    L_NTOC
+L_CTON:
+        .db     NFA|3,"c>n"
+CFATONFA:
+        rcall   TWOMINUS
+        rcall   DUP
+        rcall   CFETCH_A
+        rcall   DOLIT_A
+        .dw     0x007F
+        rcall   GREATER
+        rcall   ZEROSENSE
+        breq    CFATONFA
+        ret
+
+; findi   c-addr nfa -- c-addr 0   if not found
+;                          xt  1      if immediate
+;                          xt -1      if "normal"
+        .dw     L_CTON
+L_BRACFIND:
+        .db     NFA|3,"(f)"
+findi:
+findi1:
+FIND_1: 
+        call    TWODUP
+        rcall   OVER
+        rcall   CFETCH_A
+        call    NEQUAL
+        rcall   DUPZEROSENSE
+        breq    findi2
+        rcall   DROP
+        rcall   TWOMINUS ;;;      NFATOLFA
+        rcall   FETCH_A
+        rcall   DUP
+findi2:
+        rcall   ZEROSENSE
+        brne    findi1
+        rcall   DUPZEROSENSE
+        breq    findi3
+        rcall   NIP
+        rcall   DUP
+        rcall   NFATOCFA
+        rcall   SWOP
+        rcall   IMMEDQ
+        rcall   ZEROEQUAL
+        rcall   ONE
+        rcall   OR_
+findi3: 
+		ret
+;        jmp     PAUSE
+
+; IMMED?    nfa -- f        fetch immediate flag
+        .dw     L_BRACFIND
+L_IMMEDQ:
+        .db     NFA|6,"immed?",0
+IMMEDQ: 
+        rcall   CFETCH_A
+        mov     wflags, tosl  ; COMPILE and INLINE flags for the compiler
+        rcall   DOLIT_A
+        .dw     IMMED
+        jmp     AND_
+
+; FIND   c-addr -- c-addr 0   if not found
+;                  xt  1      if immediate
+;                  xt -1      if "normal"
+        .dw     L_IMMEDQ
+L_FIND:
+        .db     NFA|4,"find",0
+FIND:   
+        rcall   DOLIT_A
+        .dw     kernellink
+        rcall   findi
+        rcall   DUPZEROSENSE
+        brne    FIND1
+        rcall   DROP
+        call    LATEST
+        rcall   FETCH_A
+        rcall   findi
+FIND1:
+        ret
+
+; DIGIT?   c -- n -1   if c is a valid digit
+        .dw     L_FIND
+L_DIGITQ:
+        .db     NFA|6,"digit?",0
+DIGITQ:
+                                ; 1 = 31    A = 41
+        rcall   DUP             ; c c       c c
+        rcall   DOLIT_A
+        .dw     0x39            ; c c 39    c c 39
+        rcall   GREATER         ; c 0       c ffff
+        rcall   ZEROSENSE
+        breq    DIGITQ1
+        rcall   DOLIT_A
+        .dw     0x27
+        rcall   MINUS
+DIGITQ1:        
+        rcall   DOLIT_A
+        .dw     0x30            ; c 30
+        rcall   MINUS           ; 1
+        rcall   DUP             ; 1 1
+        rcall   BASE            ; 1 1 base
+        rcall   FETCH_A         ; 1 1 10
+        rcall   LESS            ; 1 ffff
+        rcall   OVER            ; 1 ffff 1
+        rcall   ZEROLESS        ; 1 ffff 0
+        rcall   INVERT
+        jmp     AND_
+
+; SIGN?   adr n -- adr' n' f   get optional sign
+; + leaves $0000 flag
+; - leaves $0002 flag
+        .dw     L_DIGITQ
+L_SIGNQ:
+        .db     NFA|5,"sign?"
+SIGNQ:
+        rcall   OVER
+        rcall   CFETCH_A
+        rcall   DOLIT_A
+        .dw     ','
+        rcall   MINUS
+        rcall   DUP
+        rcall   ABS_
+        call    ONE
+        rcall   EQUAL
+        rcall   AND_
+        rcall   DUPZEROSENSE
+        breq    QSIGN1
+        rcall   ONEPLUS
+        rcall   TOR
+        call    ONE
+        rcall   SLASHSTRING
+        rcall   RFROM
+QSIGN1: ret
+
+; UD*  ud u -- ud
+        .dw     L_SIGNQ
+L_UDSTAR:
+        .db     NFA|3,"ud*"
+UDSTAR:
+        rcall   DUP
+        rcall   TOR
+        rcall   UMSTAR
+        rcall   DROP
+        rcall   SWOP
+        rcall   RFROM
+        rcall   UMSTAR
+        rcall   ROT
+        jmp     PLUS
+        
+; UD/MOD  ud u --u(rem) ud(quot)
+        .dw     L_UDSTAR
+L_UDSLASHMOD:
+        .db     NFA|6,"ud/mod",0
+UDSLASHMOD:
+        rcall   TOR             ; ud.l ud.h 
+        rcall   FALSE_          ; ud.l ud.h 0
+        rcall   RFETCH          ; ud.l ud.h 0 u
+        rcall   UMSLASHMOD      ; ud.l r.h q.h
+        rcall   ROT             ; r.h q.h ud.l
+        rcall   ROT             ; q.h ud.l r.h
+        rcall   RFROM           ; q.h ud.l r.h u
+        rcall   UMSLASHMOD      ; q.h r.l q.l
+        jmp     ROT             ; r.l q.l q.h
+        
+; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
+;                       convert string to number
+        .dw     L_UDSLASHMOD
+L_TONUMBER:
+        .db     NFA|7,">number"
+TONUMBER:
+TONUM1:
+        rcall   DUPZEROSENSE      ; ud.l ud.h adr u
+        breq    TONUM3
+        rcall   TOR
+        rcall   DUP
+        rcall   TOR             ; ud.l ud.h adr
+        rcall   CFETCH_A
+        rcall   DIGITQ          ; ud.l ud.h digit flag
+        rcall   ZEROSENSE
+        brne    TONUM2
+        rcall   DROP
+        rcall   RFROM
+        rcall   RFROM
+        rjmp    TONUM3
+TONUM2: 
+        rcall   TOR             ; ud.l ud.h digit
+        rcall   BASE
+        rcall   FETCH_A
+        rcall   UDSTAR
+        rcall   RFROM
+        rcall   MPLUS
+        rcall   RFROM
+        rcall   RFROM
+        
+        call    ONE
+        rcall   SLASHSTRING
+        rjmp    TONUM1
+TONUM3: 
+        ret
+
+BASEQV:   
+        .dw     DECIMAL
+        .dw     HEX
+        .dw     BIN
+
+
+; NUMBER?  c-addr -- n 1
+;                 -- dl dh 2
+;                 -- c-addr 0  if convert error
+        .dw     L_TONUMBER
+L_NUMBERQ:
+        .db     NFA|7,"number?"
+NUMBERQ:
+        rcall   DUP             ; a a
+        rcall   FALSE_          ; a a 0 0
+        rcall   FALSE_          ; a a 0 0
+        rcall   ROT             ; a 0 0 a
+        rcall   CFETCHPP        ; a 0 0 a' u
+        rcall   SIGNQ           ; a 0 0 a' u f
+        rcall   TOR             ; a 0 0 a' u
+
+        rcall   BASE
+        rcall   FETCH_A
+        rcall   TOR             ; a 0 0 a' u
+        
+        rcall   OVER
+        rcall   CFETCH_A
+        
+        rcall   DOLIT_A
+        .dw     '#'
+        rcall   MINUS
+        rcall   DUP
+        rcall   DOLIT_A
+        .dw     3
+        rcall   ULESS
+        rcall   ZEROSENSE
+        breq    BASEQ1
+        call    CELLS
+        
+        rcall   DOLIT_A
+        .dw     BASEQV
+        rcall   PLUS
+        call    FEXECUTE
+
+        call    ONE
+        rcall   SLASHSTRING
+        rjmp    BASEQ2
+BASEQ1:
+        call    DROP
+BASEQ2:                         ; a 0 0 a' u
+        rcall   TONUMBER        ; a ud.l ud.h  a' u
+        rcall   RFROM           ; a ud.l ud.h  a' u oldbase
+        rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
+        rcall   STORE_A         ; a ud.l ud.h  a' u
+
+        rcall   DUP
+        rcall   TWOMINUS
+        rcall   ZEROLESS        ; a ud.l ud.h  a' u f
+        rcall   ZEROSENSE       ; a ud.l ud.h  a' u
+        brne    QNUMD
+QNUM_ERR:                       ; Not a number
+        rcall   RFROM           ; a ud.l ud.h a' u sign
+        call    DROP
+        call    TWODROP
+QNUM_ERR1:      
+        call    TWODROP
+        rcall   FALSE_          ; a 0           Not a number
+        rjmp    QNUM3
+QNUMD:                          ; Double number
+                                ; a ud.l ud.h a' u
+        call    TWOSWAP         ; a a' u ud.l ud.h 
+        rcall   RFROM           ; a a' u ud.l ud.d sign
+        rcall   ZEROSENSE
+        breq    QNUMD1
+        call    DNEGATE
+QNUMD1: 
+        call    TWOSWAP         ; a d.l d.h a' u
+        rcall   ZEROSENSE       ; a d.l d.h a'
+        breq    QNUM1
+        call    CFETCH
+        rcall   DOLIT_A
+        .dw     '.'
+        rcall   MINUS
+        rcall   ZEROSENSE       ; a d.l d.h
+        brne    QNUM_ERR1
+        call    ROT             ; d.l d.h a
+        call    DROP            ; d.l d.h
+        rcall   DOLIT_A         ; 
+        .dw     2               ; d.l ud.h 2    Double number
+        rjmp    QNUM3
+QNUM1:                          ; single precision dumber
+                                ; a ud.l ud.h  a'
+        call    TWODROP         ; a n
+        rcall   NIP             ; n
+        call    ONE             ; n 1           Single number
+QNUM3:  
+        ret
+
+
+        .db     NFA|4,"swap",0
+SWOP_A:
+        jmp     SWOP
+
+; TI#  -- n                      size of TIB
+; : ti# task @ 8 + @ ;
+        .dw     L_NUMBERQ
+L_TIBSIZE:
+        .db     NFA|3,"ti#"
+TIBSIZE:
+        rcall   TASK
+        rcall   FETCH_A
+        adiw    tosl, 5
+        jmp     CFETCH
+
+; TIB     -- a-addr        Terminal Input Buffer
+        .dw     L_TIBSIZE
+L_TIB:
+        .db     NFA|3,"tib"
+TIB:
+        rcall   TIU
+        jmp     FETCH
+        
+; TIU     -- a-addr        Terminal Input Buffer user variable 
+        .dw     L_TIB
+L_TIU:
+        .db     NFA|3,"tiu"
+TIU:
+        rcall   DOUSER
+        .dw     utib       ; pointer to Terminal input buffer
+
+; >IN     -- a-addr        holds offset into TIB
+; In RAM
+        .dw     L_TIU
+L_TOIN:
+        .db     NFA|3,">in"
+TOIN:
+        rcall   DOUSER
+        .dw     utoin
+
+; 'SOURCE  -- a-addr        two cells: len, adrs
+; In RAM ?
+        .dw     L_TOIN
+L_TICKSOURCE:
+        .db     NFA|7,"'source"
+TICKSOURCE:
+        rcall   DOUSER
+        .dw     usource       ; two cells !!!!!!
+
+        .db     NFA|3,"dup"
+DUP_A:  jmp     DUP
+
+;  INTERPRET  c-addr u --    interpret given buffer
+        .dw     L_TICKSOURCE
+L_INTERPRET:
+        .db     NFA|9,"interpret"
+INTERPRET: 
+        rcall   TICKSOURCE
+        call    TWOSTORE
+        rcall   FALSE_
+        rcall   TOIN
+        rcall   STORE_A
+IPARSEWORD:
+        rcall   BL
+        rcall   WORD
+
+        rcall   DUP_A
+        rcall   CFETCH_A
+        rcall   ZEROSENSE
+        brne    IPARSEWORD1
+        rjmp    INOWORD
+IPARSEWORD1:
+        rcall   FIND            ; sets also wflags
+        rcall   DUPZEROSENSE    ; 0 = not found, -1 = normal, 1 = immediate
+        breq    INUMBER         ; NUMBER?
+        rcall   ONEPLUS         ; 0 = normal 2 = immediate
+        rcall   STATE
+        rcall   ZEROEQUAL
+        rcall   OR_
+        rcall   ZEROSENSE
+        breq    ICOMPILE_1      ; Compile a word
+        
+                                ; Execute a word
+                                ; immediate&compiling or interpreting
+        sbrs    wflags, 4       ; Compile only check
+        rjmp    IEXECUTE        ; Not a compile only word
+        rcall   STATE           ; Compile only word check
+        call    XSQUOTE
+        .db     10,"COMPILING?",0
+        rcall   QABORT
+IEXECUTE:
+        cbr     FLAGS1, noclear_m
+        call    EXECUTE
+        sbrc    FLAGS1, noclear ;  set by \ and by (
+        rjmp    IPARSEWORD
+        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
+        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        rjmp    IPARSEWORD
+ICOMPILE_1:
+        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
+        rcall   DUP_A
+        rcall   DOLIT_A
+        .dw     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    ICOMPILE_2
+        sbr     FLAGS1, izeroeq_m ; Mark 0= encountered in compilation
+        rjmp    ICOMMAXT
+ICOMPILE_2:
+        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        rcall   DUP_A
+        rcall   DOLIT_A
+        .dw     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    ICOMPILE
+        sbr     FLAGS1, idup_m    ; Mark DUP encountered during compilation
+ICOMMAXT:
+        rcall   COMMAXT_A
+        cbr     FLAGS2, fTAILC_m  ; Allow tailjmp  optimisation
+        sbrc    wflags, 4       ; Compile only ?
+        sbr     FLAGS2, fTAILC_m  ; Prevent tailjmp  optimisation
+        rjmp    IPARSEWORD
+ICOMPILE:
+        sbrs    wflags, 5       ; Inline check
+        rjmp    ICOMMAXT
+        call    INLINE0
+        rjmp    IPARSEWORD
+INUMBER: 
+        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
+        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        call    DROP
+        rcall   NUMBERQ
+        rcall   DUPZEROSENSE
+        breq    IUNKNOWN
         rcall   STATE
         rcall   ZEROSENSE
-        breq    IS1
-        rcall   LITERAL
-        rcall   DOLIT
-        .dw     STORE+PFLASH
-        rcall   COMMAXT
-        rjmp    IS2
-IS1:
-        rcall   STORE
-IS2:
-        ret
+        breq    INUMBER1
+        sbrs    tosl, 1
+        rjmp    ISINGLE
+IDOUBLE:
+        rcall   SWOP_A
+        call    LITERAL
+ISINGLE:        
+        call    LITERAL
+        rjmp     IPARSEWORD
 
-        .dw     IS_L+PFLASH
-TO_L:
-        .db     NFA|2,"to",0
-TO:
-        jmp     IS
+INUMBER1:
+        call    DROP
+        rjmp    IPARSEWORD
+
+IUNKNOWN:
+        call    DROP 
+        rcall   DP_TO_RAM
+        rcall   CFETCHPP
+        call    TYPE
+        rcall   FALSE_
+        rcall   QABORTQ         ; Never returns & resets the stacks
+INOWORD: 
+        jmp     DROP
+
+        .db     NFA|1,"@"
+FETCH_A:        
+        jmp     FETCH
+
+;;;    bitmask -- 
+        .dw     L_INTERPRET
+L_SHB:
+        .db     NFA|3,"shb"     ; Set header bit
+SHB:
+        call    LATEST
+        rcall   FETCH_A
+        rcall   DUP_A
+        rcall   CFETCH_A
+        call    ROT
+        call    OR_
+        rcall   SWOP_A
+        jmp     CSTORE
+        
+        .dw     L_SHB
+L_IMMEDIATE:
+        .db     NFA|9,"immediate" ; 
+IMMEDIATE:
+        rcall   DOLIT_A
+        .dw     IMMED
+        jmp     SHB
+
+;***************************************************************
+        .dw     L_IMMEDIATE
+L_INLINED:
+        .db     NFA|7,"inlined" ; 
+INLINED:
+        rcall   DOLIT_A
+        .dw     INLINE
+        jmp     SHB
+
+;; .st ( -- ) output a string with current data section and current base info
+;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type 
+;;;     <# [char] > hold cse @ #s #> type base ! ;
+        .dw     L_INLINED
+L_DOTSTATUS:
+        .db     NFA|3,".st"
+DOTSTATUS:
+        rcall   DOLIT_A
+        .dw     '<'
+        call    EMIT
+        rcall   DOTBASE
+        call    EMIT
+        rcall   DOLIT_A
+        .dw     ','
+        call    EMIT
+        rcall   MEMQ
+        call    TYPE
+        rcall   DOLIT_A
+        .dw     '>'
+        call    EMIT
+        jmp     DOTS
+        
+        .db     NFA|3,"lit"
+DOLIT_A:
+        jmp     DOLIT
+        
+
+        .db     NFA|2,">r",0
+TOR_A:  jmp     TOR
 
 
-        .dw     TO_L+PFLASH
-TOBODY_L:
-        .db     NFA|INLINE|5, ">body"
-TOBODY:
-        adiw    tosl, 4
-        ret
+;;; TEN ( -- n ) Leave decimal 10 on the stack
+        .db     NFA|1,"a"
+TEN:
+        rcall   DOLIT_A
+        .dw   10
 
-PFLASH_L:
-        .db     NFA|3,"pfl"
-PFLASH_:
-        rcall   DOCREATE
-        .dw     PFLASH    
+; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
+;        .dw     link
+; link    set     $
+        .db     NFA|3,"dp>"
+DP_TO_RAM:
+        rcall   DOLIT_A
+        .dw     dp_start
+        rcall   INI
+        rcall   TEN
+        jmp     CMOVE
 
-FLASH_L:
-        .db     NFA|5,"flash"
-FLASH:
-        ldi     t0, 0
-        sts     cse, t0
-        ret
+; >dp ( -- ) Copy only changed turnkey, dp's and latest from ram to eeprom
+;        .dw     link
+; link    set     $
+        .db     NFA|3,">dp"
+DP_TO_EEPROM:
+        rcall   DOLIT_A
+        .dw     dp_start
+        rcall   STORE_P_TO_R
+        rcall   INI
+        rcall   DOLIT_A
+        .dw     5
+        rcall   TOS_TO_I
+        rjmp    DP_TO_EEPROM_3
+DP_TO_EEPROM_0: 
+        rcall   FETCHPP
+        call    DUP
+        rcall   PFETCH
+        call    NOTEQUAL
+        call    ZEROSENSE
+        breq    DP_TO_EEPROM_1
+        rcall   PSTORE
+        rjmp    DP_TO_EEPROM_2
+DP_TO_EEPROM_1:
+        call    DROP
+DP_TO_EEPROM_2:
+        call    CELL
+        rcall   PNPLUS
+DP_TO_EEPROM_3:
+        sbiw    il, 1
+        brpl    DP_TO_EEPROM_0
+        pop     ih
+        pop     il
+        rcall   R_TO_P
+        jmp     DROP
 
-EEPROM_L:
-        .db     NFA|6,"eeprom",0
-EEPROM_:
-        ldi     t0, 2
-        sts     cse, t0
-        ret
-
-
-RAM_L:
-        .db     NFA|3,"ram"
-RAM_:
-        ldi     t0, 4
-        sts     cse, t0
-        ret
-
-CSE_L:
-        .db     NFA|3,"cse"
-CSE_:
+        .dw     L_DOTSTATUS
+L_FALSE:
+        .db     NFA|INLINE|5,"false"
+FALSE_:                     ; TOS is 0000 (FALSE)
         pushtos
-        lds     tosl, cse
+        clr     tosl
         clr     tosh
         ret
+
+        .dw     L_FALSE
+L_TRUE:
+        .db     NFA|INLINE|4,"true",0
+TRUE_:                      ; TOS is ffff (TRUE)
+        pushtos
+        ser     tosl
+        ser     tosh
+        ret
+
+; QUIT     --    R: i*x --    interpret from kbd
+        .dw     L_TRUE
+L_QUIT:
+        .db     NFA|4,"quit",0
+QUIT:
+        call    RPEMPTY
+        rcall   LEFTBRACKET
+        call    FRAM
+QUIT0:  
+        call    IFLUSH
+        ;; Copy INI and DP's from eeprom to ram
+        rcall   DP_TO_RAM
+QUIT1: 
+        call    check_sp
+        rcall   CR
+        rcall   TIB
+        rcall   DUP_A
+        rcall   TIBSIZE
+        rcall   TEN                 ; Reserve 10 bytes for hold buffer
+        call    MINUS
+        call    ACCEPT
+        call    SPACE_
+        rcall   INTERPRET
+        rcall   STATE
+        rcall   ZEROSENSE
+        brne    QUIT1
+        rcall   DP_TO_EEPROM
+         
+        call    XSQUOTE
+        .db     3," ok"
+        call    TYPE
+        rcall   PROMPT_
+        rjmp    QUIT0
+        ret
+
+        .dw     L_QUIT
+L_PROMPT:
+        .db     NFA|6,"prompt",0
+PROMPT_:
+        call    DEFER_DOES
+        .dw     prompt
+
+; ABORT    i*x --   R: j*x --   clear stk & QUIT
+        .dw     L_PROMPT
+L_ABORT:
+        .db     NFA|5,"abort"
+ABORT:
+        rcall   S0
+        rcall   FETCH_A
+        call    SPSTORE
+        ;bsf     RCSTA, CREN, A
+        jmp     QUIT            ; QUIT never rets
+
+; ?ABORT   f --       abort & print ?
+        .dw     L_ABORT
+L_QABORTQ:
+        .db     NFA|7,"?abort?"
+QABORTQ:
+        call    XSQUOTE
+        .db     1,"?"
+        jmp     QABORT
+
+
+; ?ABORT   f c-addr u --       abort & print msg
+        .dw     L_QABORTQ
+L_QABORT:
+        .db     NFA|6,"?abort",0
+QABORT:
+        call    ROT
+        rcall   ZEROSENSE
+        brne    QABO1
+QABORT1:        
+		call	SPACE_
+        call    TYPE
+        rcall   ABORT  ; ABORT never rets
+QABO1:  jmp     TWODROP
+
+; ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
+;         i*x x1 --       R: j*x --      x1<>0
+        .dw     L_QABORT
+L_ABORTQUOTE:
+        .db     NFA|IMMED|COMPILE|6,"abort",'"',0
+ABORTQUOTE:
+        call    SQUOTE
+        rcall   DOLIT_A
+        .dw     QABORT
+        jmp     COMMAXT
+
+; '    -- xt             find word in dictionary
+        .dw     L_ABORTQUOTE
+L_TICK:
+        .db     NFA|1,0x27    ; 27h = '
+TICK:
+        rcall   BL
+        rcall   WORD
+        rcall   FIND
+        jmp     QABORTQ
+
+; CHAR   -- char           parse ASCII character
+        .dw     L_TICK
+L_CHAR:
+        .db     NFA|4,"char",0
+CHAR:
+        rcall   BL
+        rcall   PARSE
+        call    DROP
+        jmp     CFETCH
+
+; (    --                     skip input until )
+        .dw     L_CHAR
+L_PAREN:
+        .db     NFA|IMMED|1,"("
+PAREN:
+        rcall   DOLIT_A
+        .dw     ')'
+        rcall   PARSE
+        sbr     FLAGS1, noclear_m ; dont clear flags in case of (
+        jmp     TWODROP
+
+; IHERE    -- a-addr    ret Code dictionary ptr
+;   IDP @ ;
+;;;         .dw     link
+;;; link    set     $
+        .db     NFA|5,"ihere"
+IHERE:
+        rcall   IDP
+        rjmp    FETCH_A
+
+; [CHAR]   --          compile character DOLITeral
+        .dw     L_PAREN
+L_BRACCHAR:
+        .db     NFA|IMMED|COMPILE|6,"[char]",0
+BRACCHAR:
+        rcall   CHAR
+        jmp     LITERAL
+
+; COMPILE,  xt --         append codefield
+        .db     NFA|3,"cf,"
+COMMAXT_A:
+        jmp     COMMAXT
+
+        .db     NFA|3,"(c)"
+DOCREATE_A: 
+        jmp     DOCREATE
+
+
+; CR      --                      output newline
+        .dw     L_BRACCHAR
+L_CR:
+        .db     NFA|2,"cr",0
+CR:
+        rcall   DOLIT
+        .dw     0x0d       ; CR \r
+        rcall   EMIT
+        rcall   DOLIT
+        .dw     0x0a       ; LF \n
+        jmp     EMIT
+
+; CREATE   --         create an empty definition
+; Create a definition header and append 
+; doCREATE and the current data space dictionary pointer
+; in FLASH.
+;  Examples :   
+; : table create 10 cells allot does> swap cells + ;
+; ram table table_a     flash table table_b    eeprom table table_c
+; ram variable  qqq
+; eeprom variable www ram
+; flash variable  rrr ram 
+; eeprom create calibrationtable 30 allot ram
+; 
+        .dw     L_CR
+L_CREATE:
+        .db     NFA|6,"create",0
+CREATE:
+        rcall   BL
+        rcall   WORD            ; Parse a word
+
+        rcall   DUP_A           ; Remember parsed word at rhere
+        rcall   FIND
+        rcall   NIP
+        call    ZEROEQUAL
+        rcall   QABORTQ         ; ABORT if word has already been defined
+        rcall   DUP_A           ; Check the word length 
+        rcall   CFETCH_A
+        call    ONE
+        rcall   DOLIT_A
+        .dw     16
+        call    WITHIN
+		rcall	QABORTQ          ; Abort if there is no name for create
+
+        rcall   LATEST_
+        rcall   FETCH_A
+        call    ICOMMA          ; Link field
+        rcall   CFETCHPP        ; str len
+        rcall   IHERE
+        rcall   DUP_A             
+        rcall   LATEST_         ; new 'latest' link
+        rcall   STORE_A         ; str len ihere
+        rcall   PLACE           ; 
+        rcall   IHERE           ; ihere
+        rcall   CFETCH_A
+        rcall   DOLIT_A
+        .dw     NFA
+        rcall   SHB
+        call    ONEPLUS
+        call    ALIGNED
+        rcall   IALLOT          ; The header has now been created
+        rcall   DOLIT_A             
+        .dw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
+        rcall   COMMAXT_A       ; Append an exeution token
+        call    ALIGN
+        call    HERE            ; compiles the current dataspace dp into the dictionary
+        call    CSE
+        call    ZEROSENSE
+        brne    CREATE2
+        call    TWOPLUS
+CREATE2:
+        jmp     ICOMMA          ; dp now points to a free cell
+
+;***************************************************************
+; POSTPONE
+        .dw    L_CREATE
+L_POSTPONE:
+        .db     NFA|IMMED|COMPILE|8,"postpone",0
+POSTPONE:
+        rcall   BL
+        rcall   WORD
+        rcall   FIND
+        rcall   DUP_A
+        rcall   QABORTQ
+        call    ZEROLESS
+        call    ZEROSENSE
+        breq    POSTPONE1
+        call    LITERAL
+        rcall   DOLIT_A
+        .dw     COMMAXT
+POSTPONE1:
+        jmp    COMMAXT
+
 
 IDP_L:
         .db     NFA|3,"idp"
 IDP:
-        rcall   DOCREATE
+        rcall   DOCREATE_A
         .dw     dpFLASH
 
-DP_L:
-        .db     NFA|2,"dp",0
-DP:
-        rcall   DOLIT
-        .dw     dpRAM
-        rcall   CSE_
-        jmp     PLUS
-
-HERE_L:
-        .db     NFA|4,"here",0
-HERE:
-        rcall   DP
-        jmp     FETCH
-
-COMMA_L:
-        .db     NFA|1,","
-COMMA:
-        rcall   HERE
-        rcall   STORE
-        rcall   CELL
-        jmp     ALLOT
-
-CCOMMA_L:
-        .db     NFA|2,"c,",0
-CCOMMA:
-        rcall   HERE
-        rcall   CSTORE
-        rcall   ONE
-        jmp     ALLOT
-
-CELL_L:
-        .db     NFA|4,"cell",0
-CELL:
-        rcall   DOCREATE
-        .dw     2
-
-ALIGN_L:
-        .db     NFA|5,"align"
-ALIGN:
-        rcall   HERE
-        rcall   ALIGNED
-        rcall   DP
+;***************************************************************
+; (DOES>)  --      run-time action of DOES>
+;        .dw    link
+;link   set     $
+        .db     NFA|7,"(does>)"
+XDOES:
+        call    RFROM
+        call    LATEST
+        rcall   FETCH_A
+        rcall   NFATOCFA
+        rcall   IDP
+        rcall   FETCH_A
+        rcall   TOR_A
+        rcall   IDP
+        rcall   STORE_A
+        call    CALL_      ; Always stores a 4 byte call
+        call    RFROM
+        rcall   IDP
         jmp     STORE
 
 
-CREATE:
+; DOES>    --      change action of latest def'n
+        .dw     L_POSTPONE
+L_DOES:
+        .db     NFA|IMMED|COMPILE|5,"does>"
+DOES:   rcall   DOLIT_A
+        .dw     XDOES
+        rcall   COMMAXT_A
+        rcall   DOLIT_A
+        .dw     DODOES
+        jmp     COMMAXT
 
 
+;*****************************************************************
+; [        --      enter interpretive state
+        .dw     L_DOES
+L_LEFTBRACKET:
+        .db     NFA|IMMED|1,"["
+LEFTBRACKET:
+        cbr     t0, 0xff
+        sts     state, t0
+        ret
+
+
+; ]        --      enter compiling state
+        .dw     L_LEFTBRACKET
+L_RIGHTBRACKET:
+        .db     NFA|1,"]"
+RIGHTBRACKET:
+        sbr     t0, 0xff
+        sts     state, t0
+        ret
+
+; :        --           begin a colon definition
+        .dw     L_RIGHTBRACKET
+L_COLON:
+        .db     NFA|1,":"
 COLON:
+        rcall   CREATE
+        rcall   RIGHTBRACKET
+        jmp     STORCOLON
 
+; :noname        -- a          define headerless forth code
+        .dw     L_COLON
+L_NONAME:
+        .db     NFA|7,":noname"
+NONAME:
+        rcall   IHERE
+        jmp     RIGHTBRACKET
+
+; ;        --             end a colon definition
+        .dw     L_NONAME
+L_SEMICOLON:
+        .db     NFA|IMMED|COMPILE|1,";"
 SEMICOLON:
+        rcall   DOLIT_A   ; Compile a ret
+        .dw     0x9508
+        jmp     ICOMMA
 
-XDOES:
+
+        .dw     L_SEMICOLON
+L_MINUS_FETCH:
+        .db     NFA|2,"-@",0
+MINUS_FETCH:
+        rcall   TWOMINUS
+        rcall   DUP_A
+        jmp     FETCH
+
+; [']  --         find word & compile as DOLITeral
+        .dw     L_MINUS_FETCH
+L_BRACTICK:
+        .db     NFA|IMMED|COMPILE|3,"[']"
+BRACTICK:
+        rcall   TICK       ; get xt of 'xxx'
+        jmp     LITERAL
+
+; 2-    n -- n-2
+        .dw     L_BRACTICK
+L_TWOMINUS:
+        .db     NFA|2,"2-",0
+TWOMINUS:
+        sbiw    tosl, 2
+        ret
+
+        
+; BL      -- char                 an ASCII space
+        .dw     L_TWOMINUS
+L_BL:
+        .db     NFA|2,"bl",0
+BL:
+        rcall   DOCREATE_A
+        .dw     ' '
+
+; STATE   -- flag                 holds compiler state
+        .dw     L_BL
+L_STATE:
+        .db     NFA|5,"state"
+STATE_:
+        pushtos
+        lds     tosl, state
+        lds     tosh, state
+        ret
+
+; LATEST    -- a-addr           
+        .dw     L_STATE
+L_LATEST:
+        .db     NFA|6,"latest",0
+LATEST_:
+        rcall   DOCREATE_A
+        .dw     dpLATEST
+
+; S0       -- a-addr      start of parameter stack
+        .dw     L_LATEST
+L_S0:
+        .db     NFA|2,"s0",0
+S0:
+        rcall   DOUSER
+        .dw     us0
+        
+; ini -- a-addr       ini variable contains the user-start xt
+; In RAM
+;        .dw     link
+;link    set     $
+        .db     NFA|3,"ini"
+INI:
+        rcall   DOCREATE_A
+        .dw     dpSTART
+
+; ticks  -- u      system ticks (0-ffff) in milliseconds
+        .dw     L_S0
+L_TICKS:
+        .db     NFA|5,"ticks"
+TICKS:
+        jmp      ONE
+
+        
+; ms  +n --      Pause for n millisconds
+; : ms ( +n -- )     
+;   ticks -
+;   begin
+;     pause dup ticks - 0<
+;   until drop ;
+;
+        .dw     L_TICKS
+L_MS:
+        .db     NFA|2,"ms",0
+MS:
+        rcall   TICKS
+        call    PLUS
+MS1:    
+        call    PAUSE
+        rcall   DUP_A
+        rcall   TICKS
+        call    MINUS
+        call    ZEROLESS
+        call    ZEROEQUAL
+        breq    MS1
+        jmp     DROP
+
+;  .id ( nfa -- ) 
+        .dw     L_MS
+L_DOTID:
+        .db     NFA|3,".id"
+DOTID:
+        rcall   CFETCHPP
+        rcall   DOLIT_A
+        .dw     0x0f
+        call    AND_
+        call    TOS_TO_I
+        rjmp    DOTID3
+DOTID1:
+        rcall   CFETCHPP
+        rcall   TO_PRINTABLE
+        call    EMIT
+DOTID3:
+        sbiw    il, 1
+        brpl    DOTID1  
+        pop     il
+        pop     ih
+        jmp     DROP
+
+ ; >pr   c -- c      Filter a character to printable 7-bit ASCII
+        .dw     L_DOTID
+L_TO_PRINTABLE:
+        .db     NFA|3,">pr"
+TO_PRINTABLE:   
+        cpi     tosl, 0
+        brmi    TO_PRINTABLE1
+        cpi     tosl, 0x1f
+        brpl    TO_PRINTABLE2
+TO_PRINTABLE1:
+        ldi     tosl, '.'
+TO_PRINTABLE2:
+        ret
+
+ ; WORDS    --          list all words in dict.
+        .dw     L_TO_PRINTABLE
+L_WORDS:
+        .db     NFA|5,"words"
+        rcall   FALSE_
+        rcall   CR
+        rcall   LATEST_
+        rcall   FETCH_A
+        rcall   WDS1
+        rcall   FALSE_
+        rcall   CR
+        rcall   DOLIT_A
+        .dw     kernellink
+WDS1:   rcall   DUP_A
+        rcall   DOTID
+        rcall   SWOP_A
+        call    ONEPLUS
+        rcall   DUP_A
+        rcall   DOLIT_A
+        .dw     7
+        call    AND_
+        call    ZEROSENSE
+        breq    WDS2
+        rcall   DOLIT_A
+        .dw     9
+        call    EMIT
+        rjmp    WDS3
+WDS2:   
+        rcall   CR
+WDS3:
+        rcall   SWOP_A
+
+        rcall   TWOMINUS
+        rcall   FETCH_A
+        call    DUPZEROSENSE
+        brne    WDS1
+        jmp     TWODROP
+
+; .S      --           print stack contents
+; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
+        .dw     L_WORDS
+L_DOTS:
+        .db     NFA|2,".s",0
+DOTS:
+        call    SPFETCH
+        rcall   S0
+        rcall   FETCH_A
+        call    ONEPLUS
+DOTS1:
+        call    TWODUP
+        call    LESS
+        call    ZEROSENSE
+        brne    DOTS2
+        rcall   FETCHPP
+        call    UDOT
+        rjmp    DOTS1
+DOTS2:  
+        jmp     TWODROP
+
+;   DUMP  ADDR U --       DISPLAY MEMORY
+        .dw     L_DOTS
+L_DUMP:
+        .db     NFA|4,"dump",0
+DUMP:
+        rcall   DOLIT_A
+        .dw     16
+        call    USLASH
+        call    TOS_TO_I
+        rjmp    DUMP7
+DUMP1:  
+        rcall   CR
+        rcall   DUP_A
+        rcall   DOLIT_A
+        .dw     4
+        call    UDOTR
+        rcall   DOLIT_A
+        .dw     ':'
+        call    EMIT
+        rcall   DOLIT_A
+        .dw     16
+        call    TOS_TO_I
+DUMP2:
+        rcall   CFETCHPP
+        rcall   DOLIT_A
+        .dw     2
+        call    UDOTR
+        sbiw    il, 1
+        brne    DUMP2
+        pop     ih
+        pop     il
+
+        rcall   DOLIT_A
+        .dw     16
+        call    MINUS
+        rcall   DOLIT_A
+        .dw     16
+        call    TOS_TO_I
+DUMP4:  
+        call    CFETCHPP
+        rcall   TO_PRINTABLE
+        call    EMIT
+        sbiw    il, 1
+        brne    DUMP4
+        pop     ih
+        pop     il
+DUMP7:
+        sbiw    il, 1
+        brpl    DUMP1
+        pop     ih
+        pop     il
+        jmp     DROP
+
+; IALLOT   n --    allocate n bytes in ROM
+;       .dw     link
+;link   set     $
+        .db     NFA|1," "
+IALLOT:
+        rcall   IDP
+        jmp     PLUSSTORE
+    
+
+;***************************************************************
+;;; ******************************************************
+
+
+
+        .dw     L_DUMP
+L_PFLASH:
+        .db     NFA|3,"pfl"
+PFLASH_:
+        rcall   DOCREATE_A
+        .dw     PFLASH    
+
+
+L_INLINE:
+; in, ( addr -- ) begin @+ dup $12 <> while i, repeat 2drop ;
+        .dw      L_INLINE
+L_INLINEC:
+        .db      NFA|3,"in,"
+INLINE0:        
+        call    FETCHPP
+        call    DUP
+        rcall   DOLIT_A
+        .dw     0x0012
+        call    NOTEQUAL
+        call    ZEROSENSE
+        breq    INLINE1
+        call    ICOMMA
+        rjmp    INLINE0
+INLINE1:
+        jmp    TWODROP
+
 
 
 XNEXT_DEC:
@@ -1705,7 +4076,200 @@ XNEXT_DEC:
         std     y+3, t0 
         ret
 
+STOD_L:
+        .db     NFA|3,"s>d"
+STOD:
+        rcall   DUP
+        jmp     ZEROLESS
 
-DOTSTATUS:
+DPLUS_L:
+        .db     NFA|2,"d+",0
+DPLUS:
+        ;FIXME
+        ret
+
+DMINUS_L:
+        .db     NFA|2,"d-",0
+DMINUS:
+        ret
+
+        .dw     TOBODY_L+PFLASH
+DTWOSTAR_L:
+        .db     NFA|INLINE|3, "d2*"
+DTWOSTAR:
+        ;FIXME
+        lsl     tosl
+        rol     tosh
+        ret
+
+        .dw     TWOSLASH_L+PFLASH
+DTWOSLASH_L:
+        .db     NFA|INLINE|3, "d2/"
+DTWOSLASH:
+        ; FIXME
+        asr     tosh
+        ror     tosl
+        ret
+
+        .dw     INVERT_L+PFLASH
+DINVERT_L:
+        .db     NFA|7, "dinvert"
+DINVERT:
+        com     tosl
+        com     tosh
+        ;FIXME
+        ret
+
+        .dw     NEGATE_L+PFLASH
+DNEGATE_L:
+        .db     NFA|7, "dnegate"
+DNEGATE:
+        ;FIXME
+        rcall   INVERT
+        jmp     ONEPLUS
+
+DABS_L:
+        .db     NFA|4,"dabs",0
+DABS:
+        rcall   DUP
+        jmp     QDNEGATE
+
+        .dw     NEGATE_L+PFLASH
+QDNEGATE_L:
+        .db     NFA|8, "?dnegate",0
+QDNEGATE:
+        ;FIXME
+        rcall   INVERT
+        jmp     ONEPLUS
+
+DZEROEQUAL_L:
+        .db     NFA|3,"d0="
+DZEROEQUAL:
+        ; FIXME
+DZEROLESS_L:
+        .db     NFA|3,"d0<"
+DZEROLESS:
+        ;FIXME
+
+;***************************************************
+        .dw      L_PFLASH
+L_FETCH_P:
+        .db      NFA|2,"@p", 0
+FETCH_P:
+        pushtos
+        movw    tosl, pl
+        ret
+;***************************************************
+        .dw     L_FETCH_P
+L_PCFETCH:
+        .db     NFA|3,"pc@" ; ( -- c ) Fetch char from pointer
+PCFETCH:
+        pushtos
+        movw    tosl, pl
+        jmp     CFETCH
+;***************************************************
+        .dw      L_PCFETCH
+L_PTWOPLUS:
+kernellink:
+        .db      NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
+PTWOPLUS:
+        ldi     t0, 2
+        ldi     t1, 0
+        add     pl, t0
+        adc     pl, t1
+        ret
+
+;***************************************************
+; marker --- name
+        .dw     0
+L_MARKER:
 lastword:
+        .db     NFA|6,"marker",0
+MARKER:
+#if 0
+        call    ROM
+        rcall   CREATE
+        call    LIT
+        dw      dp_start
+        call    HERE
+        call    TEN
+        call    CMOVE
+        call    TEN
+        call    ALLOT
+        call    FRAM
+        rcall   XDOES
+        call    DODOES
+        rcall   INI
+        call    TEN
+        goto    CMOVE
+#endif
+        ret
+
+L_DOTBASE:
+        .db      NFA|1,"I"
+DOTBASE:
+#if
+        call    BASE
+        call    FETCH_A
+        movf    Sminus, W, A
+        movf    Srw, W, A
+        xorlw   0x10
+        bnz     DOTBASE1
+        movlw   '$'
+        bra     DOTBASEEND
+DOTBASE1:
+        xorlw   0x1a
+        bnz     DOTBASE2
+        movlw   '#'
+        bra     DOTBASEEND
+DOTBASE2:
+        xorlw   0x8
+        bnz     DOTBASE3
+        movlw   '%'
+        bra     DOTBASEEND
+DOTBASE3:
+        movlw   '?'
+DOTBASEEND:
+        movwf   Srw, A
+        clrf    plusS, A
+#endif
+        ret
+;;;**************************************
+;;; The USB code lib goes here in between
+;;;**************************************
+;FF_END_CODE code
+MEMQADDR_N:
+        .dw     ROM_N
+        .dw     EROM_N
+        .dw     FRAM_N
+; M? -- caddr count    current data space string
+;        dw      L_DOTBASE
+L_MEMQ:
+        .db     NFA|1,"I"
+MEMQ:
+        call    CSE
+        call    DOLIT
+        .dw     MEMQADDR_N
+        call    PLUS
+        call    FETCH_A
+        call    CFETCHPP
+        call    DOLIT
+        .dw     NFAmask
+        jmp     AND_
+end_of_dict:
+
+;FF_DP code:
+dpcode:
+;****************************************************
+;        org h'f00000'
+;        de  h'ff', h'ff'
+;        de  dp_user_dictionary&0xff, (dp_user_dictionary>>8)&0xff
+;        de  dpeeprom&0xff, (dpeeprom>>8)&0xff
+;        de  (dpdata)&0xff, ((dpdata)>>8)&0xff
+;        de  lastword_lo, lastword_hi
+;        de  DOTSTATUS;&0xff;, (DOTSTATUS>>8)&0xff
+
+; .end
+;********************************************************** 
+
 KERNEL_END:
