@@ -170,8 +170,8 @@
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000  ; 4 Kbytes of ram
-.equ PFLASH  = 0x1000  ; 56 Kbytes of flash + 8 Kbytes hidden boot flash
-.equ PEEPROM = 0xf000  ; 4 Kbytes of eeprom
+.equ PFLASH  = 0x2000  ; 56 Kbytes of flash + 8 Kbytes hidden boot flash
+.equ PEEPROM = 0x1000  ; 4 Kbytes of eeprom
 
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size= 64
@@ -232,12 +232,11 @@ rbuf_rd:    .byte 2
 rbuf_lv:    .byte 2
 rbuf:       .byte rbuf_size
 
-Preg:       .byte 2
 ms_count:   .byte 2
-intcon1dbg: .byte 2
-upcurrdbg:  .byte 2
-rpdbg:      .byte 2
-spdbg:      .byte 2
+;intcon1dbg: .byte 2
+;upcurrdbg:  .byte 2
+;rpdbg:      .byte 2
+;spdbg:      .byte 2
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -302,10 +301,10 @@ RESET_FF:
 WARMLIT:
         .dw      usbuf+ussize-2        ; S0
         .dw      urbuf+ursize-2        ; R0
-        .dw      TX1_+PFLASH
-        .dw      RX1_+PFLASH
-        .dw      RX1Q+PFLASH
-        .dw      OPERATOR_AREA+PFLASH  ; TASK
+        .dw      (TX1_<<1)+PFLASH
+        .dw      (RX1_<<1)+PFLASH
+        .dw      (RX1Q<<1)+PFLASH
+        .dw      (OPERATOR_AREA<<1)+PFLASH  ; TASK
         .dw      0x0010                ; BASE
         .dw      utibbuf               ; TIB
         .dw      0                     ; ustatus & uflg
@@ -316,11 +315,11 @@ WARMLIT:
 ;.section user_eedata
 COLDLIT:
 STARTV: .dw      0
-DPC:    .dw      KERNEL_END+PFLASH
+DPC:    .dw      KERNEL_END<<1+PFLASH
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
-LW:     .dw      lastword+PFLASH
-STAT:   .dw      DOTSTATUS+PFLASH
+LW:     .dw      lastword<<1+PFLASH
+STAT:   .dw      DOTSTATUS<<1+PFLASH
 
 ; EXIT --   Compile a return
 ;        variable link
@@ -959,11 +958,11 @@ ISTORE:
 STORE_L:
         .db     NFA|1, "!"
 STORE:
-        cpi     tosh, 0x01
+        cpi     tosh, high(PEEPROM)
         brmi    STORE_RAM
-        cpi     tosh, 0xe0
-        brmi    ISTORE
-        rjmp    ESTORE
+        cpi     tosh, high(PFLASH)
+        brmi    ESTORE
+        rjmp    ISTORE
 STORE_RAM:
         movw    zl, tosl
         poptos
@@ -975,6 +974,7 @@ STORE_RAM:
 ESTORE:
         sbic    eecr, eewe
         rjmp    ESTORE
+        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         poptos
@@ -1011,6 +1011,7 @@ IFETCH:
         add     xl, zh
         ld      tosl, x+
         ld      tosh, x+
+        ret
 IIFETCH:
         lpm     tosl, z+     ; Fetch from Flash directly
         lpm     tosh, z+
@@ -1020,11 +1021,11 @@ IIFETCH:
 FETCH_L:
         .db     NFA|1, "@"
 FETCH:
-        cpi     tosh, 0x01
-        brpl    FETCH_RAM
-        cpi     tosh, 0xe0
-        brmi    IFETCH
-        rjmp    EFETCH
+        cpi     tosh, high(PEEPROM)
+        brmi    FETCH_RAM
+        cpi     tosh, high(PFLASH)
+        brmi    EFETCH
+        rjmp    IFETCH
 FETCH_RAM:
         movw    zl, tosl
         ld      tosl, z+
@@ -1034,6 +1035,7 @@ FETCH_RAM:
 EFETCH:
         sbic    eecr, eewe
         rjmp    EFETCH
+        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -1060,6 +1062,7 @@ ICFETCH:
         clr     tosh
         ret
 IICFETCH:
+        subi    zh, high(PFLASH)
         lpm     tosl, z+     ; Fetch from Flash directly
         clr     tosh
         ret
@@ -1067,11 +1070,11 @@ IICFETCH:
 CFETCH_L:
         .db     NFA|2, "c@",0
 CFETCH:
-        cpi     tosh, 0x01
+        cpi     tosh, high(PEEPROM)
         brmi    CFETCH_RAM
-        cpi     tosh, 0xe0
-        brmi    ICFETCH
-        rjmp    ECFETCH
+        cpi     tosh, high(PFLASH)
+        brmi    ECFETCH
+        rjmp    ICFETCH
 CFETCH_RAM:
         movw    zl, tosl
         ld      tosl, z+
@@ -1080,6 +1083,7 @@ CFETCH_RAM:
 ECFETCH:
         sbic    eecr, eewe
         rjmp    ECFETCH
+        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -1104,11 +1108,11 @@ ICSTORE:
 CSTORE_L:
         .db     NFA|2, "c!",0
 CSTORE:
-        cpi     tosh, 0x01
+        cpi     tosh, high(PEEPROM)
         brmi    CSTORE_RAM
-        cpi     tosh, 0xe0
-        brmi    ICSTORE
-        rjmp    ECSTORE
+        cpi     tosh, high(PFLASH)
+        brmi    ECSTORE
+        rjmp    ICSTORE
 CSTORE_RAM:
         movw zl, tosl
         poptos
@@ -1119,6 +1123,7 @@ CSTORE_RAM:
 ECSTORE:
         sbic    eecr, eewe
         rjmp    ECSTORE
+        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         poptos
@@ -1188,7 +1193,7 @@ DEFER_DOES:
 IS_L:
         .db     NFA|2,"is",0
 IS:
-        rcall    TICK
+        call    TICK
         rcall    TWOPLUS
         rcall   FETCH
         rcall   STATE
@@ -1248,7 +1253,7 @@ XXXON:
 L_IFLUSH:
         .db     NFA|6,"iflush",0
 IFLUSH:
-        sbrc    flags1, idirty
+        sbrc    FLAGS1, idirty
         rjmp    IWRITE_BUFFER
         ret
 
@@ -1362,13 +1367,27 @@ WARM_L:
         .db     NFA|4,"warm",0
 WARM_:  
 ; Zero memory
+        clr     xl
+        clr     xh
+        ldi     yl, 25
+        ldi     yh, 0
+WARM_1:
+        st      x+, yh
+        subi    yl, 1
+        brne    WARM_1
+        clr     xl
+        ldi     xh, 0x01
+WARM_2:
+        st      x+, t0
+        cpi     xh, 0x4
+        brne    WARM_2
 ; Init Stack pointer
-        ldi     yl, low(usbuf)
-        ldi     yh, high(usbuf)
+        ldi     yl, low(usbuf+ussize-2)
+        ldi     yh, high(usbuf+ussize-2)
 
 ; Init Return stack pointer
-        ldi     t0, low(urbuf)
-        ldi     t1, high(urbuf)
+        ldi     t0, low(urbuf+ursize-2)
+        ldi     t1, high(urbuf+ursize-2)
         out     spl, t0
         out     sph, t1
 ; Init user pointer
@@ -1377,7 +1396,7 @@ WARM_:
         movw    upl, t0
 ; init warm literals
         rcall   DOLIT
-        .dw     WARMLIT
+        .dw     (WARMLIT<<1)+PFLASH
         call    S0
         rcall   DOLIT
         .dw     warmlitsize
@@ -1528,8 +1547,8 @@ DOCREATE:
         rol     zh
         lpm     tosl, z+
         lpm     tosh, z+
-        lsr     zh
-        ror     zl
+        pop     zh
+        pop     zl
         ijmp
 
 TOS_TO_I:
@@ -2490,8 +2509,9 @@ CFETCH_A:
         rjmp    CFETCH
 
         .db     NFA|2,"up",0
-UPTR:   rcall   DOCREATE_A
-        .dw     upcurr
+UPTR:   pushtos
+        movw    tosl, upl
+        ret
 
         .db     NFA|4,"hold",0
 HOLD:   rcall   TRUE_
@@ -3385,7 +3405,7 @@ TOR_A:  jmp     TOR
 ;;; TEN ( -- n ) Leave decimal 10 on the stack
         .db     NFA|1,"a"
 TEN:
-        rcall   DOLIT_A
+        rcall   DOCREATE_A
         .dw   10
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
