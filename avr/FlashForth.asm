@@ -30,7 +30,7 @@
 ;**********************************************************************
 
 
-.include "m128def.inc"
+.include "m328Pdef.inc"
 ; Macros
 
 ;  .def zerol = r2
@@ -118,8 +118,24 @@
 .endif
 .endmacro
 
+; Symbol naming compatilibity
+#ifndef SPMEN
+.equ    SPMEN=SELFPRGEN
+#endif
+#ifndef EEWE
+.equ    EEWE=EEPE
+#endif
+#ifndef EEMWE
+.equ    EEMWE=EEMPE
+#endif
+
+
+
+; Configuration data
 #define FC_TYPE_SW
 #define clock 8000000  ; 8 MHz 
+
+
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -174,28 +190,27 @@
 .equ PEEPROM = 0x1000  ; 4 Kbytes of eeprom
 
 ;;; Sizes of the serial RX and TX character queues
-.equ rbuf_size= 64
-.equ tbuf_size= 64
+.equ rbuf_size= 4
+.equ tbuf_size= 4
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
-.equ ursize=       72         ; 36 cells ret stack size ( 2 cells per rcall )
-.equ ussize=       72         ; 36 cells parameter stack
-.equ utibsize=     72         ; 72 character Terminal Input buffer
+.equ ursize=       48         ; 24 cells ret stack size 
+.equ ussize=       48         ; 24 cells parameter stack
+.equ utibsize=     82         ; 82 character Terminal Input buffer
 
 ;;; User variables and area
 .equ us0=          - 30         ; Start of parameter stack
 .equ ur0=          - 28         ; Start of ret stack
 .equ uemit=        - 26         ; User EMIT vector
-.equ uemitq_=      - 24         ; User EMIT? vector
-.equ ukey=         - 22         ; User KEY vector
-.equ ukeyq=        - 20         ; User KEY? vector
-.equ ulink=        - 18         ; Task link
-.equ ubase=        - 16         ; Number Base
-.equ utib=         - 14         ; TIB address
+.equ ukey=         - 24         ; User KEY vector
+.equ ukeyq=        - 22         ; User KEY? vector
+.equ ulink=        - 20         ; Task link
+.equ ubase=        - 18         ; Number Base
+.equ utib=         - 16         ; TIB address
+.equ utask=        - 14         ; Task area pointer
 .equ ustatus=      - 12
-.equ uflg=         - 12
-.equ utask=        - 12         ; Task area pointer
+.equ uflg=         - 11
 .equ ursave=       - 10         ; Saved ret stack pointer
 .equ ussave=       - 8          ; Saved parameter stack pointer
 .equ usource=      - 6          ; Two cells
@@ -242,9 +257,10 @@ dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
+
+
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
-upcurr:     .byte 2 ; Current USER area pointer
 uvars:      .byte   (-us0)
 up0:        .byte   2
 urbuf:      .byte   ursize
@@ -297,29 +313,31 @@ RESET_FF:
 
 ;;; *************************************************
 ;;; WARM user area data
-.equ warmlitsize= 18
+.equ warmlitsize= 22
 WARMLIT:
+        .dw      0x0002                ; cse, state
         .dw      usbuf+ussize-2        ; S0
         .dw      urbuf+ursize-2        ; R0
         .dw      (TX1_<<1)+PFLASH
         .dw      (RX1_<<1)+PFLASH
         .dw      (RX1Q<<1)+PFLASH
-        .dw      (OPERATOR_AREA<<1)+PFLASH  ; TASK
+        .dw      up0                   ; Task link
         .dw      0x0010                ; BASE
         .dw      utibbuf               ; TIB
+        .dw      (OPERATOR_AREA<<1)+PFLASH  ; TASK
         .dw      0                     ; ustatus & uflg
 ;;; *************************************************
 ;;; *************************************
 ;;; EMPTY dictionary data
-.equ coldlitsize= 6
+.equ coldlitsize=12
 ;.section user_eedata
 COLDLIT:
 STARTV: .dw      0
-DPC:    .dw      KERNEL_END<<1+PFLASH
+DPC:    .dw      (KERNEL_END<<1)+PFLASH
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
-LW:     .dw      lastword<<1+PFLASH
-STAT:   .dw      DOTSTATUS<<1+PFLASH
+LW:     .dw      (lastword<<1)+PFLASH
+STAT:   .dw      (DOTSTATUS<<1)+PFLASH
 
 ; EXIT --   Compile a return
 ;        variable link
@@ -400,6 +418,8 @@ L_IR:
 L_TX1_:
         .db     NFA|3,"tx1"
 TX1_:
+        poptos
+        ret
 #if 0
 #if TX1_BUF_SIZE == 0
         btfss   PIR1, TXIF, A
@@ -458,6 +478,11 @@ TX1_2:
 L_RX1_:
         .db     NFA|3,"rx1"
 RX1_:
+        rcall   RX1Q
+        call    ZEROSENSE
+        breq    RX1_
+        call    BL
+        ret
 #if 0
         rcall   PAUSE
         rcall   QUERR
@@ -487,6 +512,7 @@ RX1_:
 L_RX1Q:
         .db     NFA|4,"rx1?",0
 RX1Q:
+        jmp     FALSE_
 #if 0
         rcall   BUSY
         movf    RXcnt, W, A
@@ -668,8 +694,7 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
-
-        lds     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
+        ldi     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
         ldi     t3, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
         rcall   DO_SPM
@@ -974,7 +999,6 @@ STORE_RAM:
 ESTORE:
         sbic    eecr, eewe
         rjmp    ESTORE
-        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         poptos
@@ -1035,7 +1059,6 @@ FETCH_RAM:
 EFETCH:
         sbic    eecr, eewe
         rjmp    EFETCH
-        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -1083,7 +1106,6 @@ CFETCH_RAM:
 ECFETCH:
         sbic    eecr, eewe
         rjmp    ECFETCH
-        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -1123,7 +1145,6 @@ CSTORE_RAM:
 ECSTORE:
         sbic    eecr, eewe
         rjmp    ECSTORE
-        andi    tosh, 0x0f
         out     eearl, tosl
         out     eearh, tosh
         poptos
@@ -1301,10 +1322,8 @@ OPERATOR:
         .dw     OPERATOR_AREA+PFLASH
 OPERATOR_AREA:
         .dw     up0
-        .dw     uaddsize
-        .dw     ursize
-        .dw     ussize
-        .dw     utibsize
+        .db     uaddsize, ursize
+        .db     ussize, utibsize
 
         .dw     L_OPERATOR
 L_ICOMMA:
@@ -1353,11 +1372,11 @@ L_EMPTY:
         .db     NFA|5,"empty"
 EMPTY:
         rcall   DOLIT
-        .dw     STARTV
+        .dw     (COLDLIT<<1)+PFLASH
         rcall   DOLIT
         .dw     dp_start
         rcall   DOLIT
-        .dw     0x000c
+        .dw     coldlitsize
         call    CMOVE
 		jmp 	DP_TO_RAM
 		
@@ -1397,11 +1416,13 @@ WARM_2:
 ; init warm literals
         rcall   DOLIT
         .dw     (WARMLIT<<1)+PFLASH
-        call    S0
+        rcall   DOLIT
+        .dw     cse
         rcall   DOLIT
         .dw     warmlitsize
         call    CMOVE
-        
+; init cold data to eeprom
+        rcall   EMPTY
 
 ; Init ms timer
 ; Init UART
@@ -1420,6 +1441,7 @@ VER:
 ;;; Check parameter stack pointer
         .db     NFA|3,"sp?"
 check_sp:
+#if 0
         rcall   SPFETCH
         call    S0
         rcall   FETCH
@@ -1428,6 +1450,7 @@ check_sp:
         rcall   XSQUOTE
         .db     3,"SP?"
         call    QABORT
+#endif
         ret
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
@@ -1479,6 +1502,8 @@ L_EXECUTE:
 EXECUTE:
         movw    zl, tosl
         poptos
+        subi    zl, low(PFLASH)
+        sbci    zh, high(PFLASH)
         lsr     zh
         ror     zl
         ijmp
@@ -1596,8 +1621,15 @@ SPSTORE:
 ;   RPEMPTY     -- EMPTY THE RETURN STACK       
         .db     NFA|3,"rp0"
 RPEMPTY:
-        ret;FIXME
-
+        pop     xh
+        pop     xl
+        rcall   R0_
+        rcall   FETCH
+        out     spl, tosl
+        out     sph, tosh
+        poptos
+        movw    zl, xl
+        ijmp
 
 ; DICTIONARY POINTER FOR the current section
 ; Flash -- sets the data section to flash
@@ -3495,7 +3527,7 @@ QUIT1:
         call    ACCEPT
         call    SPACE_
         rcall   INTERPRET
-        rcall   STATE
+        call    STATE
         rcall   ZEROSENSE
         brne    QUIT1
         rcall   DP_TO_EEPROM
@@ -3856,6 +3888,14 @@ L_S0:
 S0:
         rcall   DOUSER
         .dw     us0
+        
+; R0       -- a-addr      start of parameter stack
+        .dw     L_S0
+L_R0:
+        .db     NFA|2,"r0",0
+R0_:
+        rcall   DOUSER
+        .dw     ur0
         
 ; ini -- a-addr       ini variable contains the user-start xt
 ; In RAM
