@@ -30,7 +30,7 @@
 ;**********************************************************************
 
 
-.include "m328Pdef.inc"
+.include "m128def.inc"
 ; Macros
 
 ;  .def zerol = r2
@@ -119,21 +119,22 @@
 .endmacro
 
 ; Symbol naming compatilibity
+#if 0
 #ifndef SPMEN
-.equ    SPMEN=SELFPRGEN
+.def    SPMEN=SELFPRGEN
 #endif
 #ifndef EEWE
-.equ    EEWE=EEPE
+.def    EEWE=EEPE
 #endif
 #ifndef EEMWE
-.equ    EEMWE=EEMPE
+.def    EEMWE=EEMPE
 #endif
-
+#endif
 
 
 ; Configuration data
 #define FC_TYPE_SW
-#define clock 8000000  ; 8 MHz 
+#define clock 16000000  ; 16 MHz 
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
 
@@ -420,10 +421,10 @@ L_TX1_:
         .db     NFA|3,"tx1"
 TX1_:
         rcall   PAUSE
-        lds     t0, UCSR0A
-        sbrs    t0, UDRE0
+        in_     t0, UCSR1A
+        sbrs    t0, UDRE1
         rjmp    TX1_
-        sts     UDR0, tosl
+        out_    UDR1, tosl
         poptos
         ret
 #if 0
@@ -489,7 +490,8 @@ RX1_:
         call    ZEROSENSE
         breq    RX1_
         pushtos
-        lds     tosl, UDR0
+        in_     tosl, UDR1
+		clr		tosh
         ret
 #if 0
         rcall   PAUSE
@@ -520,8 +522,8 @@ RX1_:
 L_RX1Q:
         .db     NFA|4,"rx1?",0
 RX1Q:
-        lds     t0, UCSR0A
-        sbrs    t0, UDRE0
+        in_     t0, UCSR1A
+        sbrs    t0, RXC1
         jmp     FALSE_
         jmp     TRUE_
 #if 0
@@ -1226,9 +1228,9 @@ IS_L:
         .db     NFA|2,"is",0
 IS:
         call    TICK
-        rcall    TWOPLUS
+        rcall   TWOPLUS
         rcall   FETCH
-        rcall   STATE
+        call    STATE_
         rcall   ZEROSENSE
         breq    IS1
         rcall   DOLIT
@@ -1439,15 +1441,17 @@ WARM_2:
 ; Init UART
         ; Set baud rate
         ldi     t0, 0
-        sts     UBRR0H, t0
+        out_    UBRR1H, t0
         ldi     t0, ubrr0val
-        sts     UBRR0L, t0
+        out_    UBRR1L, t0
         ; Enable receiver and transmitter
-        ldi     t0, (1<<RXEN0)|(1<<TXEN0)
-        sts     UCSR0B,t0
+        ldi     t0, (1<<RXEN1)|(1<<TXEN1)
+        out_    UCSR1B,t0
         ; Set frame format: 8data, 2stop bit
-        ldi     t0, (1<<USBS0)|(3<<UCSZ00)
-        sts     UCSR0C,t0
+        ldi     t0, (1<<USBS1)|(3<<UCSZ10)
+        out_    UCSR1C,t0
+
+		rcall	VER
 ; Init 
         jmp     ABORT
 ;*******************************************************
@@ -2046,11 +2050,17 @@ TYPE2:
 ;link    set     $
         .db      NFA|3,"(s",0x22
 XSQUOTE:
-        rcall   RFROM
+        rcall	RFROM
+        lsl     tosl
+        rol     tosh
+		subi	tosh, 0xe0
         rcall   CFETCHPP
         rcall   TWODUP
         rcall   PLUS
         rcall   ALIGNED
+		subi	tosh, 0x20
+        lsr     tosh
+        ror     tosl
         rcall   TOR       ; do NOT jmp  TOR!
         ret
 
@@ -2111,8 +2121,8 @@ SWOP:
 OVER_L:
         .db     NFA|4,"over",0
 OVER:
-        ldd     t0, y+1
-        ldd     t1, y+2
+        ldd     t0, y+0
+        ldd     t1, y+1
         pushtos
         movw    tosl, t0
         ret
@@ -2333,7 +2343,7 @@ ZEROEQUAL_L:
         .db     NFA|2, "0=",0
 ZEROEQUAL:      
         or      tosh, tosl
-        brne    ZEROEQUAL_1
+        brne    FALSE_F
 TRUE_F:
         ser     tosh
         ser     tosl
@@ -2373,7 +2383,7 @@ ULESS_L:
         .db     NFA|2,"u<",0
 ULESS:
         rcall   MINUS
-        brsh    TRUE_F        ; Carry test  
+        brmi    TRUE_F        ; Carry test  
         jmp     FALSE_F
 
 UGREATER_L:
@@ -3305,7 +3315,7 @@ IPARSEWORD1:
         rcall   DUPZEROSENSE    ; 0 = not found, -1 = normal, 1 = immediate
         breq    INUMBER         ; NUMBER?
         rcall   ONEPLUS         ; 0 = normal 2 = immediate
-        rcall   STATE
+        rcall   STATE_
         rcall   ZEROEQUAL
         rcall   OR_
         rcall   ZEROSENSE
@@ -3315,7 +3325,7 @@ IPARSEWORD1:
                                 ; immediate&compiling or interpreting
         sbrs    wflags, 4       ; Compile only check
         rjmp    IEXECUTE        ; Not a compile only word
-        rcall   STATE           ; Compile only word check
+        rcall   STATE_          ; Compile only word check
         call    XSQUOTE
         .db     10,"COMPILING?",0
         rcall   QABORT
@@ -3364,7 +3374,7 @@ INUMBER:
         rcall   NUMBERQ
         rcall   DUPZEROSENSE
         breq    IUNKNOWN
-        rcall   STATE
+        rcall   STATE_
         rcall   ZEROSENSE
         breq    INUMBER1
         sbrs    tosl, 1
@@ -3548,8 +3558,9 @@ QUIT1:
         call    MINUS
         call    ACCEPT
         call    SPACE_
+;		call    TYPE
         rcall   INTERPRET
-        call    STATE
+        call    STATE_
         rcall   ZEROSENSE
         brne    QUIT1
         rcall   DP_TO_EEPROM
@@ -3557,7 +3568,7 @@ QUIT1:
         call    XSQUOTE
         .db     3," ok"
         call    TYPE
-        rcall   PROMPT_
+;        rcall   PROMPT_
         rjmp    QUIT0
         ret
 
