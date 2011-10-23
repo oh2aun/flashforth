@@ -134,7 +134,8 @@
 ; Configuration data
 #define FC_TYPE_SW
 #define clock 8000000  ; 8 MHz 
-
+#define baud  38400
+#define ubrr0val (clock/16/baud) - 1
 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -418,6 +419,11 @@ L_IR:
 L_TX1_:
         .db     NFA|3,"tx1"
 TX1_:
+        rcall   PAUSE
+        lds     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    TX1_
+        sts     UDR0, tosl
         poptos
         ret
 #if 0
@@ -478,10 +484,12 @@ TX1_2:
 L_RX1_:
         .db     NFA|3,"rx1"
 RX1_:
+        rcall   PAUSE
         rcall   RX1Q
         call    ZEROSENSE
         breq    RX1_
-        call    BL
+        pushtos
+        lds     tosl, UDR0
         ret
 #if 0
         rcall   PAUSE
@@ -512,7 +520,10 @@ RX1_:
 L_RX1Q:
         .db     NFA|4,"rx1?",0
 RX1Q:
+        lds     t0, UCSR0A
+        sbrs    t0, UDRE0
         jmp     FALSE_
+        jmp     TRUE_
 #if 0
         rcall   BUSY
         movf    RXcnt, W, A
@@ -1426,6 +1437,17 @@ WARM_2:
 
 ; Init ms timer
 ; Init UART
+        ; Set baud rate
+        ldi     t0, 0
+        sts     UBRR0H, t0
+        ldi     t0, ubrr0val
+        sts     UBRR0L, t0
+        ; Enable receiver and transmitter
+        ldi     t0, (1<<RXEN0)|(1<<TXEN0)
+        sts     UCSR0B,t0
+        ; Set frame format: 8data, 2stop bit
+        ldi     t0, (1<<USBS0)|(3<<UCSZ00)
+        sts     UCSR0C,t0
 ; Init 
         jmp     ABORT
 ;*******************************************************
