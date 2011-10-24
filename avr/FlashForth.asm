@@ -3617,7 +3617,7 @@ QABO1:  jmp     TWODROP
 ; ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
 ;         i*x x1 --       R: j*x --      x1<>0
         .dw     L_QABORT
-L_ABORTQUOTE:
+ABORTQUOTE_L:
         .db     NFA|IMMED|COMPILE|6,"abort",'"',0
 ABORTQUOTE:
         call    SQUOTE
@@ -3626,8 +3626,8 @@ ABORTQUOTE:
         jmp     COMMAXT
 
 ; '    -- xt             find word in dictionary
-        .dw     L_ABORTQUOTE
-L_TICK:
+        .dw     ABORTQUOTE_L+PFLASH
+TICK_L:
         .db     NFA|1,0x27    ; 27h = '
 TICK:
         rcall   BL
@@ -3636,8 +3636,8 @@ TICK:
         jmp     QABORTQ
 
 ; CHAR   -- char           parse ASCII character
-        .dw     L_TICK
-L_CHAR:
+        .dw     TICK_L+PFLASH
+CHAR_L:
         .db     NFA|4,"char",0
 CHAR:
         rcall   BL
@@ -3646,8 +3646,8 @@ CHAR:
         jmp     CFETCH
 
 ; (    --                     skip input until )
-        .dw     L_CHAR
-L_PAREN:
+        .dw     CHAR_L+PFLASH
+PAREN_L:
         .db     NFA|IMMED|1,"("
 PAREN:
         rcall   DOLIT_A
@@ -3666,8 +3666,8 @@ IHERE:
         rjmp    FETCH_A
 
 ; [CHAR]   --          compile character DOLITeral
-        .dw     L_PAREN
-L_BRACCHAR:
+        .dw     PAREN_L+PFLASH
+BRACCHAR_L:
         .db     NFA|IMMED|COMPILE|6,"[char]",0
 BRACCHAR:
         rcall   CHAR
@@ -3684,8 +3684,8 @@ DOCREATE_A:
 
 
 ; CR      --                      output newline
-        .dw     L_BRACCHAR
-L_CR:
+        .dw     BRACCHAR_L+PFLASH
+CR_L:
         .db     NFA|2,"cr",0
 CR:
         rcall   DOLIT
@@ -3707,8 +3707,8 @@ CR:
 ; flash variable  rrr ram 
 ; eeprom create calibrationtable 30 allot ram
 ; 
-        .dw     L_CR
-L_CREATE:
+        .dw     CR_L+PFLASH
+CREATE_L:
         .db     NFA|6,"create",0
 CREATE:
         rcall   BL
@@ -3758,8 +3758,8 @@ CREATE2:
 
 ;***************************************************************
 ; POSTPONE
-        .dw    L_CREATE
-L_POSTPONE:
+        .dw    CREATE_L+PFLASH
+POSTPONE_L:
         .db     NFA|IMMED|COMPILE|8,"postpone",0
 POSTPONE:
         rcall   BL
@@ -3805,8 +3805,8 @@ XDOES:
 
 
 ; DOES>    --      change action of latest def'n
-        .dw     L_POSTPONE
-L_DOES:
+        .dw     POSTPONE_L+PFLASH
+DOES_L:
         .db     NFA|IMMED|COMPILE|5,"does>"
 DOES:   rcall   DOLIT_A
         .dw     XDOES
@@ -3818,8 +3818,8 @@ DOES:   rcall   DOLIT_A
 
 ;*****************************************************************
 ; [        --      enter interpretive state
-        .dw     L_DOES
-L_LEFTBRACKET:
+        .dw     DOES_L+PFLASH
+LEFTBRACKET_L:
         .db     NFA|IMMED|1,"["
 LEFTBRACKET:
         cbr     t0, 0xff
@@ -3828,8 +3828,8 @@ LEFTBRACKET:
 
 
 ; ]        --      enter compiling state
-        .dw     L_LEFTBRACKET
-L_RIGHTBRACKET:
+        .dw     LEFTBRACKET_L+PFLASH
+RIGHTBRACKET_L:
         .db     NFA|1,"]"
 RIGHTBRACKET:
         sbr     t0, 0xff
@@ -3837,8 +3837,8 @@ RIGHTBRACKET:
         ret
 
 ; :        --           begin a colon definition
-        .dw     L_RIGHTBRACKET
-L_COLON:
+        .dw     RIGHTBRACKET_L+PFLASH
+COLON_L:
         .db     NFA|1,":"
 COLON:
         rcall   CREATE
@@ -3846,16 +3846,16 @@ COLON:
         jmp     STORCOLON
 
 ; :noname        -- a          define headerless forth code
-        .dw     L_COLON
-L_NONAME:
+        .dw     COLON_L+PFLASH
+NONAME_L:
         .db     NFA|7,":noname"
 NONAME:
         rcall   IHERE
         jmp     RIGHTBRACKET
 
 ; ;        --             end a colon definition
-        .dw     L_NONAME
-L_SEMICOLON:
+        .dw     NONAME_L+PFLASH
+SEMICOLON_L:
         .db     NFA|IMMED|COMPILE|1,";"
 SEMICOLON:
         rcall   DOLIT_A   ; Compile a ret
@@ -3863,8 +3863,8 @@ SEMICOLON:
         jmp     ICOMMA
 
 
-        .dw     L_SEMICOLON
-L_MINUS_FETCH:
+        .dw     SEMICOLON_L+PFLASH
+MINUS_FETCH_L:
         .db     NFA|2,"-@",0
 MINUS_FETCH:
         rcall   TWOMINUS
@@ -3872,16 +3872,16 @@ MINUS_FETCH:
         jmp     FETCH
 
 ; [']  --         find word & compile as DOLITeral
-        .dw     L_MINUS_FETCH
-L_BRACTICK:
+        .dw     MINUS_FETCH_L+PFLASH
+BRACTICK_L:
         .db     NFA|IMMED|COMPILE|3,"[']"
 BRACTICK:
         rcall   TICK       ; get xt of 'xxx'
         jmp     LITERAL
 
 ; 2-    n -- n-2
-        .dw     L_BRACTICK
-L_TWOMINUS:
+        .dw     BRACTICK_L+PFLASH
+TWOMINUS_L:
         .db     NFA|2,"2-",0
 TWOMINUS:
         sbiw    tosl, 2
@@ -3889,16 +3889,16 @@ TWOMINUS:
 
         
 ; BL      -- char                 an ASCII space
-        .dw     L_TWOMINUS
-L_BL:
+        .dw     TWOMINUS_L+PFLASH
+BL_l:
         .db     NFA|2,"bl",0
 BL:
         rcall   DOCREATE_A
         .dw     ' '
 
 ; STATE   -- flag                 holds compiler state
-        .dw     L_BL
-L_STATE:
+        .dw     BL_L+PFLASH
+STATE_L:
         .db     NFA|5,"state"
 STATE_:
         pushtos
@@ -3907,24 +3907,24 @@ STATE_:
         ret
 
 ; LATEST    -- a-addr           
-        .dw     L_STATE
-L_LATEST:
+        .dw     STATE_L+PFLASH
+LATEST_L:
         .db     NFA|6,"latest",0
 LATEST_:
         rcall   DOCREATE_A
         .dw     dpLATEST
 
 ; S0       -- a-addr      start of parameter stack
-        .dw     L_LATEST
-L_S0:
+        .dw     LATEST_L+PFLASH
+S0_L:
         .db     NFA|2,"s0",0
 S0:
         rcall   DOUSER
         .dw     us0
         
 ; R0       -- a-addr      start of parameter stack
-        .dw     L_S0
-L_R0:
+        .dw     S0_L+PFLASH
+R0_L:
         .db     NFA|2,"r0",0
 R0_:
         rcall   DOUSER
@@ -3940,8 +3940,8 @@ INI:
         .dw     dpSTART
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
-        .dw     L_S0
-L_TICKS:
+        .dw     R0_L+PFLASH
+TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
         jmp      ONE
@@ -3954,8 +3954,8 @@ TICKS:
 ;     pause dup ticks - 0<
 ;   until drop ;
 ;
-        .dw     L_TICKS
-L_MS:
+        .dw     TICKS_L+PFLASH
+MS_L:
         .db     NFA|2,"ms",0
 MS:
         rcall   TICKS
@@ -3971,8 +3971,8 @@ MS1:
         jmp     DROP
 
 ;  .id ( nfa -- ) 
-        .dw     L_MS
-L_DOTID:
+        .dw     MS_L+PFLASH
+DOTID_L:
         .db     NFA|3,".id"
 DOTID:
         rcall   CFETCHPP
@@ -3993,8 +3993,8 @@ DOTID3:
         jmp     DROP
 
  ; >pr   c -- c      Filter a character to printable 7-bit ASCII
-        .dw     L_DOTID
-L_TO_PRINTABLE:
+        .dw     DOTID_L+PFLASH
+TO_PRINTABLE_L:
         .db     NFA|3,">pr"
 TO_PRINTABLE:   
         cpi     tosl, 0
@@ -4007,8 +4007,8 @@ TO_PRINTABLE2:
         ret
 
  ; WORDS    --          list all words in dict.
-        .dw     L_TO_PRINTABLE
-L_WORDS:
+        .dw     TO_PRINTABLE_L+PFLASH
+WORDS_L:
         .db     NFA|5,"words"
         rcall   FALSE_
         rcall   CR
@@ -4046,8 +4046,8 @@ WDS3:
 
 ; .S      --           print stack contents
 ; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
-        .dw     L_WORDS
-L_DOTS:
+        .dw     WORDS_L+PFLASH
+DOTS_L:
         .db     NFA|2,".s",0
 DOTS:
         call    SPFETCH
@@ -4066,8 +4066,8 @@ DOTS2:
         jmp     TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
-        .dw     L_DOTS
-L_DUMP:
+        .dw     DOTS_L+PFLASH
+DUMP_L:
         .db     NFA|4,"dump",0
 DUMP:
         rcall   DOLIT_A
@@ -4132,8 +4132,8 @@ IALLOT:
 
 
 
-        .dw     L_DUMP
-L_PFLASH:
+        .dw     DUMP_L+PFLASH
+PFLASH_L:
         .db     NFA|3,"pfl"
 PFLASH_:
         rcall   DOCREATE_A
@@ -4175,18 +4175,19 @@ STOD:
         rcall   DUP
         jmp     ZEROLESS
 
+        .dw     PFLASH_L+PFLASH
 DPLUS_L:
         .db     NFA|2,"d+",0
 DPLUS:
         ;FIXME
         ret
-
+        .dw     DPLUS_L+PFLASH
 DMINUS_L:
         .db     NFA|2,"d-",0
 DMINUS:
         ret
 
-        .dw     TOBODY_L+PFLASH
+        .dw     DMINUS_L+PFLASH
 DTWOSTAR_L:
         .db     NFA|INLINE|3, "d2*"
 DTWOSTAR:
@@ -4195,7 +4196,7 @@ DTWOSTAR:
         rol     tosh
         ret
 
-        .dw     TWOSLASH_L+PFLASH
+        .dw     DTWOSTAR_L+PFLASH
 DTWOSLASH_L:
         .db     NFA|INLINE|3, "d2/"
 DTWOSLASH:
@@ -4204,7 +4205,7 @@ DTWOSLASH:
         ror     tosl
         ret
 
-        .dw     INVERT_L+PFLASH
+        .dw     DTWOSLASH_L+PFLASH
 DINVERT_L:
         .db     NFA|7, "dinvert"
 DINVERT:
@@ -4213,7 +4214,7 @@ DINVERT:
         ;FIXME
         ret
 
-        .dw     NEGATE_L+PFLASH
+        .dw     DINVERT_L+PFLASH
 DNEGATE_L:
         .db     NFA|7, "dnegate"
 DNEGATE:
@@ -4232,7 +4233,7 @@ QDNEGATE_L:
         .db     NFA|8, "?dnegate",0
 QDNEGATE:
         ;FIXME
-        rcall   INVERT
+        rcall   DINVERT
         jmp     ONEPLUS
 
 DZEROEQUAL_L:
@@ -4245,7 +4246,7 @@ DZEROLESS:
         ;FIXME
 
 ;***************************************************
-        .dw      L_PFLASH
+        .dw      DNEGATE_L+PFLASH
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
@@ -4253,7 +4254,7 @@ FETCH_P:
         movw    tosl, pl
         ret
 ;***************************************************
-        .dw     L_FETCH_P
+        .dw     L_FETCH_P+PFLASH
 L_PCFETCH:
         .db     NFA|3,"pc@" ; ( -- c ) Fetch char from pointer
 PCFETCH:
@@ -4261,7 +4262,7 @@ PCFETCH:
         movw    tosl, pl
         jmp     CFETCH
 ;***************************************************
-        .dw      L_PCFETCH
+        .dw      L_PCFETCH+PFLASH
 L_PTWOPLUS:
 kernellink:
         .db      NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
