@@ -783,44 +783,53 @@ asmemit1:
 #endif
         ret
 
+NEQUALSFETCH:
+        rcall   CFETCHPP
+        rcall   ROT
+        rcall   CFETCHPP
+        jmp     ROT
 ;***************************************************
-; N=    c-addr nfa u -- n   string:name cmp
+; N=    c-addr nfa -- n   string:name cmp
 ;             n=0: s1==s2, n=ffff: s1!=s2
 ; N= is specificly used for finding dictionary entries
 ; It can also be used for comparing strings shorter than 16 characters,
 ; but the first string must be in ram and the second in program memory.
+
         fdw     RX1Q_L
 NEQUAL_L:
         .db     NFA|2,"n=",0
 NEQUAL:
-#if 0
-        movf    Sminus, W, A        ; count_hi
-        movff   Sminus, PCLATH      ; count_lo
-        rcall   SETTBLPTR
-;        movff   Sminus, TBLPTRH     ; NOTE! Incremented by IC@ 
-;        movff   Sminus, TBLPTRL     ; c-addr2 in program rom
-        movff   Sminus, Abank       ; 
-        movff   Sminus, Ap          ; c-addr1 in ram
-
-        rcall   ICFETCH1            ; ICFETCH1 uses Tp, Tbank (=FSR1)
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-        andlw   NFAmask             ; MASK NFA, IMMED, INLINE, COMPILE BITS
-        cpfseq  Arw, A
-        bra     NEQUAL_TRUE         ; NO MATCH
-NEQUAL0:
-        rcall   ICFETCH1
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-        cpfseq  plusA, A
-NEQUAL_TRUE:
-        goto    TRUE_               ; NO MATCH
-NEQUAL1:                            ; check next character
-        decfsz  PCLATH, F, A
-        bra     NEQUAL0
+        rcall   NEQUALSFETCH
+        andi    tosl, 0xf
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    NEQUAL5
+        rcall   ONEMINUS
+        rcall   CFETCHPP
+        rcall   TOS_TO_I
+        rjmp    NEQUAL4
 NEQUAL2:
-        goto    FALSE_              ; MATCH
-#endif
+        rcall   NEQUALSFETCH
+        rcall   NOTEQUAL
+        rcall   ZEROSENSE
+        breq    NEQUAL3
+        call    TRUE_
+        clr     il
+        clr     ih
+        rjmp    NEQUAL4
+NEQUAL3:
+        sbiw    il, 0
+        breq    NEQUAL4
+        call    FALSE_
+NEQUAL4:
+        sbiw    il, 1
+        rjmp    NEQUAL6
+NEQUAL5:
+        call    TRUE_
+NEQUAL6:
+        rcall   NIP
+        jmp     NIP
+
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
 ; u (count) must be smaller than 256
@@ -828,86 +837,56 @@ NEQUAL2:
 SKIP_L:
         .db     NFA|4,"skip",0
 SKIP:
-#if 0
-        rcall   SETTBLPTR
-;        movf    Sminus, W, A
-;        movff   Sminus, TBLPTRL ; c character
-        movf    Sminus, W, A    ; skip count_hi
-        movf    Sminus, W, A
-        movwf   PCLATH, A       ; count_lo
-        movff   Sminus, Tbank
-        movff   Sminus, Tp      ; c-addr
-        bz      SKIP4           ; zero flag comes from the previous movf
-SKIP0:
-        movlw   0x9             ; SKIP TAB
-        subwf   Trw, W, A
-        bz      SKIP1
 
-        movf    Trw, W, A
-        subwf   TBLPTRL, W, A
-        bnz     SKIP4
-SKIP1:                          ; check next character
-        movf    Tplus, W, A
-
-        decfsz  PCLATH, F, A
-        bra     SKIP0
-        swapf   Tminus, W, A
-SKIP4:
-                                ; found start of word
-                                ; restore the stack
-        movff   Tp, plusS
-        movf    Tbank, W, A
-        iorlw   h'f0'
-        movwf   plusS, A
-        movff   PCLATH, plusS
-        clrf    plusS, W
-#endif
+        rcall   TOR
+SKIP1:
+        rcall   DUP
+        rcall   ZEROSENSE
+        breq    SKIP2
+        rcall   OVER
+        rcall   CFETCH
+        rcall   RFETCH
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    SKIP2
+        rcall   ONE
+        rcall   SLASHSTRING
+        rjmp    SKIP1
+SKIP2:
+        pop     t0
+        pop     t0
         ret
+
 
 ; SCAN   c-addr u c -- c-addr' u'
 ;                          find matching chars
-; u(count) must be smaller than 256
-; TAB will always give a match. This works OK
-; with tabbed source files that have space as a delimiter.
-; When using scan with other delimiters there may be 
-; problems, because TAB will always terminate the scan.
+
 
         fdw     SKIP_L
 SCAN_L:
         .db     NFA|4,"scan",0
 SCAN:
-#if 0
-        rcall   SETTBLPTR
-;        movf    Sminus, W, A
-;        movff   Sminus, TBLPTRL     ; c character
-        movf    Sminus, W, A        ; count_hi
-        movf    Sminus, W, A        ; count_lo
-        movwf   PCLATH, A
-        bz      SCAN4
-        movff   Sminus, Tbank
-        movff   Sminus, Tp          ; c-addr
-SCAN0:
-        movf    Trw, W, A
-        subwf   TBLPTRL, W, A
-        bz      SCAN3               ; Found a match
+        rcall   SWOP
+        rcall   TOS_TO_I
+        rcall   TOR
+        rjmp    SCAN3
 SCAN1:
-        movf    Trw, W, A
-        sublw   h'9'                ; Check for TAB
-        bz      SCAN3               ; TAB is handled as the delimiter c .
-SCAN2:
-        movf    Tplus, W, A         ; check next character
-        decfsz  PCLATH, F, A
-        bra     SCAN0
-SCAN3:                              ; found start of word
-                                    ; restore the stack
-        movff   Tp, plusS
-        movf    Tbank, W, A
-        iorlw   h'f0'
-        movwf   plusS, A
+        rcall   CFETCHPP
+        rcall   RFETCH
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        brne    SCAN4
+SCAN3:
+        sbiw    il, 1
+        brpl    SCAN1
 SCAN4:
-        movff   PCLATH, plusS
-        clrf    plusS, A
-#endif
+        pushtos
+        movw    tosl, il
+        adiw    tosl, 1
+        pop     t0
+        pop     t0
+        pop     ih
+        pop     il
         ret
 
 ; ei  ( -- )    Enable interrupts
@@ -3049,7 +3028,7 @@ findi1:
 FIND_1: 
         call    TWODUP
         rcall   OVER
-        rcall   CFETCH_A
+;        rcall   CFETCH_A
         call    NEQUAL
         rcall   DUPZEROSENSE
         breq    findi2
