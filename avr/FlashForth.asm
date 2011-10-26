@@ -322,14 +322,14 @@ RESET_FF:
 .equ warmlitsize= 22
 WARMLIT:
         .dw      0x0002                ; cse, state
-        .dw      usbuf+ussize-2        ; S0
+        .dw      usbuf+ussize-1        ; S0
         .dw      urbuf+ursize-2        ; R0
         fdw      TX1_
         fdw      RX1_
         fdw      RX1Q
         .dw      up0                   ; Task link
         .dw      0x0010                ; BASE
-        .dw      utibbuf               ; TIB
+        .dw      utibbuf+4             ; TIB
         fdw      OPERATOR_AREA         ; TASK
         .dw      0                     ; ustatus & uflg
 ;;; *************************************************
@@ -819,10 +819,13 @@ NEQUAL2:
         rjmp    NEQUAL4
 NEQUAL3:
         sbiw    il, 0
-        breq    NEQUAL4
+        brne    NEQUAL4
         call    FALSE_
 NEQUAL4:
         sbiw    il, 1
+		brpl	NEQUAL2
+		pop		ih
+		pop		il
         rjmp    NEQUAL6
 NEQUAL5:
         call    TRUE_
@@ -1033,6 +1036,7 @@ IFETCH:
         ld      tosh, x+
         ret
 IIFETCH:
+        subi    zh, high(PFLASH)
         lpm     tosl, z+     ; Fetch from Flash directly
         lpm     tosh, z+
         ret
@@ -2303,7 +2307,7 @@ TWOSTAR:
         rol     tosh
         ret
 
-        fdw     DTWOSTAR_L
+        fdw     TWOSTAR_L
 TWOSLASH_L:
         .db     NFA|INLINE|2, "2/",0
 TWOSLASH:
@@ -3027,7 +3031,7 @@ findi:
 findi1:
 FIND_1: 
         call    TWODUP
-        rcall   OVER
+;        rcall   OVER
 ;        rcall   CFETCH_A
         call    NEQUAL
         rcall   DUPZEROSENSE
@@ -4309,7 +4313,7 @@ DZEROLESS:
         ;FIXME
 
 ;***************************************************
-        fdw      DNEGATE_L
+        fdw      PFLASH_L
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
