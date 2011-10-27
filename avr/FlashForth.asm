@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          23.8.2011                                         *
+;    Date:          27.10.2011                                         *
 ;    File Version:  0.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -322,14 +322,14 @@ RESET_FF:
 .equ warmlitsize= 22
 WARMLIT:
         .dw      0x0002                ; cse, state
-        .dw      usbuf+ussize-1        ; S0
+        .dw      usbuf+ussize-4        ; S0
         .dw      urbuf+ursize-2        ; R0
         fdw      TX1_
         fdw      RX1_
         fdw      RX1Q
         .dw      up0                   ; Task link
         .dw      0x0010                ; BASE
-        .dw      utibbuf+4             ; TIB
+        .dw      utibbuf               ; TIB
         fdw      OPERATOR_AREA         ; TASK
         .dw      0                     ; ustatus & uflg
 ;;; *************************************************
@@ -343,12 +343,12 @@ DPC:    fdw      KERNEL_END
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
-STAT:   fdw      DOTSTATUS
+STAT:   fdw      DOTS
 
 ; EXIT --   Compile a return
 ;        variable link
         .dw     0
-L_EXIT:
+EXIT_L:
         .db     NFA|4,"exit",0
 EXIT:
         pop     t0
@@ -356,7 +356,7 @@ EXIT:
         ret
 
 ; idle
-        fdw(L_EXIT)
+        fdw(EXIT_L)
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
@@ -845,7 +845,9 @@ SCAN1:
         rcall   RFETCH
         rcall   EQUAL
         rcall   ZEROSENSE
-        brne    SCAN4
+        breq    SCAN3
+		rcall	ONEMINUS
+		rjmp	SCAN4
 SCAN3:
         sbiw    il, 1
         brpl    SCAN1
@@ -1373,8 +1375,8 @@ WARM_2:
         cpi     xh, 0x4
         brne    WARM_2
 ; Init Stack pointer
-        ldi     yl, low(usbuf+ussize-2)
-        ldi     yh, high(usbuf+ussize-2)
+        ldi     yl, low(usbuf+ussize-4)
+        ldi     yh, high(usbuf+ussize-4)
 
 ; Init Return stack pointer
         ldi     t0, low(urbuf+ursize-2)
@@ -1420,7 +1422,7 @@ VER_L:
 VER:
         rcall   XSQUOTE
          ;        1234567890123456789012345678901234567890
-        .db 17,"FlashForth V3.8\r\n"
+        .db 17,"FlashForth V3.8",0xd,0xa
         jmp     TYPE
 
 ;;; Check parameter stack pointer
@@ -3048,7 +3050,7 @@ FIND:
         rcall   DUPZEROSENSE
         brne    FIND1
         rcall   DROP
-        call    LATEST
+        call    LATEST_
         rcall   FETCH_A
         rcall   findi
 FIND1:
@@ -3443,7 +3445,7 @@ FETCH_A:
 SHB_L:
         .db     NFA|3,"shb"     ; Set header bit
 SHB:
-        call    LATEST
+        call    LATEST_
         rcall   FETCH_A
         rcall   DUP_A
         rcall   CFETCH_A
@@ -3602,7 +3604,7 @@ QUIT1:
         call    XSQUOTE
         .db     3," ok"
         call    TYPE
-;        rcall   PROMPT_
+        rcall   PROMPT_
         rjmp    QUIT0
         ret
 
@@ -3824,7 +3826,7 @@ IDP:
         .db     NFA|7,"(does>)"
 XDOES:
         call    RFROM
-        call    LATEST
+        call    LATEST_
         rcall   FETCH_A
         rcall   NFATOCFA
         rcall   IDP
@@ -4079,24 +4081,27 @@ WDS3:
         jmp     TWODROP
 
 ; .S      --           print stack contents
-; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
+; : .s space sp@ s0 @ 2- begin 2dup < while -@ u. repeat 2drop ;
         fdw     WORDS_L
 DOTS_L:
         .db     NFA|2,".s",0
 DOTS:
+		rcall	SPACE_
+		rcall	DUP          ; push tosl:tosh to memory
         call    SPFETCH
         rcall   S0
         rcall   FETCH_A
-        call    ONEPLUS
+        call    TWOMINUS
 DOTS1:
         call    TWODUP
         call    LESS
         call    ZEROSENSE
-        brne    DOTS2
-        rcall   FETCHPP
+        breq    DOTS2
+        rcall   MINUS_FETCH
         call    UDOT
         rjmp    DOTS1
 DOTS2:  
+		rcall	DROP
         jmp     TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
