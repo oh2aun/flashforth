@@ -33,14 +33,14 @@
 .include "m128def.inc"
 ; Macros
 
-;  .def zerol = r2
-;  .def zeroh = r3
+  .def zero = r2
+  .def t7 = r3
   .def upl = r4
   .def uph = r5
 
-;  .def al  = r6
-;  .def ah  = r7
-;  .def bl  = r8
+  .def t4  = r6
+  .def t5  = r7
+  .def t6  = r8
   .def wflags  = r9
 
   .def ibase =r10
@@ -566,112 +566,79 @@ QUERR3: rcall   asmemit
         goto    ABORT         ;    goto    ABORT
 #endif
 ;*******************************************************
-;;; Multiplikation routine from the PIC datasheet adapted to FORTH.
-;;; Uses the interrupt safe temporary registers:
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank
-;;; 42 clock cycles
 umstar0:
-#if 0
-        rcall   SETTBLPTR
-        movff   Sminus, PCLATH
-        movff   Sminus, TABLAT
-        push
-        movf    TBLPTRL, W, A
-        mulwf   TABLAT, A       ; ARG1L * ARG2L ->
-                                ; PRODH:PRODL
-        movff   PRODL, plusS
-        movff   PRODH, plusS
-
-        movf    TBLPTRH, W, A
-        mulwf   PCLATH, A       ; ARG1H * ARG2H ->
-                                ; PRODH:PRODL
-        movf    PRODL, W, A
-        movwf   TOSL, A
-        movf    PRODH, W, A
-        movwf   TOSH, A
-
-        movf    TBLPTRL, W, A
-        mulwf   PCLATH, A       ; ARG1L * ARG2H ->
-                                ; PRODH:PRODL
-        movf    PRODL, W, A
-        addwf   Srw, F, A
-        movf    PRODH, W, A
-        addwfc  TOSL, F, A
-        clrf    WREG, A
-        addwfc  TOSH, F, A
-
-        movf    TBLPTRH, W, A   
-        mulwf   TABLAT, A       ; ARG1H * ARG2L ->
-                                ; PRODH:PRODL
-        movf    PRODL, W, A     ;
-        addwf   Srw, F, A       ; Add cross
-        movf    PRODH, W, A     ; products
-        addwfc  TOSL, F, A
-        clrf    WREG, A
-        addwfc  TOSH, F, A
-
-        movff   TOSL, plusS
-        movff   TOSH, plusS
-        pop
-#endif
+        movw t0, tosl
+        poptos
+        mul tosl,t0
+        movw zl, r0
+        clr t2
+        clr t3
+        mul tosh, t0
+        add zh, r0
+        adc t2, r1
+        adc t3, zero
+        mul tosl, t1
+        add zh, r0
+        adc t2, r1
+        adc t3, zero
+        mul tosh, t1
+        add t2, r0
+        adc t3, r1
+        movw tosl, zl
+        pushtos
+        movw tosl, t2
         ret
 
 ;***********************************************************
-;;; 320 - 384 cycles for 16 or 32 bit division
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp TOSL TOSH TOSU
-#if 0
-#define DIVIDEND_0      TOSL
-#define DIVIDEND_1      TOSH
-#define DIVIDEND_2      TABLAT 
-#define DIVIDEND_3      PCLATH
-#define DIVISOR_0       TBLPTRL
-#define DIVISOR_1       TBLPTRH
-#define DCNT            TOSU    ;  5 bit counter
-#endif
+; unsigned 32/16 -> 16/16 division
 umslashmod0:
-#if 0
-        rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
-        movff   Sminus, DIVIDEND_3
-        movff   Sminus, DIVIDEND_2
-UMSLASHMOD0:
-        push
-        movf    Sminus, W, A
-        movwf   DIVIDEND_1, A
-        movf    Sminus, W, A
-        movwf   DIVIDEND_0, A
-        movlw   h'10'
-        movwf   DCNT, A             ; 19
-UMSLASHMOD1:
-        clrf    Tp, A
-        bcf     STATUS, C, A
-        rlcf    DIVIDEND_0, F, A
-        rlcf    DIVIDEND_1, F, A
-        rlcf    DIVIDEND_2, F, A
-        rlcf    DIVIDEND_3, F, A
-        rlcf    Tp, F, A
+        movw t4, tosl
 
-        movf    DIVISOR_0, W, A
-        subwf   DIVIDEND_2, W, A 
-        movf    DIVISOR_1, W, A
-        subwfb  DIVIDEND_3, W, A
-        movlw   0
-        subwfb  Tp, W, A
-        bnc     UMSLASHMOD2
+        ld t3, Y+
+        ld t6, Y+
+  
+        ld t1, Y+
+        ld t2, Y+
 
-        movf    DIVISOR_0, W, A
-        subwf   DIVIDEND_2, F, A
-        movf    DIVISOR_1, W, A
-        subwfb  DIVIDEND_3, F, A
-        bsf     DIVIDEND_0, 0, A
-UMSLASHMOD2:
-        decfsz  DCNT, F, A
-        bra     UMSLASHMOD1        ; 16*(18-22) = ~320
-        movff   DIVIDEND_2, plusS  ; remainder
-        movff   DIVIDEND_3, plusS
-        movff   DIVIDEND_0, plusS  ; quotient
-        movff   DIVIDEND_1, plusS
-        pop
-#endif
+; unsigned 32/16 -> 16/16 division
+        ; set loop counter
+        ldi t0,$10
+
+umslashmod1:
+        ; shift left, saving high bit
+        clr t7
+        lsl t1
+        rol t2
+        rol t3
+        rol t6
+        rol t7
+
+        ; try subtracting divisor
+        cp  t3, t4
+        cpc t6, t5
+        cpc t7,zero
+
+        brcs umslashmod2
+
+        ; dividend is large enough
+        ; do the subtraction for real
+        ; and set lowest bit
+        inc t1
+        sub t3, t4
+        sbc t6, t5
+
+umslashmod2:
+        dec  t0
+        brne umslashmod1
+
+umslashmod3:
+        ; put remainder on stack
+        st -Y,t6
+        st -Y,t3
+
+        ; put quotient on stack
+        mov tosl, t1
+        mov tosh, t2
         ret
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
