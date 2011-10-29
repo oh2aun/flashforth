@@ -119,7 +119,7 @@
 .endmacro
 
 .macro fdw
-  .dw (@0<<1)+PFLASH
+  .dw (@0<<1)
 .endmacro
 
 ; Symbol naming compatilibity
@@ -192,8 +192,11 @@
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000  ; 4 Kbytes of ram
-.equ PFLASH  = 0x2000  ; 56 Kbytes of flash + 8 Kbytes hidden boot flash
 .equ PEEPROM = 0x1000  ; 4 Kbytes of eeprom
+.equ PFLASH  = 0x2000  ; 56 Kbytes of flash
+.equ SFLASH  = 0x9000  ; Start if addressable physical flash on atmega128
+.equ PKERNEL = 0xe000  ; Kernel base offset
+.equ RAMPZV  = 1
 
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf_size= 4
@@ -276,7 +279,8 @@ dpdata:     .byte   2
 ;ustart:     .byte uareasize ; The operator user area
 
 .cseg
-.org 0
+.org LARGEBOOTSTART
+
 RESET_:     jmp  WARM_
 INT0_:      jmp  RESET_FF
 INT1_:      jmp  RESET_FF
@@ -671,7 +675,7 @@ IFILL_BUFFER_1:
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
-        lpm     t1, z+
+        elpm    t1, z+
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
@@ -709,7 +713,7 @@ IWRITE_BUFFER1:
         subi    xl, low(PAGESIZEB) ;restore pointer
         sbci    xh, high(PAGESIZEB)
 IWRITE_BUFFER2:
-        lpm     r0, z+
+        elpm    r0, z+
         ld      r1, x+
         cpse    r0, r1
         jmp     VERIFY_ERROR     ; What to do here ?? reset ?
@@ -952,9 +956,9 @@ STORE_L:
         .db     NFA|1, "!"
 STORE:
         cpi     tosh, high(PEEPROM)
-        brmi    STORE_RAM
+        brlo    STORE_RAM
         cpi     tosh, high(PFLASH)
-        brmi    ESTORE
+        brlo    ESTORE
         rjmp    ISTORE
 STORE_RAM:
         movw    zl, tosl
@@ -1005,9 +1009,9 @@ IFETCH:
         ld      tosh, x+
         ret
 IIFETCH:
-        subi    zh, high(PFLASH)
-        lpm     tosl, z+     ; Fetch from Flash directly
-        lpm     tosh, z+
+        ;subi    zh, high(PFLASH)
+        elpm    tosl, z+     ; Fetch from Flash directly
+        elpm    tosh, z+
         ret
                 
         fdw     STORE_L
@@ -1015,9 +1019,9 @@ FETCH_L:
         .db     NFA|1, "@"
 FETCH:
         cpi     tosh, high(PEEPROM)
-        brmi    FETCH_RAM
+        brlo    FETCH_RAM
         cpi     tosh, high(PFLASH)
-        brmi    EFETCH
+        brlo    EFETCH
         rjmp    IFETCH
 FETCH_RAM:
         movw    zl, tosl
@@ -1054,8 +1058,8 @@ ICFETCH:
         clr     tosh
         ret
 IICFETCH:
-        subi    zh, high(PFLASH)
-        lpm     tosl, z+     ; Fetch from Flash directly
+        ;subi    zh, high(PFLASH)
+        elpm    tosl, z+     ; Fetch from Flash directly
         clr     tosh
         ret
 
@@ -1064,9 +1068,9 @@ CFETCH_L:
         .db     NFA|2, "c@",0
 CFETCH:
         cpi     tosh, high(PEEPROM)
-        brmi    CFETCH_RAM
+        brlo    CFETCH_RAM
         cpi     tosh, high(PFLASH)
-        brmi    ECFETCH
+        brlo    ECFETCH
         rjmp    ICFETCH
 CFETCH_RAM:
         movw    zl, tosl
@@ -1101,9 +1105,9 @@ CSTORE_L:
         .db     NFA|2, "c!",0
 CSTORE:
         cpi     tosh, high(PEEPROM)
-        brmi    CSTORE_RAM
+        brlo    CSTORE_RAM
         cpi     tosh, high(PFLASH)
-        brmi    ECSTORE
+        brlo    ECSTORE
         rjmp    ICSTORE
 CSTORE_RAM:
         movw zl, tosl
@@ -1387,6 +1391,9 @@ WARM_2:
         ldi     t0, low(up0)
         ldi     t1, high(up0)
         movw    upl, t0
+; Set RAMPZ for correct flash addressing
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
 ; init warm literals
         rcall   DOLIT
         fdw     WARMLIT
@@ -1477,9 +1484,9 @@ DOLIT:
         pop     zl
         lsl     zl
         rol     zh
-        lpm     tosl, z+
-        lpm     tosh, z+
-        lsr     zh
+        elpm    tosl, z+
+        elpm    tosh, z+
+        ror     zh
         ror     zl
         ijmp    ; (z)
 
@@ -1489,9 +1496,8 @@ EXECUTE_L:
 EXECUTE:
         movw    zl, tosl
         poptos
-        subi    zl, low(PFLASH)
-        sbci    zh, high(PFLASH)
-        lsr     zh
+        bset    0  ; RAMPV
+        ror     zh
         ror     zl
         ijmp
 
@@ -1557,8 +1563,8 @@ DOCREATE:
         pop     zl
         lsl     zl
         rol     zh
-        lpm     tosl, z+
-        lpm     tosh, z+
+        elpm    tosl, z+
+        elpm    tosh, z+
         pop     zh
         pop     zl
         ijmp
@@ -1584,8 +1590,8 @@ DODOES:
         lsl     zl
         rol     zh
         pushtos
-        lpm     tosl, z+
-        lpm     tosh, z+
+        elpm    tosl, z+
+        elpm    tosh, z+
         movw    z, x
         ijmp    ; (z)
 
@@ -2010,18 +2016,17 @@ TYPE2:
 ; (S"    -- c-addr u      run-time code for S"
         .db      NFA|3,"(s",0x22
 XSQUOTE:
-        rcall	RFROM
+        rcall	RFETCH
         lsl     tosl
         rol     tosh
-		subi	tosh, 0xe0
         rcall   CFETCHPP
-        rcall   TWODUP
-        rcall   PLUS
+        rcall   DUP
         rcall   ALIGNED
-		subi	tosh, 0x20
         lsr     tosh
         ror     tosl
-        rcall   TOR       ; do NOT jmp  TOR!
+        rcall   RFROM
+        rcall   PLUS
+        rcall   TOR
         ret
 
         fdw     TYPE_L
@@ -2823,8 +2828,8 @@ DOUSER:
         pop     zl
         lsl     zl
         rol     zh
-        lpm     tosl, z+
-        lpm     tosh, z+
+        elpm    tosl, z+
+        elpm    tosh, z+
         add     tosl, upl
         adc     tosh, uph
         ret
