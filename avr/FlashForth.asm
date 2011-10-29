@@ -118,6 +118,8 @@
 .endif
 .endmacro
 
+
+
 .macro fdw
   .dw (@0<<1)
 .endmacro
@@ -276,7 +278,7 @@ urbuf:      .byte   ursize
 usbuf:      .byte   ussize
 utibbuf:    .byte   utibsize
 dpdata:     .byte   2
-;ustart:     .byte uareasize ; The operator user area
+
 
 .cseg
 .org LARGEBOOTSTART
@@ -343,7 +345,7 @@ WARMLIT:
 ;.section user_eedata
 COLDLIT:
 STARTV: .dw      0
-DPC:    fdw      KERNEL_END
+DPC:    .dw      PFLASH
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
@@ -606,7 +608,7 @@ umslashmod0:
 
 ; unsigned 32/16 -> 16/16 division
         ; set loop counter
-        ldi t0,$10
+        ldi t0,$10 ;6
 
 umslashmod1:
         ; shift left, saving high bit
@@ -633,7 +635,7 @@ umslashmod1:
 
 umslashmod2:
         dec  t0
-        brne umslashmod1
+        brne umslashmod1 ;16=17=272
 
 umslashmod3:
         ; put remainder on stack
@@ -642,7 +644,7 @@ umslashmod3:
 
         ; put quotient on stack
         mov tosl, t1
-        mov tosh, t2
+        mov tosh, t2     ; 6 + 272 + 6 =284 cycles
         ret
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
@@ -682,6 +684,8 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
+        mov     zl, ibasel
+        mov     zh, ibaseh
         ldi     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
         ldi     t3, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
@@ -702,6 +706,7 @@ IWRITE_BUFFER1:
 
         ; execute page write
         subi    zl, low(PAGESIZEB) ;restore pointer
+        sbci    zh, high(PAGESIZEB)
         ldi     t3, (1<<PGWRT) | (1<<SPMEN)
         rcall   DO_SPM
         ; re-enable the RWW section
@@ -886,7 +891,7 @@ IRQ_SEMI_L:
 IRQ_SEMI:
         rcall   DOLIT
         fdw     irq_user_end
-        rcall   JMP_
+        rcall   JMP__
         jmp     LEFTBRACKET
 irq_user_end: ;DUMMY
 
@@ -944,11 +949,12 @@ ISTORE:
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
         mov     t0, iaddrl
-        andi    t0, ~(PAGESIZEB-1)
-        add     xh, t0
+        andi    t0, (PAGESIZEB-1)
+        add     xl, t0
         st      x+, tosl
         st      x+, tosh
         poptos
+        sbr     FLAGS1, idirty_m
         ret
 
         fdw     LITERAL_L
@@ -1000,11 +1006,12 @@ IFETCH:
         rjmp    IIFETCH
         mov     t0, zh
         andi    t0, ~(PAGESIZEB-1)
-        breq    IIFETCH
+        cp      t0, ibasel
+        brne    IIFETCH
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
-        andi    zh, (PAGESIZEB-1)
-        add     xl, zh
+        andi    zl, (PAGESIZEB-1)
+        add     xl, zl
         ld      tosl, x+
         ld      tosh, x+
         ret
@@ -1049,11 +1056,12 @@ ICFETCH:
         rjmp    IICFETCH
         mov     t0, zh
         andi    t0, ~(PAGESIZEB-1)
-        breq    IICFETCH
+        cp      t0, ibasel
+        brne    IICFETCH
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
-        andi    zh, (PAGESIZEB-1)
-        add     xl, zh
+        andi    zl, (PAGESIZEB-1)
+        add     xl, zl
         ld      tosl, x+
         clr     tosh
         ret
@@ -1094,10 +1102,11 @@ ICSTORE:
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
         mov     t0, iaddrl
-        andi    t0, ~(PAGESIZEB-1)
-        add     xh, t0
+        andi    t0, (PAGESIZEB-1)
+        add     xl, t0
         st      x+, tosl
         poptos
+        sbr     FLAGS1, idirty_m
         ret
 
         fdw     CFETCH_L
@@ -1311,7 +1320,7 @@ ICOMMA:
         rcall   STORE
         rcall   CELL
         jmp     IALLOT
-        ret
+
 
 ;   IHERE ! 1 CHARS IALLOT ;
         fdw     ICOMMA_L
@@ -1341,9 +1350,10 @@ RSHIFT:
 ; Assembler
 ;*******************************************************
 
-JMP_:
-CALL_:
-RCALL_:
+JMP__:
+CALL__:
+RCALL__:
+        
 
         fdw     RSHIFT_L
 EMPTY_L:
@@ -1362,7 +1372,7 @@ EMPTY:
         fdw     EMPTY_L
 WARM_L:
         .db     NFA|4,"warm",0
-WARM_:  
+WARM_:
 ; Zero memory
         clr     xl
         clr     xh
@@ -1405,6 +1415,12 @@ WARM_2:
 ; init cold data to eeprom
         rcall   EMPTY
 
+
+        rcall   DOLIT
+        fdw     ONEPLUS
+        rcall   COMMAXT
+        call   SEMICOLON
+        rcall   iflush
 ; Init ms timer
 ; Init UART
         ; Set baud rate
@@ -1415,7 +1431,7 @@ WARM_2:
         ; Enable receiver and transmitter
         ldi     t0, (1<<RXEN1)|(1<<TXEN1)
         out_    UCSR1B,t0
-        ; Set frame format: 8data, 2stop bit
+        ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
 
@@ -1517,14 +1533,6 @@ VARIABLE_:
         jmp     ALLOT
 
         fdw     VARIABLE_L
-TWOVARIABLE_L:
-        .db     NFA|9,"2variable"
-TWOVARIABLE_:
-        rcall   VARIABLE_
-        rcall   CELL    ; 2
-        jmp     ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
-                        ; runtime is DOCREATE
-        fdw     TWOVARIABLE_L
 CONSTANT_L:
         .db     NFA|8,"constant",0
 CONSTANT_:
@@ -1541,17 +1549,6 @@ CON:
         rcall   COLON
         rcall   LITERAL
         jmp     SEMICOLON
-
-        fdw     CON_L
-TWOCON_L:
-        .db     NFA|4,"2con",0
-TWOCON:
-        rcall   SWOP
-        call    COLON         ; Create a word header
-        rcall   LITERAL       ; Append the constant value  as inline literal
-        rcall   LITERAL       ; Append the constant value  as inline literal
-        jmp     SEMICOLON     ; Compile return
-
 
 ; DOCREATE, code action of CREATE
 ; Fetch the next cell from program memory to the parameter stack
@@ -1596,7 +1593,7 @@ DODOES:
         ijmp    ; (z)
 
 ;   SP@     -- addr         get parameter stack pointer
-        fdw     TWOCON_L
+        fdw     CON_L
 SPFETCH_L:
         .db     NFA|3,"sp@"
 SPFETCH:
@@ -1785,13 +1782,22 @@ COMMAXT:
         rcall   ZEROSENSE
         breq    STORECF1
 STORECFF1: 
-        rcall   CALL_
-        rjmp    STORECF2 
+;        rcall   CALL_
+        rcall   DOLIT
+        .dw     0x940E      ; call jmp:0x940d
+        rcall   ICOMMA
+        bset    0  ; RAMPV
+        ror     tosh
+        ror     tosl
+        rcall   ICOMMA
+        rjmp    STORECF2
 STORECF1:
         rcall   IHERE
         rcall   MINUS
         call    TWOMINUS
-        rcall   RCALL_
+        ;rcall   RCALL_
+        andi    tosh, 0xd0
+        rcall   ICOMMA
 STORECF2:
         ret
 
@@ -3830,7 +3836,7 @@ IDP:
 ;link   set     $
         .db     NFA|7,"(does>)"
 XDOES:
-        call    RFROM
+        rcall    RFROM
         call    LATEST_
         rcall   FETCH_A
         rcall   NFATOCFA
@@ -3839,7 +3845,7 @@ XDOES:
         rcall   TOR_A
         rcall   IDP
         rcall   STORE_A
-        call    CALL_      ; Always stores a 4 byte call
+        call    CALL__      ; Always stores a 4 byte call
         call    RFROM
         rcall   IDP
         jmp     STORE
@@ -4174,8 +4180,6 @@ IALLOT:
 ;***************************************************************
 ;;; ******************************************************
 
-
-
         fdw     DUMP_L
 PFLASH_L:
         .db     NFA|3,"pfl"
@@ -4213,81 +4217,13 @@ XNEXT_DEC:
         std     y+3, t0 
         ret
 
-STOD_L:
-        .db     NFA|3,"s>d"
-STOD:
-        rcall   DUP
-        jmp     ZEROLESS
-
-        fdw     PFLASH_L
-DPLUS_L:
-        .db     NFA|2,"d+",0
-DPLUS:
-        ;FIXME
-        ret
-        fdw     DPLUS_L
-DMINUS_L:
-        .db     NFA|2,"d-",0
-DMINUS:
-        ret
-
-        fdw     DMINUS_L
-DTWOSTAR_L:
-        .db     NFA|INLINE|3, "d2*"
-DTWOSTAR:
-        ;FIXME
-        lsl     tosl
-        rol     tosh
-        ret
-
-        fdw     DTWOSTAR_L
-DTWOSLASH_L:
-        .db     NFA|INLINE|3, "d2/"
-DTWOSLASH:
-        ; FIXME
-        asr     tosh
-        ror     tosl
-        ret
-
-        fdw     DTWOSLASH_L
-DINVERT_L:
-        .db     NFA|7, "dinvert"
-DINVERT:
-        com     tosl
-        com     tosh
-        ;FIXME
-        ret
-
-        fdw     DINVERT_L
-DNEGATE_L:
-        .db     NFA|7, "dnegate"
 DNEGATE:
-        ;FIXME
+        rcall   SWOP        
         rcall   INVERT
-        jmp     ONEPLUS
-
-DABS_L:
-        .db     NFA|4,"dabs",0
-DABS:
-        rcall   DUP
-        jmp     QDNEGATE
-
-        fdw     NEGATE_L
-QDNEGATE_L:
-        .db     NFA|8, "?dnegate",0
-QDNEGATE:
-        ;FIXME
-        rcall   DINVERT
-        jmp     ONEPLUS
-
-DZEROEQUAL_L:
-        .db     NFA|3,"d0="
-DZEROEQUAL:
-        ; FIXME
-DZEROLESS_L:
-        .db     NFA|3,"d0<"
-DZEROLESS:
-        ;FIXME
+        rcall   SWOP
+        rcall   INVERT
+        rcall   ONE
+        jmp     MPLUS
 
 ;***************************************************
         fdw      PFLASH_L
