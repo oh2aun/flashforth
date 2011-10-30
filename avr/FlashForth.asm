@@ -55,8 +55,8 @@
   .def t2 = r18
   .def t3 = r19
 
-  .def il = r26
-  .def ih = r27
+  .def il = r18
+  .def ih = r19
   .def pl = r20
   .def ph = r21
 
@@ -573,6 +573,8 @@ QUERR3: rcall   asmemit
 #endif
 ;*******************************************************
 umstar0:
+		push	t2
+		push	t3
         movw t0, tosl
         poptos
         mul tosl,t0
@@ -593,11 +595,15 @@ umstar0:
         movw tosl, zl
         pushtos
         movw tosl, t2
+		pop		t3
+		pop		t2
         ret
 
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
+		push	t2
+		push 	t3
         movw t4, tosl
 
         ld t3, Y+
@@ -645,6 +651,8 @@ umslashmod3:
         ; put quotient on stack
         mov tosl, t1
         mov tosh, t2     ; 6 + 272 + 6 =284 cycles
+		pop		t3
+		pop		t2
         ret
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
@@ -674,6 +682,8 @@ IFILL_BUFFER:
 IFILL_BUFFER_1:
         ldi     t0, PAGESIZEB&(PAGESIZEB-1)
         movw    zl, ibase
+		push	xl
+		push	xh
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
@@ -681,24 +691,28 @@ IFILL_BUFFER_2:
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
+		pop		xh
+		pop		xl
         ret
 
 IWRITE_BUFFER:
         mov     zl, ibasel
         mov     zh, ibaseh
-        ldi     t3, (1<<PGERS) | (1<<SPMEN) ; Page erase
+        ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
-        ldi     t3, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
+        ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
         rcall   DO_SPM
 
         ; transfer data from RAM to Flash page buffer
+		push	xl
+		push	xh
         ldi     t0, low(PAGESIZEB);init loop variable
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IWRITE_BUFFER1:
         ld      r0, x+
         ld      r1, x+
-        ldi     t3, (1<<SPMEN)
+        ldi     t1, (1<<SPMEN)
         rcall   DO_SPM
         adiw    zl, 2
         subi    t0, 2
@@ -707,10 +721,10 @@ IWRITE_BUFFER1:
         ; execute page write
         subi    zl, low(PAGESIZEB) ;restore pointer
         sbci    zh, high(PAGESIZEB)
-        ldi     t3, (1<<PGWRT) | (1<<SPMEN)
+        ldi     t1, (1<<PGWRT) | (1<<SPMEN)
         rcall   DO_SPM
         ; re-enable the RWW section
-        ldi     t3, (1<<RWWSRE) | (1<<SPMEN)
+        ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
         rcall   DO_SPM
 #if 0
         ; read back and check, optional
@@ -725,26 +739,30 @@ IWRITE_BUFFER2:
         subi    t0, 1
         brne    IWRITE_BUFFER2
 #endif
+		pop		xh
+		pop		xl
+		clr		ibaseh
+        cbr     FLAGS1, idirty_m
         ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
-        lds     t0, SPMCSR
-        sbrs    t0, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+        lds     t7, SPMCSR
+        sbrs    t7, RWWSB ; If RWWSB is set, the RWW section is not ready yet
         ret
         ; re-enable the RWW section
-        ldi     t3, (1<<RWWSRE) | (1<<SPMEN)
+        ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
         rcall   DO_SPM
         rjmp    IWRITE_BUFFER3
 
 DO_SPM:
-        lds     t2, SPMCSR
-        sbrc    t2, SPMEN
+        lds     t7, SPMCSR
+        sbrc    t7, SPMEN
         rjmp    DO_SPM       ; Wait for previous write to complete
-        in      t2, SREG
+        in      t7, SREG
         cli
-        sts     SPMCSR, t3
+        sts     SPMCSR, t1
         spm
-        out     SREG, t2
+        out     SREG, t7
         ret
 
 ;***************************************************
@@ -791,14 +809,13 @@ NEQUAL2:
         breq    NEQUAL3
         call    TRUE_
         clr     il
-        clr     ih
         rjmp    NEQUAL4
 NEQUAL3:
-        sbiw    il, 0
+        subi    il, 0
         brne    NEQUAL4
         call    FALSE_
 NEQUAL4:
-        sbiw    il, 1
+        subi    il, 1
 		brpl	NEQUAL2
 		pop		ih
 		pop		il
@@ -858,7 +875,8 @@ SCAN1:
 		rcall	ONEMINUS
 		rjmp	SCAN4
 SCAN3:
-        sbiw    il, 1
+        subi    il, 1
+		sbci	ih, 0
         brpl    SCAN1
 SCAN4:
         pushtos
@@ -992,7 +1010,7 @@ ESTORE1:
         inc     tosl
         out     eearl, tosl
 
-        out     eedr, tosl
+        out     eedr, tosh
         sbi     eecr, eemwe
         sbi     eecr, eewe
 
@@ -1415,12 +1433,13 @@ WARM_2:
 ; init cold data to eeprom
         rcall   EMPTY
 
-
+#if 0
         rcall   DOLIT
         fdw     ONEPLUS
         rcall   COMMAXT
         call   SEMICOLON
         rcall   iflush
+#endif
 ; Init ms timer
 ; Init UART
         ; Set baud rate
@@ -1571,7 +1590,8 @@ TOS_TO_I:
         pop     zl
         push    ih
         push    il
-        movw    il, tosl
+        mov     il, tosl
+		mov		ih, tosh
         ld      tosl, Y+
         ld      tosh, Y+
         ijmp
@@ -1967,7 +1987,7 @@ ACC2:
         rcall   EMIT
         rcall   DUP
         rcall   DOLIT
-        fdw     BS_
+        .dw     BS_
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    ACC3
@@ -2012,7 +2032,8 @@ TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        sbiw    il, 1
+        subi    il, 1
+		sbci	ih, 0
         brpl    TYPE1       ; XNEXT
         pop     ih
         pop     il
@@ -2180,6 +2201,8 @@ PLUS:
 MPLUS_L:
         .db     NFA|2, "m+",0
 MPLUS:
+		push	t2
+		push	t3
         ld      t2, Y+
         ld      t3, Y+
         ld      t0, Y+
@@ -2192,6 +2215,8 @@ MPLUS:
         adc     tosh, t3
         st      -Y, t1
         st      -Y, t0
+		pop		t3
+		pop		t2
         ret
 
 
@@ -2724,7 +2749,8 @@ UDOTR:
 UDOTR1:
         rcall   NUM
 UDOTR2: 
-        sbiw    il, 1
+        subi    il, 1
+		sbci	ih, 0
         brpl    UDOTR1
         pop     ih
         pop     il
@@ -2931,7 +2957,8 @@ CMOVE1:
         rcall   PCSTORE
         rcall   PPLUS
 CMOVE2:
-        sbiw    il, 1
+        subi    il, 1
+		sbci	ih, 0
         brpl    CMOVE1
         pop     ih
         pop     il
@@ -3410,7 +3437,7 @@ ICOMMAXT:
         sbr     FLAGS2, fTAILC_m  ; Prevent tailjmp  optimisation
         rjmp    IPARSEWORD
 ICOMPILE:
-        sbrs    wflags, 5       ; Inline check
+;        sbrs    wflags, 5       ; Inline check
         rjmp    ICOMMAXT
         call    INLINE0
         rjmp    IPARSEWORD
@@ -3558,7 +3585,7 @@ DP_TO_EEPROM_2:
         call    CELL
         rcall   PNPLUS
 DP_TO_EEPROM_3:
-        sbiw    il, 1
+        subi    il, 1
         brpl    DP_TO_EEPROM_0
         pop     ih
         pop     il
@@ -3605,7 +3632,6 @@ QUIT1:
         call    MINUS
         call    ACCEPT
         call    SPACE_
-;		call    TYPE
         rcall   INTERPRET
         call    STATE_
         rcall   ZEROSENSE
@@ -3616,8 +3642,7 @@ QUIT1:
         .db     3," ok"
         call    TYPE
         rcall   PROMPT_
-        rjmp    QUIT0
-        ret
+        jmp     QUIT0
 
         fdw     QUIT_L
 PROMPT_L:
@@ -3796,7 +3821,7 @@ CREATE:
         rcall   COMMAXT_A       ; Append an exeution token
         call    ALIGN
         call    HERE            ; compiles the current dataspace dp into the dictionary
-        call    CSE
+        call    CSE_
         call    ZEROSENSE
         brne    CREATE2
         call    TWOPLUS
@@ -3907,7 +3932,8 @@ SEMICOLON_L:
 SEMICOLON:
         rcall   DOLIT_A   ; Compile a ret
         .dw     0x9508
-        jmp     ICOMMA
+        call    ICOMMA
+		jmp		LEFTBRACKET
 
 
         fdw     SEMICOLON_L
@@ -4033,7 +4059,7 @@ DOTID1:
         rcall   TO_PRINTABLE
         call    EMIT
 DOTID3:
-        sbiw    il, 1
+        subi    il, 1
         brpl    DOTID1  
         pop     il
         pop     ih
@@ -4142,7 +4168,7 @@ DUMP2:
         rcall   DOLIT_A
         .dw     2
         call    UDOTR
-        sbiw    il, 1
+        subi    il, 1
         brne    DUMP2
         pop     ih
         pop     il
@@ -4157,12 +4183,13 @@ DUMP4:
         call    CFETCHPP
         rcall   TO_PRINTABLE
         call    EMIT
-        sbiw    il, 1
+        subi    il, 1
         brne    DUMP4
         pop     ih
         pop     il
 DUMP7:
-        sbiw    il, 1
+        subi    il, 1
+		sbci	ih, 0
         brpl    DUMP1
         pop     ih
         pop     il
@@ -4321,7 +4348,7 @@ MEMQADDR_N:
 L_MEMQ:
         .db     NFA|1,"I"
 MEMQ:
-        call    CSE
+        call    CSE_
         call    DOLIT
         fdw     MEMQADDR_N
         call    PLUS
