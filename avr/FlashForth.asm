@@ -816,7 +816,7 @@ NEQUAL3:
         call    FALSE_
 NEQUAL4:
         subi    il, 1
-		brpl	NEQUAL2
+		brcc	NEQUAL2
 		pop		ih
 		pop		il
         rjmp    NEQUAL6
@@ -877,7 +877,7 @@ SCAN1:
 SCAN3:
         subi    il, 1
 		sbci	ih, 0
-        brpl    SCAN1
+        brcc    SCAN1
 SCAN4:
         pushtos
         movw    tosl, il
@@ -930,10 +930,10 @@ LITERAL:
         ldi     tosl, 0x9a      ; savettos
         ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
+		pushtos
         ldi     tosl, 0x8a      ; savettos
         ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
-        poptos
         rcall   DUP
         mov     tosh, tosl
         swap    tosh
@@ -942,7 +942,6 @@ LITERAL:
         ori     tosh, 0xe0
         ori     tosl, 0x80
         rcall   ICOMMA
-        poptos
         mov     tosl, tosh
         swap    tosh
         andi    tosh, 0xf
@@ -1431,15 +1430,15 @@ WARM_2:
         .dw     warmlitsize
         call    CMOVE
 ; init cold data to eeprom
-        rcall   EMPTY
-
-#if 0
         rcall   DOLIT
-        fdw     ONEPLUS
-        rcall   COMMAXT
-        call   SEMICOLON
-        rcall   iflush
-#endif
+        .dw     dp_start
+		rcall	FETCH
+        rcall   TRUE_
+        rcall	EQUAL
+		rcall	ZEROSENSE
+  		breq	WARM_3	
+        rcall   EMPTY
+WARM_3:
 ; Init ms timer
 ; Init UART
         ; Set baud rate
@@ -1633,7 +1632,7 @@ SPSTORE:
 RPEMPTY:
         pop     xh
         pop     xl
-        rcall   R0_
+        call    R0_
         rcall   FETCH
         out     spl, tosl
         out     sph, tosh
@@ -1797,7 +1796,7 @@ COMMAXT:
         rcall   MINUS
         rcall   ABS_ 
         rcall   DOLIT
-        .dw     0xffe
+        .dw     0xff0
         rcall   GREATER
         rcall   ZEROSENSE
         breq    STORECF1
@@ -1815,8 +1814,10 @@ STORECF1:
         rcall   IHERE
         rcall   MINUS
         call    TWOMINUS
+		call	TWOSLASH
         ;rcall   RCALL_
-        andi    tosh, 0xd0
+		andi	tosh, 0x0f
+        ori     tosh, 0xd0
         rcall   ICOMMA
 STORECF2:
         ret
@@ -2034,7 +2035,7 @@ TYPE1:
 TYPE2:
         subi    il, 1
 		sbci	ih, 0
-        brpl    TYPE1       ; XNEXT
+        brcc    TYPE1       ; XNEXT
         pop     ih
         pop     il
         jmp     DROP
@@ -2615,7 +2616,9 @@ MIN_L:
 MIN:    rcall   TWODUP
         rcall   GREATER
         rcall   ZEROSENSE
-        breq    min1
+		brne	pc+2
+		rjmp	min1
+;        breq    min1
         rcall   SWOP
 min1:   jmp     DROP
 
@@ -2751,7 +2754,7 @@ UDOTR1:
 UDOTR2: 
         subi    il, 1
 		sbci	ih, 0
-        brpl    UDOTR1
+        brcc    UDOTR1
         pop     ih
         pop     il
         rcall   NUMS
@@ -2959,7 +2962,7 @@ CMOVE1:
 CMOVE2:
         subi    il, 1
 		sbci	ih, 0
-        brpl    CMOVE1
+        brcc    CMOVE1
         pop     ih
         pop     il
         rcall   R_TO_P
@@ -3451,7 +3454,9 @@ INUMBER:
         rcall   STATE_
         rcall   ZEROSENSE
         breq    INUMBER1
-        sbrs    tosl, 1
+		mov		t0, tosl
+		poptos
+		sbrs    t0, 1
         rjmp    ISINGLE
 IDOUBLE:
         rcall   SWOP_A
@@ -3586,7 +3591,7 @@ DP_TO_EEPROM_2:
         rcall   PNPLUS
 DP_TO_EEPROM_3:
         subi    il, 1
-        brpl    DP_TO_EEPROM_0
+        brcc    DP_TO_EEPROM_0
         pop     ih
         pop     il
         rcall   R_TO_P
@@ -3844,7 +3849,7 @@ POSTPONE:
         breq    POSTPONE1
         call    LITERAL
         rcall   DOLIT_A
-        .dw     COMMAXT
+        fdw     COMMAXT
 POSTPONE1:
         jmp    COMMAXT
 
@@ -3881,10 +3886,10 @@ XDOES:
 DOES_L:
         .db     NFA|IMMED|COMPILE|5,"does>"
 DOES:   rcall   DOLIT_A
-        .dw     XDOES
+        fdw     XDOES
         rcall   COMMAXT_A
         rcall   DOLIT_A
-        .dw     DODOES
+        fdw     DODOES
         jmp     COMMAXT
 
 
@@ -4060,7 +4065,7 @@ DOTID1:
         call    EMIT
 DOTID3:
         subi    il, 1
-        brpl    DOTID1  
+        brcc    DOTID1  
         pop     il
         pop     ih
         jmp     DROP
@@ -4190,7 +4195,7 @@ DUMP4:
 DUMP7:
         subi    il, 1
 		sbci	ih, 0
-        brpl    DUMP1
+        brcc    DUMP1
         pop     ih
         pop     il
         jmp     DROP
@@ -4205,6 +4210,14 @@ IALLOT:
     
 
 ;***************************************************************
+DNEGATE:
+        rcall   SWOP        
+        rcall   INVERT
+        rcall   SWOP
+        rcall   INVERT
+        rcall   ONE
+        jmp     MPLUS
+
 ;;; ******************************************************
 
         fdw     DUMP_L
@@ -4214,6 +4227,159 @@ PFLASH_:
         rcall   DOCREATE_A
         .dw     PFLASH    
 
+;***************************************************************
+; check that the relative address is within reach of conditional branch
+; instructions and leave the clipped relative address on the stack
+; br?   ( rel-addr limit -- clipped-rel-addr)
+;       2dup 2/ swap
+;       abs > (qabort)
+;       and 2/ ;
+        fdw     PFLASH_L
+BRQ_L:
+        .db     NFA|3,"br?"
+BRQ:
+        call    TWODUP
+        call    TWOSLASH
+        rcall   SWOP_A          ; rel-addr limit limit' rel-addr
+        call    ABS_            ; rel-addr limit limit' rel-addr
+        call    GREATER
+        call    XSQUOTE
+        .db      3,"BR?"
+        rcall   QABORT         ;  ?RANGE ABORT if TRUE
+BRQ1:
+        call    AND_
+        jmp     TWOSLASH
+
+; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
+        .db     NFA|4,",?0=",0    ; Just for see to work !
+COMMAZEROSENSE:
+        sbrc    FLAGS1, idup
+        rjmp    COMMAZEROSENSE1
+        rcall   DOLIT_A
+        fdw     ZEROSENSE
+        rjmp    COMMAZEROSENSE2
+COMMAZEROSENSE1:
+        rcall   IDPMINUS
+        rcall   DOLIT_A
+        fdw     DUPZEROSENSE
+COMMAZEROSENSE2:
+        cbr     FLAGS1, idup_m
+        rjmp    INLINE0
+
+IDPMINUS:
+		rcall	DOLIT_A
+		.dw		-4
+		rjmp	IALLOT
+
+;		rjmp, ( rel-addr -- )
+RJMPC:
+		rcall	TWOSLASH
+		rcall	DOLIT_A
+		.dw		0x0FFF
+		rcall	AND_
+		rcall	DOLIT_A
+		.dw		0xc000
+		rcall	OR_
+		jmp		ICOMMA
+
+
+BRCCC:
+BREQC:
+		rcall	DOLIT_A
+		.dw		0xf009		; breq pc+2
+		jmp		ICOMMA
+BRNEC:
+		rcall	DOLIT_A
+		.dw		0xf409		; brne pc+2
+		jmp		ICOMMA
+
+; IF       -- adrs   conditional forward branch
+; Leaves address of branch instruction 
+; and compiles the condition byte
+		fdw		BRQ_L
+IF_L:
+		.db		NFA|IMMED|COMPILE|2,"if",0
+IF_:
+		rcall	COMMAZEROSENSE
+		rcall	BRNEC
+		rcall	IHERE
+		rcall	FALSE_
+		jmp		RJMPC			; Dummy, replaced by THEN with rjmp 
+
+; ELSE     adrs1 -- adrs2    branch for IF..ELSE
+; Leave adrs2 of bra instruction and store bz in adrs1
+; Leave adress of branch instruction and FALSE flag on stack
+		fdw		IF_L
+ELSE_L:
+		.db		NFA|IMMED|COMPILE|4,"else",0
+ELSE_:
+		rcall	IHERE
+		rcall	FALSE_
+		rcall	RJMPC
+		rcall	SWOP_A		; else-addr  if-addr 
+		jmp		THEN_
+
+; THEN     adrs  --        resolve forward branch
+		fdw		ELSE_L
+THEN_L:
+		.db		NFA|IMMED|COMPILE|4,"then",0
+THEN_:
+		rcall	IHERE
+		rcall	OVER
+		rcall	MINUS
+		rcall	TWOMINUS
+		rcall	TWOSLASH
+        rcall   DOLIT_A
+        .dw     0xc000      ;  back-addr mask 
+		rcall	OR_
+		rcall	SWOP_A
+		jmp		STORE
+
+; BEGIN    -- adrs        target for bwd. branch
+        fdw     THEN_L
+BEGIN_L:
+        .db     NFA|IMMED|COMPILE|5,"begin"
+BEGIN:
+        jmp     IHERE
+
+; UNTIL    adrs --   Branch bakwards if true
+        fdw     BEGIN_L
+UNTIL_L:
+        .db     NFA|IMMED|COMPILE|5,"until"
+UNTIL:
+		rcall	COMMAZEROSENSE
+		rcall	BRNEC
+UNTIL1:
+		rcall	IHERE
+		rcall	MINUS
+;		rcall	TWOMINUS
+		jmp		RJMPC
+
+; AGAIN    adrs --      uncond'l backward branch
+;   unconditional backward branch
+        fdw     UNTIL_L
+AGAIN_L:
+        .db     NFA|IMMED|COMPILE|5,"again"
+AGAIN_:
+        rjmp    UNTIL1
+
+; WHILE    addr1 -- addr2 addr1         branch for WHILE loop
+; addr1 : address of BEGIN
+; addr2 : address where to store bz instruction
+        fdw     AGAIN_L
+WHILE_L:
+        .db     NFA|IMMED|COMPILE|5,"while"
+WHILE_:
+        rcall   IF_
+        jmp     SWOP
+
+; REPEAT   addr2 addr1 --     resolve WHILE loop
+        fdw     WHILE_L
+REPEAT_L:
+        .db     NFA|IMMED|COMPILE|6,"repeat",0
+REPEAT_:
+        rcall   AGAIN_
+        jmp     THEN_
 
 L_INLINE:
 ; in, ( addr -- ) begin @+ dup $12 <> while i, repeat 2drop ;
@@ -4224,36 +4390,85 @@ INLINE0:
         call    FETCHPP
         call    DUP
         rcall   DOLIT_A
-        .dw     0x0012
+        .dw     0x9508
         call    NOTEQUAL
         call    ZEROSENSE
         breq    INLINE1
         call    ICOMMA
         rjmp    INLINE0
 INLINE1:
-        jmp    TWODROP
+        jmp     TWODROP
 
+; FOR   -- bc-addr bra-addr
+        fdw     REPEAT_L
+FOR_L:
+        .db     NFA|IMMED|COMPILE|3,"for"
+FOR:
+        rcall   DOLIT_A
+        fdw     TOS_TO_I
+        rcall   COMMAXT_A
+        rcall   IHERE
+        rcall   FALSE_
+        rcall   RJMPC
+        rcall   IHERE
+        jmp     SWOP
 
+; NEXT bra-addr bc-addr --
+        fdw     FOR_L
+NEXT_L:
+        .db     NFA|IMMED|COMPILE|4,"next", 0
+NEXT:
+        rcall   THEN_
+        rcall   DOLIT_A
+        fdw     XNEXT
+        rcall   INLINE0
 
-XNEXT_DEC:
-        ldd     t0, y+3
-        ldd     t1, y+4
-        subi    t0, 1        ; XNEXT
-        sbci    t1, 0
-        std     y+4, t1
-        std     y+3, t0 
+        rcall   UNTIL1
+
+        rcall   DOLIT_A
+        fdw     XNEXT1
+        jmp     INLINE0
+; (next) decrement top of return stack
+; Works only if inlined.
+XNEXT:  
+        subi    il, 1
+		sbci	ih, 0
+		brcs	pc+2
+		ret
+XNEXT1:
+        pop     ih
+        pop     il
         ret
 
-DNEGATE:
-        rcall   SWOP        
-        rcall   INVERT
-        rcall   SWOP
-        rcall   INVERT
-        rcall   ONE
-        jmp     MPLUS
+; leave clear top of return stack
+        fdw     NEXT_L
+LEAVE_L:
+        .db     NFA|INLINE|COMPILE|5,"leave"
+LEAVE:
+        clr     il
+        clr     ih
+        ret
+
+; RDROP compile a pop
+        fdw      LEAVE_L
+RDROP_L:
+        .db      NFA|INLINE|COMPILE|5,"rdrop"
+RDROP:
+        pop		t0
+		pop		t0
+        ret
+
+; Fetch loop index of for next.
+        fdw      RDROP_L
+II_L:
+        .db      NFA|COMPILE|1,"i"
+II:
+        pushtos
+		movw	 tosl, il
+        ret
 
 ;***************************************************
-        fdw      PFLASH_L
+        fdw      II_L
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
