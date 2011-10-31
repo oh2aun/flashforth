@@ -817,8 +817,8 @@ NEQUAL3:
 NEQUAL4:
         subi    il, 1
 		brcc	NEQUAL2
-		pop		ih
 		pop		il
+		pop		ih
         rjmp    NEQUAL6
 NEQUAL5:
         call    TRUE_
@@ -884,8 +884,8 @@ SCAN4:
         adiw    tosl, 1
         pop     t0
         pop     t0
-        pop     ih
         pop     il
+        pop     ih
         ret
 
 ; ei  ( -- )    Enable interrupts
@@ -2036,8 +2036,8 @@ TYPE2:
         subi    il, 1
 		sbci	ih, 0
         brcc    TYPE1       ; XNEXT
-        pop     ih
         pop     il
+        pop     ih
         jmp     DROP
 
 
@@ -2755,8 +2755,8 @@ UDOTR2:
         subi    il, 1
 		sbci	ih, 0
         brcc    UDOTR1
-        pop     ih
         pop     il
+        pop     ih
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -2963,8 +2963,8 @@ CMOVE2:
         subi    il, 1
 		sbci	ih, 0
         brcc    CMOVE1
-        pop     ih
         pop     il
+        pop     ih
         rcall   R_TO_P
         jmp     DROP
 
@@ -3592,8 +3592,8 @@ DP_TO_EEPROM_2:
 DP_TO_EEPROM_3:
         subi    il, 1
         brcc    DP_TO_EEPROM_0
-        pop     ih
         pop     il
+        pop     ih
         rcall   R_TO_P
         jmp     DROP
 
@@ -4175,8 +4175,8 @@ DUMP2:
         call    UDOTR
         subi    il, 1
         brne    DUMP2
-        pop     ih
         pop     il
+        pop     ih
 
         rcall   DOLIT_A
         .dw     16
@@ -4190,14 +4190,14 @@ DUMP4:
         call    EMIT
         subi    il, 1
         brne    DUMP4
-        pop     ih
         pop     il
+        pop     ih
 DUMP7:
         subi    il, 1
 		sbci	ih, 0
         brcc    DUMP1
-        pop     ih
         pop     il
+        pop     ih
         jmp     DROP
 
 ; IALLOT   n --    allocate n bytes in ROM
@@ -4352,7 +4352,7 @@ UNTIL:
 UNTIL1:
 		rcall	IHERE
 		rcall	MINUS
-;		rcall	TWOMINUS
+		rcall	TWOMINUS
 		jmp		RJMPC
 
 ; AGAIN    adrs --      uncond'l backward branch
@@ -4436,8 +4436,8 @@ XNEXT:
 		brcs	pc+2
 		ret
 XNEXT1:
-        pop     ih
         pop     il
+        pop     ih
         ret
 
 ; leave clear top of return stack
@@ -4467,8 +4467,24 @@ II:
 		movw	 tosl, il
         ret
 
+		fdw		II_L
+TEST_L:
+		.db		NFA|4,"test",0
+		call	TOS_TO_I
+		rjmp	TEST1
+TEST0:
+		call	CHARS
+TEST1:
+        subi    il, 1
+		sbci	ih, 0
+		brcs	TEST2
+		rjmp	TEST0
+TEST2:  	
+		pop		il
+		pop		ih
+		ret
 ;***************************************************
-        fdw      II_L
+        fdw      TEST_L
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
