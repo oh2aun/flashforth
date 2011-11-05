@@ -55,8 +55,6 @@
   .def t2 = r18
   .def t3 = r19
 
-  .def il = r18
-  .def ih = r19
   .def pl = r20
   .def ph = r21
 
@@ -573,8 +571,6 @@ QUERR3: rcall   asmemit
 #endif
 ;*******************************************************
 umstar0:
-		push	t2
-		push	t3
         movw t0, tosl
         poptos
         mul tosl,t0
@@ -595,15 +591,11 @@ umstar0:
         movw tosl, zl
         pushtos
         movw tosl, t2
-		pop		t3
-		pop		t2
         ret
 
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
-		push	t2
-		push 	t3
         movw t4, tosl
 
         ld t3, Y+
@@ -651,8 +643,6 @@ umslashmod3:
         ; put quotient on stack
         mov tosl, t1
         mov tosh, t2     ; 6 + 272 + 6 =284 cycles
-		pop		t3
-		pop		t2
         ret
 ; *******************************************************************
 ; Coded for max 256 byte pagesize !
@@ -812,7 +802,7 @@ NEQUAL2:
         rjmp    NEQUAL4
 NEQUAL3:
         rcall   RFETCH
-        rcall   ZEROEQUAL
+        rcall   ZEROSENSE
         brne    NEQUAL4
         call    FALSE_
 NEQUAL4:
@@ -4276,6 +4266,9 @@ RJMPC:
 
 
 BRCCC:
+		rcall	DOLIT_A
+		.dw		0xf008		; brcc pc+2
+		jmp		ICOMMA
 BREQC:
 		rcall	DOLIT_A
 		.dw		0xf009		; breq pc+2
@@ -4414,6 +4407,7 @@ NEXT:
         rcall   DOLIT_A
         fdw     XNEXT
         rcall   COMMAXT_A
+		rcall	BRCCC
 
         rcall   UNTIL1
 
@@ -4430,7 +4424,7 @@ XNEXT:
         push    xl
         push    xh
         ijmp
- 
+ 		ret
 XNEXT1:
         pop     t1
         pop     t0
@@ -4449,7 +4443,7 @@ LEAVE:
         clr     t1
         push    t0
         push    t1
-        ret
+        ijmp
 
 ; RDROP compile a pop
         fdw      LEAVE_L
@@ -4460,16 +4454,7 @@ RDROP:
 		pop		t0
         ret
 
-; Fetch loop index of for next.
-        fdw      RDROP_L
-II_L:
-        .db      NFA|COMPILE|1,"i"
-II:
-        pushtos
-		movw	 tosl, il
-        ret
-
-		fdw		II_L
+		fdw		RDROP_L
 TEST_L:
 		.db		NFA|4,"test",0
 		call	TOR
