@@ -800,7 +800,7 @@ NEQUAL:
         breq    NEQUAL5
         rcall   ONEMINUS
         rcall   CFETCHPP
-        rcall   TOS_TO_I
+        rcall   TOR
         rjmp    NEQUAL4
 NEQUAL2:
         rcall   NEQUALSFETCH
@@ -808,17 +808,18 @@ NEQUAL2:
         rcall   ZEROSENSE
         breq    NEQUAL3
         call    TRUE_
-        clr     il
+        call    LEAVE
         rjmp    NEQUAL4
 NEQUAL3:
-        subi    il, 0
+        rcall   RFETCH
+        rcall   ZEROEQUAL
         brne    NEQUAL4
         call    FALSE_
 NEQUAL4:
-        subi    il, 1
+        call    XNEXT
 		brcc	NEQUAL2
-		pop		il
-		pop		ih
+		pop		t1
+		pop		t0
         rjmp    NEQUAL6
 NEQUAL5:
         call    TRUE_
@@ -862,30 +863,24 @@ SKIP2:
 SCAN_L:
         .db     NFA|4,"scan",0
 SCAN:
-        rcall   SWOP
-        rcall   TOS_TO_I
+        rcall   STORE_P_TO_R
         rcall   TOR
         rjmp    SCAN3
 SCAN1:
         rcall   CFETCHPP
-        rcall   RFETCH
+        call    FETCH_P
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    SCAN3
 		rcall	ONEMINUS
 		rjmp	SCAN4
 SCAN3:
-        subi    il, 1
-		sbci	ih, 0
+        call    XNEXT
         brcc    SCAN1
 SCAN4:
-        pushtos
-        movw    tosl, il
-        adiw    tosl, 1
-        pop     t0
-        pop     t0
-        pop     il
-        pop     ih
+        rcall   RFROM
+        rcall   ONEPLUS
+        rcall   R_TO_P
         ret
 
 ; ei  ( -- )    Enable interrupts
@@ -1584,6 +1579,7 @@ DOCREATE:
         pop     zl
         ijmp
 
+#if 0
 TOS_TO_I:
         pop     zh
         pop     zl
@@ -1594,7 +1590,7 @@ TOS_TO_I:
         ld      tosl, Y+
         ld      tosh, Y+
         ijmp
-
+#endif
 ;;; Resolve the runtime action of the word created by using does>
 DODOES_L:
         .db     NFA|3, "(d)"
@@ -2027,17 +2023,16 @@ FCR:
 TYPE_L:
         .db     NFA|4,"type",0
 TYPE:
-        rcall   TOS_TO_I
+        rcall   TOR
         rjmp    TYPE2       ; XFOR
 TYPE1:  
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        subi    il, 1
-		sbci	ih, 0
-        brcc    TYPE1       ; XNEXT
-        pop     il
-        pop     ih
+        call    XNEXT
+        brcc    TYPE1
+        pop     t1
+        pop     t0
         jmp     DROP
 
 
@@ -2746,17 +2741,16 @@ UDOTR_L:
 UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
-        rcall   TOS_TO_I
+        rcall   TOR
         rcall   FALSE_
         rjmp    UDOTR2
 UDOTR1:
         rcall   NUM
 UDOTR2: 
-        subi    il, 1
-		sbci	ih, 0
+        rcall   XNEXT
         brcc    UDOTR1
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -2953,18 +2947,17 @@ CMOVE_L:
 CMOVE:
         rcall   SWOP
         rcall   STORE_P_TO_R
-        rcall   TOS_TO_I
+        rcall   TOR
         rjmp    CMOVE2
 CMOVE1:
         rcall   CFETCHPP
         rcall   PCSTORE
         rcall   PPLUS
 CMOVE2:
-        subi    il, 1
-		sbci	ih, 0
+        rcall   XNEXT
         brcc    CMOVE1
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         rcall   R_TO_P
         jmp     DROP
 
@@ -3573,7 +3566,7 @@ DP_TO_EEPROM:
         rcall   INI
         rcall   DOLIT_A
         .dw     5
-        rcall   TOS_TO_I
+        rcall   TOR
         rjmp    DP_TO_EEPROM_3
 DP_TO_EEPROM_0: 
         rcall   FETCHPP
@@ -3590,10 +3583,10 @@ DP_TO_EEPROM_2:
         call    CELL
         rcall   PNPLUS
 DP_TO_EEPROM_3:
-        subi    il, 1
+        rcall   XNEXT
         brcc    DP_TO_EEPROM_0
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         rcall   R_TO_P
         jmp     DROP
 
@@ -4057,17 +4050,17 @@ DOTID:
         rcall   DOLIT_A
         .dw     0x0f
         call    AND_
-        call    TOS_TO_I
+        call    TOR
         rjmp    DOTID3
 DOTID1:
         rcall   CFETCHPP
         rcall   TO_PRINTABLE
         call    EMIT
 DOTID3:
-        subi    il, 1
+        rcall   XNEXT
         brcc    DOTID1  
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         jmp     DROP
 
  ; >pr   c -- c      Filter a character to printable 7-bit ASCII
@@ -4154,7 +4147,7 @@ DUMP:
         rcall   DOLIT_A
         .dw     16
         call    USLASH
-        call    TOS_TO_I
+        call    TOR
         rjmp    DUMP7
 DUMP1:  
         rcall   CR
@@ -4167,37 +4160,36 @@ DUMP1:
         call    EMIT
         rcall   DOLIT_A
         .dw     16
-        call    TOS_TO_I
+        call    TOR
 DUMP2:
         rcall   CFETCHPP
         rcall   DOLIT_A
         .dw     2
         call    UDOTR
-        subi    il, 1
-        brne    DUMP2
-        pop     il
-        pop     ih
+        rcall   XNEXT
+        brcc    DUMP2
+        pop     t1
+        pop     t0
 
         rcall   DOLIT_A
         .dw     16
         call    MINUS
         rcall   DOLIT_A
         .dw     16
-        call    TOS_TO_I
+        call    TOR
 DUMP4:  
         call    CFETCHPP
         rcall   TO_PRINTABLE
         call    EMIT
-        subi    il, 1
-        brne    DUMP4
-        pop     il
-        pop     ih
+        rcall   XNEXT
+        brcc    DUMP4
+        pop     t1
+        pop     t0
 DUMP7:
-        subi    il, 1
-		sbci	ih, 0
+        rcall   XNEXT
         brcc    DUMP1
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         jmp     DROP
 
 ; IALLOT   n --    allocate n bytes in ROM
@@ -4405,7 +4397,7 @@ FOR_L:
         .db     NFA|IMMED|COMPILE|3,"for"
 FOR:
         rcall   DOLIT_A
-        fdw     TOS_TO_I
+        fdw     TOR
         rcall   COMMAXT_A
         rcall   IHERE
         rcall   FALSE_
@@ -4421,7 +4413,7 @@ NEXT:
         rcall   THEN_
         rcall   DOLIT_A
         fdw     XNEXT
-        rcall   INLINE0
+        rcall   COMMAXT_A
 
         rcall   UNTIL1
 
@@ -4429,24 +4421,34 @@ NEXT:
         fdw     XNEXT1
         jmp     INLINE0
 ; (next) decrement top of return stack
-; Works only if inlined.
 XNEXT:  
-        subi    il, 1
-		sbci	ih, 0
-		brcs	pc+2
-		ret
+        pop     zh
+        pop     zl
+        pop     xh
+        pop     xl
+        sbiw    xl, 1
+        push    xl
+        push    xh
+        ijmp
+ 
 XNEXT1:
-        pop     il
-        pop     ih
+        pop     t1
+        pop     t0
         ret
 
 ; leave clear top of return stack
         fdw     NEXT_L
 LEAVE_L:
-        .db     NFA|INLINE|COMPILE|5,"leave"
+        .db     NFA|COMPILE|5,"leave"
 LEAVE:
-        clr     il
-        clr     ih
+        pop     zh
+        pop     zl
+        pop     t1
+        pop     t0
+        clr     t0
+        clr     t1
+        push    t0
+        push    t1
         ret
 
 ; RDROP compile a pop
@@ -4454,7 +4456,7 @@ LEAVE:
 RDROP_L:
         .db      NFA|INLINE|COMPILE|5,"rdrop"
 RDROP:
-        pop		t0
+        pop		t1
 		pop		t0
         ret
 
@@ -4470,18 +4472,21 @@ II:
 		fdw		II_L
 TEST_L:
 		.db		NFA|4,"test",0
-		call	TOS_TO_I
+		call	TOR
 		rjmp	TEST1
 TEST0:
 		call	CHARS
 TEST1:
-        subi    il, 1
-		sbci	ih, 0
+        pop     xl
+        pop     xh
+        sbiw    xl, 1
+        push    xh
+        push    xl
 		brcs	TEST2
 		rjmp	TEST0
-TEST2:  	
-		pop		il
-		pop		ih
+TEST2:
+		pop		t0
+		pop		t0
 		ret
 ;***************************************************
         fdw      TEST_L
