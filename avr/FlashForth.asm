@@ -957,7 +957,7 @@ IRQ_SEMI_L:
 IRQ_SEMI:
         rcall   DOLIT
         fdw     irq_user_end
-        rcall   JMP__
+        ;rcall   JMP__
         jmp     LEFTBRACKET
 irq_user_end: ;DUMMY
 
@@ -1402,6 +1402,15 @@ ICCOMMA:
 LSHIFT_L:
         .db     NFA|6,"lshift",0
 LSHIFT:
+		movw 	zl, tosl
+		poptos
+LSHIFT1:
+		sbiw 	zl, 1
+		brmi 	LSHIFT2
+		lsl 	tosl
+		rol 	tosh
+		rjmp 	LSHIFT1
+LSHIFT2:
         ret
 
 ;   RSHIFT      x1 u -- x2
@@ -1409,15 +1418,22 @@ LSHIFT:
 RSHIFT_L:
         .db     NFA|6,"rshift",0
 RSHIFT:
+		movw 	zl, tosl
+		poptos
+RSHIFT1:
+		sbiw 	zl, 1
+		brmi 	RSHIFT2
+		lsr 	tosh
+		ror 	tosl
+		rjmp 	RSHIFT1
+RSHIFT2:
         ret
 
 ;*******************************************************
 ; Assembler
 ;*******************************************************
-
-JMP__:
-CALL__:
-RCALL__:
+; FIXME
+;*******************************************************
         
 
         fdw     RSHIFT_L
