@@ -11,7 +11,7 @@
 ; can flash their own flash memory.
 ;
 ; Copyright (C) 2011  Mikael Nordman
-;
+
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
 ; published by the Free Software Foundation.
@@ -141,7 +141,7 @@
 #define clock 16000000  ; 16 MHz 
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
-
+#define ms_value -(clock/1000)
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -280,47 +280,110 @@ dpdata:     .byte   2
 
 .cseg
 .org LARGEBOOTSTART
-
 RESET_:     jmp  WARM_
-INT0_:      jmp  RESET_FF
-INT1_:      jmp  RESET_FF
-INT2_:      jmp  RESET_FF
-INT3_:      jmp  RESET_FF
-INT4_:      jmp  RESET_FF
-INT5_:      jmp  RESET_FF
-INT6_:      jmp  RESET_FF
-INT7_:      jmp  RESET_FF
-TIMER2COMP_:   jmp RESET_FF
-TIMER2OVF_:    jmp RESET_FF
-TIMER1CAPT_:   jmp RESET_FF
-TIMER1COMPA_:  jmp RESET_FF
-TIMER1COMPB_:  jmp RESET_FF
-TIMER1OVF_:    jmp RESET_FF
-TIMER0COMP_:   jmp RESET_FF
-SPISTC_:       jmp RESET_FF
-USART0RX_:     jmp RESET_FF
-USART0UDRE_:   jmp RESET_FF
-USART0TX_:     jmp RESET_FF
-ADC_:          jmp RESET_FF
-EEREADY_:      jmp RESET_FF
-ANALOGCOMP_:   jmp RESET_FF
-TIMER1COMPC_:  jmp RESET_FF
-TIMER3CAPT_:   jmp RESET_FF
-TIMER3COMPA_:  jmp RESET_FF
-TIMER3COMPB_:  jmp RESET_FF
-TIMER3COMPC_:  jmp RESET_FF
-TIMER3OVF_:    jmp RESET_FF
-USART1RX_:     jmp RESET_FF
-USART1UDRE_:   jmp RESET_FF
-USART1TX_:     jmp RESET_FF
-TWI_:          jmp RESET_FF
-SPMREADY_:     jmp RESET_FF
+.org LARGEBOOTSTART + INT0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT2addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT3addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT4addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT5addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT6addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + INT7addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC2addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OVF2addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + ICP1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC1Aaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC1Baddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OVF1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OVF0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + SPIaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + URXC0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + UDRE0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + UTXC0addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + ADCCaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + ERDYaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + ACIaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC1Caddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + ICP3addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC3Aaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC3Baddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OC3Caddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + OVF3addr
+			rjmp TIMER3_ISR
+.org LARGEBOOTSTART + URXC1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + UDRE1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + UTXC1addr
+			rcall FF_ISR
+.org LARGEBOOTSTART + TWIaddr
+			rcall FF_ISR
+.org LARGEBOOTSTART + SPMRaddr
+			rcall FF_ISR
 
 
-RESET_FF:
-        jmp     RESET_FF        
 
+FF_ISR:
+		pop		zero
+		pop		zero
+		clr		zero
+		reti
+      
 
+TIMER3_ISR:
+		push	tosl
+		in_		tosl, SREG
+		push	tosl
+		push	tosh
+		ldi		tosl, low(ms_value)
+		ldi		tosh,	high(ms_value)
+		out_	TCNT3H, tosh
+		out_	TCNT3L, tosl
+		lds		tosl, ms_count
+		lds		tosh, ms_count+1
+		adiw	tosl, 1
+		sts		ms_count, tosl
+		sts		ms_count+1, tosh
+		pop		tosh
+		pop		tosl
+		out_	SREG, tosl
+		pop		tosl
+		reti
+
+RX1_ISR:
+		reti
+TX1_ISR:
+
+		reti
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 22
@@ -1424,7 +1487,17 @@ WARM_2:
   		breq	WARM_3	
         rcall   EMPTY
 WARM_3:
+; Move interrupts to boot flash section
+		ldi		t0, (1<<IVCE)
+		out_	MCUCR, r16
+		ldi 	t0, (1<<IVSEL)
+		out_ 	MCUCR, r16
+
 ; Init ms timer
+		ldi		t0, 1
+		out_	TCCR3B, t0
+		ldi		t0, (1<<TOIE3)
+		out_	ETIMSK, t0
 ; Init UART
         ; Set baud rate
         ldi     t0, 0
@@ -1437,6 +1510,8 @@ WARM_3:
         ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
+
+		sei
 
 		rcall	VER
 ; Init 
@@ -1454,16 +1529,16 @@ VER:
 ;;; Check parameter stack pointer
         .db     NFA|3,"sp?"
 check_sp:
-#if 0
         rcall   SPFETCH
+		call	R0_
+		rcall	FETCH
         call    S0
-        rcall   FETCH
-        call    TIB
+		rcall	FETCH
+        rcall   ONEPLUS
         rcall   WITHIN
         rcall   XSQUOTE
         .db     3,"SP?"
         call    QABORT
-#endif
         ret
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
@@ -1632,7 +1707,7 @@ RPEMPTY:
 FLASH_L:
 ROM_N:  
         .db     NFA|5,"flash"
-ROM:
+ROM_:
         clr     t0
         sts     cse, t0
         ret
@@ -2049,7 +2124,7 @@ SQUOTE:
         rcall   DOLIT
         fdw     XSQUOTE
         rcall   COMMAXT
-        rcall   ROM
+        rcall   ROM_
         rcall   CQUOTE
         jmp     FRAM
 
@@ -3532,7 +3607,7 @@ TOR_A:  jmp     TOR
         .db     NFA|1,"a"
 TEN:
         rcall   DOCREATE_A
-        .dw   10
+        .dw     10
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
 ;        .dw     link
@@ -3555,9 +3630,8 @@ DP_TO_EEPROM:
         rcall   STORE_P_TO_R
         rcall   INI
         rcall   DOLIT_A
-        .dw     5
+        .dw     4
         rcall   TOR
-        rjmp    DP_TO_EEPROM_3
 DP_TO_EEPROM_0: 
         rcall   FETCHPP
         call    DUP
@@ -3849,7 +3923,7 @@ IDP:
 ;link   set     $
         .db     NFA|7,"(does>)"
 XDOES:
-        rcall    RFROM
+        rcall   RFROM
         call    LATEST_
         rcall   FETCH_A
         rcall   NFATOCFA
@@ -3858,7 +3932,9 @@ XDOES:
         rcall   TOR_A
         rcall   IDP
         rcall   STORE_A
-        call    CALL__      ; Always stores a 4 byte call
+		lsl		tosl
+		rol		tosh
+        rcall   COMMAXT_A      ; Always stores a 4 byte call
         call    RFROM
         rcall   IDP
         jmp     STORE
@@ -4005,7 +4081,12 @@ INI:
 TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
-        jmp      ONE
+		pushtos
+		cli
+		lds		tosl, ms_count
+		lds		tosh, ms_count+1
+		sei
+        ret
 
         
 ; ms  +n --      Pause for n millisconds
@@ -4020,14 +4101,16 @@ MS_L:
         .db     NFA|2,"ms",0
 MS:
         rcall   TICKS
-        call    PLUS
+        rcall   PLUS
 MS1:    
         call    PAUSE
         rcall   DUP_A
         rcall   TICKS
-        call    MINUS
-        call    ZEROLESS
-        call    ZEROEQUAL
+        rcall   MINUS
+;		rcall	DOTS
+;		rcall	CR
+        rcall   ZEROLESS
+		rcall	ZEROSENSE
         breq    MS1
         jmp     DROP
 
@@ -4149,7 +4232,7 @@ DUMP1:
         .dw     ':'
         call    EMIT
         rcall   DOLIT_A
-        .dw     16
+        .dw     15
         call    TOR
 DUMP2:
         rcall   CFETCHPP
@@ -4165,7 +4248,7 @@ DUMP2:
         .dw     16
         call    MINUS
         rcall   DOLIT_A
-        .dw     16
+        .dw     15
         call    TOR
 DUMP4:  
         call    CFETCHPP
@@ -4508,11 +4591,10 @@ L_MARKER:
 lastword:
         .db     NFA|6,"marker",0
 MARKER:
-#if 0
-        call    ROM
+        call    ROM_
         rcall   CREATE
-        call    LIT
-        dw      dp_start
+        call    DOLIT_A
+        .dw     dp_start
         call    HERE
         call    TEN
         call    CMOVE
@@ -4523,9 +4605,8 @@ MARKER:
         call    DODOES
         rcall   INI
         call    TEN
-        goto    CMOVE
-#endif
-        ret
+        jmp     CMOVE
+
 
 L_DOTBASE:
         .db      NFA|1,"I"
