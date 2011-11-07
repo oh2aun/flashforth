@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          27.10.2011                                         *
-;    File Version:  0.0                                               *
+;    Date:          07.11.2011                                        *
+;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -162,9 +162,9 @@
 .equ fLOAD=   2           ; 256 mS Load sample available
 .equ fLOAD_m= 0x02
 .equ fFC=     1           ; 0=Flow Control, 1 = no Flow Control                       
-.equ fFc_m=   0x01
-.equ ixoff=   1
-.equ ixoff_m=0x02
+.equ fFc_m=   0x02
+.equ ixoff=   0
+.equ ixoff_m=0x01
 
 ; FLAGS1
 .equ noclear= 6     ; dont clear optimisation flags 
@@ -199,8 +199,10 @@
 .equ RAMPZV  = 1
 
 ;;; Sizes of the serial RX and TX character queues
-.equ rbuf_size= 4
-.equ tbuf_size= 4
+.equ rbuf0_size= 4
+.equ tbuf0_size= 4
+.equ rbuf1_size= 32
+.equ tbuf1_size= 4
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
@@ -242,19 +244,33 @@
 ;****************************************************
 .dseg
 ibuf:       .byte PAGESIZEB
-txqueue:
-tbuf_len:   .byte 2
-tbuf_wr:    .byte 2
-tbuf_rd:    .byte 2
-tbuf_lv:    .byte 2
-tbuf:       .byte tbuf_size
+txqueue0:
+tbuf0_len:   .byte 1
+tbuf0_wr:    .byte 1
+tbuf0_rd:    .byte 1
+tbuf0_lv:    .byte 1
+tbuf0:       .byte tbuf0_size
 
-rxqueue:
-rbuf_len:   .byte 2
-rbuf_wr:    .byte 2
-rbuf_rd:    .byte 2
-rbuf_lv:    .byte 2
-rbuf:       .byte rbuf_size
+rxqueue0:
+rbuf0_len:   .byte 1
+rbuf0_wr:    .byte 1
+rbuf0_rd:    .byte 1
+rbuf0_lv:    .byte 1
+rbuf0:       .byte rbuf0_size
+
+txqueue1:
+tbuf1_len:   .byte 1
+tbuf1_wr:    .byte 1
+tbuf1_rd:    .byte 1
+tbuf1_lv:    .byte 1
+tbuf1:       .byte tbuf1_size
+
+rxqueue1:
+rbuf1_len:   .byte 1
+rbuf1_wr:    .byte 1
+rbuf1_rd:    .byte 1
+rbuf1_lv:    .byte 1
+rbuf1:       .byte rbuf1_size
 
 ms_count:   .byte 2
 ;intcon1dbg: .byte 2
@@ -340,7 +356,7 @@ RESET_:     jmp  WARM_
 .org LARGEBOOTSTART + OVF3addr
 			rjmp TIMER3_ISR
 .org LARGEBOOTSTART + URXC1addr
-			rcall FF_ISR
+			rjmp RX1_ISR
 .org LARGEBOOTSTART + UDRE1addr
 			rcall FF_ISR
 .org LARGEBOOTSTART + UTXC1addr
@@ -360,27 +376,54 @@ FF_ISR:
       
 
 TIMER3_ISR:
-		push	tosl
-		in_		tosl, SREG
-		push	tosl
-		push	tosh
-		ldi		tosl, low(ms_value)
-		ldi		tosh,	high(ms_value)
-		out_	TCNT3H, tosh
-		out_	TCNT3L, tosl
-		lds		tosl, ms_count
-		lds		tosh, ms_count+1
-		adiw	tosl, 1
-		sts		ms_count, tosl
-		sts		ms_count+1, tosh
-		pop		tosh
-		pop		tosl
-		out_	SREG, tosl
-		pop		tosl
+		push	xl
+		in_		xl, SREG
+		push	xl
+		push	xh
+		ldi		xl, low(ms_value)
+		ldi		xh,	high(ms_value)
+		out_	TCNT3H, xh
+		out_	TCNT3L, xl
+		lds		xl, ms_count
+		lds		xh, ms_count+1
+		adiw	xl, 1
+		sts		ms_count, xl
+		sts		ms_count+1, xh
+ISR_RETI1:
+		pop		xh
+		pop		xl
+		out_	SREG, xl
+		pop		xl
 		reti
 
 RX1_ISR:
-		reti
+		push	xl
+		in_		xl, SREG
+		push	xl
+		push	xh
+		push	zl
+		push	zh
+
+		ldi		zl, low(rbuf1)
+		ldi		zh,	high(rbuf1)
+		lds		xl, rbuf1_wr
+		add		zl, xl
+		adc		zh, zero
+		lds		xh,	UDR1
+		st		z, xh
+		inc		xl
+		andi	xl, (rbuf1_size-1)
+		sts		rbuf1_wr, xl
+		lds		xl, rbuf1_lv
+		inc		xl
+		sts		rbuf1_lv, xl
+		cpi		xl, 2
+		brmi	RX1_ISR_SKIP_XOFF
+		rcall	XXOFF_TX1		
+RX1_ISR_SKIP_XOFF:
+		pop		zh
+		pop		zl
+		rjmp	ISR_RETI1
 TX1_ISR:
 
 		reti
@@ -560,32 +603,29 @@ RX1_:
         rcall   RX1Q
         call    ZEROSENSE
         breq    RX1_
+#if 0
         pushtos
         in_     tosl, UDR1
 		clr		tosh
         ret
-#if 0
-        rcall   PAUSE
-        rcall   QUERR
-        rcall   RX1Q
-        movf    Sminus, W, A
-        iorwf   Sminus, W, A
-        bz      RX1_
-
-        lfsr    Tptr, RXbuf
-        movf    RXtail, W, A
-        movff   TWrw, plusS    ;  Take a char from the buffer
-        clrf    plusS, A
-
-        bcf     INTCON, GIE, A
-
-        incf    RXtail, F, A
-        movlw   RXbufmask
-        andwf   RXtail, F, A
-        decf    RXcnt, F, A
-
-        bsf     INTCON, GIE, A
-        return
+#else
+		pushtos
+		ldi		zl, low(rbuf1)
+		ldi		zh,	high(rbuf1)
+		lds		xl, rbuf1_rd
+		add		zl, xl
+		adc		zh, zero
+		ld		tosl, z
+		clr		tosh
+		cli
+		inc		xl
+		andi	xl, (rbuf1_size-1)
+		sts		rbuf1_rd, xl
+		lds		xl, rbuf1_lv
+		dec		xl
+		sts		rbuf1_lv, xl
+		sei
+		ret
 #endif
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -593,26 +633,41 @@ RX1_:
 RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
+#if 0
         in_     t0, UCSR1A
         sbrs    t0, RXC1
         jmp     FALSE_
         jmp     TRUE_
-#if 0
-        rcall   BUSY
-        movf    RXcnt, W, A
-        movwf   plusS
-        bnz     RX1Q2
-        rcall   IDLE
-#ifdef FC_TYPE_SW
-        btfss   FLAGS2, fFC, A
-        rcall   XXON
-#endif
-#ifdef  HW_FC_CTS_PORT
-        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
-#endif
-RX1Q2:
-        clrf    plusS
-        return
+#else
+		lds		xl, rbuf1_lv
+		cpse	xl, zero
+		jmp		TRUE_
+		rcall	XXON_TX1
+		jmp		FALSE_
+
+XXON_TX1:
+        sbrs    FLAGS2, ixoff
+        ret		
+XXON_TX1_1:
+        in_     t0, UCSR1A
+        sbrs    t0, UDRE1
+        rjmp    XXON_TX1_1
+		ldi		t0, XON
+        out_    UDR1, t0
+		cbr		FLAGS2, (1<<ixoff)
+		ret
+
+XXOFF_TX1:
+        sbrc    FLAGS2, ixoff
+        ret		
+XXOFF_TX1_1:
+        in_     t0, UCSR1A
+        sbrs    t0, UDRE1
+        rjmp    XXOFF_TX1_1
+		ldi		t0, XOFF
+        out_    UDR1, t0
+		sbr		FLAGS2, (1<<ixoff)
+		ret
 #endif
 ;***************************************************
 ; ?UERR -- f    print message and ABORT if UART framing or overrun error occured
@@ -727,6 +782,7 @@ IUPDATEBUF:
         ret
 
 IFILL_BUFFER:
+		rcall	XXOFF_TX1_1
         rcall   IFLUSH
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
@@ -1520,15 +1576,16 @@ WARM_3:
         out_    UBRR1H, t0
         ldi     t0, ubrr0val
         out_    UBRR1L, t0
-        ; Enable receiver and transmitter
-        ldi     t0, (1<<RXEN1)|(1<<TXEN1)
+        ; Enable receiver and transmitter, rx1 interrupts
+        ldi     t0, (1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)
         out_    UCSR1B,t0
         ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
+		; Init rx1 interrupts
 
 		sei
-
+		rcall	XXON_TX1_1
 		rcall	VER
 ; Init 
         jmp     ABORT
@@ -1805,7 +1862,7 @@ CCOMMA:
 ; CELL     -- n                 size of one cell
         fdw     CCOMMA_L
 CELL_L:
-        .db     NFA|INLINE|4,"cell",0
+        .db     NFA|4,"cell",0
 CELL:
         pushtos
         ldi     tosl, 2
@@ -2021,7 +2078,7 @@ UMAX1:  jmp     DROP
 
         fdw     UMAX_L
 ONE_L:
-        .db     NFA|INLINE|1,"1"
+        .db     NFA|1,"1"
 ONE:
         pushtos
         ldi     tosl, 1
@@ -2130,6 +2187,7 @@ XSQUOTE:
         ror     tosl
         rcall   RFROM
         rcall   PLUS
+;		rcall	ONEPLUS
         rcall   TOR
         ret
 
@@ -2196,10 +2254,9 @@ SWOP:
 OVER_L:
         .db     NFA|4,"over",0
 OVER:
-        ldd     t0, y+0
-        ldd     t1, y+1
         pushtos
-        movw    tosl, t0
+        ldd     tosl, y+2
+        ldd     tosh, y+3
         ret
 
         fdw     OVER_L
@@ -3516,7 +3573,7 @@ ICOMMAXT:
 ICOMPILE:
 ;        sbrs    wflags, 5       ; Inline check
         rjmp    ICOMMAXT
-        call    INLINE0
+;        call    INLINE0
         rjmp    IPARSEWORD
 INUMBER: 
         cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
@@ -3672,7 +3729,7 @@ DP_TO_EEPROM_3:
 
         fdw     DOTSTATUS_L
 FALSE_L:
-        .db     NFA|INLINE|5,"false"
+        .db     NFA|5,"false"
 FALSE_:                     ; TOS is 0000 (FALSE)
         pushtos
         clr     tosl
@@ -3681,7 +3738,7 @@ FALSE_:                     ; TOS is 0000 (FALSE)
 
         fdw     FALSE_L
 TRUE_L:
-        .db     NFA|INLINE|4,"true",0
+        .db     NFA|4,"true",0
 TRUE_:                      ; TOS is ffff (TRUE)
         pushtos
         ser     tosl
@@ -3709,6 +3766,7 @@ QUIT1:
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         call    MINUS
         call    ACCEPT
+		call	XXOFF_TX1_1
         call    SPACE_
         rcall   INTERPRET
         call    STATE_
