@@ -160,27 +160,17 @@
 
 ; FLAGS2
 .equ fLOAD=   2           ; 256 mS Load sample available
-.equ fLOAD_m= 0x02
 .equ fFC=     1           ; 0=Flow Control, 1 = no Flow Control                       
-.equ fFc_m=   0x02
 .equ ixoff=   0
-.equ ixoff_m=0x01
 
 ; FLAGS1
 .equ noclear= 6     ; dont clear optimisation flags 
-.equ noclear_m=0x40
 .equ idup=    5     ; Use dupzeroequal instead of zeroequal
-.equ idup_m=  0x20
 .equ izeroeq= 4     ; Use brne instead of breq if zeroequal
-.equ izeroeq_m=0x10
 .equ istream= 3
-.equ istream_m= 0x08
-.equ fLOCK=     2
-.equ fLOCK_m=   0x04
-.equ fTAILC=    1
-.equ fTAILC_m=  0x02
+.equ fLOCK=   2
+.equ fTAILC=  1
 .equ idirty=  0
-.equ idirty_m=0x01
 
 ;;; For Flow Control
 .equ XON=   0x11
@@ -201,7 +191,7 @@
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf0_size= 4
 .equ tbuf0_size= 4
-.equ rbuf1_size= 32
+.equ rbuf1_size= 64
 .equ tbuf1_size= 4
 
 ;;; USER AREA for the OPERATOR task
@@ -211,22 +201,23 @@
 .equ utibsize=     82         ; 82 character Terminal Input buffer
 
 ;;; User variables and area
-.equ us0=          - 30         ; Start of parameter stack
-.equ ur0=          - 28         ; Start of ret stack
-.equ uemit=        - 26         ; User EMIT vector
-.equ ukey=         - 24         ; User KEY vector
-.equ ukeyq=        - 22         ; User KEY? vector
-.equ ulink=        - 20         ; Task link
-.equ ubase=        - 18         ; Number Base
-.equ utib=         - 16         ; TIB address
-.equ utask=        - 14         ; Task area pointer
-.equ ustatus=      - 12
-.equ uflg=         - 11
-.equ ursave=       - 10         ; Saved ret stack pointer
-.equ ussave=       - 8          ; Saved parameter stack pointer
-.equ usource=      - 6          ; Two cells
-.equ utoin=        - 2          ; Input stream
-.equ uhp=            0          ; Hold pointer
+.equ us0=          -32         ; Start of parameter stack
+.equ ur0=          -30         ; Start of ret stack
+.equ uemit=        -28         ; User EMIT vector
+.equ ukey=         -26         ; User KEY vector
+.equ ukeyq=        -24         ; User KEY? vector
+.equ ulink=        -22         ; Task link
+.equ ubase=        -20         ; Number Base
+.equ utib=         -18         ; TIB address
+.equ utask=        -16         ; Task area pointer
+.equ ustatus=      -14
+.equ uflg=         -13
+.equ ursave=       -12         ; Saved ret stack pointer
+.equ ussave=       -10         ; Saved parameter stack pointer
+.equ upsave=       -8
+.equ usource=      -6          ; Two cells
+.equ utoin=        -2          ; Input stream
+.equ uhp=           0          ; Hold pointer
 
 
 ;;; Variables in EEPROM
@@ -245,14 +236,14 @@
 .dseg
 ibuf:       .byte PAGESIZEB
 txqueue0:
-tbuf0_len:   .byte 1
+;tbuf0_len:   .byte 1
 tbuf0_wr:    .byte 1
 tbuf0_rd:    .byte 1
 tbuf0_lv:    .byte 1
 tbuf0:       .byte tbuf0_size
 
 rxqueue0:
-rbuf0_len:   .byte 1
+;rbuf0_len:   .byte 1
 rbuf0_wr:    .byte 1
 rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
@@ -541,58 +532,6 @@ TX1_:
         out_    UDR1, tosl
         poptos
         ret
-#if 0
-#if TX1_BUF_SIZE == 0
-        btfss   PIR1, TXIF, A
-        bra     TX1_LOOP
-        rcall   TX1_SEND
-        bra     PAUSE          ; Pause during a character is sent out
-TX1_LOOP:
-        rcall   IDLE
-        rcall   PAUSE
-        btfss   PIR1, TXIF, A
-        bra     TX1_LOOP       ; Dont pause if paused before sending.
-TX1_SEND:
-        rcall   BUSY
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-#ifndef USE_8BIT_ASCII
-        andlw   h'7f'
-#endif
-        movwf   TXREG, A
-        return
-
-#else
-        rcall   PAUSE                   ; Try other tasks
-;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
-        TX_FULL_BIT TX1_BUF_SIZE
-        bra     TX1_2
-        rcall   IDLE
-        bra     TX1_
-        
-TX1_2:
-        rcall   BUSY
-        movf    Sminus, W
-#ifndef USE_8BIT_ASCII
-        movlw   h'7f'
-        andwf   Srw, F, A
-#endif
-        lfsr    Tptr, TXbuf
-        movf    TXhead, W, A
-        movff   Sminus, TWrw
-        
-        bcf     INTCON, GIE, A
-
-        incf    TXhead, F, A
-        movlw   TXbufmask
-        andwf   TXhead, F, A
-        incf    TXcnt, F, A
-
-        bsf     INTCON, GIE, A  ; Enable interrupts
-        bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
-        return
-#endif
-#endif
 ;***************************************************
 ; RX1    -- c    get character from the serial line
         fdw(TX1_L)
@@ -851,7 +790,7 @@ IWRITE_BUFFER2:
 		pop		xh
 		pop		xl
 		clr		ibaseh
-        cbr     FLAGS1, idirty_m
+        cbr     FLAGS1, (1<<idirty)
         ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
@@ -1018,7 +957,7 @@ IRQ_SEMI:
 irq_user_end: ;DUMMY
 
 ; IRQ   --      VALUE for the interrupt vector
-        fdw     IRQ_SEMI_L
+        fdw     DI_L
 IRQ_V_L:
         .db     NFA|3,"irq"
 IRQ_V:
@@ -1064,6 +1003,7 @@ LITERALruntime:
 
 ;*****************************************************************
 ISTORE:
+		rcall	LOCKEDQ
         movw    iaddr, tos
         rcall   IUPDATEBUF
         poptos
@@ -1075,7 +1015,7 @@ ISTORE:
         st      x+, tosl
         st      x+, tosh
         poptos
-        sbr     FLAGS1, idirty_m
+        sbr     FLAGS1, (1<<idirty)
         ret
 
         fdw     LITERAL_L
@@ -1096,6 +1036,7 @@ STORE_RAM:
         ret
 
 ESTORE:
+		rcall	LOCKEDQ
         sbic    eecr, eewe
         rjmp    ESTORE
         out     eearl, tosl
@@ -1119,7 +1060,15 @@ ESTORE1:
 
         poptos
         ret
-
+LOCKEDQ:
+		sbrs	FLAGS1, fLOCK
+		ret
+        call    DOTS
+        rcall   XSQUOTE
+        .db     3,"AD?"
+        rcall   TYPE
+        rjmp    STARTQ2        ; goto    ABORT
+		
 ;***********************************************************
 IFETCH:
         movw    z, tos
@@ -1217,6 +1166,7 @@ ECFETCH:
         ret
 
 ICSTORE:
+		rcall	LOCKEDQ
         movw    iaddr, tos
         rcall   IUPDATEBUF
         poptos
@@ -1227,7 +1177,7 @@ ICSTORE:
         add     xl, t0
         st      x+, tosl
         poptos
-        sbr     FLAGS1, idirty_m
+        sbr     FLAGS1, (1<<idirty)
         ret
 
         fdw     CFETCH_L
@@ -1247,6 +1197,7 @@ CSTORE_RAM:
         ret
 
 ECSTORE:
+		rcall	LOCKEDQ
         sbic    eecr, eewe
         rjmp    ECSTORE
         out     eearl, tosl
@@ -1262,28 +1213,28 @@ ECSTORE:
         fdw     CSTORE_L
 FLOCK_L:
         .db     NFA|3,"fl-"
-        sbr     FLAGS1, fLOCK_m
+        sbr     FLAGS1, (1<<fLOCK)
         ret
 
 ;;; Enable writes to flash and eeprom
         fdw     FLOCK_L
 FUNLOCK_L:
         .db     NFA|3,"fl+"
-        cbr     FLAGS1, fLOCK_m
+        cbr     FLAGS1, (1<<fLOCK)
         ret
 
 ;;; Enable flow control
         fdw     FUNLOCK_L
 FCON_L:
         .db     NFA|3,"u1+"
-        cbr     FLAGS2, fFC_m
+        cbr     FLAGS2, (1<<fFC)
         ret
 
 ;;; Disable flow control
         fdw     FCON_L
 FCOFF_L:
         .db     NFA|3,"u1-"
-        sbr     FLAGS2, fFC_m
+        sbr     FLAGS2, (1<<fFC)
         ret
 
 ;;; Clear watchdog timer
@@ -1323,11 +1274,12 @@ IS_L:
 IS:
         call    TICK
         rcall   TWOPLUS
+        rcall   TWOPLUS
         rcall   FETCH
         call    STATE_
         rcall   ZEROSENSE
         breq    IS1
-        rcall   DOLIT
+        rcall   LITERAL
         rcall   DOLIT
         fdw     STORE
         rcall   COMMAXT
@@ -1352,12 +1304,34 @@ TURNKEY:
 
 ;;; *******************************************************
 ; PAUSE  --     switch task
-;;;  38 us @ 12 MHz, 11,4 us @ 40 Mhz  9us at 48 Mhz  ( with 4 cells on return stack )
-;;; save stack to current uarea, link -> up, restore stack
         fdw     TURNKEY_L
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
+        ret
+        movw    zl, upl
+        sbiw    zl, -ursave
+        in      t0, spl
+        st      z+, t0
+        in      t0, sph
+        st      z+, t0
+        st      z+, yl
+        st      z+, yh
+        st      z+, pl
+        st      z+, ph
+        sbiw    zl, (usource-ulink)
+        ld      xl, z+
+        ld      xh, z+
+        movw    upl, xl
+        sbiw    xl, -ursave
+        ld      t0, x+
+        out     spl, t0
+        ld      t0, x+
+        out     sph, t0
+        ld      yl, x+
+        ld      yh, x+
+        ld      pl, x+
+        ld      ph, x+
         ret
 
 
@@ -1366,14 +1340,14 @@ XXOFF:
         sbrc    FLAGS2, ixoff
         ret
 XXXOFF: 
-        sbr     FLAGS2, ixoff_m
+        sbr     FLAGS2, (1<<ixoff)
         ldi     t0, XOFF
         rjmp    asmemit
 XXON:
         sbrs    FLAGS2, ixoff
         ret
 XXXON:  
-        cbr     FLAGS2, ixoff_m
+        cbr     FLAGS2, (1<<ixoff)
         ldi     t0, XON
         rjmp    asmemit
 #endif
@@ -1588,6 +1562,7 @@ WARM_3:
 		rcall	XXON_TX1_1
 		rcall	VER
 ; Init 
+STARTQ2:
         jmp     ABORT
 ;*******************************************************
         fdw     WARM_L
@@ -3032,7 +3007,7 @@ BSLASH:
         rcall   SOURCE
         rcall   TOIN
         rcall   STORE_A
-        sbr     FLAGS1, noclear ; dont clear flags in case of \
+        sbr     FLAGS1, (1<<noclear)  ; dont clear flags in case of \
         jmp     DROP
 
 ; PARSE  char -- c-addr u
@@ -3538,37 +3513,37 @@ IPARSEWORD1:
         .db     10,"COMPILING?",0
         rcall   QABORT
 IEXECUTE:
-        cbr     FLAGS1, noclear_m
+        cbr     FLAGS1, (1<<noclear)
         call    EXECUTE
         sbrc    FLAGS1, noclear ;  set by \ and by (
         rjmp    IPARSEWORD
-        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
-        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
+        cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
         rjmp    IPARSEWORD
 ICOMPILE_1:
-        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
+        cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
         rcall   DUP_A
         rcall   DOLIT_A
         fdw     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    ICOMPILE_2
-        sbr     FLAGS1, izeroeq_m ; Mark 0= encountered in compilation
+        sbr     FLAGS1, (1<<izeroeq) ; Mark 0= encountered in compilation
         rjmp    ICOMMAXT
 ICOMPILE_2:
-        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
         rcall   DUP_A
         rcall   DOLIT_A
         fdw     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    ICOMPILE
-        sbr     FLAGS1, idup_m    ; Mark DUP encountered during compilation
+        sbr     FLAGS1, (1<<idup)    ; Mark DUP encountered during compilation
 ICOMMAXT:
         rcall   COMMAXT_A
-        cbr     FLAGS2, fTAILC_m  ; Allow tailjmp  optimisation
-        sbrc    wflags, 4       ; Compile only ?
-        sbr     FLAGS2, fTAILC_m  ; Prevent tailjmp  optimisation
+        cbr     FLAGS2, (1<<fTAILC)  ; Allow tailjmp  optimisation
+        sbrc    wflags, 4            ; Compile only ?
+        sbr     FLAGS2, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rjmp    IPARSEWORD
 ICOMPILE:
 ;        sbrs    wflags, 5       ; Inline check
@@ -3576,8 +3551,8 @@ ICOMPILE:
 ;        call    INLINE0
         rjmp    IPARSEWORD
 INUMBER: 
-        cbr     FLAGS1, izeroeq_m ; Clear 0= encountered in compilation
-        cbr     FLAGS1, idup_m    ; Clear DUP encountered in compilation
+        cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
+        cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
         call    DROP
         rcall   NUMBERQ
         rcall   DUPZEROSENSE
@@ -3861,7 +3836,7 @@ PAREN:
         rcall   DOLIT_A
         .dw     ')'
         rcall   PARSE
-        sbr     FLAGS1, noclear_m ; dont clear flags in case of (
+        sbr     FLAGS1, (1<<noclear) ; dont clear flags in case of (
         jmp     TWODROP
 
 ; IHERE    -- a-addr    ret Code dictionary ptr
@@ -4402,7 +4377,7 @@ COMMAZEROSENSE1:
         rcall   DOLIT_A
         fdw     DUPZEROSENSE
 COMMAZEROSENSE2:
-        cbr     FLAGS1, idup_m
+        cbr     FLAGS1, (1<<idup)
         rjmp    INLINE0
 
 IDPMINUS:
