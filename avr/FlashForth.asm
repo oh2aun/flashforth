@@ -289,135 +289,135 @@ dpdata:     .byte   2
 .org LARGEBOOTSTART
 RESET_:     jmp  WARM_
 .org LARGEBOOTSTART + INT0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT1addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT2addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT3addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT4addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT5addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT6addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + INT7addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC2addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OVF2addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + ICP1addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC1Aaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC1Baddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OVF1addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OVF0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + SPIaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + URXC0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + UDRE0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + UTXC0addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + ADCCaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + ERDYaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + ACIaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC1Caddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + ICP3addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC3Aaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC3Baddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OC3Caddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + OVF3addr
-			rjmp TIMER3_ISR
+            rjmp TIMER3_ISR
 .org LARGEBOOTSTART + URXC1addr
-			rjmp RX1_ISR
+            rjmp RX1_ISR
 .org LARGEBOOTSTART + UDRE1addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + UTXC1addr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + TWIaddr
-			rcall FF_ISR
+            rcall FF_ISR
 .org LARGEBOOTSTART + SPMRaddr
-			rcall FF_ISR
+            rcall FF_ISR
 
 
 
 FF_ISR:
-		pop		zero
-		pop		zero
-		clr		zero
-		reti
+        pop     zero
+        pop     zero
+        clr     zero
+        reti
       
 
 TIMER3_ISR:
-		push	xl
-		in_		xl, SREG
-		push	xl
-		push	xh
-		ldi		xl, low(ms_value)
-		ldi		xh,	high(ms_value)
-		out_	TCNT3H, xh
-		out_	TCNT3L, xl
-		lds		xl, ms_count
-		lds		xh, ms_count+1
-		adiw	xl, 1
-		sts		ms_count, xl
-		sts		ms_count+1, xh
+        push    xl
+        in_     xl, SREG
+        push    xl
+        push    xh
+        ldi     xl, low(ms_value)
+        ldi     xh, high(ms_value)
+        out_    TCNT3H, xh
+        out_    TCNT3L, xl
+        lds     xl, ms_count
+        lds     xh, ms_count+1
+        adiw    xl, 1
+        sts     ms_count, xl
+        sts     ms_count+1, xh
 ISR_RETI1:
-		pop		xh
-		pop		xl
-		out_	SREG, xl
-		pop		xl
-		reti
+        pop     xh
+        pop     xl
+        out_    SREG, xl
+        pop     xl
+        reti
 
 RX1_ISR:
-		push	xl
-		in_		xl, SREG
-		push	xl
-		push	xh
-		push	zl
-		push	zh
+        push    xl
+        in_     xl, SREG
+        push    xl
+        push    xh
+        push    zl
+        push    zh
 
-		ldi		zl, low(rbuf1)
-		ldi		zh,	high(rbuf1)
-		lds		xl, rbuf1_wr
-		add		zl, xl
-		adc		zh, zero
-		lds		xh,	UDR1
-		st		z, xh
-		inc		xl
-		andi	xl, (rbuf1_size-1)
-		sts		rbuf1_wr, xl
-		lds		xl, rbuf1_lv
-		inc		xl
-		sts		rbuf1_lv, xl
-		cpi		xl, 2
-		brmi	RX1_ISR_SKIP_XOFF
-		rcall	XXOFF_TX1		
+        ldi     zl, low(rbuf1)
+        ldi     zh, high(rbuf1)
+        lds     xl, rbuf1_wr
+        add     zl, xl
+        adc     zh, zero
+        lds     xh, UDR1
+        st      z, xh
+        inc     xl
+        andi    xl, (rbuf1_size-1)
+        sts     rbuf1_wr, xl
+        lds     xl, rbuf1_lv
+        inc     xl
+        sts     rbuf1_lv, xl
+        cpi     xl, 2
+        brmi    RX1_ISR_SKIP_XOFF
+        rcall   XXOFF_TX1       
 RX1_ISR_SKIP_XOFF:
-		pop		zh
-		pop		zl
-		rjmp	ISR_RETI1
+        pop     zh
+        pop     zl
+        rjmp    ISR_RETI1
 TX1_ISR:
 
-		reti
+        reti
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 22
@@ -545,26 +545,26 @@ RX1_:
 #if 0
         pushtos
         in_     tosl, UDR1
-		clr		tosh
+        clr     tosh
         ret
 #else
-		pushtos
-		ldi		zl, low(rbuf1)
-		ldi		zh,	high(rbuf1)
-		lds		xl, rbuf1_rd
-		add		zl, xl
-		adc		zh, zero
-		ld		tosl, z
-		clr		tosh
-		cli
-		inc		xl
-		andi	xl, (rbuf1_size-1)
-		sts		rbuf1_rd, xl
-		lds		xl, rbuf1_lv
-		dec		xl
-		sts		rbuf1_lv, xl
-		sei
-		ret
+        pushtos
+        ldi     zl, low(rbuf1)
+        ldi     zh, high(rbuf1)
+        lds     xl, rbuf1_rd
+        add     zl, xl
+        adc     zh, zero
+        ld      tosl, z
+        clr     tosh
+        cli
+        inc     xl
+        andi    xl, (rbuf1_size-1)
+        sts     rbuf1_rd, xl
+        lds     xl, rbuf1_lv
+        dec     xl
+        sts     rbuf1_lv, xl
+        sei
+        ret
 #endif
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -578,35 +578,35 @@ RX1Q:
         jmp     FALSE_
         jmp     TRUE_
 #else
-		lds		xl, rbuf1_lv
-		cpse	xl, zero
-		jmp		TRUE_
-		rcall	XXON_TX1
-		jmp		FALSE_
+        lds     xl, rbuf1_lv
+        cpse    xl, zero
+        jmp     TRUE_
+        rcall   XXON_TX1
+        jmp     FALSE_
 
 XXON_TX1:
         sbrs    FLAGS2, ixoff
-        ret		
+        ret     
 XXON_TX1_1:
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
         rjmp    XXON_TX1_1
-		ldi		t0, XON
+        ldi     t0, XON
         out_    UDR1, t0
-		cbr		FLAGS2, (1<<ixoff)
-		ret
+        cbr     FLAGS2, (1<<ixoff)
+        ret
 
 XXOFF_TX1:
         sbrc    FLAGS2, ixoff
-        ret		
+        ret     
 XXOFF_TX1_1:
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
         rjmp    XXOFF_TX1_1
-		ldi		t0, XOFF
+        ldi     t0, XOFF
         out_    UDR1, t0
-		sbr		FLAGS2, (1<<ixoff)
-		ret
+        sbr     FLAGS2, (1<<ixoff)
+        ret
 #endif
 ;***************************************************
 ; ?UERR -- f    print message and ABORT if UART framing or overrun error occured
@@ -721,7 +721,7 @@ IUPDATEBUF:
         ret
 
 IFILL_BUFFER:
-		rcall	XXOFF_TX1_1
+        rcall   XXOFF_TX1_1
         rcall   IFLUSH
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
@@ -730,8 +730,8 @@ IFILL_BUFFER:
 IFILL_BUFFER_1:
         ldi     t0, PAGESIZEB&(PAGESIZEB-1)
         movw    zl, ibase
-		push	xl
-		push	xh
+        push    xl
+        push    xh
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
@@ -739,8 +739,8 @@ IFILL_BUFFER_2:
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
-		pop		xh
-		pop		xl
+        pop     xh
+        pop     xl
         ret
 
 IWRITE_BUFFER:
@@ -752,8 +752,8 @@ IWRITE_BUFFER:
         rcall   DO_SPM
 
         ; transfer data from RAM to Flash page buffer
-		push	xl
-		push	xh
+        push    xl
+        push    xh
         ldi     t0, low(PAGESIZEB);init loop variable
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
@@ -787,9 +787,9 @@ IWRITE_BUFFER2:
         subi    t0, 1
         brne    IWRITE_BUFFER2
 #endif
-		pop		xh
-		pop		xl
-		clr		ibaseh
+        pop     xh
+        pop     xl
+        clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
         ; ret to RWW section
         ; verify that RWW section is safe to read
@@ -865,9 +865,9 @@ NEQUAL3:
         call    FALSE_
 NEQUAL4:
         call    XNEXT
-		brcc	NEQUAL2
-		pop		t1
-		pop		t0
+        brcc    NEQUAL2
+        pop     t1
+        pop     t0
         rjmp    NEQUAL6
 NEQUAL5:
         call    TRUE_
@@ -920,8 +920,8 @@ SCAN1:
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    SCAN3
-		rcall	ONEMINUS
-		rjmp	SCAN4
+        rcall   ONEMINUS
+        rjmp    SCAN4
 SCAN3:
         call    XNEXT
         brcc    SCAN1
@@ -973,7 +973,7 @@ LITERAL:
         ldi     tosl, 0x9a      ; savettos
         ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
-		pushtos
+        pushtos
         ldi     tosl, 0x8a      ; savettos
         ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
@@ -1003,7 +1003,7 @@ LITERALruntime:
 
 ;*****************************************************************
 ISTORE:
-		rcall	LOCKEDQ
+        rcall   LOCKEDQ
         movw    iaddr, tos
         rcall   IUPDATEBUF
         poptos
@@ -1036,7 +1036,7 @@ STORE_RAM:
         ret
 
 ESTORE:
-		rcall	LOCKEDQ
+        rcall   LOCKEDQ
         sbic    eecr, eewe
         rjmp    ESTORE
         out     eearl, tosl
@@ -1061,14 +1061,14 @@ ESTORE1:
         poptos
         ret
 LOCKEDQ:
-		sbrs	FLAGS1, fLOCK
-		ret
+        sbrs    FLAGS1, fLOCK
+        ret
         call    DOTS
         rcall   XSQUOTE
         .db     3,"AD?"
         rcall   TYPE
         rjmp    STARTQ2        ; goto    ABORT
-		
+        
 ;***********************************************************
 IFETCH:
         movw    z, tos
@@ -1166,7 +1166,7 @@ ECFETCH:
         ret
 
 ICSTORE:
-		rcall	LOCKEDQ
+        rcall   LOCKEDQ
         movw    iaddr, tos
         rcall   IUPDATEBUF
         poptos
@@ -1197,7 +1197,7 @@ CSTORE_RAM:
         ret
 
 ECSTORE:
-		rcall	LOCKEDQ
+        rcall   LOCKEDQ
         sbic    eecr, eewe
         rjmp    ECSTORE
         out     eearl, tosl
@@ -1432,14 +1432,14 @@ ICCOMMA:
 LSHIFT_L:
         .db     NFA|6,"lshift",0
 LSHIFT:
-		movw 	zl, tosl
-		poptos
+        movw    zl, tosl
+        poptos
 LSHIFT1:
-		sbiw 	zl, 1
-		brmi 	LSHIFT2
-		lsl 	tosl
-		rol 	tosh
-		rjmp 	LSHIFT1
+        sbiw    zl, 1
+        brmi    LSHIFT2
+        lsl     tosl
+        rol     tosh
+        rjmp    LSHIFT1
 LSHIFT2:
         ret
 
@@ -1448,14 +1448,14 @@ LSHIFT2:
 RSHIFT_L:
         .db     NFA|6,"rshift",0
 RSHIFT:
-		movw 	zl, tosl
-		poptos
+        movw    zl, tosl
+        poptos
 RSHIFT1:
-		sbiw 	zl, 1
-		brmi 	RSHIFT2
-		lsr 	tosh
-		ror 	tosl
-		rjmp 	RSHIFT1
+        sbiw    zl, 1
+        brmi    RSHIFT2
+        lsr     tosh
+        ror     tosl
+        rjmp    RSHIFT1
 RSHIFT2:
         ret
 
@@ -1477,8 +1477,8 @@ EMPTY:
         rcall   DOLIT
         .dw     coldlitsize
         call    CMOVE
-		jmp 	DP_TO_RAM
-		
+        jmp     DP_TO_RAM
+        
 ;*******************************************************
         fdw     EMPTY_L
 WARM_L:
@@ -1526,24 +1526,24 @@ WARM_2:
 ; init cold data to eeprom
         rcall   DOLIT
         .dw     dp_start
-		rcall	FETCH
+        rcall   FETCH
         rcall   TRUE_
-        rcall	EQUAL
-		rcall	ZEROSENSE
-  		breq	WARM_3	
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    WARM_3  
         rcall   EMPTY
 WARM_3:
 ; Move interrupts to boot flash section
-		ldi		t0, (1<<IVCE)
-		out_	MCUCR, r16
-		ldi 	t0, (1<<IVSEL)
-		out_ 	MCUCR, r16
+        ldi     t0, (1<<IVCE)
+        out_    MCUCR, r16
+        ldi     t0, (1<<IVSEL)
+        out_    MCUCR, r16
 
 ; Init ms timer
-		ldi		t0, 1
-		out_	TCCR3B, t0
-		ldi		t0, (1<<TOIE3)
-		out_	ETIMSK, t0
+        ldi     t0, 1
+        out_    TCCR3B, t0
+        ldi     t0, (1<<TOIE3)
+        out_    ETIMSK, t0
 ; Init UART
         ; Set baud rate
         ldi     t0, 0
@@ -1556,18 +1556,18 @@ WARM_3:
         ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
-		; Init rx1 interrupts
+        ; Init rx1 interrupts
 
-		sei
-		rcall	XXON_TX1_1
-		rcall	VER
+        sei
+        rcall   XXON_TX1_1
+        rcall   VER
 ; Init 
 STARTQ2:
         jmp     ABORT
 ;*******************************************************
         fdw     WARM_L
 VER_L:
-		.db		NFA|3,"ver"
+        .db     NFA|3,"ver"
 VER:
         rcall   XSQUOTE
          ;        1234567890123456789012345678901234567890
@@ -1578,10 +1578,10 @@ VER:
         .db     NFA|3,"sp?"
 check_sp:
         rcall   SPFETCH
-		call	R0_
-		rcall	FETCH
+        call    R0_
+        rcall   FETCH
         call    S0
-		rcall	FETCH
+        rcall   FETCH
         rcall   ONEPLUS
         rcall   WITHIN
         rcall   XSQUOTE
@@ -1699,7 +1699,7 @@ TOS_TO_I:
         push    ih
         push    il
         mov     il, tosl
-		mov		ih, tosh
+        mov     ih, tosh
         ld      tosl, Y+
         ld      tosh, Y+
         ijmp
@@ -1923,9 +1923,9 @@ STORECF1:
         rcall   IHERE
         rcall   MINUS
         call    TWOMINUS
-		call	TWOSLASH
+        call    TWOSLASH
         ;rcall   RCALL_
-		andi	tosh, 0x0f
+        andi    tosh, 0x0f
         ori     tosh, 0xd0
         rcall   ICOMMA
 STORECF2:
@@ -2152,7 +2152,7 @@ TYPE2:
 ; (S"    -- c-addr u      run-time code for S"
         .db      NFA|3,"(s",0x22
 XSQUOTE:
-        rcall	RFETCH
+        rcall   RFETCH
         lsl     tosl
         rol     tosh
         rcall   CFETCHPP
@@ -2162,7 +2162,7 @@ XSQUOTE:
         ror     tosl
         rcall   RFROM
         rcall   PLUS
-;		rcall	ONEPLUS
+;       rcall   ONEPLUS
         rcall   TOR
         ret
 
@@ -2310,8 +2310,8 @@ PLUS:
 MPLUS_L:
         .db     NFA|2, "m+",0
 MPLUS:
-		push	t2
-		push	t3
+        push    t2
+        push    t3
         ld      t2, Y+
         ld      t3, Y+
         ld      t0, Y+
@@ -2324,8 +2324,8 @@ MPLUS:
         adc     tosh, t3
         st      -Y, t1
         st      -Y, t0
-		pop		t3
-		pop		t2
+        pop     t3
+        pop     t2
         ret
 
 
@@ -2724,8 +2724,8 @@ MIN_L:
 MIN:    rcall   TWODUP
         rcall   GREATER
         rcall   ZEROSENSE
-		brne	pc+2
-		rjmp	min1
+        brne    pc+2
+        rjmp    min1
 ;        breq    min1
         rcall   SWOP
 min1:   jmp     DROP
@@ -2925,7 +2925,7 @@ ULINK_: rcall   DOUSER
 ; TASK       -- a-addr              TASK pointer
         fdw     ULINK_L
 #else
-		fdw		BIN_L
+        fdw     BIN_L
 #endif
 TASK_L:
         .db     NFA|4,"task",0
@@ -3170,7 +3170,7 @@ findi2:
         rcall   ONE
         rcall   OR_
 findi3: 
-		ret
+        ret
 ;        jmp     PAUSE
 
 ; IMMED?    nfa -- f        fetch immediate flag
@@ -3560,9 +3560,9 @@ INUMBER:
         rcall   STATE_
         rcall   ZEROSENSE
         breq    INUMBER1
-		mov		t0, tosl
-		poptos
-		sbrs    t0, 1
+        mov     t0, tosl
+        poptos
+        sbrs    t0, 1
         rjmp    ISINGLE
 IDOUBLE:
         rcall   SWOP_A
@@ -3741,7 +3741,7 @@ QUIT1:
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         call    MINUS
         call    ACCEPT
-		call	XXOFF_TX1_1
+        call    XXOFF_TX1_1
         call    SPACE_
         rcall   INTERPRET
         call    STATE_
@@ -3792,7 +3792,7 @@ QABORT:
         rcall   ZEROSENSE
         brne    QABO1
 QABORT1:        
-		call	SPACE_
+        call    SPACE_
         call    TYPE
         rcall   ABORT  ; ABORT never rets
 QABO1:  jmp     TWODROP
@@ -3908,7 +3908,7 @@ CREATE:
         rcall   DOLIT_A
         .dw     16
         call    WITHIN
-		rcall	QABORTQ          ; Abort if there is no name for create
+        rcall   QABORTQ          ; Abort if there is no name for create
 
         rcall   LATEST_
         rcall   FETCH_A
@@ -3981,8 +3981,8 @@ XDOES:
         rcall   TOR_A
         rcall   IDP
         rcall   STORE_A
-		lsl		tosl
-		rol		tosh
+        lsl     tosl
+        rol     tosh
         rcall   COMMAXT_A      ; Always stores a 4 byte call
         call    RFROM
         rcall   IDP
@@ -4046,7 +4046,7 @@ SEMICOLON:
         rcall   DOLIT_A   ; Compile a ret
         .dw     0x9508
         call    ICOMMA
-		jmp		LEFTBRACKET
+        jmp     LEFTBRACKET
 
 
         fdw     SEMICOLON_L
@@ -4130,11 +4130,11 @@ INI:
 TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
-		pushtos
-		cli
-		lds		tosl, ms_count
-		lds		tosh, ms_count+1
-		sei
+        pushtos
+        cli
+        lds     tosl, ms_count
+        lds     tosh, ms_count+1
+        sei
         ret
 
         
@@ -4156,10 +4156,10 @@ MS1:
         rcall   DUP_A
         rcall   TICKS
         rcall   MINUS
-;		rcall	DOTS
-;		rcall	CR
+;       rcall   DOTS
+;       rcall   CR
         rcall   ZEROLESS
-		rcall	ZEROSENSE
+        rcall   ZEROSENSE
         breq    MS1
         jmp     DROP
 
@@ -4243,8 +4243,8 @@ WDS3:
 DOTS_L:
         .db     NFA|2,".s",0
 DOTS:
-		rcall	SPACE_
-		rcall	DUP          ; push tosl:tosh to memory
+        rcall   SPACE_
+        rcall   DUP          ; push tosl:tosh to memory
         call    SPFETCH
         rcall   S0
         rcall   FETCH_A
@@ -4258,7 +4258,7 @@ DOTS1:
         call    UDOT
         rjmp    DOTS1
 DOTS2:  
-		rcall	DROP
+        rcall   DROP
         jmp     TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
@@ -4381,76 +4381,76 @@ COMMAZEROSENSE2:
         rjmp    INLINE0
 
 IDPMINUS:
-		rcall	DOLIT_A
-		.dw		-4
-		rjmp	IALLOT
+        rcall   DOLIT_A
+        .dw     -4
+        rjmp    IALLOT
 
-;		rjmp, ( rel-addr -- )
+;       rjmp, ( rel-addr -- )
 RJMPC:
-		rcall	TWOSLASH
-		rcall	DOLIT_A
-		.dw		0x0FFF
-		rcall	AND_
-		rcall	DOLIT_A
-		.dw		0xc000
-		rcall	OR_
-		jmp		ICOMMA
+        rcall   TWOSLASH
+        rcall   DOLIT_A
+        .dw     0x0FFF
+        rcall   AND_
+        rcall   DOLIT_A
+        .dw     0xc000
+        rcall   OR_
+        jmp     ICOMMA
 
 
 BRCCC:
-		rcall	DOLIT_A
-		.dw		0xf008		; brcc pc+2
-		jmp		ICOMMA
+        rcall   DOLIT_A
+        .dw     0xf008      ; brcc pc+2
+        jmp     ICOMMA
 BREQC:
-		rcall	DOLIT_A
-		.dw		0xf009		; breq pc+2
-		jmp		ICOMMA
+        rcall   DOLIT_A
+        .dw     0xf009      ; breq pc+2
+        jmp     ICOMMA
 BRNEC:
-		rcall	DOLIT_A
-		.dw		0xf409		; brne pc+2
-		jmp		ICOMMA
+        rcall   DOLIT_A
+        .dw     0xf409      ; brne pc+2
+        jmp     ICOMMA
 
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-		fdw		BRQ_L
+        fdw     BRQ_L
 IF_L:
-		.db		NFA|IMMED|COMPILE|2,"if",0
+        .db     NFA|IMMED|COMPILE|2,"if",0
 IF_:
-		rcall	COMMAZEROSENSE
-		rcall	BRNEC
-		rcall	IHERE
-		rcall	FALSE_
-		jmp		RJMPC			; Dummy, replaced by THEN with rjmp 
+        rcall   COMMAZEROSENSE
+        rcall   BRNEC
+        rcall   IHERE
+        rcall   FALSE_
+        jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
 
 ; ELSE     adrs1 -- adrs2    branch for IF..ELSE
 ; Leave adrs2 of bra instruction and store bz in adrs1
 ; Leave adress of branch instruction and FALSE flag on stack
-		fdw		IF_L
+        fdw     IF_L
 ELSE_L:
-		.db		NFA|IMMED|COMPILE|4,"else",0
+        .db     NFA|IMMED|COMPILE|4,"else",0
 ELSE_:
-		rcall	IHERE
-		rcall	FALSE_
-		rcall	RJMPC
-		rcall	SWOP_A		; else-addr  if-addr 
-		jmp		THEN_
+        rcall   IHERE
+        rcall   FALSE_
+        rcall   RJMPC
+        rcall   SWOP_A      ; else-addr  if-addr 
+        jmp     THEN_
 
 ; THEN     adrs  --        resolve forward branch
-		fdw		ELSE_L
+        fdw     ELSE_L
 THEN_L:
-		.db		NFA|IMMED|COMPILE|4,"then",0
+        .db     NFA|IMMED|COMPILE|4,"then",0
 THEN_:
-		rcall	IHERE
-		rcall	OVER
-		rcall	MINUS
-		rcall	TWOMINUS
-		rcall	TWOSLASH
+        rcall   IHERE
+        rcall   OVER
+        rcall   MINUS
+        rcall   TWOMINUS
+        rcall   TWOSLASH
         rcall   DOLIT_A
         .dw     0xc000      ;  back-addr mask 
-		rcall	OR_
-		rcall	SWOP_A
-		jmp		STORE
+        rcall   OR_
+        rcall   SWOP_A
+        jmp     STORE
 
 ; BEGIN    -- adrs        target for bwd. branch
         fdw     THEN_L
@@ -4464,13 +4464,13 @@ BEGIN:
 UNTIL_L:
         .db     NFA|IMMED|COMPILE|5,"until"
 UNTIL:
-		rcall	COMMAZEROSENSE
-		rcall	BRNEC
+        rcall   COMMAZEROSENSE
+        rcall   BRNEC
 UNTIL1:
-		rcall	IHERE
-		rcall	MINUS
-		rcall	TWOMINUS
-		jmp		RJMPC
+        rcall   IHERE
+        rcall   MINUS
+        rcall   TWOMINUS
+        jmp     RJMPC
 
 ; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
@@ -4539,7 +4539,7 @@ NEXT:
         rcall   DOLIT_A
         fdw     XNEXT
         rcall   COMMAXT_A
-		rcall	BRCCC
+        rcall   BRCCC
 
         rcall   UNTIL1
 
@@ -4556,7 +4556,7 @@ XNEXT:
         push    xl
         push    xh
         ijmp
- 		ret
+        ret
 XNEXT1:
         pop     t1
         pop     t0
@@ -4582,29 +4582,29 @@ LEAVE:
 RDROP_L:
         .db      NFA|INLINE|COMPILE|5,"rdrop"
 RDROP:
-        pop		t1
-		pop		t0
+        pop     t1
+        pop     t0
         ret
 
-		fdw		RDROP_L
+        fdw     RDROP_L
 TEST_L:
-		.db		NFA|4,"test",0
-		call	TOR
-		rjmp	TEST1
+        .db     NFA|4,"test",0
+        call    TOR
+        rjmp    TEST1
 TEST0:
-		call	CHARS
+        call    CHARS
 TEST1:
         pop     xl
         pop     xh
         sbiw    xl, 1
         push    xh
         push    xl
-		brcs	TEST2
-		rjmp	TEST0
+        brcs    TEST2
+        rjmp    TEST0
 TEST2:
-		pop		t0
-		pop		t0
-		ret
+        pop     t0
+        pop     t0
+        ret
 ;***************************************************
         fdw      TEST_L
 L_FETCH_P:
