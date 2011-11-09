@@ -1308,7 +1308,8 @@ TURNKEY:
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
-        ret
+;        ret
+        cli
         movw    zl, upl
         sbiw    zl, -ursave
         in      t0, spl
@@ -1332,6 +1333,7 @@ PAUSE:
         ld      yh, x+
         ld      pl, x+
         ld      ph, x+
+        sei
         ret
 
 
@@ -3569,7 +3571,7 @@ IDOUBLE:
         call    LITERAL
 ISINGLE:        
         call    LITERAL
-        rjmp     IPARSEWORD
+        rjmp    IPARSEWORD
 
 INUMBER1:
         call    DROP
@@ -3983,7 +3985,7 @@ XDOES:
         rcall   STORE_A
         lsl     tosl
         rol     tosh
-        rcall   COMMAXT_A      ; Always stores a 4 byte call
+        call    STORECFF1 ; Always stores a 4 byte call
         call    RFROM
         rcall   IDP
         jmp     STORE
@@ -4580,15 +4582,15 @@ LEAVE:
 ; RDROP compile a pop
         fdw      LEAVE_L
 RDROP_L:
-        .db      NFA|INLINE|COMPILE|5,"rdrop"
+        .db      NFA|IMMED|COMPILE|5,"rdrop"
 RDROP:
-        pop     t1
-        pop     t0
-        ret
+        rcall   DOLIT_A
+        fdw     XNEXT1
+        jmp     INLINE0
 
         fdw     RDROP_L
 TEST_L:
-        .db     NFA|4,"test",0
+        .db     NFA|3,"ttt"
         call    TOR
         rjmp    TEST1
 TEST0:
@@ -4606,7 +4608,7 @@ TEST2:
         pop     t0
         ret
 ;***************************************************
-        fdw      TEST_L
+        fdw      RDROP_L
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
@@ -4628,9 +4630,8 @@ kernellink:
         .db      NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
 PTWOPLUS:
         ldi     t0, 2
-        ldi     t1, 0
         add     pl, t0
-        adc     pl, t1
+        adc     ph, zero
         ret
 
 ;***************************************************
