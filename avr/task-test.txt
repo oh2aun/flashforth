@@ -1,0 +1,45 @@
+\ *******************************************************************
+\                                                                   *
+\    Filename:      task-test.txt                                   *
+\    Date:          13.11.2011                                      *
+\    FF Version:    3.8                                             *
+\    MCU:           Atmega 128(Olimex AVR-MT-128)                   *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+\ Demo for the Olimex AVR-MT-128. Switched relay and blinks led in 
+\ background task.
+single
+-task1
+marker -task1
+ram hex
+\ Registers for Atmega 128. Change if needed
+$003b con porta
+$003a con ddra
+$0039 con pina
+$40 con pin6
+ram variable delay
+: ledoff  pin6 porta mclr ;
+: ledon   pin6 porta mset ;
+
+0 30 30 0 task: task1
+: taskloop 
+  400 delay !
+  $40 ddra mset  \  Output 
+  begin 
+    delay @ ms 
+    pin6 porta mtst
+    if
+       ledoff
+    else
+       ledon
+    then
+  again
+;
+
+: t1go ['] taskloop task1 tinit task1 run ;
+
+\ ' t1go is turnkey
+\ warm

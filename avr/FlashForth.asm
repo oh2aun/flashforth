@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          09.11.2011                                        *
+;    Date:          13.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -444,7 +444,7 @@ DPC:    .dw      PFLASH
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
-STAT:   fdw      DOTS
+STAT:   fdw      DOTSTATUS
 
 ; EXIT --   Compile a return
 ;        variable link
@@ -814,17 +814,6 @@ DO_SPM:
         ret
 
 ;***************************************************
-asmemit:
-#if 0
-        btfss   PIR1, TXIF, A
-        bra     asmemit
-        btfss   PIR1, TXIF, A
-        bra     asmemit
-asmemit1:
-        movwf   TXREG, A
-#endif
-        ret
-
 NEQUALSFETCH:
         rcall   CFETCHPP
         rcall   ROT
@@ -1089,6 +1078,8 @@ IIFETCH:
         ;subi    zh, high(PFLASH)
         elpm    tosl, z+     ; Fetch from Flash directly
         elpm    tosh, z+
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
         ret
                 
         fdw     STORE_L
@@ -1139,6 +1130,8 @@ IICFETCH:
         ;subi    zh, high(PFLASH)
         elpm    tosl, z+     ; Fetch from Flash directly
         clr     tosh
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
         ret
 
         fdw     FETCH_L
@@ -1302,14 +1295,17 @@ TURNKEY:
         call    VALUE_DOES      ; Must be call for IS to work.
         .dw     dpSTART
 
+PAUSE1:
+        ret
 ;;; *******************************************************
 ; PAUSE  --     switch task
         fdw     TURNKEY_L
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
-;        ret
         cli
+        push    tosl
+        push    tosh
         movw    zl, upl
         sbiw    zl, -ursave
         in      t0, spl
@@ -1329,6 +1325,8 @@ PAUSE:
         out     spl, t0
         ld      t0, x+
         out     sph, t0
+        pop     tosh
+        pop     tosl
         ld      yl, x+
         ld      yh, x+
         ld      pl, x+
@@ -1336,23 +1334,6 @@ PAUSE:
         sei
         ret
 
-
-#ifdef FC_TYPE_SW
-XXOFF:
-        sbrc    FLAGS2, ixoff
-        ret
-XXXOFF: 
-        sbr     FLAGS2, (1<<ixoff)
-        ldi     t0, XOFF
-        rjmp    asmemit
-XXON:
-        sbrs    FLAGS2, ixoff
-        ret
-XXXON:  
-        cbr     FLAGS2, (1<<ixoff)
-        ldi     t0, XON
-        rjmp    asmemit
-#endif
 
         fdw     PAUSE_L
 IFLUSH_L:
@@ -1371,6 +1352,12 @@ IFLUSH:
 MSET_L:
         .db     NFA|4,"mset",0
 MSET:
+        movw    zl, tosl
+        poptos
+        ld      t0, z
+        or      t0, tosl
+        st      z, t0
+        poptos
         ret
         
 ; : mclr  ( mask addr -- )
@@ -1380,6 +1367,13 @@ MSET:
 MCLR_L:
         .db     NFA|4,"mclr",0
 MCLR_:
+        movw    zl, tosl
+        poptos
+        ld      t0, z
+        com     tosl
+        and     t0, tosl
+        st      z, t0
+        poptos
         ret
 
 ; : mtst ( mask addr -- flag )
@@ -1560,10 +1554,31 @@ WARM_3:
         out_    UCSR1C,t0
         ; Init rx1 interrupts
 
+        call    DP_TO_RAM
         sei
-        rcall   XXON_TX1_1
         rcall   VER
-; Init 
+; Turnkey ?
+        rcall   TURNKEY
+        rcall   ZEROSENSE
+        breq    STARTQ2
+        rcall   XSQUOTE
+        .db     3,"ESC"
+        rcall   TYPE
+        rcall   DOLIT
+        .dw     0x1800
+        call    MS
+        rcall   KEYQ
+        rcall   ZEROSENSE
+        breq    STARTQ1
+        rcall   KEY
+        rcall   DOLIT
+        .dw     0x1b
+        rcall   NOTEQUAL
+        rcall   ZEROSENSE
+        breq    STARTQ2
+STARTQ1:
+        call    TURNKEY
+        rcall   EXECUTE
 STARTQ2:
         jmp     ABORT
 ;*******************************************************
@@ -1573,7 +1588,7 @@ VER_L:
 VER:
         rcall   XSQUOTE
          ;        1234567890123456789012345678901234567890
-        .db 17,"FlashForth V3.8",0xd,0xa
+        .db 19,"FlashForth Atmega",0xd,0xa
         jmp     TYPE
 
 ;;; Check parameter stack pointer
@@ -2739,9 +2754,8 @@ CFETCH_A:
         fdw     MIN_L
 UPTR_L:
         .db     NFA|2,"up",0
-UPTR:   pushtos
-        movw    tosl, upl
-        ret
+UPTR:   rcall   DOCREATE_A
+        .dw     4 ; upl
 
         fdw     UPTR_L
 HOLD_L:
@@ -2916,8 +2930,24 @@ BIN:    rcall   CELL
         jmp     STORE
 
 #ifndef SKIP_MULTITASKING
-; ULINK   -- a-addr     link to next task
+; RSAVE   -- a-addr     Saved return stack pointer
         fdw     BIN_L
+RSAVE_L:
+        .db     NFA|5,"rsave"
+RSAVE_: rcall   DOUSER
+        .dw     ursave
+
+
+; SSAVE   -- a-addr     Saved parameter stack pointer
+        fdw     RSAVE_L
+SSAVE_L:
+        .db     NFA|5,"ssave"
+SSAVE_: rcall   DOUSER
+        .dw     ussave
+
+
+; ULINK   -- a-addr     link to next task
+        fdw     SSAVE_L
 ULINK_L:
         .db     NFA|5,"ulink"
 ULINK_: rcall   DOUSER
@@ -3694,8 +3724,8 @@ DP_TO_EEPROM_0:
 DP_TO_EEPROM_1:
         call    DROP
 DP_TO_EEPROM_2:
-        call    CELL
-        rcall   PNPLUS
+;        call    CELL
+        rcall   PTWOPLUS
 DP_TO_EEPROM_3:
         rcall   XNEXT
         brcc    DP_TO_EEPROM_0
@@ -3734,6 +3764,7 @@ QUIT0:
         call    IFLUSH
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
+        call    XXON_TX1_1
 QUIT1: 
         call    check_sp
         rcall   CR
@@ -4661,31 +4692,25 @@ MARKER:
 L_DOTBASE:
         .db      NFA|1,"I"
 DOTBASE:
-#if
         call    BASE
         call    FETCH_A
-        movf    Sminus, W, A
-        movf    Srw, W, A
-        xorlw   0x10
-        bnz     DOTBASE1
-        movlw   '$'
-        bra     DOTBASEEND
+        cpi     tosl, 0x10
+        brne    DOTBASE1
+        ldi     tosl,'$'
+        rjmp    DOTBASEEND
 DOTBASE1:
-        xorlw   0x1a
-        bnz     DOTBASE2
-        movlw   '#'
-        bra     DOTBASEEND
+        cpi     tosl, 0xa
+        brne    DOTBASE2
+        ldi     tosl, '#'
+        rjmp    DOTBASEEND
 DOTBASE2:
-        xorlw   0x8
-        bnz     DOTBASE3
-        movlw   '%'
-        bra     DOTBASEEND
+        cpi     tosl, 0x2
+        brne    DOTBASE3
+        ldi     tosl, '%'
+        rjmp    DOTBASEEND
 DOTBASE3:
-        movlw   '?'
+        ldi     tosl, '?'
 DOTBASEEND:
-        movwf   Srw, A
-        clrf    plusS, A
-#endif
         ret
 ;;;**************************************
 ;;; The USB code lib goes here in between
