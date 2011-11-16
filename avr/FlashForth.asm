@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          13.11.2011                                        *
+;    Date:          16.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -31,6 +31,7 @@
 
 
 .include "m128def.inc"
+;.include "m328pdef.inc"
 ; Macros
 
   .def zero = r2
@@ -43,10 +44,8 @@
   .def t6  = r8
   .def wflags  = r9
 
-  .def ibase =r10
   .def ibasel=r10
   .def ibaseh=r11
-  .def iaddr =r12
   .def iaddrl=r12
   .def iaddrh=r13
 
@@ -60,7 +59,6 @@
 
   .def FLAGS1 = r22
   .def FLAGS2 = r23
-  .def tos  = r24
   .def tosl = r24
   .def tosh = r25
 ;  xl = r26
@@ -142,6 +140,7 @@
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
 #define ms_value -(clock/1000)
+#define IDLE_MODE
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -190,9 +189,9 @@
 
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf0_size= 4
-.equ tbuf0_size= 4
+.equ tbuf0_size= 0
 .equ rbuf1_size= 64
-.equ tbuf1_size= 4
+.equ tbuf1_size= 0
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
@@ -235,39 +234,21 @@
 ;****************************************************
 .dseg
 ibuf:       .byte PAGESIZEB
-txqueue0:
-;tbuf0_len:   .byte 1
-tbuf0_wr:    .byte 1
-tbuf0_rd:    .byte 1
-tbuf0_lv:    .byte 1
-tbuf0:       .byte tbuf0_size
+ivec:       .byte INT_VECTORS_SIZE
 
 rxqueue0:
-;rbuf0_len:   .byte 1
 rbuf0_wr:    .byte 1
 rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
 rbuf0:       .byte rbuf0_size
 
-txqueue1:
-tbuf1_len:   .byte 1
-tbuf1_wr:    .byte 1
-tbuf1_rd:    .byte 1
-tbuf1_lv:    .byte 1
-tbuf1:       .byte tbuf1_size
-
 rxqueue1:
-rbuf1_len:   .byte 1
 rbuf1_wr:    .byte 1
 rbuf1_rd:    .byte 1
 rbuf1_lv:    .byte 1
 rbuf1:       .byte rbuf1_size
 
 ms_count:   .byte 2
-;intcon1dbg: .byte 2
-;upcurrdbg:  .byte 2
-;rpdbg:      .byte 2
-;spdbg:      .byte 2
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -275,6 +256,7 @@ dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
 
+status:     .byte 1 ; Idle status of all tasks
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
 uvars:      .byte   (-us0)
@@ -323,7 +305,7 @@ RESET_:     jmp  WARM_
 .org LARGEBOOTSTART + SPIaddr
             rcall FF_ISR
 .org LARGEBOOTSTART + URXC0addr
-            rcall FF_ISR
+            rjmp RX0_ISR
 .org LARGEBOOTSTART + UDRE0addr
             rcall FF_ISR
 .org LARGEBOOTSTART + UTXC0addr
@@ -359,12 +341,26 @@ RESET_:     jmp  WARM_
 
 
 
+FF_ISR1:
+        st      -y, xh
+        in_     xh, SREG
+        st      -y, xl
+        pop     xh
+        pop     xl
+        push    zl
+        push    zh
+        lsl     xl
+        rol     xh
+        adiw    xl, (ivec&0x3f)
+        ldi     xh, 1
+        ld      zl, x+
+        ld      zh, x+
+        ijmp    ;(z)
 FF_ISR:
         pop     zero
         pop     zero
-        clr     zero
+        clr     zero        
         reti
-      
 
 TIMER3_ISR:
         push    xl
@@ -386,6 +382,36 @@ ISR_RETI1:
         out_    SREG, xl
         pop     xl
         reti
+
+RX0_ISR:
+        push    xl
+        in_     xl, SREG
+        push    xl
+        push    xh
+        push    zl
+        push    zh
+
+        ldi     zl, low(rbuf0)
+        ldi     zh, high(rbuf0)
+        lds     xl, rbuf0_wr
+        add     zl, xl
+        adc     zh, zero
+        lds     xh, UDR0
+        st      z, xh
+        inc     xl
+        andi    xl, (rbuf0_size-1)
+        sts     rbuf0_wr, xl
+        lds     xl, rbuf0_lv
+        inc     xl
+        sts     rbuf0_lv, xl
+        cpi     xl, 2
+        brmi    RX0_ISR_SKIP_XOFF
+        rcall   XXOFF_TX0       
+RX0_ISR_SKIP_XOFF:
+        pop     zh
+        pop     zl
+        rjmp    ISR_RETI1
+TX0_ISR:
 
 RX1_ISR:
         push    xl
@@ -417,12 +443,11 @@ RX1_ISR_SKIP_XOFF:
         rjmp    ISR_RETI1
 TX1_ISR:
 
-        reti
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 22
 WARMLIT:
-        .dw      0x0002                ; cse, state
+        .dw      0x0200                ; cse, state
         .dw      usbuf+ussize-4        ; S0
         .dw      urbuf+ursize-2        ; R0
         fdw      TX1_
@@ -461,14 +486,14 @@ EXIT:
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
-#ifdef IDLEN
 #ifdef IDLE_MODE
         rcall   IDLE_HELP
-        tstfsz  TWrw, A
-        decf    status, F, A
-        clrf    TWrw, A
+        breq    IDLE1
+        lds     t0, status 
+        dec     t0
+        sts     status, t0
 #endif
-#endif
+IDLE1:
         ret
         
 ; busy
@@ -476,27 +501,24 @@ IDLE:
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
-#ifdef IDLEN
 #ifdef IDLE_MODE
         rcall   IDLE_HELP
-        bnz     BUSY1
-        incf    status, F, A
-        setf    TWrw, A
+        brne    BUSY1
+        lds     t0, status
+        inc     t0
+        sts     status, t0
 BUSY1:
 #endif
-#endif
         ret
 
 
-#ifdef IDLEN
 #ifdef IDLE_MODE
 IDLE_HELP:
-        movff   upcurr, Tp
-        movff   (upcurr+1), Tbank
-        movlw   ustatus
-        movf    TWrw, F, A
+        movw    xl, upl
+        sbiw    xl, -ustatus 
+        ld      t0, x
+        cpi     t0, 0
         ret
-#endif
 #endif
         
 ; busy
@@ -519,9 +541,100 @@ IR_L:
         .db     NFA|INLINE|COMPILE|2,"i]",0
         ret
 
+
 ;***************************************************
-; TX1   c --    output character to the TX1 buffer
+; TX0   c --    output character to UART 0
         fdw(IR_L)
+TX0_L:
+        .db     NFA|3,"tx0"
+TX0_:
+        rcall   PAUSE
+        in_     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    TX0_
+        out_    UDR0, tosl
+        poptos
+        ret
+;***************************************************
+; RX0    -- c    get character from the UART 0 buffer
+        fdw(TX0_L)
+RX0_L:
+        .db     NFA|3,"rx0"
+RX0_:
+        rcall   PAUSE
+        rcall   RX0Q
+        call    ZEROSENSE
+        breq    RX0_
+#if 0
+        pushtos
+        in_     tosl, UDR0
+        clr     tosh
+        ret
+#else
+        pushtos
+        ldi     zl, low(rbuf0)
+        ldi     zh, high(rbuf0)
+        lds     xl, rbuf0_rd
+        add     zl, xl
+        adc     zh, zero
+        ld      tosl, z
+        clr     tosh
+        cli
+        inc     xl
+        andi    xl, (rbuf0_size-1)
+        sts     rbuf1_rd, xl
+        lds     xl, rbuf0_lv
+        dec     xl
+        sts     rbuf0_lv, xl
+        sei
+        ret
+#endif
+;***************************************************
+; RX0?  -- n    return the number of characters in queue
+        fdw     RX0_L
+RX0Q_L:
+        .db     NFA|4,"rx0?",0
+RX0Q:
+#if 0
+        in_     t0, UCSR0A
+        sbrs    t0, RXC0
+        jmp     FALSE_
+        jmp     TRUE_
+#else
+        lds     xl, rbuf0_lv
+        cpse    xl, zero
+        jmp     TRUE_
+        rcall   XXON_TX0
+        jmp     FALSE_
+
+XXON_TX0:
+        sbrs    FLAGS2, ixoff
+        ret     
+XXON_TX0_1:
+        in_     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    XXON_TX0_1
+        ldi     t0, XON
+        out_    UDR0, t0
+        cbr     FLAGS2, (1<<ixoff)
+        ret
+
+XXOFF_TX0:
+        sbrc    FLAGS2, ixoff
+        ret     
+XXOFF_TX0_1:
+        in_     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    XXOFF_TX0_1
+        ldi     t0, XOFF
+        out_    UDR0, t0
+        sbr     FLAGS2, (1<<ixoff)
+        ret
+#endif
+
+;***************************************************
+; TX1   c --    output character to UART 1
+        fdw(RX0Q_L)
 TX1_L:
         .db     NFA|3,"tx1"
 TX1_:
@@ -586,26 +699,23 @@ RX1Q:
 
 XXON_TX1:
         sbrs    FLAGS2, ixoff
-        ret     
-XXON_TX1_1:
-        in_     t0, UCSR1A
-        sbrs    t0, UDRE1
-        rjmp    XXON_TX1_1
-        ldi     t0, XON
-        out_    UDR1, t0
-        cbr     FLAGS2, (1<<ixoff)
         ret
+XXON_TX1_1:
+        cbr     FLAGS2, (1<<ixoff)
+        ldi     t1, XON
+        rjmp    TX1_SEND
 
 XXOFF_TX1:
         sbrc    FLAGS2, ixoff
         ret     
 XXOFF_TX1_1:
+        sbr     FLAGS2, (1<<ixoff)
+        ldi     t1, XOFF
+TX1_SEND:
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
-        rjmp    XXOFF_TX1_1
-        ldi     t0, XOFF
-        out_    UDR1, t0
-        sbr     FLAGS2, (1<<ixoff)
+        rjmp    TX1_SEND
+        out_    UDR1, t1
         ret
 #endif
 ;***************************************************
@@ -712,7 +822,7 @@ umslashmod3:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
-        mov     t0, iaddr
+        mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
         rjmp    IFILL_BUFFER
@@ -729,9 +839,7 @@ IFILL_BUFFER:
         mov     ibaseh, iaddrh
 IFILL_BUFFER_1:
         ldi     t0, PAGESIZEB&(PAGESIZEB-1)
-        movw    zl, ibase
-        push    xl
-        push    xh
+        movw    zl, ibasel
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
@@ -739,8 +847,6 @@ IFILL_BUFFER_2:
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
-        pop     xh
-        pop     xl
         ret
 
 IWRITE_BUFFER:
@@ -752,8 +858,6 @@ IWRITE_BUFFER:
         rcall   DO_SPM
 
         ; transfer data from RAM to Flash page buffer
-        push    xl
-        push    xh
         ldi     t0, low(PAGESIZEB);init loop variable
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
@@ -787,8 +891,6 @@ IWRITE_BUFFER2:
         subi    t0, 1
         brne    IWRITE_BUFFER2
 #endif
-        pop     xh
-        pop     xl
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
         ; ret to RWW section
@@ -825,7 +927,6 @@ NEQUALSFETCH:
 ; N= is specificly used for finding dictionary entries
 ; It can also be used for comparing strings shorter than 16 characters,
 ; but the first string must be in ram and the second in program memory.
-
         fdw     RX1Q_L
 NEQUAL_L:
         .db     NFA|2,"n=",0
@@ -940,31 +1041,34 @@ IRQ_SEMI_L:
         .db     NFA|IMMED|2,";i",0
 IRQ_SEMI:
         rcall   DOLIT
-        fdw     irq_user_end
-        ;rcall   JMP__
+        .dw     0x9518      ; reti
+        rcall   ICOMMA
         jmp     LEFTBRACKET
-irq_user_end: ;DUMMY
 
-; IRQ   --      VALUE for the interrupt vector
+
+; int!  ( addr n  --  )   store interrupt vector
         fdw     DI_L
 IRQ_V_L:
-        .db     NFA|3,"irq"
-IRQ_V:
-        call    VALUE_DOES      ; Must be call for IS to work
-        .dw     irq_v
+        .db     NFA|4,"int!",0
+        ; FIXME
+        ret
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
         fdw     IRQ_V_L
 LITERAL_L:
         .db     NFA|IMMED|7,"literal"
 LITERAL:
-        pushtos
-        ldi     tosl, 0x9a      ; savettos
-        ldi     tosh, 0x93      ; savettos
+        rcall   DOLIT
+        .dw     0x939a          ; st      -Y, tosh
+;        pushtos
+;        ldi     tosl, 0x9a      ; savettos
+;        ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
-        pushtos
-        ldi     tosl, 0x8a      ; savettos
-        ldi     tosh, 0x93      ; savettos
+        rcall   DOLIT
+        .dw     0x938a          ; st      -Y, tosl
+;        pushtos
+;        ldi     tosl, 0x8a      ; savettos
+;        ldi     tosh, 0x93      ; savettos
         rcall   ICOMMA
         rcall   DUP
         mov     tosh, tosl
@@ -993,7 +1097,7 @@ LITERALruntime:
 ;*****************************************************************
 ISTORE:
         rcall   LOCKEDQ
-        movw    iaddr, tos
+        movw    iaddrl, tosl
         rcall   IUPDATEBUF
         poptos
         ldi     xl, low(ibuf)
@@ -1060,7 +1164,7 @@ LOCKEDQ:
         
 ;***********************************************************
 IFETCH:
-        movw    z, tos
+        movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zh
@@ -1112,7 +1216,7 @@ EFETCH:
         ret
 
 ICFETCH:
-        movw    z, tos
+        movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IICFETCH
         mov     t0, zh
@@ -1160,7 +1264,7 @@ ECFETCH:
 
 ICSTORE:
         rcall   LOCKEDQ
-        movw    iaddr, tos
+        movw    iaddrl, tosl
         rcall   IUPDATEBUF
         poptos
         ldi     xl, low(ibuf)
@@ -1295,14 +1399,18 @@ TURNKEY:
         call    VALUE_DOES      ; Must be call for IS to work.
         .dw     dpSTART
 
-PAUSE1:
-        ret
+
 ;;; *******************************************************
 ; PAUSE  --     switch task
         fdw     TURNKEY_L
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
+        lds     t0, status
+        cpi     t0, 0
+        brne    PAUSE1
+        sleep               ; IDLE mode
+PAUSE1:
         cli
         push    tosl
         push    tosh
@@ -1556,6 +1664,7 @@ WARM_3:
 
         call    DP_TO_RAM
         sei
+        rcall   XXON_TX1_1
         rcall   VER
 ; Turnkey ?
         rcall   TURNKEY
@@ -1565,7 +1674,7 @@ WARM_3:
         .db     3,"ESC"
         rcall   TYPE
         rcall   DOLIT
-        .dw     0x1800
+        .dw     0x800
         call    MS
         rcall   KEYQ
         rcall   ZEROSENSE
@@ -1573,9 +1682,9 @@ WARM_3:
         rcall   KEY
         rcall   DOLIT
         .dw     0x1b
-        rcall   NOTEQUAL
+        rcall   EQUAL
         rcall   ZEROSENSE
-        breq    STARTQ2
+        brne    STARTQ2
 STARTQ1:
         call    TURNKEY
         rcall   EXECUTE
@@ -4189,8 +4298,6 @@ MS1:
         rcall   DUP_A
         rcall   TICKS
         rcall   MINUS
-;       rcall   DOTS
-;       rcall   CR
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    MS1
