@@ -143,7 +143,16 @@
 #define IDLE_MODE
 #define BOOT_SIZE 0x400
 #define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START NRWW_STOP_ADDR - 0x0f00 + 1 
+#define KERNEL_START NRWW_STOP_ADDR - 0x0f00 + 1
+.ifdef UDR1
+.equ OP_TX_=TX1_
+.equ OP_RX_=RX1_
+.equ OP_RXQ=RX1Q
+.else
+.equ OP_TX_=TX0_
+.equ OP_RX_=RX0_
+.equ OP_RXQ=RX0Q
+.endif
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -357,7 +366,7 @@ umslashmod3:
 ; : mset ( mask addr -- )
 ;   dup >r c@ swap or r> c!
 ; ;
-        fdw     IFLUSH_L
+        fdw     ICCOMMA_L
 MSET_L:
         .db     NFA|4,"mset",0
 MSET:
@@ -386,7 +395,7 @@ MCLR_:
         ret
 
 ;   LSHIFT      x1 u -- x2
-        fdw     ICCOMMA_L
+        fdw     MCLR_L
 LSHIFT_L:
         .db     NFA|6,"lshift",0
 LSHIFT:
@@ -429,7 +438,7 @@ NEQUALSFETCH:
 ; N= is specificly used for finding dictionary entries
 ; It can also be used for comparing strings shorter than 16 characters,
 ; but the first string must be in ram and the second in program memory.
-        fdw     RX1Q_L
+        fdw     RSHIFT_L
 NEQUAL_L:
         .db     NFA|2,"n=",0
 NEQUAL:
@@ -526,7 +535,7 @@ SCAN4:
 ; : mtst ( mask addr -- flag )
 ;   c@ and 
 ; ;
-        fdw     MCLR_L
+        fdw     SCAN_L
 MTST_L:
         .db     NFA|4,"mtst",0
 MTST:
@@ -562,7 +571,7 @@ check_sp:
         ret
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
-        fdw     VER_L
+        fdw     FCY_L
 EMIT_L:
         .db     NFA|4,"emit",0
 EMIT:
@@ -3694,73 +3703,73 @@ dpcode:
 .cseg
 .org BOOT_START
 RESET_:     jmp  WARM_
-.org BOOT_START + INT0addr
+.org BOOT_START + 0x02          ; INT0addr
             rcall FF_ISR
-.org BOOT_START + INT1addr
+.org BOOT_START + 0x04          ; INT1addr
             rcall FF_ISR
-.org BOOT_START + INT2addr
+.org BOOT_START + 0x06          ; INT2addr
             rcall FF_ISR
-.org BOOT_START + INT3addr
+.org BOOT_START + 0x08          ; INT3addr
             rcall FF_ISR
-.org BOOT_START + INT4addr
+.org BOOT_START + 0x0a          ; INT4addr
             rcall FF_ISR
-.org BOOT_START + INT5addr
+.org BOOT_START + 0x0c          ; INT5addr
             rcall FF_ISR
-.org BOOT_START + INT6addr
+.org BOOT_START + 0x0e          ; INT6addr
             rcall FF_ISR
-.org BOOT_START + INT7addr
+.org BOOT_START + 0x10          ; INT7addr
             rcall FF_ISR
-.org BOOT_START + OC2addr
+.org BOOT_START + 0x12          ; OC2addr
             rcall FF_ISR
-.org BOOT_START + OVF2addr
+.org BOOT_START + 0x14          ; OVF2addr
             rcall FF_ISR
-.org BOOT_START + ICP1addr
+.org BOOT_START + 0x16          ; ICP1addr
             rcall FF_ISR
-.org BOOT_START + OC1Aaddr
+.org BOOT_START + 0x18          ; OC1Aaddr
             rcall FF_ISR
-.org BOOT_START + OC1Baddr
+.org BOOT_START + 0x1a          ; OC1Baddr
             rcall FF_ISR
-.org BOOT_START + OVF1addr
+.org BOOT_START + 0x1c          ; OVF1addr
+            rjmp  TIMER1_ISR
+.org BOOT_START + 0x1e          ; OC0addr
             rcall FF_ISR
-.org BOOT_START + OC0addr
+.org BOOT_START + 0x20          ; OVF0addr
             rcall FF_ISR
-.org BOOT_START + OVF0addr
+.org BOOT_START + 0x22          ; SPIaddr
             rcall FF_ISR
-.org BOOT_START + SPIaddr
-            rcall FF_ISR
-.org BOOT_START + URXC0addr
+.org BOOT_START + 0x24          ; URXC0addr
             rjmp RX0_ISR
-.org BOOT_START + UDRE0addr
+.org BOOT_START + 0x26          ; UDRE0addr
             rcall FF_ISR
-.org BOOT_START + UTXC0addr
+.org BOOT_START + 0x28          ; UTXC0addr
             rcall FF_ISR
-.org BOOT_START + ADCCaddr
+.org BOOT_START + 0x2a          ; ADCCaddr
             rcall FF_ISR
-.org BOOT_START + ERDYaddr
+.org BOOT_START + 0x2c          ; ERDYaddr
             rcall FF_ISR
-.org BOOT_START + ACIaddr
+.org BOOT_START + 0x2e          ; ACIaddr
             rcall FF_ISR
-.org BOOT_START + OC1Caddr
+.org BOOT_START + 0x30          ; OC1Caddr
             rcall FF_ISR
-.org BOOT_START + ICP3addr
+.org BOOT_START + 0x32          ; ICP3addr
             rcall FF_ISR
-.org BOOT_START + OC3Aaddr
+.org BOOT_START + 0x34          ; OC3Aaddr
             rcall FF_ISR
-.org BOOT_START + OC3Baddr
+.org BOOT_START + 0x36          ; OC3Baddr
             rcall FF_ISR
-.org BOOT_START + OC3Caddr
+.org BOOT_START + 0x38          ; OC3Caddr
             rcall FF_ISR
-.org BOOT_START + OVF3addr
-            rjmp TIMER3_ISR
-.org BOOT_START + URXC1addr
+.org BOOT_START + 0x3a          ; OVF3addr
+            rjmp FF_ISR; TIMER3_ISR
+.org BOOT_START + 0x3c          ; URXC1addr
             rjmp RX1_ISR
-.org BOOT_START + UDRE1addr
+.org BOOT_START + 0x3e          ; UDRE1addr
             rcall FF_ISR
-.org BOOT_START + UTXC1addr
+.org BOOT_START + 0x40          ; UTXC1addr
             rcall FF_ISR
-.org BOOT_START + TWIaddr
+.org BOOT_START + 0x42          ; TWIaddr
             rcall FF_ISR
-.org BOOT_START + SPMRaddr
+.org BOOT_START + 0x44          ; SPMRaddr
             rcall FF_ISR
 
 
@@ -3786,15 +3795,15 @@ FF_ISR:
         clr     zero        
         reti
 
-TIMER3_ISR:
+TIMER1_ISR:
         push    xl
         in_     xl, SREG
         push    xl
         push    xh
         ldi     xl, low(ms_value)
         ldi     xh, high(ms_value)
-        out_    TCNT3H, xh
-        out_    TCNT3L, xl
+        out_    TCNT1H, xh
+        out_    TCNT1L, xl
         lds     xl, ms_count
         lds     xh, ms_count+1
         adiw    xl, 1
@@ -3874,9 +3883,9 @@ WARMLIT:
         .dw      0x0200                ; cse, state
         .dw      usbuf+ussize-4        ; S0
         .dw      urbuf+ursize-2        ; R0
-        fdw      TX1_
-        fdw      RX1_
-        fdw      RX1Q
+        fdw      OP_TX_
+        fdw      OP_RX_
+        fdw      OP_RXQ
         .dw      up0                   ; Task link
         .dw      0x0010                ; BASE
         .dw      utibbuf               ; TIB
@@ -4059,6 +4068,7 @@ XXOFF_TX0_1:
 ;***************************************************
 ; TX1   c --    output character to UART 1
         fdw(RX0Q_L)
+.ifdef UDR1
 TX1_L:
         .db     NFA|3,"tx1"
 TX1_:
@@ -4142,6 +4152,7 @@ TX1_SEND:
         out_    UDR1, t1
         ret
 #endif
+.endif
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
 ;   if (idirty)
@@ -4246,7 +4257,9 @@ DO_SPM:
         ret
 
 ;***************************************************
-        fdw     RSHIFT_L
+.ifdef UDR1
+        fdw     RX1Q_L
+.endif
 EMPTY_L:
         .db     NFA|5,"empty"
 EMPTY:
@@ -4293,8 +4306,10 @@ WARM_2:
         ldi     t1, high(up0)
         movw    upl, t0
 ; Set RAMPZ for correct flash addressing
+.ifdef RAMPZ
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
+.endif
 ; init warm literals
         rcall   DOLIT_A
         fdw     WARMLIT
@@ -4321,10 +4336,17 @@ WARM_3:
 
 ; Init ms timer
         ldi     t0, 1
-        out_    TCCR3B, t0
-        ldi     t0, (1<<TOIE3)
-        out_    ETIMSK, t0
-; Init UART
+        out_    TCCR1B, t0
+.ifdef TIMSK
+        ldi     t0, (1<<TOIE1)
+        out_    TIMSK, t0
+.endif
+.ifdef TIMSK1
+        ldi     t0, (1<<TOIE1)
+        out_    TIMSK1, t0
+.endif
+; Init UART 1
+.ifdef UBRR1L
         ; Set baud rate
         ldi     t0, 0
         out_    UBRR1H, t0
@@ -4337,7 +4359,7 @@ WARM_3:
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
         ; Init rx1 interrupts
-
+.endif
         rcall   DP_TO_RAM
         sei
         rcall   XXON_TX1_1
@@ -4378,7 +4400,7 @@ VER:
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
-        fdw     SCAN_L
+        fdw     VER_L
 EI_L:
         .db     NFA|INLINE|2,"ei",0
         sei
@@ -4532,8 +4554,10 @@ IIFETCH:
         ;subi    zh, high(PFLASH)
         elpm    tosl, z+     ; Fetch from Flash directly
         elpm    tosh, z+
+.ifdef RAMPZ
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
+.endif
         ret
                 
         fdw     STORE_L
@@ -4584,8 +4608,10 @@ IICFETCH:
         ;subi    zh, high(PFLASH)
         elpm    tosl, z+     ; Fetch from Flash directly
         clr     tosh
+.ifdef RAMPZ
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
+.endif
         ret
 
         fdw     FETCH_L
@@ -4800,7 +4826,8 @@ IFLUSH:
         sbrc    FLAGS1, idirty
         rjmp    IWRITE_BUFFER
         ret
-        fdw     FCY_L
+
+        fdw     IFLUSH_L
 OPERATOR_L:
         .db     NFA|8,"operator",0
 OPERATOR:
