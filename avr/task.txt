@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          13.11.2011                                      *
+\    Date:          23.11.2011                                      *
 \    FF Version:    3.8                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -10,7 +10,7 @@
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
 \ TASK leaves the userarea address on the stack.
-\ The basic size of a task is decimal 26 bytes.
+\ The basic size of a task is decimal 32 bytes.
 \ The return stack, the parameter stack and the tib buffer areas 
 \ are in addition to that. 
 \ These are allocated at the end (high address) of the user area.
@@ -82,12 +82,10 @@ hex ram
   dup r0 !                       \  a ssize-addr r0
 
   \ Store task-loop address to the return stack
-  rot pfl - 1 rshift $9000 + 2dup       \ ssize-a r0 a r0 a
-  $ff and swap c!      \ ssize-a r0 a
-  8 rshift swap 1- c!  \ ssize-a
+  rot >xt swap 1- !       \ ssize-a 
  
   \ Point to  free returns stack cell
-  r0 @ 4 - rsave !
+  r0 @ 4 - rsave !        \ extra space for TOS saving in PAUSE
 
   \ s0 = ssave = r0 + ssize - 2
   c@ r0 @ + dup s0 ! dup ssave ! \ s0

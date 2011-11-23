@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          16.11.2011                                        *
+;    Date:          23.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -32,8 +32,23 @@
 
 .include "m128def.inc"
 ;.include "m328pdef.inc"
-; Macros
 
+
+;..............................................................................
+; Configuration data
+;..............................................................................
+#define FC_TYPE_SW
+#define clock 16000000  ; 16 MHz 
+#define baud  38400
+#define ubrr0val (clock/16/baud) - 1
+#define ms_value -(clock/1000)
+#define IDLE_MODE
+#define BOOT_SIZE 0x400
+#define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
+#define KERNEL_START NRWW_STOP_ADDR - 0x0f00 + 1
+
+
+; Macros
   .def zero = r2
   .def t7 = r3
   .def upl = r4
@@ -114,36 +129,65 @@
 .endif
 .endmacro
 
-
-
-.macro fdw
-  .dw (@0<<1)
+.macro lpm_
+.if (FLASHEND < 0x8000) ; Word address
+        lpm @0,@1
+.else
+        elpm @0,@1
+.endif
 .endmacro
 
+.macro sub_pflash_z
+.if (PFLASH > 0)
+        subi    zh, high(PFLASH)
+.endif
+.endmacro
+
+.macro add_pflash_z
+.if (PFLASH > 0)
+        subi    zh, high(0x10000-PFLASH)
+.endif        
+.endmacro
+
+.macro sub_pflash_tos
+.if (PFLASH > 0)
+        subi    tosh, high(PFLASH)
+.endif
+.endmacro
+
+.macro add_pflash_tos
+.if (PFLASH > 0)
+        subi    tosh, high(0x10000-PFLASH)
+.endif        
+.endmacro
+
+.macro rampv_to_c
+.if (FLASHEND >= 0x8000)
+        bset    0
+.else
+        bclr    0
+.endif
+.endmacro
+
+.macro fdw
+  .dw ((@0<<1)+PFLASH)
+.endmacro
+
+
 ; Symbol naming compatilibity
-#if 0
-#ifndef SPMEN
-.def    SPMEN=SELFPRGEN
-#endif
-#ifndef EEWE
-.def    EEWE=EEPE
-#endif
-#ifndef EEMWE
-.def    EEMWE=EEMPE
-#endif
-#endif
 
+.ifndef SPMEN
+.equ SPMEN=SELFPRGEN
+.endif
 
-; Configuration data
-#define FC_TYPE_SW
-#define clock 16000000  ; 16 MHz 
-#define baud  38400
-#define ubrr0val (clock/16/baud) - 1
-#define ms_value -(clock/1000)
-#define IDLE_MODE
-#define BOOT_SIZE 0x400
-#define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START NRWW_STOP_ADDR - 0x0f00 + 1
+.ifndef EEWE
+.equ EEWE=EEPE
+.endif
+
+.ifndef EEMWE
+.equ EEMWE=EEMPE
+.endif
+
 .ifdef UDR1
 .equ OP_TX_=TX1_
 .equ OP_RX_=RX1_
@@ -159,8 +203,6 @@
 ; Flash page size
 .equ PAGESIZEB=PAGESIZE*2    ; Page size in bytes 
 .equ flashPageMask=0x00      ; One byte, no mask needed on 8 bit processor
-
-
 
 ; Forth word header flags
 .equ NFA= 0x80      ; Name field mask
@@ -192,12 +234,28 @@
 .equ BS_=0x08
 
 ;;; Memory mapping prefixes
-.equ PRAM    = 0x0000  ; 4 Kbytes of ram
-.equ PEEPROM = 0x1000  ; 4 Kbytes of eeprom
-.equ PFLASH  = 0x2000  ; 56 Kbytes of flash
-.equ SFLASH  = 0x9000  ; Start if addressable physical flash on atmega128
-.equ PKERNEL = 0xe000  ; Kernel base offset
+.equ PRAM    = 0x0000                 ; 4 Kbytes of ram (atm128)
+.equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm128)
+.if (FLASHEND == 0xffff)              ; 64 Kwords flash
+.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
+.equ PFLASH  = 0
 .equ RAMPZV  = 1
+.else
+.if (FLASHEND == 0x7fff)              ; 32 Kwords flash
+.equ OFLASH = PEEPROM+EEPROMEND+1     ; 56 Kbytes available for FlashForth
+.equ PFLASH = 0
+.else
+.if (FLASHEND == 0x3fff)              ; 16 Kwords flash
+.equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
+.equ PFLASH = OFLASH
+.else
+.if (FLASHEND == 0x1fff)              ; 8  Kwords flash
+.equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth
+.equ PFLASH = OFLASH
+.endif
+.endif
+.endif
+.endif
 
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf0_size= 4
@@ -240,8 +298,6 @@
 .equ latest=       eeprom + 0x0008 ; Pointer to latest dictionary word
 .equ prompt=       eeprom + 0x000a ; Deferred prompt
 .equ ehere=        eeprom + 0x000c
-
-
 
 ;****************************************************
 .dseg
@@ -607,8 +663,8 @@ DOLIT:
         pop     zl
         lsl     zl
         rol     zh
-        elpm    tosl, z+
-        elpm    tosh, z+
+        lpm_    tosl, z+
+        lpm_    tosh, z+
         ror     zh
         ror     zl
         ijmp    ; (z)
@@ -618,8 +674,9 @@ EXECUTE_L:
         .db     NFA|7,"execute"
 EXECUTE:
         movw    zl, tosl
+        sub_pflash_z
         poptos
-        bset    0  ; RAMPV
+        rampv_to_c
         ror     zh
         ror     zl
         ijmp
@@ -667,8 +724,8 @@ DOCREATE:
         pop     zl
         lsl     zl
         rol     zh
-        elpm    tosl, z+
-        elpm    tosh, z+
+        lpm_    tosl, z+
+        lpm_    tosh, z+
         pop     zh
         pop     zl
         ijmp
@@ -684,8 +741,8 @@ DODOES:
         lsl     zl
         rol     zh
         pushtos
-        elpm    tosl, z+
-        elpm    tosh, z+
+        lpm_    tosl, z+
+        lpm_    tosh, z+
         movw    z, x
         ijmp    ; (z)
 
@@ -880,7 +937,8 @@ STORECFF1:
         rcall   DOLIT
         .dw     0x940E      ; call jmp:0x940d
         call    ICOMMA
-        bset    0  ; RAMPV
+        sub_pflash_tos
+        rampv_to_c
         ror     tosh
         ror     tosl
         call    ICOMMA
@@ -1128,7 +1186,6 @@ XSQUOTE:
         ror     tosl
         rcall   RFROM
         rcall   PLUS
-;       rcall   ONEPLUS
         rcall   TOR
         ret
 
@@ -1955,8 +2012,8 @@ DOUSER:
         pop     zl
         lsl     zl
         rol     zh
-        elpm    tosl, z+
-        elpm    tosh, z+
+        lpm_    tosl, z+
+        lpm_    tosh, z+
         add     tosl, upl
         adc     tosh, uph
         ret
@@ -2711,13 +2768,15 @@ QUIT_L:
         .db     NFA|4,"quit",0
 QUIT:
         rcall   RPEMPTY
+        rcall   DOLIT
+        .dw     XON
+        rcall   EMIT
         rcall   LEFTBRACKET
         rcall   FRAM
 QUIT0:  
         rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
-        rcall   XXON_TX1_1
 QUIT1: 
         rcall   check_sp
         rcall   CR
@@ -2727,7 +2786,7 @@ QUIT1:
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         rcall   MINUS
         rcall   ACCEPT
-        rcall   XXOFF_TX1_1
+;        rcall   XXOFF_EMIT
         rcall   SPACE_
         rcall   INTERPRET
         rcall   STATE_
@@ -3319,11 +3378,29 @@ DNEGATE:
 ;;; ******************************************************
 
         fdw     DUMP_L
-PFLASH_L:
-        .db     NFA|3,"pfl"
-PFLASH_:
-        rcall   DOCREATE_A
-        .dw     PFLASH    
+TO_XT_L:
+        .db     NFA|3,">xt"
+TO_XT:
+        sub_pflash_tos
+        rampv_to_c
+        ror     tosh
+        ror     tosl
+        mov     t0, tosh
+        mov     tosh, tosl
+        mov     tosl, t0
+        ret
+
+        fdw     TO_XT_L
+XT_FROM_L:
+        .db     NFA|3,"xt>"
+XT_FROM:
+        mov     t0, tosh
+        mov     tosh, tosl
+        mov     tosl, t0
+        lsl     tosl
+        rol     tosh
+        add_pflash_tos
+        ret
 
 ;***************************************************************
 ; check that the relative address is within reach of conditional branch
@@ -3332,7 +3409,7 @@ PFLASH_:
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
-        fdw     PFLASH_L
+        fdw     XT_FROM_L
 BRQ_L:
         .db     NFA|3,"br?"
 BRQ:
@@ -3631,7 +3708,7 @@ MARKER:
         rcall   TEN
         rcall   CMOVE
         rcall   TEN
-        rcall   ALLOT
+        call    ALLOT
         call    FRAM
         rcall   XDOES
         call    DODOES
@@ -3762,7 +3839,9 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x3a          ; OVF3addr
             rjmp FF_ISR; TIMER3_ISR
 .org BOOT_START + 0x3c          ; URXC1addr
+.ifdef UDR1
             rjmp RX1_ISR
+.endif
 .org BOOT_START + 0x3e          ; UDRE1addr
             rcall FF_ISR
 .org BOOT_START + 0x40          ; UTXC1addr
@@ -3845,7 +3924,7 @@ RX0_ISR_SKIP_XOFF:
         pop     zl
         rjmp    ISR_RETI1
 TX0_ISR:
-
+.ifdef UDR1
 RX1_ISR:
         push    xl
         in_     xl, SREG
@@ -3875,7 +3954,7 @@ RX1_ISR_SKIP_XOFF:
         pop     zl
         rjmp    ISR_RETI1
 TX1_ISR:
-
+.endif
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 22
@@ -3898,7 +3977,7 @@ WARMLIT:
 ;.section user_eedata
 COLDLIT:
 STARTV: .dw      0
-DPC:    .dw      PFLASH
+DPC:    .dw      OFLASH
 DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
@@ -4064,7 +4143,6 @@ XXOFF_TX0_1:
         sbr     FLAGS2, (1<<ixoff)
         ret
 #endif
-
 ;***************************************************
 ; TX1   c --    output character to UART 1
         fdw(RX0Q_L)
@@ -4089,12 +4167,12 @@ RX1_:
         rcall   RX1Q
         call    ZEROSENSE
         breq    RX1_
-#if 0
+.if 0
         pushtos
         in_     tosl, UDR1
         clr     tosh
         ret
-#else
+.else
         pushtos
         ldi     zl, low(rbuf1)
         ldi     zh, high(rbuf1)
@@ -4112,19 +4190,19 @@ RX1_:
         sts     rbuf1_lv, xl
         sei
         ret
-#endif
+.endif
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
         fdw     RX1_L
 RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
-#if 0
+.if 0
         in_     t0, UCSR1A
         sbrs    t0, RXC1
         jmp     FALSE_
         jmp     TRUE_
-#else
+.else
         lds     xl, rbuf1_lv
         cpse    xl, zero
         jmp     TRUE_
@@ -4151,7 +4229,7 @@ TX1_SEND:
         rjmp    TX1_SEND
         out_    UDR1, t1
         ret
-#endif
+.endif
 .endif
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
@@ -4172,7 +4250,7 @@ IUPDATEBUF:
         ret
 
 IFILL_BUFFER:
-        rcall   XXOFF_TX1_1
+;        rcall   XXOFF_EMIT
         rcall   IFLUSH
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
@@ -4184,7 +4262,7 @@ IFILL_BUFFER_1:
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
-        elpm    t1, z+
+        lpm_    t1, z+
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
@@ -4193,6 +4271,7 @@ IFILL_BUFFER_2:
 IWRITE_BUFFER:
         mov     zl, ibasel
         mov     zh, ibaseh
+        sub_pflash_z
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
@@ -4225,7 +4304,7 @@ IWRITE_BUFFER1:
         subi    xl, low(PAGESIZEB) ;restore pointer
         sbci    xh, high(PAGESIZEB)
 IWRITE_BUFFER2:
-        elpm    r0, z+
+        lpm_    r0, z+
         ld      r1, x+
         cpse    r0, r1
         jmp     VERIFY_ERROR     ; What to do here ?? reset ?
@@ -4362,7 +4441,7 @@ WARM_3:
 .endif
         rcall   DP_TO_RAM
         sei
-        rcall   XXON_TX1_1
+;        rcall   XXON_TX1_1
         rcall   VER
 ; Turnkey ?
         rcall   TURNKEY
@@ -4489,7 +4568,7 @@ STORE_L:
 STORE:
         cpi     tosh, high(PEEPROM)
         brlo    STORE_RAM
-        cpi     tosh, high(PFLASH)
+        cpi     tosh, high(OFLASH)
         brlo    ESTORE
         rjmp    ISTORE
 STORE_RAM:
@@ -4504,6 +4583,7 @@ ESTORE:
         rcall   LOCKEDQ
         sbic    eecr, eewe
         rjmp    ESTORE
+        subi    tosh, high(PEEPROM)
         out     eearl, tosl
         out     eearh, tosh
         poptos
@@ -4552,8 +4632,8 @@ IFETCH:
         ret
 IIFETCH:
         ;subi    zh, high(PFLASH)
-        elpm    tosl, z+     ; Fetch from Flash directly
-        elpm    tosh, z+
+        lpm_    tosl, z+     ; Fetch from Flash directly
+        lpm_    tosh, z+
 .ifdef RAMPZ
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
@@ -4566,7 +4646,7 @@ FETCH_L:
 FETCH:
         cpi     tosh, high(PEEPROM)
         brlo    FETCH_RAM
-        cpi     tosh, high(PFLASH)
+        cpi     tosh, high(OFLASH)
         brlo    EFETCH
         rjmp    IFETCH
 FETCH_RAM:
@@ -4578,6 +4658,7 @@ FETCH_RAM:
 EFETCH:
         sbic    eecr, eewe
         rjmp    EFETCH
+        subi    tosh, high(PEEPROM)
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -4606,7 +4687,7 @@ ICFETCH:
         ret
 IICFETCH:
         ;subi    zh, high(PFLASH)
-        elpm    tosl, z+     ; Fetch from Flash directly
+        lpm_    tosl, z+     ; Fetch from Flash directly
         clr     tosh
 .ifdef RAMPZ
         ldi     t0, RAMPZV
@@ -4620,7 +4701,7 @@ CFETCH_L:
 CFETCH:
         cpi     tosh, high(PEEPROM)
         brlo    CFETCH_RAM
-        cpi     tosh, high(PFLASH)
+        cpi     tosh, high(OFLASH)
         brlo    ECFETCH
         rjmp    ICFETCH
 CFETCH_RAM:
@@ -4631,6 +4712,7 @@ CFETCH_RAM:
 ECFETCH:
         sbic    eecr, eewe
         rjmp    ECFETCH
+        subi    tosh, high(PEEPROM)
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
@@ -4659,7 +4741,7 @@ CSTORE_L:
 CSTORE:
         cpi     tosh, high(PEEPROM)
         brlo    CSTORE_RAM
-        cpi     tosh, high(PFLASH)
+        cpi     tosh, high(OFLASH)
         brlo    ECSTORE
         rjmp    ICSTORE
 CSTORE_RAM:
@@ -4673,6 +4755,7 @@ ECSTORE:
         rcall   LOCKEDQ
         sbic    eecr, eewe
         rjmp    ECSTORE
+        subi    tosh, high(PEEPROM)
         out     eearl, tosl
         out     eearh, tosh
         poptos
