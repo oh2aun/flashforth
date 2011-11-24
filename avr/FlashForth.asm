@@ -248,6 +248,7 @@
 .if (FLASHEND == 0x7fff)              ; 32 Kwords flash
 .equ OFLASH = PEEPROM+EEPROMEND+1     ; 56 Kbytes available for FlashForth
 .equ PFLASH = 0
+.equ RAMPZV  = 0
 .else
 .if (FLASHEND == 0x3fff)              ; 16 Kwords flash
 .equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
