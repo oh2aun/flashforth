@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          23.11.2011                                        *
+;    Date:          24.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -31,7 +31,9 @@
 
 
 .include "m128def.inc"
+;.include "m168pdef.inc"
 ;.include "m328pdef.inc"
+;.include "m644pdef.inc"
 
 
 ;..............................................................................
@@ -209,12 +211,14 @@
 .equ IMMED= 0x40    ; Immediate mask
 .equ INLINE= 0x20   ; Inline mask
 .equ COMPILE= 0x10  ; Compile only mask
-.equ NFAmask= 0xf       ; Name field length mask
+.equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fLOAD=   2           ; 256 mS Load sample available
-.equ fFC=     1           ; 0=Flow Control, 1 = no Flow Control                       
-.equ ixoff=   0
+.equ fLOAD=     4   ; 256 mS Load sample available
+.equ fFC_tx1=   3   ; 0=Flow Control, 1 = no Flow Control   
+.equ fFC_tx0=   2   ; 0=Flow Control, 1 = no Flow Control   
+.equ ixoff_tx1= 1                    
+.equ ixoff_tx0= 0
 
 ; FLAGS1
 .equ noclear= 6     ; dont clear optimisation flags 
@@ -334,7 +338,9 @@ usbuf:      .byte   ussize
 utibbuf:    .byte   utibsize
 dpdata:     .byte   2
 
-
+.eseg
+.org 0
+        .dw 0xffff  ; Force first byte of eeprom to 0xffff
 .cseg
 ;*******************************************************************
 ; Start of kernel
@@ -2583,9 +2589,9 @@ ICOMPILE_2:
         sbr     FLAGS1, (1<<idup)    ; Mark DUP encountered during compilation
 ICOMMAXT:
         rcall   COMMAXT_A
-        cbr     FLAGS2, (1<<fTAILC)  ; Allow tailjmp  optimisation
+        cbr     FLAGS1, (1<<fTAILC)  ; Allow tailjmp  optimisation
         sbrc    wflags, 4            ; Compile only ?
-        sbr     FLAGS2, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rjmp    IPARSEWORD
 ICOMPILE:
 ;        sbrs    wflags, 5       ; Inline check
@@ -2768,9 +2774,6 @@ QUIT_L:
         .db     NFA|4,"quit",0
 QUIT:
         rcall   RPEMPTY
-        rcall   DOLIT
-        .dw     XON
-        rcall   EMIT
         rcall   LEFTBRACKET
         rcall   FRAM
 QUIT0:  
@@ -2785,9 +2788,14 @@ QUIT1:
         rcall   TIBSIZE
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         rcall   MINUS
+        rcall   DOLIT
+        .dw     XON
+        rcall   EMIT
         rcall   ACCEPT
-;        rcall   XXOFF_EMIT
         rcall   SPACE_
+        rcall   DOLIT
+        .dw     XOFF
+        rcall   EMIT
         rcall   INTERPRET
         rcall   STATE_
         rcall   ZEROSENSE
@@ -3837,7 +3845,7 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x38          ; OC3Caddr
             rcall FF_ISR
 .org BOOT_START + 0x3a          ; OVF3addr
-            rjmp FF_ISR; TIMER3_ISR
+            rjmp FF_ISR
 .org BOOT_START + 0x3c          ; URXC1addr
 .ifdef UDR1
             rjmp RX1_ISR
@@ -3939,6 +3947,9 @@ RX1_ISR:
         add     zl, xl
         adc     zh, zero
         lds     xh, UDR1
+        cpi     xh, 0xf
+        brne    pc+2
+        rjmp    RESET_
         st      z, xh
         inc     xl
         andi    xl, (rbuf1_size-1)
@@ -3948,7 +3959,7 @@ RX1_ISR:
         sts     rbuf1_lv, xl
         cpi     xl, 2
         brmi    RX1_ISR_SKIP_XOFF
-        rcall   XXOFF_TX1       
+        rcall   XXOFF_TX1
 RX1_ISR_SKIP_XOFF:
         pop     zh
         pop     zl
@@ -4060,12 +4071,45 @@ IR_L:
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
+        cpi     tosl, XON
+        breq    XXON_TX0_TOS
+        cpi     tosl, XOFF
+        breq    XXOFF_TX0_TOS
         rcall   PAUSE
         in_     t0, UCSR0A
         sbrs    t0, UDRE0
         rjmp    TX0_
         out_    UDR0, tosl
         poptos
+        ret
+XXOFF_TX0_TOS:
+        poptos
+        rjmp    XXOFF_TX0_1
+XXON_TX0_TOS:
+        poptos
+        rjmp    XXON_TX0_1
+XXOFF_TX0:
+        sbrc    FLAGS2, ixoff_tx0
+        ret     
+XXOFF_TX0_1:
+        in_     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    XXOFF_TX0_1
+        ldi     t0, XOFF
+        out_    UDR0, t0
+        sbr     FLAGS2, (1<<ixoff_tx0)
+        ret
+
+XXON_TX0:
+        sbrs    FLAGS2, ixoff_tx0
+        ret     
+XXON_TX0_1:
+        in_     t0, UCSR0A
+        sbrs    t0, UDRE0
+        rjmp    XXON_TX0_1
+        ldi     t0, XON
+        out_    UDR0, t0
+        cbr     FLAGS2, (1<<ixoff_tx0)
         ret
 ;***************************************************
 ; RX0    -- c    get character from the UART 0 buffer
@@ -4077,12 +4121,6 @@ RX0_:
         rcall   RX0Q
         call    ZEROSENSE
         breq    RX0_
-#if 0
-        pushtos
-        in_     tosl, UDR0
-        clr     tosh
-        ret
-#else
         pushtos
         ldi     zl, low(rbuf0)
         ldi     zh, high(rbuf0)
@@ -4100,49 +4138,17 @@ RX0_:
         sts     rbuf0_lv, xl
         sei
         ret
-#endif
 ;***************************************************
 ; RX0?  -- n    return the number of characters in queue
         fdw     RX0_L
 RX0Q_L:
         .db     NFA|4,"rx0?",0
 RX0Q:
-#if 0
-        in_     t0, UCSR0A
-        sbrs    t0, RXC0
-        jmp     FALSE_
-        jmp     TRUE_
-#else
         lds     xl, rbuf0_lv
         cpse    xl, zero
         jmp     TRUE_
         rcall   XXON_TX0
         jmp     FALSE_
-
-XXON_TX0:
-        sbrs    FLAGS2, ixoff
-        ret     
-XXON_TX0_1:
-        in_     t0, UCSR0A
-        sbrs    t0, UDRE0
-        rjmp    XXON_TX0_1
-        ldi     t0, XON
-        out_    UDR0, t0
-        cbr     FLAGS2, (1<<ixoff)
-        ret
-
-XXOFF_TX0:
-        sbrc    FLAGS2, ixoff
-        ret     
-XXOFF_TX0_1:
-        in_     t0, UCSR0A
-        sbrs    t0, UDRE0
-        rjmp    XXOFF_TX0_1
-        ldi     t0, XOFF
-        out_    UDR0, t0
-        sbr     FLAGS2, (1<<ixoff)
-        ret
-#endif
 ;***************************************************
 ; TX1   c --    output character to UART 1
         fdw(RX0Q_L)
@@ -4150,12 +4156,42 @@ XXOFF_TX0_1:
 TX1_L:
         .db     NFA|3,"tx1"
 TX1_:
+        cpi     tosl, XON
+        breq    XXON_TX1_TOS
+        cpi     tosl, XOFF
+        breq    XXOFF_TX1_TOS
         rcall   PAUSE
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
         rjmp    TX1_
         out_    UDR1, tosl
         poptos
+        ret
+XXON_TX1_TOS:
+        poptos
+        rjmp    XXON_TX1_1
+XXON_TX1:
+        sbrs    FLAGS2, ixoff_tx1
+        ret
+XXON_TX1_1:
+        cbr     FLAGS2, (1<<ixoff_tx1)
+        ldi     t1, XON
+        rjmp    TX1_SEND
+
+XXOFF_TX1_TOS:
+        poptos
+        rjmp    XXOFF_TX1_1
+XXOFF_TX1:
+        sbrc    FLAGS2, ixoff_tx1
+        ret     
+XXOFF_TX1_1:
+        sbr     FLAGS2, (1<<ixoff_tx1)
+        ldi     t1, XOFF
+TX1_SEND:
+        in_     t0, UCSR1A
+        sbrs    t0, UDRE1
+        rjmp    TX1_SEND
+        out_    UDR1, t1
         ret
 ;***************************************************
 ; RX1    -- c    get character from the serial line
@@ -4167,12 +4203,6 @@ RX1_:
         rcall   RX1Q
         call    ZEROSENSE
         breq    RX1_
-.if 0
-        pushtos
-        in_     tosl, UDR1
-        clr     tosh
-        ret
-.else
         pushtos
         ldi     zl, low(rbuf1)
         ldi     zh, high(rbuf1)
@@ -4190,46 +4220,17 @@ RX1_:
         sts     rbuf1_lv, xl
         sei
         ret
-.endif
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
         fdw     RX1_L
 RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
-.if 0
-        in_     t0, UCSR1A
-        sbrs    t0, RXC1
-        jmp     FALSE_
-        jmp     TRUE_
-.else
         lds     xl, rbuf1_lv
         cpse    xl, zero
         jmp     TRUE_
         rcall   XXON_TX1
         jmp     FALSE_
-
-XXON_TX1:
-        sbrs    FLAGS2, ixoff
-        ret
-XXON_TX1_1:
-        cbr     FLAGS2, (1<<ixoff)
-        ldi     t1, XON
-        rjmp    TX1_SEND
-
-XXOFF_TX1:
-        sbrc    FLAGS2, ixoff
-        ret     
-XXOFF_TX1_1:
-        sbr     FLAGS2, (1<<ixoff)
-        ldi     t1, XOFF
-TX1_SEND:
-        in_     t0, UCSR1A
-        sbrs    t0, UDRE1
-        rjmp    TX1_SEND
-        out_    UDR1, t1
-        ret
-.endif
 .endif
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
@@ -4250,7 +4251,7 @@ IUPDATEBUF:
         ret
 
 IFILL_BUFFER:
-;        rcall   XXOFF_EMIT
+;        rcall   XXOFF_TX1
         rcall   IFLUSH
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
@@ -4441,7 +4442,9 @@ WARM_3:
 .endif
         rcall   DP_TO_RAM
         sei
-;        rcall   XXON_TX1_1
+        rcall   DOLIT_A
+        .dw     XON
+        call    EMIT
         rcall   VER
 ; Turnkey ?
         rcall   TURNKEY
@@ -4783,14 +4786,14 @@ FUNLOCK_L:
         fdw     FUNLOCK_L
 FCON_L:
         .db     NFA|3,"u1+"
-        cbr     FLAGS2, (1<<fFC)
+        cbr     FLAGS2, (1<<fFC_tx1)
         ret
 
 ;;; Disable flow control
         fdw     FCON_L
 FCOFF_L:
         .db     NFA|3,"u1-"
-        sbr     FLAGS2, (1<<fFC)
+        sbr     FLAGS2, (1<<fFC_tx1)
         ret
 
 ;;; Clear watchdog timer
