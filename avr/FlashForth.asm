@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          24.11.2011                                        *
+;    Date:          26.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -47,7 +47,7 @@
 #define IDLE_MODE
 #define BOOT_SIZE 0x400
 #define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START NRWW_STOP_ADDR - 0x0f00 + 1
+#define KERNEL_START BOOT_START - 0x0c00
 
 
 ; Macros
@@ -341,12 +341,12 @@ dpdata:     .byte   2
 
 .eseg
 .org 0
-        .dw 0xffff  ; Force first byte of eeprom to 0xffff
-.cseg
+        .dw 0xffff  ; Force first cell of eeprom to 0xffff
 ;*******************************************************************
 ; Start of kernel
 ;*******************************************************************
-.org BOOT_START-0x0b00
+.cseg
+.org KERNEL_START
 
 ;*******************************************************
 umstar0:
@@ -1340,24 +1340,8 @@ PLUS:
 MPLUS_L:
         .db     NFA|2, "m+",0
 MPLUS:
-        push    t2
-        push    t3
-        ld      t2, Y+
-        ld      t3, Y+
-        ld      t0, Y+
-        ld      t1, Y+
-        add     t0, tosl
-        adc     t1, tosh
-        clr     tosl
-        adc     tosl, t2
-        clr     tosh
-        adc     tosh, t3
-        st      -Y, t1
-        st      -Y, t0
-        pop     t3
-        pop     t2
-        ret
-
+        rcall   STOD
+        jmp     DPLUS
 
         fdw     MPLUS_L
 MINUS_L:
@@ -3376,16 +3360,6 @@ IALLOT:
     
 
 ;***************************************************************
-DNEGATE:
-        rcall   SWOP        
-        rcall   INVERT
-        rcall   SWOP
-        rcall   INVERT
-        rcall   ONE
-        jmp     MPLUS
-
-;;; ******************************************************
-
         fdw     DUMP_L
 TO_XT_L:
         .db     NFA|3,">xt"
@@ -3646,7 +3620,7 @@ LEAVE:
         push    t0
         push    t1
         ijmp
-
+;***************************************************
 ; RDROP compile a pop
         fdw      LEAVE_L
 RDROP_L:
@@ -3655,28 +3629,152 @@ RDROP:
         rcall   DOLIT_A
         fdw     XNEXT1
         jmp     INLINE0
-
+;***************************************************
         fdw     RDROP_L
-TEST_L:
-        .db     NFA|3,"ttt"
-        rcall   TOR
-        rjmp    TEST1
-TEST0:
-        call    CHARS
-TEST1:
-        pop     xl
-        pop     xh
-        sbiw    xl, 1
-        push    xh
-        push    xl
-        brcs    TEST2
-        rjmp    TEST0
-TEST2:
-        pop     t0
-        pop     t0
+STOD_L:
+        .db     NFA|3,"s>d"
+STOD:
+        sbrs    tosh, 7
+        jmp     FALSE_
+        jmp     TRUE_
+;***************************************************
+        fdw     STOD_L
+DNEGATE_L:
+        .db     NFA|7,"dnegate"
+DNEGATE:
+        rcall   DINVERT
+        call    ONE
+        jmp     MPLUS
+;***************************************************
+        fdw     DNEGATE_L
+QDNEGATE_L:
+        .db     NFA|8,"?dnegate",0
+QDNEGATE:
+        rcall   ZEROLESS
+        rcall   ZEROSENSE
+        breq    QDNEGATE1
+        rcall   DNEGATE
+QDNEGATE1:
+        ret
+
+;***************************************************
+        fdw     QDNEGATE_L
+DABS_L:
+        .db     NFA|4,"dabs",0
+DABS:
+        rcall   DUP
+        jmp     QDNEGATE
+;***************************************************
+        fdw     DABS_L
+DPLUS_L:
+        .db     NFA|2,"d+",0
+DPLUS:
+        ld      xl, Y+
+        ld      xh, Y+
+        ld      t2, Y+
+        ld      t3, Y+
+        ld      t0, Y+
+        ld      t1, Y+
+        add     xl, t0
+        adc     xh, t1
+        adc     tosl, t2
+        adc     tosh, t3
+        st      -Y, xh
+        st      -Y, xl
+        ret
+
+;***************************************************
+        fdw     DPLUS_L
+DMINUS_L:
+        .db     NFA|2,"d-",0
+        rcall   DNEGATE
+        jmp     DPLUS
+;***************************************************
+        fdw     DMINUS_L
+DTWOSLASH_L:
+        .db     NFA|3,"d2/"
+        ld      t0, y+
+        ld      t1, y+
+        asr     tosh
+        ror     tosl
+        ror     t1
+        ror     t0
+        st      -y, t1
+        st      -y, t0
         ret
 ;***************************************************
-        fdw      RDROP_L
+        fdw     DTWOSLASH_L
+DTWOSTAR_L:
+        .db     NFA|3,"d2*"
+        ld      t0, y+
+        ld      t1, y+
+        lsl     t0
+        rol     t1
+        rol     tosl
+        rol     tosh
+        st      -y, t1
+        st      -y, t0
+        ret
+;***************************************************
+        fdw     DTWOSTAR_L
+DINVERT_L:
+        .db     NFA|7,"dinvert"
+DINVERT:
+        call    SWOP        
+        rcall   INVERT
+        call    SWOP
+        jmp     INVERT
+;***************************************************
+        fdw     DINVERT_L
+DZEROEQUAL_L:
+        .db     NFA|3,"d0="
+        ret
+;***************************************************
+        fdw     DZEROEQUAL_L
+DZEROLESS_L:
+        .db     NFA|3,"d0<"
+        ret
+;***************************************************
+        fdw     DZEROLESS_L
+DEQUAL_L:
+        .db     NFA|2,"d=",0
+        ret
+;***************************************************
+        fdw     DEQUAL_L
+DLESS_L:
+        .db     NFA|2,"d<",0
+        ret
+;***************************************************
+        fdw     DLESS_L
+DGREATER_L:
+        .db     NFA|2,"d>",0
+        ret
+;***************************************************
+        fdw     DGREATER_L
+UDDOT_L:
+        .db     NFA|3,"ud."
+        rcall   LESSNUM
+        rcall   NUMS
+        rcall   NUMGREATER
+        call    TYPE
+        jmp     SPACE_
+;***************************************************
+        fdw     UDDOT_L
+DDOT_L:
+        .db     NFA|2,"d.",0
+        rcall   LESSNUM
+        rcall   DUP
+        call    TOR
+        rcall   DABS
+        rcall   NUMS
+        call    RFROM
+        rcall   SIGN
+        rcall   NUMGREATER
+        call    TYPE
+        jmp     SPACE_
+;***************************************************
+
+        fdw      DDOT_L
 L_FETCH_P:
         .db      NFA|2,"@p", 0
 FETCH_P:
@@ -3765,7 +3863,7 @@ MEMQ:
         call    CSE_
         rcall   DOLIT_A
         fdw     MEMQADDR_N
-        rcall   PLUS
+        call    PLUS
         rcall   FETCH_A
         rcall   CFETCHPP
         rcall   DOLIT_A
@@ -3850,11 +3948,11 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x3c          ; URXC1addr
 .ifdef UDR1
             rjmp RX1_ISR
-.endif
 .org BOOT_START + 0x3e          ; UDRE1addr
             rcall FF_ISR
 .org BOOT_START + 0x40          ; UTXC1addr
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x42          ; TWIaddr
             rcall FF_ISR
 .org BOOT_START + 0x44          ; SPMRaddr
@@ -4335,6 +4433,14 @@ DO_SPM:
         sts     SPMCSR, t1
         spm
         out     SREG, t7
+        ret
+
+        fdw     PAUSE_L
+IFLUSH_L:
+        .db     NFA|6,"iflush",0
+IFLUSH:
+        sbrc    FLAGS1, idirty
+        rjmp    IWRITE_BUFFER
         ret
 
 ;***************************************************
@@ -4840,7 +4946,7 @@ IS:
         call    ZEROSENSE
         breq    IS1
         rcall   LITERAL
-        rcall   DOLIT_A
+        call    DOLIT_A
         fdw     STORE
         call    COMMAXT
         rjmp    IS2
@@ -4905,14 +5011,6 @@ PAUSE1:
         sei
         ret
 
-
-        fdw     PAUSE_L
-IFLUSH_L:
-        .db     NFA|6,"iflush",0
-IFLUSH:
-        sbrc    FLAGS1, idirty
-        rjmp    IWRITE_BUFFER
-        ret
 
         fdw     IFLUSH_L
 OPERATOR_L:
