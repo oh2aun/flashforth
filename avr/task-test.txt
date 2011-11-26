@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task-test.txt                                   *
-\    Date:          13.11.2011                                      *
+\    Date:          26.11.2011                                      *
 \    FF Version:    3.8                                             *
 \    MCU:           Atmega 128(Olimex AVR-MT-128)                   *
 \    Copyright:     Mikael Nordman                                  *
@@ -24,7 +24,7 @@ ram variable delay
 : ledoff  pin6 porta mclr ;
 : ledon   pin6 porta mset ;
 
-0 30 30 0 task: task1
+0 18 20 0 task: task1
 : taskloop 
   400 delay !
   $40 ddra mset  \  Output 

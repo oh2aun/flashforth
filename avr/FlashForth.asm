@@ -44,28 +44,29 @@
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
 #define ms_value -(clock/1000)
-#define IDLE_MODE0
+#define IDLE_MODE
 #define BOOT_SIZE 0x400
 #define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
 #define KERNEL_START BOOT_START - 0x0c00
 
 
 ; Macros
-  .def zero = r2
-  .def upl = r4
-  .def uph = r5
+  .def zero = r2        ; read only zero
+  .def upl = r4         ; not in interrupt 
+  .def uph = r5         ; not in interrupt
 
-  .def wflags  = r9
+  .def wflags  = r9     ; not in interrupt
 
-  .def ibasel=r10
-  .def ibaseh=r11
-  .def iaddrl=r12
-  .def iaddrh=r13
-
+  .def ibasel=r10       ; Not in interrupt
+  .def ibaseh=r11       ; Not in interrupt
+  .def iaddrl=r12       ; Not in interrupt
+  .def iaddrh=r13       ; Not in interrupt
+  .def t8 = r14
+  .def t9 = r15
   .def t0 = r16
   .def t1 = r17
-  .def t2 = r18
-  .def t3 = r19
+  .def t2 = r0
+  .def t3 = r1
 
   .def pl = r20
   .def ph = r21
@@ -265,12 +266,12 @@
 ;;; Sizes of the serial RX and TX character queues
 .equ rbuf0_size= 4
 .equ tbuf0_size= 0
-.equ rbuf1_size= 64
+.equ rbuf1_size= 32
 .equ tbuf1_size= 0
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
-.equ ursize=       96         ; 48 cells ret stack size 
+.equ ursize=       64         ; 32 cells ret stack size 
 .equ ussize=       64         ; 32 cells parameter stack
 .equ utibsize=     82         ; 82 character Terminal Input buffer
 
@@ -307,7 +308,7 @@
 ;****************************************************
 .dseg
 ibuf:       .byte PAGESIZEB
-ivec:       .byte INT_VECTORS_SIZE*2
+ivec:       .byte INT_VECTORS_SIZE
 
 rxqueue0:
 rbuf0_wr:    .byte 1
@@ -315,11 +316,13 @@ rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
 rbuf0:       .byte rbuf0_size
 
+.ifdef UDR1
 rxqueue1:
 rbuf1_wr:    .byte 1
 rbuf1_rd:    .byte 1
 rbuf1_lv:    .byte 1
 rbuf1:       .byte rbuf1_size
+.endif
 
 ms_count:   .byte 2
 dpSTART:    .byte 2
@@ -353,23 +356,23 @@ umstar0:
         movw t0, tosl
         poptos
         mul tosl,t0
-        movw zl, r0
-        clr t2
-        clr t3
+        movw t4, r0 ; r0=t2, r1=t3
+        clr t6
+        clr t7
         mul tosh, t0
-        add zh, r0
-        adc t2, r1
-        adc t3, zero
+        add t5, r0
+        adc t6, r1
+        adc t7, zero
         mul tosl, t1
-        add zh, r0
-        adc t2, r1
-        adc t3, zero
+        add t5, r0
+        adc t6, r1
+        adc t7, zero
         mul tosh, t1
-        add t2, r0
-        adc t3, r1
-        movw tosl, zl
+        add t6, r0
+        adc t7, r1
+        movw tosl, t4
         pushtos
-        movw tosl, t2
+        movw tosl, t6
         ret
 
 ;***********************************************************
@@ -424,6 +427,63 @@ umslashmod3:
         mov tosh, t2     ; 6 + 272 + 6 =284 cycles
         ret
 ; *******************************************************************
+; EXIT --   Compile a return
+;        variable link
+        .dw     0
+EXIT_L:
+        .db     NFA|4,"exit",0
+EXIT:
+        pop     t0
+        pop     t0
+        ret
+
+; idle
+        fdw(EXIT_L)
+IDLE_L:
+        .db     NFA|4,"idle",0
+IDLE:
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        breq    IDLE1
+        lds     t0, status 
+        dec     t0
+        sts     status, t0
+#endif
+IDLE1:
+        ret
+        
+; busy
+        fdw(IDLE_L)
+BUSY_L:
+        .db     NFA|4,"busy",0
+BUSY:
+#ifdef IDLE_MODE
+        rcall   IDLE_HELP
+        brne    BUSY1
+        lds     t0, status
+        inc     t0
+        sts     status, t0
+BUSY1:
+#endif
+        ret
+
+
+#ifdef IDLE_MODE
+IDLE_HELP:
+        movw    xl, upl
+        sbiw    xl, -ustatus 
+        ld      t0, x
+        cpi     t0, 0
+        ret
+#endif
+        
+; busy
+        fdw(BUSY_L)
+LOAD_L:
+        .db     NFA|4,"load",0
+LOAD:
+        call    CELL
+        ret
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
 ; : mset ( mask addr -- )
@@ -2773,14 +2833,8 @@ QUIT1:
         rcall   TIBSIZE
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         rcall   MINUS
-        rcall   DOLIT
-        .dw     XON
-        rcall   EMIT
         rcall   ACCEPT
         rcall   SPACE_
-        rcall   DOLIT
-        .dw     XOFF
-        rcall   EMIT
         rcall   INTERPRET
         rcall   STATE_
         rcall   ZEROSENSE
@@ -4110,7 +4164,7 @@ RX1_ISR:
         lds     xl, rbuf1_lv
         inc     xl
         sts     rbuf1_lv, xl
-        cpi     xl, 2
+        cpi     xl, 4
         brmi    RX1_ISR_SKIP_XOFF
         rcall   XXOFF_TX1
 RX1_ISR_SKIP_XOFF:
@@ -4146,67 +4200,6 @@ DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
 STAT:   fdw      DOTSTATUS
-
-; EXIT --   Compile a return
-;        variable link
-        .dw     0
-EXIT_L:
-        .db     NFA|4,"exit",0
-EXIT:
-        pop     t0
-        pop     t0
-        ret
-
-; idle
-        fdw(EXIT_L)
-IDLE_L:
-        .db     NFA|4,"idle",0
-IDLE:
-#ifdef IDLE_MODE
-        rcall   IDLE_HELP
-        breq    IDLE1
-        lds     t0, status 
-        dec     t0
-        sts     status, t0
-#endif
-IDLE1:
-        ret
-        
-; busy
-        fdw(IDLE_L)
-BUSY_L:
-        .db     NFA|4,"busy",0
-BUSY:
-#ifdef IDLE_MODE
-        rcall   IDLE_HELP
-        brne    BUSY1
-        lds     t0, status
-        inc     t0
-        sts     status, t0
-BUSY1:
-#endif
-        ret
-
-
-#ifdef IDLE_MODE
-IDLE_HELP:
-        movw    xl, upl
-        sbiw    xl, -ustatus 
-        ld      t0, x
-        cpi     t0, 0
-        ret
-#endif
-        
-; busy
-        fdw(BUSY_L)
-LOAD_L:
-        .db     NFA|4,"load",0
-LOAD:
-        call    CELL
-        ret
-        
-
-
 
 ;***************************************************
 ; TX0   c --    output character to UART 0
@@ -4415,7 +4408,10 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
-        in      t3, SREG
+        rcall   DOLIT_A
+        .dw     XOFF
+        call    EMIT
+        in      t9, SREG
         cli
         mov     zl, ibasel
         mov     zh, ibaseh
@@ -4444,10 +4440,7 @@ IWRITE_BUFFER1:
         ldi     t1, (1<<PGWRT) | (1<<SPMEN)
         rcall   DO_SPM
         ; re-enable the RWW section
-        ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
-        rcall   DO_SPM
-        // reenable interrupts
-        out     SREG, t3
+        rcall   IWRITE_BUFFER3
 #if 0
         ; read back and check, optional
         ldi     t0, low(PAGESIZEB);init loop variable
@@ -4463,11 +4456,17 @@ IWRITE_BUFFER2:
 #endif
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
+        // reenable interrupts
+        out     SREG, t9
+        rcall   DOLIT_A
+        .dw     XON
+        call    EMIT
+         ret
         ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
-        lds     t2, SPMCSR
-        sbrs    t2, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+        lds     t8, SPMCSR
+        sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
         ret
         ; re-enable the RWW section
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
@@ -4475,14 +4474,11 @@ IWRITE_BUFFER3:
         rjmp    IWRITE_BUFFER3
 
 DO_SPM:
-        lds     t2, SPMCSR
-        sbrc    t2, SPMEN
+        lds     t8, SPMCSR
+        sbrc    t8, SPMEN
         rjmp    DO_SPM       ; Wait for previous write to complete
-        in      t2, SREG
-        cli
         sts     SPMCSR, t1
         spm
-        out     SREG, t2
         ret
 
         fdw     PAUSE_L
