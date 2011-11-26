@@ -44,7 +44,7 @@
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
 #define ms_value -(clock/1000)
-#define IDLE_MODE
+#define IDLE_MODE0
 #define BOOT_SIZE 0x400
 #define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
 #define KERNEL_START BOOT_START - 0x0c00
@@ -52,13 +52,9 @@
 
 ; Macros
   .def zero = r2
-  .def t7 = r3
   .def upl = r4
   .def uph = r5
 
-  .def t4  = r6
-  .def t5  = r7
-  .def t6  = r8
   .def wflags  = r9
 
   .def ibasel=r10
@@ -84,6 +80,10 @@
 ;  yh = r29  ; StackPointer Yhi
 ;  zl = r30
 ;  zh = r31
+  .def t4 = r26
+  .def t5 = r27
+  .def t6 = r30
+  .def t7 = r31
 
 .macro poptos 
     ld tosl, Y+
@@ -270,8 +270,8 @@
 
 ;;; USER AREA for the OPERATOR task
 .equ uaddsize=     0          ; No additional user variables 
-.equ ursize=       48         ; 24 cells ret stack size 
-.equ ussize=       48         ; 24 cells parameter stack
+.equ ursize=       96         ; 48 cells ret stack size 
+.equ ussize=       64         ; 32 cells parameter stack
 .equ utibsize=     82         ; 82 character Terminal Input buffer
 
 ;;; User variables and area
@@ -307,7 +307,7 @@
 ;****************************************************
 .dseg
 ibuf:       .byte PAGESIZEB
-ivec:       .byte INT_VECTORS_SIZE
+ivec:       .byte INT_VECTORS_SIZE*2
 
 rxqueue0:
 rbuf0_wr:    .byte 1
@@ -3169,10 +3169,11 @@ TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
         pushtos
+        in      t2, SREG
         cli
         lds     tosl, ms_count
         lds     tosh, ms_count+1
-        sei
+        out     SREG, t2
         ret
 
         
@@ -3687,6 +3688,7 @@ DPLUS:
         fdw     DPLUS_L
 DMINUS_L:
         .db     NFA|2,"d-",0
+DMINUS:
         rcall   DNEGATE
         jmp     DPLUS
 ;***************************************************
@@ -3720,35 +3722,64 @@ DTWOSTAR_L:
 DINVERT_L:
         .db     NFA|7,"dinvert"
 DINVERT:
-        call    SWOP        
-        rcall   INVERT
-        call    SWOP
-        jmp     INVERT
+        ld      xl, y+
+        ld      xh, y+
+        com     xl
+        com     xh
+        com     tosl
+        com     tosh
+        st      -y, xh
+        st      -y, xl
+        ret
 ;***************************************************
         fdw     DINVERT_L
 DZEROEQUAL_L:
         .db     NFA|3,"d0="
+DZEROEQUAL:
+        ld      xl, y+
+        ld      xh, y+
+        or      tosl, tosh
+        or      tosl, xl
+        or      tosl, xh
+        brne    DZEROLESS_FALSE
+DZEROEQUAL_TRUE:
+        ser     tosl
+        ser     tosh
         ret
+
 ;***************************************************
         fdw     DZEROEQUAL_L
 DZEROLESS_L:
         .db     NFA|3,"d0<"
+DZEROLESS:
+        ld      xl, y+
+        ld      xh, y+
+        cpi     tosh, 0
+        brmi    DZEROEQUAL_TRUE
+DZEROLESS_FALSE:
+        clr     tosl
+        clr     tosh
         ret
 ;***************************************************
         fdw     DZEROLESS_L
 DEQUAL_L:
         .db     NFA|2,"d=",0
-        ret
+        rcall   DMINUS
+        jmp     DZEROEQUAL
 ;***************************************************
         fdw     DEQUAL_L
 DLESS_L:
         .db     NFA|2,"d<",0
-        ret
+DLESS:
+        rcall   DMINUS
+        jmp     DZEROLESS
 ;***************************************************
         fdw     DLESS_L
 DGREATER_L:
         .db     NFA|2,"d>",0
-        ret
+DGREATER:
+        call    TWOSWAP
+        jmp     DLESS
 ;***************************************************
         fdw     DGREATER_L
 UDDOT_L:
@@ -3763,7 +3794,7 @@ UDDOT_L:
 DDOT_L:
         .db     NFA|2,"d.",0
         rcall   LESSNUM
-        rcall   DUP
+        call    DUP
         call    TOR
         rcall   DABS
         rcall   NUMS
@@ -3944,7 +3975,7 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x38          ; OC3Caddr
             rcall FF_ISR
 .org BOOT_START + 0x3a          ; OVF3addr
-            rjmp FF_ISR
+            rcall FF_ISR
 .org BOOT_START + 0x3c          ; URXC1addr
 .ifdef UDR1
             rjmp RX1_ISR
@@ -3960,25 +3991,48 @@ RESET_:     jmp  WARM_
 
 
 
-FF_ISR1:
+FF_ISR:
         st      -y, xh
         in_     xh, SREG
+        st      -y, xh
         st      -y, xl
         pop     xh
         pop     xl
         push    zl
         push    zh
-        lsl     xl
-        rol     xh
-        adiw    xl, (ivec&0x3f)
-        ldi     xh, 1
+        push    t0
+        push    t1
+        push    t2
+        push    t3
+        push    pl
+        push    ph
+        push    tosl
+        push    tosh
+        subi    xl, 1
+        clr     xh
+        ldi     t0, low(ivec)
+        ldi     t1, high(ivec)
+        add     xl, t0
+        adc     xh, t1
+        ld      zh, x+  ; >xt dependency !!!!
         ld      zl, x+
-        ld      zh, x+
         ijmp    ;(z)
-FF_ISR:
-        pop     zero
-        pop     zero
-        clr     zero        
+
+FF_ISR_EXIT:
+        pop     tosh
+        pop     tosl
+        pop     ph
+        pop     pl
+        pop     t3
+        pop     t2
+        pop     t1
+        pop     t0
+        pop     zh
+        pop     zl
+        ld      xl, y+
+        ld      xh, y+
+        out_    SREG, xh
+        ld      xh, y+
         reti
 
 TIMER1_ISR:
@@ -4151,22 +4205,12 @@ LOAD:
         call    CELL
         ret
         
-; [i   --    Save registers for the Forth interrupt context
-        fdw(LOAD_L)
-LI_L:
-        .db     NFA|INLINE|COMPILE|2,"[i",0
-        ret
 
-; i]   --    Restore registers for the Forth interrupt context
-        fdw(LI_L)
-IR_L:
-        .db     NFA|INLINE|COMPILE|2,"i]",0
-        ret
 
 
 ;***************************************************
 ; TX0   c --    output character to UART 0
-        fdw(IR_L)
+        fdw(LOAD_L)
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
@@ -4228,6 +4272,7 @@ RX0_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
+        in      t2, SREG
         cli
         inc     xl
         andi    xl, (rbuf0_size-1)
@@ -4235,7 +4280,7 @@ RX0_:
         lds     xl, rbuf0_lv
         dec     xl
         sts     rbuf0_lv, xl
-        sei
+        out     SREG, t2
         ret
 ;***************************************************
 ; RX0?  -- n    return the number of characters in queue
@@ -4310,6 +4355,7 @@ RX1_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
+        in      t2, SREG
         cli
         inc     xl
         andi    xl, (rbuf1_size-1)
@@ -4317,7 +4363,7 @@ RX1_:
         lds     xl, rbuf1_lv
         dec     xl
         sts     rbuf1_lv, xl
-        sei
+        out     SREG, t2
         ret
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -4369,6 +4415,8 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
+        in      t3, SREG
+        cli
         mov     zl, ibasel
         mov     zh, ibaseh
         sub_pflash_z
@@ -4398,6 +4446,8 @@ IWRITE_BUFFER1:
         ; re-enable the RWW section
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
         rcall   DO_SPM
+        // reenable interrupts
+        out     SREG, t3
 #if 0
         ; read back and check, optional
         ldi     t0, low(PAGESIZEB);init loop variable
@@ -4416,8 +4466,8 @@ IWRITE_BUFFER2:
         ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
-        lds     t7, SPMCSR
-        sbrs    t7, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+        lds     t2, SPMCSR
+        sbrs    t2, RWWSB ; If RWWSB is set, the RWW section is not ready yet
         ret
         ; re-enable the RWW section
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
@@ -4425,14 +4475,14 @@ IWRITE_BUFFER3:
         rjmp    IWRITE_BUFFER3
 
 DO_SPM:
-        lds     t7, SPMCSR
-        sbrc    t7, SPMEN
+        lds     t2, SPMCSR
+        sbrc    t2, SPMEN
         rjmp    DO_SPM       ; Wait for previous write to complete
-        in      t7, SREG
+        in      t2, SREG
         cli
         sts     SPMCSR, t1
         spm
-        out     SREG, t7
+        out     SREG, t2
         ret
 
         fdw     PAUSE_L
@@ -4465,6 +4515,7 @@ WARM_L:
         .db     NFA|4,"warm",0
 WARM_:
 ; Zero memory
+        cli           ; Disable interrupts
         clr     xl
         clr     xh
         ldi     yl, 25
@@ -4473,11 +4524,12 @@ WARM_1:
         st      x+, yh
         subi    yl, 1
         brne    WARM_1
-        clr     xl
-        ldi     xh, 0x01
+
+        clr     xh
+        ldi     xl, 30
 WARM_2:
         st      x+, t0
-        cpi     xh, 0x4
+        cpi     xh, 0x6
         brne    WARM_2
 ; Init Stack pointer
         ldi     yl, low(usbuf+ussize-4)
@@ -4608,17 +4660,22 @@ IRQ_SEMI_L:
         .db     NFA|IMMED|2,";i",0
 IRQ_SEMI:
         rcall   DOLIT_A
-        .dw     0x9518      ; reti
+        .dw     0x940C     ; jmp
+        rcall   ICOMMA
+        rcall   DOLIT_A
+        .dw     FF_ISR_EXIT
         rcall   ICOMMA
         jmp     LEFTBRACKET
 
 
 ; int!  ( addr n  --  )   store interrupt vector
-        fdw     DI_L
+        fdw     IRQ_SEMI_L
 IRQ_V_L:
         .db     NFA|4,"int!",0
-        ; FIXME
-        ret
+        rcall   DOLIT_A
+        .dw     ivec
+        call    PLUS
+        jmp    STORE
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
         fdw     IRQ_V_L
@@ -4926,7 +4983,7 @@ DEFER_L:
         .db     NFA|5,"defer"
 DEFER:
         rcall   CREATE
-        rcall   DOLIT_A
+        call    DOLIT_A
         fdw     ABORT
         call    COMMA
         rcall   XDOES
@@ -4980,6 +5037,7 @@ PAUSE:
         brne    PAUSE1
         sleep               ; IDLE mode
 PAUSE1:
+        in      t2, SREG
         cli
         push    tosl
         push    tosh
@@ -5008,7 +5066,7 @@ PAUSE1:
         ld      yh, x+
         ld      pl, x+
         ld      ph, x+
-        sei
+        out     SREG, t2
         ret
 
 
