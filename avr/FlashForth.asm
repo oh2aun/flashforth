@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          26.11.2011                                        *
+;    Date:          27.11.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -264,7 +264,7 @@
 .endif
 
 ;;; Sizes of the serial RX and TX character queues
-.equ rbuf0_size= 4
+.equ rbuf0_size= 32
 .equ tbuf0_size= 0
 .equ rbuf1_size= 32
 .equ tbuf1_size= 0
@@ -4131,13 +4131,19 @@ RX0_ISR:
         lds     xl, rbuf0_lv
         inc     xl
         sts     rbuf0_lv, xl
-        cpi     xl, 2
+        cpi     xl, rbuf0_size-2
+        brne    PC+2
+        rcall   RX0_OVF
+        cpi     xl, 8
         brmi    RX0_ISR_SKIP_XOFF
-        rcall   XXOFF_TX0       
+        rcall   XXOFF_TX0_1
 RX0_ISR_SKIP_XOFF:
         pop     zh
         pop     zl
         rjmp    ISR_RETI1
+RX0_OVF:
+        ldi     zh, '|'
+        rjmp    TX0_SEND
 TX0_ISR:
 .ifdef UDR1
 RX1_ISR:
@@ -4164,13 +4170,19 @@ RX1_ISR:
         lds     xl, rbuf1_lv
         inc     xl
         sts     rbuf1_lv, xl
-        cpi     xl, 4
+        cpi     xl, rbuf1_size-2
+        brne    PC+2
+        rcall   RX1_OVF
+        cpi     xl, 8
         brmi    RX1_ISR_SKIP_XOFF
-        rcall   XXOFF_TX1
+        rcall   XXOFF_TX1_1
 RX1_ISR_SKIP_XOFF:
         pop     zh
         pop     zl
         rjmp    ISR_RETI1
+RX1_OVF:
+        ldi     zh, '|'
+        rjmp    TX1_SEND
 TX1_ISR:
 .endif
 ;;; *************************************************
@@ -4218,34 +4230,32 @@ TX0_:
         out_    UDR0, tosl
         poptos
         ret
-XXOFF_TX0_TOS:
-        poptos
-        rjmp    XXOFF_TX0_1
+
 XXON_TX0_TOS:
         poptos
         rjmp    XXON_TX0_1
+XXON_TX0:
+        sbrs    FLAGS2, ixoff_tx0
+        ret
+XXON_TX0_1:
+        cbr     FLAGS2, (1<<ixoff_tx0)
+        ldi     zh, XON
+        rjmp    TX0_SEND
+
+XXOFF_TX0_TOS:
+        poptos
+        rjmp    XXOFF_TX0_1
 XXOFF_TX0:
         sbrc    FLAGS2, ixoff_tx0
         ret     
 XXOFF_TX0_1:
-        in_     t0, UCSR0A
-        sbrs    t0, UDRE0
-        rjmp    XXOFF_TX0_1
-        ldi     t0, XOFF
-        out_    UDR0, t0
         sbr     FLAGS2, (1<<ixoff_tx0)
-        ret
-
-XXON_TX0:
-        sbrs    FLAGS2, ixoff_tx0
-        ret     
-XXON_TX0_1:
-        in_     t0, UCSR0A
-        sbrs    t0, UDRE0
-        rjmp    XXON_TX0_1
-        ldi     t0, XON
-        out_    UDR0, t0
-        cbr     FLAGS2, (1<<ixoff_tx0)
+        ldi     zh, XOFF
+TX0_SEND:
+        in_     zl, UCSR0A
+        sbrs    zl, UDRE0
+        rjmp    TX0_SEND
+        out_    UDR0, zh
         ret
 ;***************************************************
 ; RX0    -- c    get character from the UART 0 buffer
@@ -4304,6 +4314,7 @@ TX1_:
         out_    UDR1, tosl
         poptos
         ret
+
 XXON_TX1_TOS:
         poptos
         rjmp    XXON_TX1_1
@@ -4312,7 +4323,7 @@ XXON_TX1:
         ret
 XXON_TX1_1:
         cbr     FLAGS2, (1<<ixoff_tx1)
-        ldi     t1, XON
+        ldi     zh, XON
         rjmp    TX1_SEND
 
 XXOFF_TX1_TOS:
@@ -4323,12 +4334,12 @@ XXOFF_TX1:
         ret     
 XXOFF_TX1_1:
         sbr     FLAGS2, (1<<ixoff_tx1)
-        ldi     t1, XOFF
+        ldi     zh, XOFF
 TX1_SEND:
-        in_     t0, UCSR1A
-        sbrs    t0, UDRE1
+        in_     zl, UCSR1A
+        sbrs    zl, UDRE1
         rjmp    TX1_SEND
-        out_    UDR1, t1
+        out_    UDR1, zh
         ret
 ;***************************************************
 ; RX1    -- c    get character from the serial line
@@ -4389,7 +4400,6 @@ IUPDATEBUF:
         ret
 
 IFILL_BUFFER:
-;        rcall   XXOFF_TX1
         rcall   IFLUSH
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
@@ -4411,6 +4421,9 @@ IWRITE_BUFFER:
         rcall   DOLIT_A
         .dw     XOFF
         call    EMIT
+;        rcall   DOLIT_A
+;        .dw     3
+;        rcall   MS
         in      t9, SREG
         cli
         mov     zl, ibasel
