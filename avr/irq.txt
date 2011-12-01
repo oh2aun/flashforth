@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      irq.txt                                           *
-\    Date:          26.11.2011                                        *
+\    Date:          01.12.2011                                        *
 \    FF Version:    3.8                                               *
 \    MCU:           Atmega128                                         *
 \    Copyright:     Mikael Nordman                                    *
@@ -28,7 +28,7 @@ variable counter
 
 : irqOvf3Init
   \ Store the interrupt vector
-  ['] t3OverflowIsr >xt ovf3Ivec int!
+  ['] t3OverflowIsr >xa ovf3Ivec int!
   \ Activate counter 3
   1 tccr3b mset
   \ Activate timer3 overflow interrupt

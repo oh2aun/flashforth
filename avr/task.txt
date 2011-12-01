@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          23.11.2011                                      *
+\    Date:          01.12.2011                                      *
 \    FF Version:    3.8                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -82,7 +82,7 @@ hex ram
   dup r0 !                       \  a ssize-addr r0
 
   \ Store task-loop address to the return stack
-  rot >xt swap 1- !       \ ssize-a 
+  rot >xa swap 1- !       \ ssize-a 
  
   \ Point to  free returns stack cell
   r0 @ 4 - rsave !        \ extra space for TOS saving in PAUSE

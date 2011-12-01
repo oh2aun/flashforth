@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          27.11.2011                                        *
+;    Date:          01.12.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -719,23 +719,6 @@ KEYQ:
         rcall   UKEYQ_
         jmp     FEXECUTE
 
-;***************************************************
-; LIT   -- x    fetch inline 16 bit literal to the stack
-
-DOLIT_L:
-        .db     NFA|3, "lit"
-DOLIT:
-        pushtos
-        pop     zh
-        pop     zl
-        lsl     zl
-        rol     zh
-        lpm_    tosl, z+
-        lpm_    tosh, z+
-        ror     zh
-        ror     zl
-        ijmp    ; (z)
-
         fdw     KEYQ_L
 EXECUTE_L:
         .db     NFA|7,"execute"
@@ -958,7 +941,7 @@ ALIGNED:
 ;   2 + ;
         fdw     ALIGNED_L
 CELLPLUS_L:
-        .db     NFA|5,"cell+"
+        .db     NFA|INLINE|5,"cell+"
 CELLPLUS:
         adiw    tosl, 2
         ret
@@ -966,7 +949,7 @@ CELLPLUS:
 ; CELLS    n1 -- n2            cells->adrs units
         fdw     CELLPLUS_L
 CELLS_L:
-        .db     NFA|5,"cells"
+        .db     NFA|INLINE|5,"cells"
 CELLS:
         lsl     tosl
         rol     tosh
@@ -1369,13 +1352,6 @@ RFETCH:
         ijmp
 
 
-        fdw     RFETCH_L
-DUP_L:
-        .db     NFA|3, "dup"
-DUP:
-        pushtos
-        ret
-
 ;   ABS     n   --- n1      absolute value of n
         fdw     DUP_L
 ABS_L:
@@ -1446,7 +1422,7 @@ XOR_:
 
         fdw     XOR_L
 INVERT_L:
-        .db     NFA|6, "invert",0
+        .db     NFA|INLINE|6, "invert",0
 INVERT:
         com     tosl
         com     tosh
@@ -1531,29 +1507,6 @@ NOTEQUAL_L:
 NOTEQUAL:
         jmp     XOR_
 
-        fdw     NOTEQUAL_L
-ZEROEQUAL_L:
-        .db     NFA|2, "0=",0
-ZEROEQUAL:      
-        or      tosh, tosl
-        brne    FALSE_F
-TRUE_F:
-        ser     tosh
-        ser     tosl
-ZEROEQUAL_1:
-        ret
-
-        fdw     ZEROEQUAL_L
-ZEROLESS_L:
-        .db     NFA|2, "0<",0
-ZEROLESS:
-        tst     tosh
-        brmi    TRUE_F
-FALSE_F:
-        clr     tosh
-        clr     tosl
-        ret
-
         fdw     ZEROLESS_L
 EQUAL_L:
         .db     NFA|1, "="
@@ -1581,7 +1534,9 @@ ULESS_L:
         .db     NFA|2,"u<",0
 ULESS:
         rcall   MINUS
-        brmi    TRUE_F        ; Carry test  
+        brpl    ULESS1        ; Carry test  
+        rjmp    TRUE_F
+ULESS1:
         jmp     FALSE_F
 
 
@@ -1815,7 +1770,7 @@ CSTORE_A:
         fdw     MIN_L
 UPTR_L:
         .db     NFA|2,"up",0
-UPTR:   rcall   DOCREATE_A
+UPTR:   rcall   DOCREATE
         .dw     4 ; upl
 
         fdw     UPTR_L
@@ -1844,14 +1799,14 @@ TODIGIT_L:
         .db     NFA|6,">digit",0
 TODIGIT: 
         rcall   DUP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     9
         rcall   GREATER
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x27
         rcall   AND_
         rcall   PLUS
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x30
         jmp     PLUS
 
@@ -1903,7 +1858,7 @@ SIGN:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    SIGN1
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x2D
         rcall   HOLD
 SIGN1:
@@ -1976,7 +1931,7 @@ DECIMAL:
 HEX_L:
         .db     NFA|3,"hex"
 HEX:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     16
         rcall   BASE
         jmp     STORE
@@ -2077,6 +2032,7 @@ SOURCE_L:
 SOURCE:
         rcall   TICKSOURCE
         jmp     TWOFETCH
+
 
 ; /STRING  a u n -- a+n u-n          trim string
 ;   swap over - >r + r>
@@ -2209,7 +2165,7 @@ NTOC_L:
         .db     NFA|3,"n>c"
 NFATOCFA:
         rcall   CFETCHPP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x0f
         rcall   AND_
         rcall   PLUS
@@ -2223,7 +2179,7 @@ CFATONFA:
         rcall   TWOMINUS
         rcall   DUP
         rcall   CFETCH_A
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x007F
         rcall   GREATER
         rcall   ZEROSENSE
@@ -2273,7 +2229,7 @@ IMMEDQ_L:
 IMMEDQ: 
         rcall   CFETCH_A
         mov     wflags, tosl  ; COMPILE and INLINE flags for the compiler
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     IMMED
         jmp     AND_
 
@@ -2284,7 +2240,7 @@ IMMEDQ:
 FIND_L:
         .db     NFA|4,"find",0
 FIND:   
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     kernellink
         rcall   findi
         rcall   DUPZEROSENSE
@@ -2303,16 +2259,16 @@ DIGITQ_L:
 DIGITQ:
                                 ; 1 = 31    A = 41
         rcall   DUP             ; c c       c c
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x39            ; c c 39    c c 39
         rcall   GREATER         ; c 0       c ffff
         rcall   ZEROSENSE
         breq    DIGITQ1
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x27
         rcall   MINUS
 DIGITQ1:        
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x30            ; c 30
         rcall   MINUS           ; 1
         rcall   DUP             ; 1 1
@@ -2333,7 +2289,7 @@ SIGNQ_L:
 SIGNQ:
         rcall   OVER
         rcall   CFETCH_A
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     ','
         rcall   MINUS
         rcall   DUP
@@ -2444,18 +2400,18 @@ NUMBERQ:
         rcall   OVER
         rcall   CFETCH_A
         
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     '#'
         rcall   MINUS
         rcall   DUP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     3
         rcall   ULESS
         rcall   ZEROSENSE
         breq    BASEQ1
         rcall   CELLS
         
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     BASEQV
         rcall   PLUS
         rcall   FEXECUTE
@@ -2496,14 +2452,14 @@ QNUMD1:
         rcall   ZEROSENSE       ; a d.l d.h a'
         breq    QNUM1
         call    CFETCH
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     '.'
         rcall   MINUS
         rcall   ZEROSENSE       ; a d.l d.h
         brne    QNUM_ERR1
         rcall   ROT             ; d.l d.h a
         rcall   DROP            ; d.l d.h
-        rcall   DOLIT_A         ; 
+        rcall   DOLIT         ; 
         .dw     2               ; d.l ud.h 2    Double number
         rjmp    QNUM3
 QNUM1:                          ; single precision dumber
@@ -2564,9 +2520,6 @@ TICKSOURCE:
         rcall   DOUSER
         .dw     usource       ; two cells !!!!!!
 
-        .db     NFA|3,"dup"
-DUP_A:  jmp     DUP
-
 ;  INTERPRET  c-addr u --    interpret given buffer
         fdw     TICKSOURCE_L
 INTERPRET_L:
@@ -2581,7 +2534,7 @@ IPARSEWORD:
         rcall   BL
         rcall   WORD
 
-        rcall   DUP_A
+        rcall   DUP
         rcall   CFETCH_A
         rcall   ZEROSENSE
         brne    IPARSEWORD1
@@ -2603,7 +2556,7 @@ IPARSEWORD1:
         rjmp    IEXECUTE        ; Not a compile only word
         rcall   STATE_          ; Compile only word check
         rcall   XSQUOTE
-        .db     10,"COMPILING?",0
+        .db     3,"CO?"
         rcall   QABORT
 IEXECUTE:
         cbr     FLAGS1, (1<<noclear)
@@ -2615,8 +2568,8 @@ IEXECUTE:
         rjmp    IPARSEWORD
 ICOMPILE_1:
         cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
-        rcall   DUP_A
-        rcall   DOLIT_A
+        rcall   DUP
+        rcall   DOLIT
         fdw     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
         rcall   EQUAL
         rcall   ZEROSENSE
@@ -2625,23 +2578,23 @@ ICOMPILE_1:
         rjmp    ICOMMAXT
 ICOMPILE_2:
         cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
-        rcall   DUP_A
-        rcall   DOLIT_A
+        rcall   DUP
+        rcall   DOLIT
         fdw     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    ICOMPILE
         sbr     FLAGS1, (1<<idup)    ; Mark DUP encountered during compilation
+ICOMPILE:
+        sbrs    wflags, 5       ; Inline check
+        rjmp    ICOMMAXT
+        call    INLINE0
+        rjmp    IPARSEWORD
 ICOMMAXT:
         rcall   COMMAXT_A
         cbr     FLAGS1, (1<<fTAILC)  ; Allow tailjmp  optimisation
         sbrc    wflags, 4            ; Compile only ?
         sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
-        rjmp    IPARSEWORD
-ICOMPILE:
-;        sbrs    wflags, 5       ; Inline check
-        rjmp    ICOMMAXT
-;        call    INLINE0
         rjmp    IPARSEWORD
 INUMBER: 
         cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
@@ -2689,7 +2642,7 @@ SHB_L:
 SHB:
         rcall   LATEST_
         rcall   FETCH_A
-        rcall   DUP_A
+        rcall   DUP
         rcall   CFETCH_A
         rcall   ROT
         rcall   OR_
@@ -2700,7 +2653,7 @@ SHB:
 IMMEDIATE_L:
         .db     NFA|9,"immediate" ; 
 IMMEDIATE:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     IMMED
         jmp     SHB
 
@@ -2709,7 +2662,7 @@ IMMEDIATE:
 INLINED_L:
         .db     NFA|7,"inlined" ; 
 INLINED:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     INLINE
         jmp     SHB
 
@@ -2720,25 +2673,20 @@ INLINED:
 DOTSTATUS_L:
         .db     NFA|3,".st"
 DOTSTATUS:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     '<'
         rcall   EMIT
         rcall   DOTBASE
         rcall   EMIT
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     ','
         rcall   EMIT
         rcall   MEMQ
         rcall   TYPE
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     '>'
         rcall   EMIT
         jmp     DOTS
-        
-        .db     NFA|3,"lit"
-DOLIT_A:
-        jmp     DOLIT
-        
 
         .db     NFA|2,">r",0
 TOR_A:  jmp     TOR
@@ -2747,7 +2695,7 @@ TOR_A:  jmp     TOR
 ;;; TEN ( -- n ) Leave decimal 10 on the stack
         .db     NFA|1,"a"
 TEN:
-        rcall   DOCREATE_A
+        rcall   DOCREATE
         .dw     10
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
@@ -2755,7 +2703,7 @@ TEN:
 ; link    set     $
         .db     NFA|3,"dp>"
 DP_TO_RAM:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     dp_start
         rcall   INI
         rcall   TEN
@@ -2766,11 +2714,11 @@ DP_TO_RAM:
 ; link    set     $
         .db     NFA|3,">dp"
 DP_TO_EEPROM:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     dp_start
         rcall   STORE_P_TO_R
         rcall   INI
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     4
         rcall   TOR
 DP_TO_EEPROM_0: 
@@ -2829,7 +2777,7 @@ QUIT1:
         rcall   check_sp
         rcall   CR
         rcall   TIB
-        rcall   DUP_A
+        rcall   DUP
         rcall   TIBSIZE
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         rcall   MINUS
@@ -2896,9 +2844,58 @@ ABORTQUOTE_L:
         .db     NFA|IMMED|COMPILE|6,"abort",'"',0
 ABORTQUOTE:
         rcall   SQUOTE
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     QABORT
         jmp     COMMAXT
+
+;***************************************************
+; LIT   -- x    fetch inline 16 bit literal to the stack
+
+DOLIT_L:
+        .db     NFA|3, "lit"
+DOLIT:
+        pushtos
+        pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
+        lpm_    tosl, z+
+        lpm_    tosh, z+
+        ror     zh
+        ror     zl
+        ijmp    ; (z)
+
+; DUP must not be reachable from user code with rcall
+        fdw     RFETCH_L
+DUP_L:
+        .db     NFA|INLINE|3, "dup"
+DUP:
+        pushtos
+        ret
+
+        fdw     NOTEQUAL_L
+ZEROEQUAL_L:
+        .db     NFA|2, "0=",0
+ZEROEQUAL:      
+        or      tosh, tosl
+        brne    FALSE_F
+TRUE_F:
+        ser     tosh
+        ser     tosl
+ZEROEQUAL_1:
+        ret
+
+        fdw     ZEROEQUAL_L
+ZEROLESS_L:
+        .db     NFA|2, "0<",0
+ZEROLESS:
+        tst     tosh
+        brmi    TRUE_F
+FALSE_F:
+        clr     tosh
+        clr     tosl
+        ret
+
 
 ; '    -- xt             find word in dictionary
         fdw     ABORTQUOTE_L
@@ -2925,7 +2922,7 @@ CHAR:
 PAREN_L:
         .db     NFA|IMMED|1,"("
 PAREN:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     ')'
         rcall   PARSE
         sbr     FLAGS1, (1<<noclear) ; dont clear flags in case of (
@@ -2952,11 +2949,6 @@ BRACCHAR:
         .db     NFA|3,"cf,"
 COMMAXT_A:
         jmp     COMMAXT
-
-        .db     NFA|3,"(c)"
-DOCREATE_A: 
-        jmp     DOCREATE
-
 
 ; CR      --                      output newline
         fdw     BRACCHAR_L
@@ -2989,15 +2981,15 @@ CREATE:
         rcall   BL
         rcall   WORD            ; Parse a word
 
-        rcall   DUP_A           ; Remember parsed word at rhere
+        rcall   DUP             ; Remember parsed word at rhere
         rcall   FIND
         rcall   NIP
         rcall   ZEROEQUAL
         rcall   QABORTQ         ; ABORT if word has already been defined
-        rcall   DUP_A           ; Check the word length 
+        rcall   DUP             ; Check the word length 
         rcall   CFETCH_A
         rcall   ONE
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     16
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
@@ -3007,19 +2999,19 @@ CREATE:
         rcall   ICOMMA          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
-        rcall   DUP_A             
+        rcall   DUP             
         rcall   LATEST_         ; new 'latest' link
         rcall   STORE_A         ; str len ihere
         rcall   PLACE           ; 
         rcall   IHERE           ; ihere
         rcall   CFETCH_A
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     NFA
         rcall   SHB
         rcall   ONEPLUS
         rcall   ALIGNED
         rcall   IALLOT          ; The header has now been created
-        rcall   DOLIT_A             
+        rcall   DOLIT             
         fdw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
         rcall   COMMAXT_A       ; Append an exeution token
         rcall   ALIGN
@@ -3040,13 +3032,13 @@ POSTPONE:
         rcall   BL
         rcall   WORD
         rcall   FIND
-        rcall   DUP_A
+        rcall   DUP
         rcall   QABORTQ
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    POSTPONE1
         rcall   LITERAL
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     COMMAXT
 POSTPONE1:
         jmp    COMMAXT
@@ -3055,7 +3047,7 @@ POSTPONE1:
 IDP_L:
         .db     NFA|3,"idp"
 IDP:
-        rcall   DOCREATE_A
+        rcall   DOCREATE
         .dw     dpFLASH
 
 ;***************************************************************
@@ -3085,10 +3077,10 @@ XDOES:
         fdw     POSTPONE_L
 DOES_L:
         .db     NFA|IMMED|COMPILE|5,"does>"
-DOES:   rcall   DOLIT_A
+DOES:   rcall   DOLIT
         fdw     XDOES
         rcall   COMMAXT_A
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     DODOES
         jmp     COMMAXT
 
@@ -3135,7 +3127,7 @@ NONAME:
 SEMICOLON_L:
         .db     NFA|IMMED|COMPILE|1,";"
 SEMICOLON:
-        rcall   DOLIT_A   ; Compile a ret
+        rcall   DOLIT   ; Compile a ret
         .dw     0x9508
         rcall   ICOMMA
         jmp     LEFTBRACKET
@@ -3146,7 +3138,7 @@ MINUS_FETCH_L:
         .db     NFA|2,"-@",0
 MINUS_FETCH:
         rcall   TWOMINUS
-        rcall   DUP_A
+        rcall   DUP
         jmp     FETCH
 
 ; [']  --         find word & compile as DOLITeral
@@ -3160,7 +3152,7 @@ BRACTICK:
 ; 2-    n -- n-2
         fdw     BRACTICK_L
 TWOMINUS_L:
-        .db     NFA|2,"2-",0
+        .db     NFA|INLINE|2,"2-",0
 TWOMINUS:
         sbiw    tosl, 2
         ret
@@ -3171,7 +3163,7 @@ TWOMINUS:
 BL_l:
         .db     NFA|2,"bl",0
 BL:
-        rcall   DOCREATE_A
+        rcall   DOCREATE
         .dw     ' '
 
 ; STATE   -- flag                 holds compiler state
@@ -3189,7 +3181,7 @@ STATE_:
 LATEST_L:
         .db     NFA|6,"latest",0
 LATEST_:
-        rcall   DOCREATE_A
+        rcall   DOCREATE
         .dw     dpLATEST
 
 ; S0       -- a-addr      start of parameter stack
@@ -3214,7 +3206,7 @@ R0_:
 ;link    set     $
         .db     NFA|3,"ini"
 INI:
-        rcall   DOCREATE_A
+        rcall   DOCREATE
         .dw     dpSTART
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
@@ -3246,7 +3238,7 @@ MS:
         rcall   PLUS
 MS1:    
         rcall   PAUSE
-        rcall   DUP_A
+        rcall   DUP
         rcall   TICKS
         rcall   MINUS
         rcall   ZEROLESS
@@ -3260,7 +3252,7 @@ DOTID_L:
         .db     NFA|3,".id"
 DOTID:
         rcall   CFETCHPP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x0f
         rcall   AND_
         rcall   TOR
@@ -3301,19 +3293,19 @@ WORDS_L:
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     kernellink
-WDS1:   rcall   DUP_A
+WDS1:   rcall   DUP
         rcall   DOTID
         rcall   SWOP_A
         rcall   ONEPLUS
-        rcall   DUP_A
-        rcall   DOLIT_A
+        rcall   DUP
+        rcall   DOLIT
         .dw     7
         rcall   AND_
         rcall   ZEROSENSE
         breq    WDS2
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     9
         call    EMIT
         rjmp    WDS3
@@ -3357,26 +3349,26 @@ DOTS2:
 DUMP_L:
         .db     NFA|4,"dump",0
 DUMP:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     16
         rcall   USLASH
         rcall   TOR
         rjmp    DUMP7
 DUMP1:  
         rcall   CR
-        rcall   DUP_A
-        rcall   DOLIT_A
+        rcall   DUP
+        rcall   DOLIT
         .dw     4
         rcall   UDOTR
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     ':'
         call    EMIT
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     15
         rcall   TOR
 DUMP2:
         rcall   CFETCHPP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     2
         rcall   UDOTR
         rcall   XNEXT
@@ -3384,10 +3376,10 @@ DUMP2:
         pop     t1
         pop     t0
 
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     16
         rcall   MINUS
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     15
         rcall   TOR
 DUMP4:  
@@ -3416,9 +3408,9 @@ IALLOT:
 
 ;***************************************************************
         fdw     DUMP_L
-TO_XT_L:
-        .db     NFA|3,">xt"
-TO_XT:
+TO_XA_L:
+        .db     NFA|3,">xa"
+TO_XA:
         sub_pflash_tos
         rampv_to_c
         ror     tosh
@@ -3428,10 +3420,10 @@ TO_XT:
         mov     tosl, t0
         ret
 
-        fdw     TO_XT_L
-XT_FROM_L:
-        .db     NFA|3,"xt>"
-XT_FROM:
+        fdw     TO_XA_L
+XA_FROM_L:
+        .db     NFA|3,"xa>"
+XA_FROM:
         mov     t0, tosh
         mov     tosh, tosl
         mov     tosl, t0
@@ -3447,7 +3439,7 @@ XT_FROM:
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
-        fdw     XT_FROM_L
+        fdw     XA_FROM_L
 BRQ_L:
         .db     NFA|3,"br?"
 BRQ:
@@ -3468,44 +3460,44 @@ BRQ1:
 COMMAZEROSENSE:
         sbrc    FLAGS1, idup
         rjmp    COMMAZEROSENSE1
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     ZEROSENSE
         rjmp    COMMAZEROSENSE2
 COMMAZEROSENSE1:
         rcall   IDPMINUS
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     DUPZEROSENSE
 COMMAZEROSENSE2:
         cbr     FLAGS1, (1<<idup)
         rjmp    INLINE0
 
 IDPMINUS:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     -4
         rjmp    IALLOT
 
 ;       rjmp, ( rel-addr -- )
 RJMPC:
         rcall   TWOSLASH
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x0FFF
         rcall   AND_
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0xc000
         rcall   OR_
         jmp     ICOMMA
 
 
 BRCCC:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0xf008      ; brcc pc+2
         jmp     ICOMMA
 BREQC:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0xf009      ; breq pc+2
         jmp     ICOMMA
 BRNEC:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0xf409      ; brne pc+2
         jmp     ICOMMA
 
@@ -3516,10 +3508,19 @@ BRNEC:
 IF_L:
         .db     NFA|IMMED|COMPILE|2,"if",0
 IF_:
+        sbrc    FLAGS1, izeroeq
+        rcall   IDPMINUS
         rcall   COMMAZEROSENSE
+        sbrc    FLAGS1, izeroeq
+        rjmp    IF_1
         rcall   BRNEC
+        rjmp    IF_2
+IF_1:
+        rcall   BREQC
+IF_2:
         rcall   IHERE
         rcall   FALSE_
+        cbr     FLAGS1, (1<<izeroeq)
         jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
 
 ; ELSE     adrs1 -- adrs2    branch for IF..ELSE
@@ -3545,7 +3546,7 @@ THEN_:
         rcall   MINUS
         rcall   TWOMINUS
         rcall   TWOSLASH
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0xc000      ;  back-addr mask 
         rcall   OR_
         rcall   SWOP_A
@@ -3598,14 +3599,14 @@ REPEAT_:
         jmp     THEN_
 
 L_INLINE:
-; in, ( addr -- ) begin @+ dup $12 <> while i, repeat 2drop ;
+; in, ( addr -- ) begin @+ dup $9508 <> while i, repeat 2drop ;
         fdw      L_INLINE
 L_INLINEC:
         .db      NFA|3,"in,"
 INLINE0:        
         rcall   FETCHPP
         rcall   DUP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x9508
         rcall   NOTEQUAL
         rcall   ZEROSENSE
@@ -3620,7 +3621,7 @@ INLINE1:
 FOR_L:
         .db     NFA|IMMED|COMPILE|3,"for"
 FOR:
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     TOR
         rcall   COMMAXT_A
         rcall   IHERE
@@ -3635,14 +3636,14 @@ NEXT_L:
         .db     NFA|IMMED|COMPILE|4,"next", 0
 NEXT:
         rcall   THEN_
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     XNEXT
         rcall   COMMAXT_A
         rcall   BRCCC
 
         rcall   UNTIL1
 
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     XNEXT1
         jmp     INLINE0
 ; (next) decrement top of return stack
@@ -3681,7 +3682,7 @@ LEAVE:
 RDROP_L:
         .db      NFA|IMMED|COMPILE|5,"rdrop"
 RDROP:
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     XNEXT1
         jmp     INLINE0
 ;***************************************************
@@ -3894,7 +3895,7 @@ lastword:
 MARKER:
         call    ROM_
         rcall   CREATE
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     dp_start
         call    HERE
         rcall   TEN
@@ -3910,7 +3911,7 @@ MARKER:
 
 
 L_DOTBASE:
-        .db      NFA|1,"I"
+        .db      NFA|1," "
 DOTBASE:
         rcall   BASE
         rcall   FETCH_A
@@ -3943,15 +3944,15 @@ MEMQADDR_N:
 ; M? -- caddr count    current data space string
 ;        dw      L_DOTBASE
 L_MEMQ:
-        .db     NFA|1,"I"
+        .db     NFA|1," "
 MEMQ:
         call    CSE_
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     MEMQADDR_N
         call    PLUS
         rcall   FETCH_A
         rcall   CFETCHPP
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     NFAmask
         jmp     AND_
 end_of_dict:
@@ -4418,10 +4419,10 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     XOFF
         call    EMIT
-;        rcall   DOLIT_A
+;        rcall   DOLIT
 ;        .dw     3
 ;        rcall   MS
         in      t9, SREG
@@ -4471,7 +4472,7 @@ IWRITE_BUFFER2:
         cbr     FLAGS1, (1<<idirty)
         // reenable interrupts
         out     SREG, t9
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     XON
         call    EMIT
          ret
@@ -4509,11 +4510,11 @@ IFLUSH:
 EMPTY_L:
         .db     NFA|5,"empty"
 EMPTY:
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     COLDLIT
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     dp_start
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     coldlitsize
         call    CMOVE
         jmp     DP_TO_RAM
@@ -4559,15 +4560,15 @@ WARM_2:
         out_    RAMPZ, t0
 .endif
 ; init warm literals
-        rcall   DOLIT_A
+        rcall   DOLIT
         fdw     WARMLIT
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     cse
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     warmlitsize
         call    CMOVE
 ; init cold data to eeprom
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     dp_start
         rcall   FETCH
         rcall   TRUE_
@@ -4610,7 +4611,7 @@ WARM_3:
 .endif
         rcall   DP_TO_RAM
         sei
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     XON
         call    EMIT
         rcall   VER
@@ -4621,14 +4622,14 @@ WARM_3:
         call    XSQUOTE
         .db     3,"ESC"
         call    TYPE
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x800
         rcall   MS
         call    KEYQ
         call    ZEROSENSE
         breq    STARTQ1
         call    KEY
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x1b
         call    EQUAL
         call    ZEROSENSE
@@ -4668,10 +4669,10 @@ DI_L:
 IRQ_SEMI_L:
         .db     NFA|IMMED|2,";i",0
 IRQ_SEMI:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x940C     ; jmp
         rcall   ICOMMA
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     FF_ISR_EXIT
         rcall   ICOMMA
         jmp     LEFTBRACKET
@@ -4681,7 +4682,7 @@ IRQ_SEMI:
         fdw     IRQ_SEMI_L
 IRQ_V_L:
         .db     NFA|4,"int!",0
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     ivec
         call    PLUS
         jmp    STORE
@@ -4691,10 +4692,10 @@ IRQ_V_L:
 LITERAL_L:
         .db     NFA|IMMED|7,"literal"
 LITERAL:
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x939a          ; st      -Y, tosh
         rcall   ICOMMA
-        rcall   DOLIT_A
+        rcall   DOLIT
         .dw     0x938a          ; st      -Y, tosl
         rcall   ICOMMA
         call    DUP
@@ -4992,7 +4993,7 @@ DEFER_L:
         .db     NFA|5,"defer"
 DEFER:
         rcall   CREATE
-        call    DOLIT_A
+        call    DOLIT
         fdw     ABORT
         call    COMMA
         rcall   XDOES
@@ -5012,7 +5013,7 @@ IS:
         call    ZEROSENSE
         breq    IS1
         rcall   LITERAL
-        call    DOLIT_A
+        call    DOLIT
         fdw     STORE
         call    COMMAXT
         rjmp    IS2
