@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          01.12.2011                                        *
+;    Date:          04.12.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -29,10 +29,10 @@
 ; displayed when FlashForth starts.
 ;**********************************************************************
 
-
-.include "m128def.inc"
+; Select the include file for your micro controller
+;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-;.include "m328pdef.inc"
+.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
 
 
@@ -40,7 +40,7 @@
 ; Configuration data
 ;..............................................................................
 #define FC_TYPE_SW
-#define clock 16000000  ; 16 MHz 
+#define clock 8000000  ; Clock Frequency in herz 
 #define baud  38400
 #define ubrr0val (clock/16/baud) - 1
 #define ms_value -(clock/1000)
@@ -1229,6 +1229,7 @@ XSQUOTE:
         rcall   RFETCH
         lsl     tosl
         rol     tosh
+        add_pflash_tos
         rcall   CFETCHPP
         rcall   DUP
         rcall   ALIGNED
@@ -3439,6 +3440,7 @@ XA_FROM:
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
+.if 0
         fdw     XA_FROM_L
 BRQ_L:
         .db     NFA|3,"br?"
@@ -3454,7 +3456,7 @@ BRQ:
 BRQ1:
         rcall   AND_
         jmp     TWOSLASH
-
+.endif
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .db     NFA|4,",?0=",0    ; Just for see to work !
 COMMAZEROSENSE:
@@ -3479,12 +3481,14 @@ IDPMINUS:
 ;       rjmp, ( rel-addr -- )
 RJMPC:
         rcall   TWOSLASH
-        rcall   DOLIT
-        .dw     0x0FFF
-        rcall   AND_
-        rcall   DOLIT
-        .dw     0xc000
-        rcall   OR_
+;        rcall   DOLIT
+;        .dw     0x0FFF
+;        rcall   AND_
+;        rcall   DOLIT
+;        .dw     0xc000
+;        rcall   OR_
+        andi    tosh, 0x0f
+        ori     tosh, 0xc0
         jmp     ICOMMA
 
 
@@ -3492,35 +3496,33 @@ BRCCC:
         rcall   DOLIT
         .dw     0xf008      ; brcc pc+2
         jmp     ICOMMA
-BREQC:
-        rcall   DOLIT
-        .dw     0xf009      ; breq pc+2
-        jmp     ICOMMA
+;BREQC:
+;        rcall   DOLIT
+;        .dw     0xf009      ; breq pc+2
+;        sbrc    FLAGS1, izeroeq
+;        ori     tosh, 4     ; brne pc+2
+;        jmp     ICOMMA
 BRNEC:
         rcall   DOLIT
         .dw     0xf409      ; brne pc+2
+        sbrc    FLAGS1, izeroeq
+        andi    tosh, ~4
         jmp     ICOMMA
 
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-        fdw     BRQ_L
+        fdw     XA_FROM_L
 IF_L:
         .db     NFA|IMMED|COMPILE|2,"if",0
 IF_:
         sbrc    FLAGS1, izeroeq
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
-        sbrc    FLAGS1, izeroeq
-        rjmp    IF_1
         rcall   BRNEC
-        rjmp    IF_2
-IF_1:
-        rcall   BREQC
-IF_2:
+        cbr     FLAGS1, (1<<izeroeq)
         rcall   IHERE
         rcall   FALSE_
-        cbr     FLAGS1, (1<<izeroeq)
         jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
 
 ; ELSE     adrs1 -- adrs2    branch for IF..ELSE
@@ -3564,8 +3566,11 @@ BEGIN:
 UNTIL_L:
         .db     NFA|IMMED|COMPILE|5,"until"
 UNTIL:
+        sbrc    FLAGS1, izeroeq
+        rcall   IDPMINUS
         rcall   COMMAZEROSENSE
         rcall   BRNEC
+        cbr     FLAGS1, (1<<izeroeq)
 UNTIL1:
         rcall   IHERE
         rcall   MINUS
@@ -3691,8 +3696,8 @@ STOD_L:
         .db     NFA|3,"s>d"
 STOD:
         sbrs    tosh, 7
-        jmp     FALSE_
-        jmp     TRUE_
+        rjmp    FALSE_
+        rjmp    TRUE_
 ;***************************************************
         fdw     STOD_L
 DNEGATE_L:
@@ -3998,9 +4003,19 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x18          ; OC1Aaddr
             rcall FF_ISR
 .org BOOT_START + 0x1a          ; OC1Baddr
-            rcall FF_ISR
-.org BOOT_START + 0x1c          ; OVF1addr
+.if OVF1addr == 0x1a
             rjmp  TIMER1_ISR
+.else
+            rcall FF_ISR
+.endif
+
+.org BOOT_START + 0x1c          ; OVF1addr
+.if OVF1addr == 0x1c
+            rjmp  TIMER1_ISR
+.else
+            rcall FF_ISR
+.endif
+
 .org BOOT_START + 0x1e          ; OC0addr
             rcall FF_ISR
 .org BOOT_START + 0x20          ; OVF0addr
@@ -4045,7 +4060,7 @@ RESET_:     jmp  WARM_
             rcall FF_ISR
 
 
-
+.org BOOT_START + 0x46
 FF_ISR:
         st      -y, xh
         in_     xh, SREG
@@ -4280,7 +4295,7 @@ RX0_:
         cli
         inc     xl
         andi    xl, (rbuf0_size-1)
-        sts     rbuf1_rd, xl
+        sts     rbuf0_rd, xl
         lds     xl, rbuf0_lv
         dec     xl
         sts     rbuf0_lv, xl
@@ -4299,8 +4314,8 @@ RX0Q:
         jmp     FALSE_
 ;***************************************************
 ; TX1   c --    output character to UART 1
-        fdw(RX0Q_L)
 .ifdef UDR1
+        fdw(RX0Q_L)
 TX1_L:
         .db     NFA|3,"tx1"
 TX1_:
@@ -4407,8 +4422,9 @@ IFILL_BUFFER:
         mov     ibasel, t0
         mov     ibaseh, iaddrh
 IFILL_BUFFER_1:
-        ldi     t0, PAGESIZEB&(PAGESIZEB-1)
+        ldi     t0, PAGESIZEB&0xff ; 0x100 max PAGESIZEB
         movw    zl, ibasel
+        sub_pflash_z
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
@@ -4427,8 +4443,7 @@ IWRITE_BUFFER:
 ;        rcall   MS
         in      t9, SREG
         cli
-        mov     zl, ibasel
-        mov     zh, ibaseh
+        movw    zl, ibasel
         sub_pflash_z
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
@@ -4479,7 +4494,7 @@ IWRITE_BUFFER2:
         ; ret to RWW section
         ; verify that RWW section is safe to read
 IWRITE_BUFFER3:
-        lds     t8, SPMCSR
+        in_     t8, SPMCSR
         sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
         ret
         ; re-enable the RWW section
@@ -4488,10 +4503,10 @@ IWRITE_BUFFER3:
         rjmp    IWRITE_BUFFER3
 
 DO_SPM:
-        lds     t8, SPMCSR
+        in_     t8, SPMCSR
         sbrc    t8, SPMEN
         rjmp    DO_SPM       ; Wait for previous write to complete
-        sts     SPMCSR, t1
+        out_    SPMCSR, t1
         spm
         ret
 
@@ -4506,6 +4521,8 @@ IFLUSH:
 ;***************************************************
 .ifdef UDR1
         fdw     RX1Q_L
+.else
+        fdw     RX0Q_L
 .endif
 EMPTY_L:
         .db     NFA|5,"empty"
@@ -4535,11 +4552,10 @@ WARM_1:
         subi    yl, 1
         brne    WARM_1
 
-        clr     xh
-        ldi     xl, 30
+        ldi     xl, 0x1C  ; clear ram from y register upwards
 WARM_2:
-        st      x+, t0
-        cpi     xh, 0x6
+        st      x+, zero
+        cpi     xh, 0x10  ; to 0xfff, 4 Kbytes 
         brne    WARM_2
 ; Init Stack pointer
         ldi     yl, low(usbuf+ussize-4)
@@ -4594,6 +4610,23 @@ WARM_3:
         ldi     t0, (1<<TOIE1)
         out_    TIMSK1, t0
 .endif
+
+; Init UART 0
+.ifdef UBRR0L
+        ; Set baud rate
+        ldi     t0, 0
+        out_    UBRR0H, t0
+        ldi     t0, ubrr0val
+        out_    UBRR0L, t0
+        ; Enable receiver and transmitter, rx1 interrupts
+        ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
+        out_    UCSR0B,t0
+        ; Set frame format: 8data, 1stop bit
+        ldi     t0, (1<<USBS0)|(3<<UCSZ00)
+        out_    UCSR0C,t0
+        ; Init rx1 interrupts
+.endif
+
 ; Init UART 1
 .ifdef UBRR1L
         ; Set baud rate
@@ -4611,6 +4644,7 @@ WARM_3:
 .endif
         rcall   DP_TO_RAM
         sei
+
         rcall   DOLIT
         .dw     XON
         call    EMIT
@@ -4724,6 +4758,7 @@ LITERALruntime:
 
 ;*****************************************************************
 ISTORE:
+;        sub_pflash_tos
         rcall   LOCKEDQ
         movw    iaddrl, tosl
         rcall   IUPDATEBUF
@@ -4793,10 +4828,11 @@ LOCKEDQ:
         
 ;***********************************************************
 IFETCH:
+;        sub_pflash_tos
         movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IIFETCH
-        mov     t0, zh
+        mov     t0, zl
         andi    t0, ~(PAGESIZEB-1)
         cp      t0, ibasel
         brne    IIFETCH
@@ -4808,7 +4844,7 @@ IFETCH:
         ld      tosh, x+
         ret
 IIFETCH:
-        ;subi    zh, high(PFLASH)
+        sub_pflash_z
         lpm_    tosl, z+     ; Fetch from Flash directly
         lpm_    tosh, z+
 .ifdef RAMPZ
@@ -4848,10 +4884,11 @@ EFETCH:
         ret
 
 ICFETCH:
+;        sub_pflash_tos
         movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IICFETCH
-        mov     t0, zh
+        mov     t0, zl
         andi    t0, ~(PAGESIZEB-1)
         cp      t0, ibasel
         brne    IICFETCH
@@ -4863,7 +4900,7 @@ ICFETCH:
         clr     tosh
         ret
 IICFETCH:
-        ;subi    zh, high(PFLASH)
+        sub_pflash_z
         lpm_    tosl, z+     ; Fetch from Flash directly
         clr     tosh
 .ifdef RAMPZ
@@ -4898,6 +4935,7 @@ ECFETCH:
         ret
 
 ICSTORE:
+;        sub_pflash_tos
         rcall   LOCKEDQ
         movw    iaddrl, tosl
         rcall   IUPDATEBUF
