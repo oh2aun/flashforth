@@ -30,27 +30,20 @@
 ;**********************************************************************
 
 ; Select the include file for your micro controller
-;.include "m128def.inc"   ; Tested
+.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-.include "m328pdef.inc"    ; Tested
+;.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
 
 
+; Include the FlashForth configuration file
+.include "config.inc"
 ;..............................................................................
 ; Configuration data
 ;..............................................................................
-#define FC_TYPE_SW
-#define clock 8000000  ; Clock Frequency in herz 
-#define baud  38400
-#define ubrr0val (clock/16/baud) - 1
-#define ms_value -(clock/1000)
-#define IDLE_MODE
-#define BOOT_SIZE 0x400
-#define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START BOOT_START - 0x0c00
 
 
-; Macros
+; Register definitions
   .def zero = r2        ; read only zero
   .def upl = r4         ; not in interrupt 
   .def uph = r5         ; not in interrupt
@@ -61,18 +54,18 @@
   .def ibaseh=r11       ; Not in interrupt
   .def iaddrl=r12       ; Not in interrupt
   .def iaddrh=r13       ; Not in interrupt
-  .def t8 = r14
-  .def t9 = r15
+  .def t8 = r14         ; Not in interrupt
+  .def t9 = r15         ; Not in interrupt
   .def t0 = r16
   .def t1 = r17
-  .def t2 = r0
-  .def t3 = r1
+  .def t2 = r0          ; Not in interrupt
+  .def t3 = r1          ; Not in interrupt
 
   .def pl = r20
   .def ph = r21
 
-  .def FLAGS1 = r22
-  .def FLAGS2 = r23
+  .def FLAGS1 = r22     ; Not in interrupt
+  .def FLAGS2 = r23     ; Not in interrupt
   .def tosl = r24
   .def tosh = r25
 ;  xl = r26
@@ -86,6 +79,7 @@
   .def t6 = r30
   .def t7 = r31
 
+; Macros
 .macro poptos 
     ld tosl, Y+
     ld tosh, Y+
@@ -191,21 +185,30 @@
 .equ EEMWE=EEMPE
 .endif
 
-.ifdef UDR1
+.if OPERATOR_UART == 1
 .equ OP_TX_=TX1_
 .equ OP_RX_=RX1_
 .equ OP_RXQ=RX1Q
 .else
+.if OPERATOR_UART == 0
 .equ OP_TX_=TX0_
 .equ OP_RX_=RX0_
 .equ OP_RXQ=RX0Q
 .endif
+.endif
+
+#define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
+#define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
+#define ms_value -(FREQ_OSC/1000)
+#define BOOT_SIZE 0x400
+#define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
+#define KERNEL_START BOOT_START - 0x0c00
+
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
 ; Flash page size
 .equ PAGESIZEB=PAGESIZE*2    ; Page size in bytes 
-.equ flashPageMask=0x00      ; One byte, no mask needed on 8 bit processor
 
 ; Forth word header flags
 .equ NFA= 0x80      ; Name field mask
@@ -215,7 +218,7 @@
 .equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fLOAD=     4   ; 256 mS Load sample available
+.equ fLOAD=     4   ; 256 ms Load sample available
 .equ fFC_tx1=   3   ; 0=Flow Control, 1 = no Flow Control   
 .equ fFC_tx0=   2   ; 0=Flow Control, 1 = no Flow Control   
 .equ ixoff_tx1= 1                    
@@ -263,17 +266,11 @@
 .endif
 .endif
 
-;;; Sizes of the serial RX and TX character queues
-.equ rbuf0_size= 32
-.equ tbuf0_size= 0
-.equ rbuf1_size= 32
-.equ tbuf1_size= 0
-
 ;;; USER AREA for the OPERATOR task
-.equ uaddsize=     0          ; No additional user variables 
-.equ ursize=       64         ; 32 cells ret stack size 
-.equ ussize=       64         ; 32 cells parameter stack
-.equ utibsize=     82         ; 82 character Terminal Input buffer
+;.equ uaddsize=     0          ; No additional user variables 
+.equ ursize=       RETURN_STACK_SIZE
+.equ ussize=       PARAMETER_STACK_SIZE
+.equ utibsize=     TIB_SIZE
 
 ;;; User variables and area
 .equ us0=          -32         ; Start of parameter stack
@@ -314,14 +311,14 @@ rxqueue0:
 rbuf0_wr:    .byte 1
 rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
-rbuf0:       .byte rbuf0_size
+rbuf0:       .byte RX0_BUF_SIZE
 
 .ifdef UDR1
 rxqueue1:
 rbuf1_wr:    .byte 1
 rbuf1_rd:    .byte 1
 rbuf1_lv:    .byte 1
-rbuf1:       .byte rbuf1_size
+rbuf1:       .byte RX1_BUF_SIZE
 .endif
 
 ms_count:   .byte 2
@@ -669,7 +666,7 @@ MTST:
 FCY_L:
         .db     NFA|3,"Fcy"
         rcall   DOCREATE
-        .dw     clock / 1000
+        .dw     FREQ_OSC / 1000
 
 ;*******************************************************
 ; Assembler
@@ -3978,116 +3975,108 @@ dpcode:
 .cseg
 .org BOOT_START
 RESET_:     jmp  WARM_
-.org BOOT_START + 0x02          ; INT0addr
+.org BOOT_START + 0x02
             rcall FF_ISR
-.org BOOT_START + 0x04          ; INT1addr
+.org BOOT_START + 0x04
             rcall FF_ISR
-.org BOOT_START + 0x06          ; INT2addr
+.org BOOT_START + 0x06
             rcall FF_ISR
-.org BOOT_START + 0x08          ; INT3addr
+.org BOOT_START + 0x08
             rcall FF_ISR
-.org BOOT_START + 0x0a          ; INT4addr
+.org BOOT_START + 0x0a
             rcall FF_ISR
-.org BOOT_START + 0x0c          ; INT5addr
+.org BOOT_START + 0x0c
             rcall FF_ISR
-.org BOOT_START + 0x0e          ; INT6addr
+.org BOOT_START + 0x0e
             rcall FF_ISR
-.org BOOT_START + 0x10          ; INT7addr
+.org BOOT_START + 0x10
             rcall FF_ISR
-.org BOOT_START + 0x12          ; OC2addr
+.org BOOT_START + 0x12
             rcall FF_ISR
-.org BOOT_START + 0x14          ; OVF2addr
+.org BOOT_START + 0x14
             rcall FF_ISR
-.org BOOT_START + 0x16          ; ICP1addr
+.org BOOT_START + 0x16
             rcall FF_ISR
-.org BOOT_START + 0x18          ; OC1Aaddr
+.org BOOT_START + 0x18
             rcall FF_ISR
-.org BOOT_START + 0x1a          ; OC1Baddr
-.if OVF1addr == 0x1a
-            rjmp  TIMER1_ISR
-.else
+.org BOOT_START + 0x1a
+            rcall FF_ISR
+.org BOOT_START + 0x1c
+            rcall FF_ISR
+.org BOOT_START + 0x1e
+            rcall FF_ISR
+.org BOOT_START + 0x20
+            rcall FF_ISR
+.org BOOT_START + 0x22
+            rcall FF_ISR
+.org BOOT_START + 0x24
+            rcall FF_ISR
+.if 0x26 < INT_VECTORS_SIZE
+.org BOOT_START + 0x26
+            rcall FF_ISR
+.endif
+.if 0x28 < INT_VECTORS_SIZE
+.org BOOT_START + 0x28
+            rcall FF_ISR
+.endif
+.if 0x2a < INT_VECTORS_SIZE
+.org BOOT_START + 0x2a
+            rcall FF_ISR
+.endif
+.if 0x2c < INT_VECTORS_SIZE
+.org BOOT_START + 0x2c
+            rcall FF_ISR
+.endif
+.if 0x2e < INT_VECTORS_SIZE
+.org BOOT_START + 0x2e
+            rcall FF_ISR
+.endif
+.if 0x30 < INT_VECTORS_SIZE
+.org BOOT_START + 0x30
+            rcall FF_ISR
+.endif
+.if 0x32 < INT_VECTORS_SIZE
+.org BOOT_START + 0x32
+            rcall FF_ISR
+.endif
+.if 0x34 < INT_VECTORS_SIZE
+.org BOOT_START + 0x34
+            rcall FF_ISR
+.endif
+.if 0x36 < INT_VECTORS_SIZE
+.org BOOT_START + 0x36
+            rcall FF_ISR
+.endif
+.if 0x38 < INT_VECTORS_SIZE
+.org BOOT_START + 0x38
+            rcall FF_ISR
+.endif
+.if 0x3a < INT_VECTORS_SIZE
+.org BOOT_START + 0x3a
+            rcall FF_ISR
+.endif
+.if 0x3c < INT_VECTORS_SIZE
+.org BOOT_START + 0x3c
+            rcall FF_ISR
+.endif
+.if 0x3e < INT_VECTORS_SIZE
+.org BOOT_START + 0x3e
+            rcall FF_ISR
+.endif
+.if 0x40 < INT_VECTORS_SIZE
+.org BOOT_START + 0x40
+            rcall FF_ISR
+.endif
+.if 0x42 < INT_VECTORS_SIZE
+.org BOOT_START + 0x42
+            rcall FF_ISR
+.endif
+.if 0x44 < INT_VECTORS_SIZE
+.org BOOT_START + 0x44
             rcall FF_ISR
 .endif
 
-.org BOOT_START + 0x1c          ; OVF1addr
-.if OVF1addr == 0x1c
-            rjmp  TIMER1_ISR
-.else
-            rcall FF_ISR
-.endif
-
-.org BOOT_START + 0x1e          ; OC0addr
-            rcall FF_ISR
-.org BOOT_START + 0x20          ; OVF0addr
-            rcall FF_ISR
-.org BOOT_START + 0x22          ; SPIaddr
-            rcall FF_ISR
-.org BOOT_START + 0x24          ; URXC0addr
-            rjmp RX0_ISR
-.org BOOT_START + 0x26          ; UDRE0addr
-            rcall FF_ISR
-.org BOOT_START + 0x28          ; UTXC0addr
-            rcall FF_ISR
-.org BOOT_START + 0x2a          ; ADCCaddr
-            rcall FF_ISR
-.org BOOT_START + 0x2c          ; ERDYaddr
-            rcall FF_ISR
-.org BOOT_START + 0x2e          ; ACIaddr
-            rcall FF_ISR
-.org BOOT_START + 0x30          ; OC1Caddr
-            rcall FF_ISR
-.org BOOT_START + 0x32          ; ICP3addr
-            rcall FF_ISR
-.org BOOT_START + 0x34          ; OC3Aaddr
-            rcall FF_ISR
-.org BOOT_START + 0x36          ; OC3Baddr
-            rcall FF_ISR
-.org BOOT_START + 0x38          ; OC3Caddr
-            rcall FF_ISR
-.org BOOT_START + 0x3a          ; OVF3addr
-            rcall FF_ISR
-.org BOOT_START + 0x3c          ; URXC1addr
-.ifdef UDR1
-            rjmp RX1_ISR
-.org BOOT_START + 0x3e          ; UDRE1addr
-            rcall FF_ISR
-.org BOOT_START + 0x40          ; UTXC1addr
-            rcall FF_ISR
-.endif
-.org BOOT_START + 0x42          ; TWIaddr
-            rcall FF_ISR
-.org BOOT_START + 0x44          ; SPMRaddr
-            rcall FF_ISR
-
-
-.org BOOT_START + 0x46
-FF_ISR:
-        st      -y, xh
-        in_     xh, SREG
-        st      -y, xh
-        st      -y, xl
-        pop     xh
-        pop     xl
-        push    zl
-        push    zh
-        push    t0
-        push    t1
-        push    t2
-        push    t3
-        push    pl
-        push    ph
-        push    tosl
-        push    tosh
-        subi    xl, 1
-        clr     xh
-        ldi     t0, low(ivec)
-        ldi     t1, high(ivec)
-        add     xl, t0
-        adc     xh, t1
-        ld      zh, x+  ; >xt dependency !!!!
-        ld      zl, x+
-        ijmp    ;(z)
-
+.org BOOT_START + INT_VECTORS_SIZE
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
@@ -4095,10 +4084,13 @@ FF_ISR_EXIT:
         pop     pl
         pop     t3
         pop     t2
+
         pop     t1
         pop     t0
+FF_ISR_EXIT2:
         pop     zh
         pop     zl
+FF_ISR_EXIT3:
         ld      xl, y+
         ld      xh, y+
         out_    SREG, xh
@@ -4106,10 +4098,6 @@ FF_ISR_EXIT:
         reti
 
 TIMER1_ISR:
-        push    xl
-        in_     xl, SREG
-        push    xl
-        push    xh
         ldi     xl, low(ms_value)
         ldi     xh, high(ms_value)
         out_    TCNT1H, xh
@@ -4119,83 +4107,112 @@ TIMER1_ISR:
         adiw    xl, 1
         sts     ms_count, xl
         sts     ms_count+1, xh
-ISR_RETI1:
+        rjmp    FF_ISR_EXIT3
+
+FF_ISR:
+        st      -y, xh
+        in_     xh, SREG
+        st      -y, xh
+        st      -y, xl
         pop     xh
         pop     xl
-        out_    SREG, xl
-        pop     xl
-        reti
 
-RX0_ISR:
-        push    xl
-        in_     xl, SREG
-        push    xl
-        push    xh
+        cpi     xl, low(OVF1addr+1)
+        breq    TIMER1_ISR
+
         push    zl
         push    zh
 
+.ifdef URXC0addr
+        cpi     xl, low(URXC0addr+1)
+.else
+        cpi     xl, low(URXCaddr+1)
+.endif
+        breq    RX0_ISR
+.ifdef URXC1addr
+        cpi     xl, low(URXC1addr+1)
+        breq    RX1_ISR
+.endif
+
+        push    t0
+        push    t1
+
+        push    t2
+        push    t3
+        push    pl
+        push    ph
+        push    tosl
+        push    tosh
+
+        subi    xl, 1
+        clr     xh
+        ldi     t0, low(ivec)
+        ldi     t1, high(ivec)
+        add     xl, t0
+        adc     xh, t1
+        ld      zh, x+  ; >xa dependency !!!!
+        ld      zl, x+
+        ijmp    ;(z)
+
+RX0_ISR:
         ldi     zl, low(rbuf0)
         ldi     zh, high(rbuf0)
         lds     xl, rbuf0_wr
         add     zl, xl
         adc     zh, zero
         lds     xh, UDR0
+.if OPERATOR_UART == 0
+        cpi     xh, 0xf
+        brne    pc+2
+        rjmp    RESET_
+.endif
         st      z, xh
         inc     xl
-        andi    xl, (rbuf0_size-1)
+        andi    xl, (RX0_BUF_SIZE-1)
         sts     rbuf0_wr, xl
         lds     xl, rbuf0_lv
         inc     xl
         sts     rbuf0_lv, xl
-        cpi     xl, rbuf0_size-2
+        cpi     xl, RX0_BUF_SIZE-2
         brne    PC+2
         rcall   RX0_OVF
-        cpi     xl, 8
+        cpi     xl, RX0_OFF_FILL
         brmi    RX0_ISR_SKIP_XOFF
         rcall   XXOFF_TX0_1
 RX0_ISR_SKIP_XOFF:
-        pop     zh
-        pop     zl
-        rjmp    ISR_RETI1
+        rjmp    FF_ISR_EXIT2
 RX0_OVF:
         ldi     zh, '|'
         rjmp    TX0_SEND
 TX0_ISR:
 .ifdef UDR1
 RX1_ISR:
-        push    xl
-        in_     xl, SREG
-        push    xl
-        push    xh
-        push    zl
-        push    zh
-
         ldi     zl, low(rbuf1)
         ldi     zh, high(rbuf1)
         lds     xl, rbuf1_wr
         add     zl, xl
         adc     zh, zero
         lds     xh, UDR1
+.if OPERATOR_UART == 1
         cpi     xh, 0xf
         brne    pc+2
         rjmp    RESET_
+.endif
         st      z, xh
         inc     xl
-        andi    xl, (rbuf1_size-1)
+        andi    xl, (RX1_BUF_SIZE-1)
         sts     rbuf1_wr, xl
         lds     xl, rbuf1_lv
         inc     xl
         sts     rbuf1_lv, xl
-        cpi     xl, rbuf1_size-2
+        cpi     xl, RX1_BUF_SIZE-2
         brne    PC+2
         rcall   RX1_OVF
-        cpi     xl, 8
+        cpi     xl, RX0_OFF_FILL
         brmi    RX1_ISR_SKIP_XOFF
         rcall   XXOFF_TX1_1
 RX1_ISR_SKIP_XOFF:
-        pop     zh
-        pop     zl
-        rjmp    ISR_RETI1
+        rjmp    FF_ISR_EXIT2
 RX1_OVF:
         ldi     zh, '|'
         rjmp    TX1_SEND
@@ -4212,7 +4229,7 @@ WARMLIT:
         fdw      OP_RX_
         fdw      OP_RXQ
         .dw      up0                   ; Task link
-        .dw      0x0010                ; BASE
+        .dw      BASE_DEFAULT          ; BASE
         .dw      utibbuf               ; TIB
         fdw      OPERATOR_AREA         ; TASK
         .dw      0                     ; ustatus & uflg
@@ -4294,7 +4311,7 @@ RX0_:
         in      t2, SREG
         cli
         inc     xl
-        andi    xl, (rbuf0_size-1)
+        andi    xl, (RX0_BUF_SIZE-1)
         sts     rbuf0_rd, xl
         lds     xl, rbuf0_lv
         dec     xl
@@ -4378,7 +4395,7 @@ RX1_:
         in      t2, SREG
         cli
         inc     xl
-        andi    xl, (rbuf1_size-1)
+        andi    xl, (RX1_BUF_SIZE-1)
         sts     rbuf1_rd, xl
         lds     xl, rbuf1_lv
         dec     xl
@@ -4632,7 +4649,7 @@ WARM_3:
         ; Set baud rate
         ldi     t0, 0
         out_    UBRR1H, t0
-        ldi     t0, ubrr0val
+        ldi     t0, ubrr1val
         out_    UBRR1L, t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)
@@ -4657,7 +4674,7 @@ WARM_3:
         .db     3,"ESC"
         call    TYPE
         rcall   DOLIT
-        .dw     0x800
+        .dw     TURNKEY_DELAY
         rcall   MS
         call    KEYQ
         call    ZEROSENSE

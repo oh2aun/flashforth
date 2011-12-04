@@ -1,45 +1,46 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test.txt                                   *
-\    Date:          26.11.2011                                      *
+\    Filename:      task2-test.txt                                  *
+\    Date:          04.12.2011                                      *
 \    FF Version:    3.8                                             *
-\    MCU:           Atmega 128(Olimex AVR-MT-128)                   *
+\    MCU:           Atmega 328(Olimex AVR-P28)                      *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
-\ Demo for the Olimex AVR-MT-128. Switches relay and blinks led in 
+\ Demo for the Olimex AVR-P28 with Atmega328P. Blinks led in 
 \ background task.
 single
--task1
-marker -task1
+-task2
+marker -task2
 ram hex
-\ Registers for Atmega 128. Change if needed
-$003b con porta
-$003a con ddra
-$0039 con pina
-$40 con pin6
-ram variable delay
-: ledoff  pin6 porta mclr ;
-: ledon   pin6 porta mset ;
+\ Registers for Atmega 328P. Change if needed
+$0028 con portc
+$0027 con ddrc
+$20 con pin5
 
-0 18 20 0 task: task1
-: taskloop 
+ram variable delay
+
+: ledoff  pin5 portc mset ;
+: ledon   pin5 portc mclr ;
+
+0 18 20 0 task: task2
+: task2loop 
   400 delay !
-  $40 ddra mset  \  Output 
+  pin5 ddrc mset  \  Output 
   begin 
     delay @ ms 
-    pin6 porta mtst
+    pin5 portc mtst
     if
-       ledoff
-    else
        ledon
+    else
+       ledoff
     then
   again
 ;
 
-: t1go ['] taskloop task1 tinit task1 run ;
+: t2go ['] task2loop task2 tinit task2 run ;
 
-\ ' t1go is turnkey
+\ ' t2go is turnkey
 \ warm
