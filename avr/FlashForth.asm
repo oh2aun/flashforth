@@ -439,7 +439,7 @@ EXIT:
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
-#ifdef IDLE_MODE
+#if IDLE_MODE == 1
         rcall   IDLE_HELP
         breq    IDLE1
         lds     t0, status 
@@ -454,7 +454,7 @@ IDLE1:
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
-#ifdef IDLE_MODE
+#if IDLE_MODE == 1
         rcall   IDLE_HELP
         brne    BUSY1
         lds     t0, status
@@ -465,7 +465,7 @@ BUSY1:
         ret
 
 
-#ifdef IDLE_MODE
+#if IDLE_MODE == 1
 IDLE_HELP:
         movw    xl, upl
         sbiw    xl, -ustatus 
@@ -3125,10 +3125,51 @@ NONAME:
 SEMICOLON_L:
         .db     NFA|IMMED|COMPILE|1,";"
 SEMICOLON:
+        rcall   LEFTBRACKET
+        sbrc    FLAGS1, fTAILC
+        rjmp    ADD_RETURN_1
+        rcall   IHERE
+        rcall   MINUS_FETCH
+        movw    t0, tosl
+        andi    t1, 0xf0
+        subi    t1, 0xd0
+        breq    RCALL_TO_JMP
+        poptos
+        rcall   MINUS_FETCH
+        subi    tosl, 0x0e
+        sbci    tosh, 0x94
+        brne    ADD_RETURN
+CALL_TO_JMP:
+        ldi     tosl, 0x0c
+        ldi     tosh, 0x94
+        rcall   SWOP
+        jmp     STORE
+RCALL_TO_JMP:
+        rcall   NIP
+        andi    tosh, 0x0f
+        sbrc    tosh, 3
+        ori     tosh, 0xf0
+        rcall   TWOSTAR
+        rcall   IHERE
+        rcall   PLUS
+        rcall   DOLIT
+        .dw     -2
+        rcall   IALLOT
+        rcall   DOLIT
+        .dw     0x940c      ; jmp:0x940c
+        call    ICOMMA
+        sub_pflash_tos
+        rampv_to_c
+        ror     tosh
+        ror     tosl
+        jmp     ICOMMA
+ADD_RETURN:
+        rcall   TWODROP
+ADD_RETURN_1:
         rcall   DOLIT   ; Compile a ret
         .dw     0x9508
-        rcall   ICOMMA
-        jmp     LEFTBRACKET
+        jmp    ICOMMA
+
 
 
         fdw     SEMICOLON_L
@@ -3540,6 +3581,7 @@ ELSE_:
 THEN_L:
         .db     NFA|IMMED|COMPILE|4,"then",0
 THEN_:
+        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rcall   IHERE
         rcall   OVER
         rcall   MINUS
@@ -3563,6 +3605,7 @@ BEGIN:
 UNTIL_L:
         .db     NFA|IMMED|COMPILE|5,"until"
 UNTIL:
+;        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         sbrc    FLAGS1, izeroeq
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
