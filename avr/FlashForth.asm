@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          04.12.2011                                        *
+;    Date:          08.12.2011                                        *
 ;    File Version:  3.8alfa                                           *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -30,9 +30,9 @@
 ;**********************************************************************
 
 ; Select the include file for your micro controller
-.include "m128def.inc"   ; Tested
+;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-;.include "m328pdef.inc"    ; Tested
+.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
 
 
@@ -201,7 +201,7 @@
 #define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
 #define ms_value -(FREQ_OSC/1000)
 #define BOOT_SIZE 0x400
-#define BOOT_START NRWW_STOP_ADDR - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
+#define BOOT_START FLASHEND - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
 #define KERNEL_START BOOT_START - 0x0c00
 
 ;..............................................................................
@@ -439,13 +439,14 @@ EXIT:
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
-#if IDLE_MODE == 1
+.if IDLE_MODE == 1
         rcall   IDLE_HELP
         breq    IDLE1
         lds     t0, status 
         dec     t0
         sts     status, t0
-#endif
+        st      x, zero
+.endif
 IDLE1:
         ret
         
@@ -454,25 +455,26 @@ IDLE1:
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
-#if IDLE_MODE == 1
+.if IDLE_MODE == 1
         rcall   IDLE_HELP
         brne    BUSY1
         lds     t0, status
         inc     t0
         sts     status, t0
+        st      x, t0
 BUSY1:
-#endif
+.endif
         ret
 
 
-#if IDLE_MODE == 1
+.if IDLE_MODE == 1
 IDLE_HELP:
         movw    xl, upl
         sbiw    xl, -ustatus 
         ld      t0, x
         cpi     t0, 0
         ret
-#endif
+.endif
         
 ; busy
         fdw(BUSY_L)
@@ -3275,7 +3277,8 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
-MS1:    
+MS1:
+        call    IDLE    
         rcall   PAUSE
         rcall   DUP
         rcall   TICKS
@@ -3283,6 +3286,7 @@ MS1:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    MS1
+        call    BUSY
         jmp     DROP
 
 ;  .id ( nfa -- ) 
@@ -4299,10 +4303,11 @@ TX0_:
         breq    XXON_TX0_TOS
         cpi     tosl, XOFF
         breq    XXOFF_TX0_TOS
+TX0_LOOP:
         rcall   PAUSE
         in_     t0, UCSR0A
         sbrs    t0, UDRE0
-        rjmp    TX0_
+        rjmp    TX0_LOOP
         out_    UDR0, tosl
         poptos
         ret
@@ -4367,9 +4372,11 @@ RX0_:
 RX0Q_L:
         .db     NFA|4,"rx0?",0
 RX0Q:
+        call    BUSY
         lds     xl, rbuf0_lv
         cpse    xl, zero
         jmp     TRUE_
+        call    IDLE
         rcall   XXON_TX0
         jmp     FALSE_
 ;***************************************************
@@ -4383,10 +4390,11 @@ TX1_:
         breq    XXON_TX1_TOS
         cpi     tosl, XOFF
         breq    XXOFF_TX1_TOS
+TX1_LOOP:
         rcall   PAUSE
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
-        rjmp    TX1_
+        rjmp    TX1_LOOP
         out_    UDR1, tosl
         poptos
         ret
@@ -4451,12 +4459,21 @@ RX1_:
 RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
+        call    BUSY
         lds     xl, rbuf1_lv
         cpse    xl, zero
         jmp     TRUE_
+        call    IDLE
         rcall   XXON_TX1
         jmp     FALSE_
 .endif
+ ISTORERR:
+        rcall   DOTS
+        call    XSQUOTE
+        .db     3,"AD?"
+        call    TYPE
+        rjmp    ABORT
+        
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
 ;   if (idirty)
@@ -4467,6 +4484,9 @@ RX1Q:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
+        mov     t0, iaddrh
+        cpi     t0, 0xe0       ; Dont allow kernel writes
+        brcc    ISTORERR
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
@@ -4498,12 +4518,9 @@ IWRITE_BUFFER:
         rcall   DOLIT
         .dw     XOFF
         call    EMIT
-;        rcall   DOLIT
-;        .dw     3
-;        rcall   MS
         in      t9, SREG
-        cli
         movw    zl, ibasel
+        cli
         sub_pflash_z
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
@@ -5143,7 +5160,39 @@ PAUSE:
         lds     t0, status
         cpi     t0, 0
         brne    PAUSE1
+.if CPU_LOAD_LED == 1
+        sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
+.if CPU_LOAD_LED_POLARITY == 1
+        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.else
+        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.endif
+.endif
+.if IDLE_MODE == 1
+.ifdef SMCR
+        ldi     t0, (1<<SE)
+        out_    SMCR, t0
+.else
+        in_     t0, MCUCR
+        sbr     t0, (1<<SE)
+        out_    MCUCR, t0
+.endif
         sleep               ; IDLE mode
+.ifdef SMCR
+        out_    SMCR, zero
+.else
+        in_     t0, MCUCR
+        cbr     t0, (1<<SE)
+        out_    MCUCR, zero
+.endif
+.endif
+.if CPU_LOAD_LED == 1
+.if CPU_LOAD_LED_POLARITY == 1
+        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.else
+        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.endif
+.endif
 PAUSE1:
         in      t2, SREG
         cli

@@ -1,10 +1,10 @@
 ;;; FlashForth device configuration for ATmega devices
 
 ; Oscillator frequency in herz
-.equ FREQ_OSC = 16000000
+.equ FREQ_OSC = 8000000
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART = 1              ; 0 or 1
+.equ OPERATOR_UART = 0              ; 0 or 1
 
 ;;; UART0 configuration
 .equ BAUDRATE0 = 38400 				; Serial baudrate UART0
@@ -24,16 +24,16 @@
 .equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE = 1
+.equ IDLE_MODE = 0
 
 ; Set to 1 for CPU load measurement
 .equ CPU_LOAD = 0
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED = 0       ; set to 0 to disable
-;.equ CPU_LOAD_TRIS = TRISB
-;.equ CPU_LOAD_PORT = PORTB
-.equ CPU_LOAD_BIT = 8
+.equ CPU_LOAD_LED = 0       ; set to 1 to enable
+.equ CPU_LOAD_DDR = ddrc
+.equ CPU_LOAD_PORT = portc
+.equ CPU_LOAD_BIT = 5
 .equ CPU_LOAD_LED_POLARITY = 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
