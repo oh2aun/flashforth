@@ -1,5 +1,11 @@
 ;;; FlashForth device configuration for ATmega devices
 
+; Select the include file for your micro controller
+;.include "m128def.inc"   ; Tested
+;.include "m168pdef.inc"
+.include "m328pdef.inc"    ; Tested
+;.include "m644pdef.inc"
+
 ; Oscillator frequency in herz
 .equ FREQ_OSC = 8000000
 
@@ -24,7 +30,7 @@
 .equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE = 0
+.equ IDLE_MODE = 1
 
 ; Set to 1 for CPU load measurement
 .equ CPU_LOAD = 0

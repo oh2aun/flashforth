@@ -11,11 +11,11 @@
 
 -sieve2
 marker -sieve2
+decimal ram
 
  ( addr n c -- ) \ fill addr to addr+n with c
 : fill rot !p>r swap for dup pc! p+ next r>p drop ;
 
-decimal ram
 8192 constant size2
 variable flags2 size2 8 / allot
 : bit-addr ( addr bit -- eff-addr )
@@ -53,6 +53,7 @@ variable flags2 size2 8 / allot
   r>p   . ." primes " cr
 ;
 
-: bench2 ticks swap for sieve2 next ticks swap - u. ." milliseconds" cr ;
+: bench2 ticks sieve2 ticks swap - u. ." milliseconds" cr ;
 
+bench2
 

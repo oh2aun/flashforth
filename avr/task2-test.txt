@@ -16,9 +16,9 @@ single
 marker -task2
 ram hex
 \ Registers for Atmega 328P. Change if needed
-$0028 con portc
-$0027 con ddrc
-$20 con pin5
+$0028 constant portc
+$0027 constant ddrc
+$20 constant pin5
 
 ram variable delay
 

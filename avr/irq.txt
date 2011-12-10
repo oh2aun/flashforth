@@ -1,8 +1,8 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      irq.txt                                           *
-\    Date:          01.12.2011                                        *
-\    FF Version:    3.8                                               *
+\    Date:          10.12.2011                                        *
+\    FF Version:    Atmega                                            *
 \    MCU:           Atmega128                                         *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -14,9 +14,9 @@ irqOvf3Dis
 -irqOvf3
 marker -irqOvf3
 \ Timer 3 definitions from m128def.inc
-$8a con tccr3b
-$7d con etimsk
-$3a con ovf3Ivec
+$8a constant tccr3b
+$7d constant etimsk
+$3a constant ovf3Ivec
 
 \ Counter for timer overflows
 variable counter

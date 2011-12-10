@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          08.12.2011                                        *
-;    File Version:  3.8alfa                                           *
+;    Date:          10.12.2011                                        *
+;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -29,25 +29,17 @@
 ; displayed when FlashForth starts.
 ;**********************************************************************
 
-; Select the include file for your micro controller
-;.include "m128def.inc"   ; Tested
-;.include "m168pdef.inc"
-.include "m328pdef.inc"    ; Tested
-;.include "m644pdef.inc"
-
-
 ; Include the FlashForth configuration file
 .include "config.inc"
-;..............................................................................
-; Configuration data
-;..............................................................................
 
 
 ; Register definitions
-  .def zero = r2        ; read only zero
-  .def upl = r4         ; not in interrupt 
-  .def uph = r5         ; not in interrupt
-
+  .def upl = r2         ; not in interrupt 
+  .def uph = r3         ; not in interrupt
+  .def zero = r5        ; read only zero
+  .def r_one = r6       ; read only one
+  .def r_two = r7       ; read only two
+  .def r_four = r8      ; read only four
   .def wflags  = r9     ; not in interrupt
 
   .def ibasel=r10       ; Not in interrupt
@@ -213,7 +205,9 @@
 ; Forth word header flags
 .equ NFA= 0x80      ; Name field mask
 .equ IMMED= 0x40    ; Immediate mask
-.equ INLINE= 0x20   ; Inline mask
+.equ INLINE= 0x20   ; Inline mask for 1 and 2 cell code
+.equ INLINE4= 0x20   ; Inline mask for 4 cell code
+.equ INLINE5= 0x20   ; Inline mask for 5 cell code
 .equ COMPILE= 0x10  ; Compile only mask
 .equ NFAmask= 0xf   ; Name field length mask
 
@@ -749,16 +743,6 @@ VARIABLE_:
 CONSTANT_L:
         .db     NFA|8,"constant",0
 CONSTANT_:
-        rcall   CREATE
-        rcall   CELL
-        rcall   NEGATE
-        call    IALLOT
-        jmp     ICOMMA
-
-        fdw     CONSTANT_L
-CON_L:
-        .db     NFA|3,"con"
-CON:
         rcall   COLON
         call    LITERAL
         jmp     SEMICOLON
@@ -796,7 +780,7 @@ DODOES:
         ijmp    ; (z)
 
 ;   SP@     -- addr         get parameter stack pointer
-        fdw     CON_L
+        fdw     CONSTANT_L
 SPFETCH_L:
         .db     NFA|3,"sp@"
 SPFETCH:
@@ -831,8 +815,7 @@ FLASH_L:
 ROM_N:  
         .db     NFA|5,"flash"
 ROM_:
-        clr     t0
-        sts     cse, t0
+        sts     cse, zero
         ret
 
 ; EEPROM -- sets the data section to EEPROM data memory
@@ -841,8 +824,7 @@ EEPROM_L:
 EROM_N: 
         .db     NFA|6,"eeprom",0
 EROM:
-        ldi     t0, 2
-        sts     cse, t0
+        sts     cse, r_two
         ret
         
 ; RAM -- sets the data section to RAM memory
@@ -851,8 +833,7 @@ RAM_L:
 FRAM_N: 
         .db     NFA|3,"ram"
 FRAM:
-        ldi     t0, 4
-        sts     cse, t0
+        sts     cse, r_four
         ret
 
 ; DP    -- a-addr          
@@ -957,7 +938,7 @@ CELLS:
 ; CHAR+    c-addr1 -- c-addr2   add char size
         fdw     CELLS_L
 CHARPLUS_L:
-        .db     NFA|5,"char+"
+        .db     NFA|INLINE|5,"char+"
 CHARPLUS:
         adiw    tosl, 1
         ret
@@ -1126,7 +1107,7 @@ UMAX1:  jmp     DROP
 
         fdw     UMAX_L
 ONE_L:
-        .db     NFA|1,"1"
+        .db     NFA|INLINE4|1,"1"
 ONE:
         pushtos
         ldi     tosl, 1
@@ -1283,14 +1264,14 @@ ALLOT:
 
         fdw     ALLOT_L
 DROP_L:
-        .db     NFA|4,"drop",0
+        .db     NFA|INLINE|4,"drop",0
 DROP:
         poptos
         ret
 
         fdw     DROP_L
 SWOP_L:
-        .db     NFA|4,"swap",0
+        .db     NFA|INLINE5|4,"swap",0
 SWOP:
         ld      t0, y+
         ld      t1, y+
@@ -1300,7 +1281,7 @@ SWOP:
 
         fdw     SWOP_L
 OVER_L:
-        .db     NFA|4,"over",0
+        .db     NFA|INLINE4|4,"over",0
 OVER:
         pushtos
         ldd     tosl, y+2
@@ -1362,7 +1343,7 @@ ABS_:
 
         fdw     ABS_L
 PLUS_L:
-        .db     NFA|1, "+"
+        .db     NFA|INLINE4|1, "+"
 
 PLUS:
         ld      t0, Y+        
@@ -1381,7 +1362,7 @@ MPLUS:
 
         fdw     MPLUS_L
 MINUS_L:
-        .db     NFA|1, "-"
+        .db     NFA|INLINE5|1, "-"
 MINUS:
         ld      t0, Y+
         ld      t1, Y+
@@ -1392,7 +1373,7 @@ MINUS:
 
         fdw     MINUS_L
 AND_L:
-        .db     NFA|3, "and"
+        .db     NFA|INLINE4|3, "and"
 AND_:
         ld      t0, Y+
         ld      t1, Y+
@@ -1402,7 +1383,7 @@ AND_:
 
         fdw     AND_L
 OR_L:
-        .db     NFA|2, "or",0
+        .db     NFA|INLINE4|2, "or",0
 OR_:
         ld      t0, Y+
         ld      t1, Y+
@@ -1412,7 +1393,7 @@ OR_:
 
         fdw     OR_L
 XOR_L:
-        .db     NFA|3, "xor"
+        .db     NFA|INLINE4|3, "xor"
 XOR_:
         ld      t0, Y+
         ld      t1, Y+
@@ -1603,12 +1584,10 @@ PCSTORE:
 
         fdw     PCSTORE_L
 PPLUS_L:
-        .db     NFA|2,"p+",0
+        .db     NFA|INLINE|2,"p+",0
 PPLUS:
-        inc     pl
-        brne    PPLUS1
-        inc     ph
-PPLUS1:
+        add     pl, r_one
+        adc     ph, zero
         ret
 
         fdw     PPLUS_L
@@ -1771,7 +1750,7 @@ CSTORE_A:
 UPTR_L:
         .db     NFA|2,"up",0
 UPTR:   rcall   DOCREATE
-        .dw     4 ; upl
+        .dw     2 ; upl
 
         fdw     UPTR_L
 HOLD_L:
@@ -3013,7 +2992,7 @@ CREATE:
         rcall   IALLOT          ; The header has now been created
         rcall   DOLIT             
         fdw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
-        rcall   COMMAXT_A       ; Append an exeution token
+        rcall   STORECFF1       ; Append an exeution token, CALL !
         rcall   ALIGN
         rcall   HERE            ; compiles the current dataspace dp into the dictionary
         rcall   CSE_
@@ -3911,7 +3890,7 @@ DDOT_L:
 
         fdw      DDOT_L
 L_FETCH_P:
-        .db      NFA|2,"@p", 0
+        .db      NFA|INLINE|2,"@p", 0
 FETCH_P:
         pushtos
         movw    tosl, pl
@@ -3930,10 +3909,33 @@ L_PTWOPLUS:
 kernellink:
         .db      NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
 PTWOPLUS:
-        ldi     t0, 2
-        add     pl, t0
+        add     pl, r_two
         adc     ph, zero
         ret
+
+        fdw     WARM_L
+VER_L:
+        .db     NFA|3,"ver"
+VER:
+        call    XSQUOTE
+         ;        1234567890123456789012345678901234567890
+        .db 19,"FlashForth Atmega",0xd,0xa
+        jmp     TYPE
+
+; ei  ( -- )    Enable interrupts
+        fdw     VER_L
+EI_L:
+        .db     NFA|INLINE|2,"ei",0
+        sei
+        ret
+        
+; di  ( -- )    Disable interrupts
+        fdw     EI_L
+DI_L:
+        .db     NFA|INLINE|2,"di",0
+        cli
+        ret
+        
 
 ;***************************************************
 ; marker --- name
@@ -4547,7 +4549,7 @@ IWRITE_BUFFER1:
         rcall   DO_SPM
         ; re-enable the RWW section
         rcall   IWRITE_BUFFER3
-#if 0
+#if 1
         ; read back and check, optional
         ldi     t0, low(PAGESIZEB);init loop variable
         subi    xl, low(PAGESIZEB) ;restore pointer
@@ -4556,7 +4558,7 @@ IWRITE_BUFFER2:
         lpm_    r0, z+
         ld      r1, x+
         cpse    r0, r1
-        jmp     VERIFY_ERROR     ; What to do here ?? reset ?
+        rjmp    VERIFY_ERROR     ; emit ^ and reset.
         subi    t0, 1
         brne    IWRITE_BUFFER2
 #endif
@@ -4587,6 +4589,12 @@ DO_SPM:
         spm
         ret
 
+VERIFY_ERROR:
+        rcall   DOLIT
+        .dw     '^'
+        call    EMIT
+        rjmp    WARM_
+                
         fdw     PAUSE_L
 IFLUSH_L:
         .db     NFA|6,"iflush",0
@@ -4634,6 +4642,12 @@ WARM_2:
         st      x+, zero
         cpi     xh, 0x10  ; to 0xfff, 4 Kbytes 
         brne    WARM_2
+        ldi     yl, 1
+        mov     r_one, yl
+        ldi     yl, 2
+        mov     r_two, yl
+        ldi     yl, 4
+        mov     r_four, yl
 ; Init Stack pointer
         ldi     yl, low(usbuf+ussize-4)
         ldi     yh, high(usbuf+ussize-4)
@@ -4691,8 +4705,7 @@ WARM_3:
 ; Init UART 0
 .ifdef UBRR0L
         ; Set baud rate
-        ldi     t0, 0
-        out_    UBRR0H, t0
+;        out_    UBRR0H, zero
         ldi     t0, ubrr0val
         out_    UBRR0L, t0
         ; Enable receiver and transmitter, rx1 interrupts
@@ -4707,8 +4720,7 @@ WARM_3:
 ; Init UART 1
 .ifdef UBRR1L
         ; Set baud rate
-        ldi     t0, 0
-        out_    UBRR1H, t0
+;        out_    UBRR1H, zero
         ldi     t0, ubrr1val
         out_    UBRR1L, t0
         ; Enable receiver and transmitter, rx1 interrupts
@@ -4752,29 +4764,6 @@ STARTQ2:
         jmp     ABORT
 
 ;*******************************************************
-        fdw     WARM_L
-VER_L:
-        .db     NFA|3,"ver"
-VER:
-        call    XSQUOTE
-         ;        1234567890123456789012345678901234567890
-        .db 19,"FlashForth Atmega",0xd,0xa
-        jmp     TYPE
-
-; ei  ( -- )    Enable interrupts
-        fdw     VER_L
-EI_L:
-        .db     NFA|INLINE|2,"ei",0
-        sei
-        ret
-        
-; di  ( -- )    Disable interrupts
-        fdw     EI_L
-DI_L:
-        .db     NFA|INLINE|2,"di",0
-        cli
-        ret
-        
 ; ;i  ( -- )    End definition of user interrupt routine
         fdw     DI_L
 IRQ_SEMI_L:
@@ -4835,7 +4824,6 @@ LITERALruntime:
 
 ;*****************************************************************
 ISTORE:
-;        sub_pflash_tos
         rcall   LOCKEDQ
         movw    iaddrl, tosl
         rcall   IUPDATEBUF
@@ -4856,10 +4844,7 @@ STORE_L:
         .db     NFA|1, "!"
 STORE:
         cpi     tosh, high(PEEPROM)
-        brlo    STORE_RAM
-        cpi     tosh, high(OFLASH)
-        brlo    ESTORE
-        rjmp    ISTORE
+        brcc    STORE1
 STORE_RAM:
         movw    zl, tosl
         poptos
@@ -4867,7 +4852,9 @@ STORE_RAM:
         std     Z+0, tosl
         poptos
         ret
-
+STORE1:
+        cpi     tosh, high(OFLASH)
+        brcc    ISTORE
 ESTORE:
         rcall   LOCKEDQ
         sbic    eecr, eewe
@@ -4905,7 +4892,6 @@ LOCKEDQ:
         
 ;***********************************************************
 IFETCH:
-;        sub_pflash_tos
         movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IIFETCH
@@ -4935,16 +4921,15 @@ FETCH_L:
         .db     NFA|1, "@"
 FETCH:
         cpi     tosh, high(PEEPROM)
-        brlo    FETCH_RAM
-        cpi     tosh, high(OFLASH)
-        brlo    EFETCH
-        rjmp    IFETCH
+        brcc    FETCH1
 FETCH_RAM:
         movw    zl, tosl
         ld      tosl, z+
         ld      tosh, z+
         ret
-
+FETCH1:
+        cpi     tosh, high(OFLASH)
+        brcc    IFETCH
 EFETCH:
         sbic    eecr, eewe
         rjmp    EFETCH
@@ -4961,7 +4946,6 @@ EFETCH:
         ret
 
 ICFETCH:
-;        sub_pflash_tos
         movw    z, tosl
         cpse    zh, ibaseh
         rjmp    IICFETCH
@@ -4991,15 +4975,15 @@ CFETCH_L:
         .db     NFA|2, "c@",0
 CFETCH:
         cpi     tosh, high(PEEPROM)
-        brlo    CFETCH_RAM
-        cpi     tosh, high(OFLASH)
-        brlo    ECFETCH
-        rjmp    ICFETCH
+        brcc    CFETCH1
 CFETCH_RAM:
         movw    zl, tosl
         ld      tosl, z+
         clr     tosh
         ret
+CFETCH1:
+        cpi     tosh, high(OFLASH)
+        brcc    ICFETCH
 ECFETCH:
         sbic    eecr, eewe
         rjmp    ECFETCH
@@ -5012,7 +4996,6 @@ ECFETCH:
         ret
 
 ICSTORE:
-;        sub_pflash_tos
         rcall   LOCKEDQ
         movw    iaddrl, tosl
         rcall   IUPDATEBUF
@@ -5032,17 +5015,16 @@ CSTORE_L:
         .db     NFA|2, "c!",0
 CSTORE:
         cpi     tosh, high(PEEPROM)
-        brlo    CSTORE_RAM
-        cpi     tosh, high(OFLASH)
-        brlo    ECSTORE
-        rjmp    ICSTORE
+        brcc    CSTORE1
 CSTORE_RAM:
         movw zl, tosl
         poptos
         std Z+0, tosl
         poptos
         ret
-
+CSTORE1:
+        cpi     tosh, high(OFLASH)
+        brcc    ICSTORE
 ECSTORE:
         rcall   LOCKEDQ
         sbic    eecr, eewe

@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task-test.txt                                   *
-\    Date:          26.11.2011                                      *
+\    Date:          10.12.2011                                      *
 \    FF Version:    3.8                                             *
 \    MCU:           Atmega 128(Olimex AVR-MT-128)                   *
 \    Copyright:     Mikael Nordman                                  *
@@ -16,10 +16,10 @@ single
 marker -task1
 ram hex
 \ Registers for Atmega 128. Change if needed
-$003b con porta
-$003a con ddra
-$0039 con pina
-$40 con pin6
+$003b constant porta
+$003a constant ddra
+$0039 constant pina
+$40 constant pin6
 ram variable delay
 : ledoff  pin6 porta mclr ;
 : ledon   pin6 porta mset ;
