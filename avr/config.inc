@@ -1,4 +1,4 @@
-;;; FlashForth device configuration for ATmega devices
+;;; FlashForth device configuration for Atmega devices
 
 ; Select the include file for your micro controller
 ;.include "m128def.inc"   ; Tested
@@ -14,17 +14,17 @@
 
 ;;; UART0 configuration
 .equ BAUDRATE0 = 38400 				; Serial baudrate UART0
-;.equ FC0_TYPE = 1                    ; 1 = XON/XOFF, 2=CTS/RTS
-;.equ U0RTSPORT = LATB
-;.equ U0RTSTRIS = TRISB
-;.equ U0RTSPIN = 0xc
+.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U0RTS_PORT = portd
+.equ U0RTS_DDR = ddrd
+.equ U0RTS_BIT = 3
 
 ;;; UART1 configuration
 .equ BAUDRATE1= 38400 				; Serial baudrate UART1
-;.equ FC1_TYPE = 1                    ; 1 = XON/XOFF, 2=CTS/RTS
-;.equ U1RTSPORT = LATB
-;.equ U1RTSTRIS = TRISB
-;.equ U1RTSPIN = 0x3
+.equ U1FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U1RTS_PORT = portd
+.equ U1RTS_DDR = ddrd
+.equ U1RTS_BIT = 4
 
 ; Default number base
 .equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
@@ -33,10 +33,11 @@
 .equ IDLE_MODE = 1
 
 ; Set to 1 for CPU load measurement
+; Not yet implemented
 .equ CPU_LOAD = 0
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED = 0       ; set to 1 to enable
+.equ CPU_LOAD_LED = 1       ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrc
 .equ CPU_LOAD_PORT = portc
 .equ CPU_LOAD_BIT = 5
@@ -48,11 +49,11 @@
 ; UART buffer sizes
 .equ TX0_BUF_SIZE = 0
 .equ RX0_BUF_SIZE = 32
-.equ RX0_OFF_FILL = 8   ; Fill level for XOFF
+.equ RX0_OFF_FILL = 4   ; Fill level for XOFF
 
 .equ TX1_BUF_SIZE = 0
 .equ RX1_BUF_SIZE = 32
-.equ RX1_OFF_FILL = 8   ; Fill level for XOFF
+.equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE = 64          ; 32 cells return stack

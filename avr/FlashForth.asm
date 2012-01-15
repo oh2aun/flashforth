@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          10.12.2011                                        *
+;    Date:          15.01.2012                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -475,7 +475,6 @@ IDLE_HELP:
 LOAD_L:
         .db     NFA|4,"load",0
 LOAD:
-        call    CELL
         ret
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
@@ -3918,8 +3917,8 @@ VER_L:
         .db     NFA|3,"ver"
 VER:
         call    XSQUOTE
-         ;        1234567890123456789012345678901234567890
-        .db 19,"FlashForth Atmega",0xd,0xa
+         ;      1234567890123456789012345678901234567890
+        .db 29,"FlashForth Atmega 15.1.2012",0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4227,7 +4226,12 @@ RX0_ISR:
         rcall   RX0_OVF
         cpi     xl, RX0_OFF_FILL
         brmi    RX0_ISR_SKIP_XOFF
+.if U0FC_TYPE == 1
         rcall   XXOFF_TX0_1
+.endif
+.if U0FC_TYPE == 2
+        sbi_    U0RTS_PORT, U0RTS_BIT
+.endif
 RX0_ISR_SKIP_XOFF:
         rjmp    FF_ISR_EXIT2
 RX0_OVF:
@@ -4259,7 +4263,12 @@ RX1_ISR:
         rcall   RX1_OVF
         cpi     xl, RX0_OFF_FILL
         brmi    RX1_ISR_SKIP_XOFF
+.if U1FC_TYPE == 1
         rcall   XXOFF_TX1_1
+.endif
+.if U1FC_TYPE == 2
+        sbi_    U1RTS_PORT, U1RTS_BIT
+.endif
 RX1_ISR_SKIP_XOFF:
         rjmp    FF_ISR_EXIT2
 RX1_OVF:
@@ -4301,10 +4310,12 @@ STAT:   fdw      DOTSTATUS
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
+.if U0FC_TYPE == 1
         cpi     tosl, XON
         breq    XXON_TX0_TOS
         cpi     tosl, XOFF
         breq    XXOFF_TX0_TOS
+.endif
 TX0_LOOP:
         rcall   PAUSE
         in_     t0, UCSR0A
@@ -4314,6 +4325,7 @@ TX0_LOOP:
         poptos
         ret
 
+.if U0FC_TYPE == 1
 XXON_TX0_TOS:
         poptos
         rjmp    XXON_TX0_1
@@ -4334,6 +4346,7 @@ XXOFF_TX0:
 XXOFF_TX0_1:
         sbr     FLAGS2, (1<<ixoff_tx0)
         ldi     zh, XOFF
+.endif
 TX0_SEND:
         in_     zl, UCSR0A
         sbrs    zl, UDRE0
@@ -4379,7 +4392,12 @@ RX0Q:
         cpse    xl, zero
         jmp     TRUE_
         call    IDLE
+.if U0FC_TYPE == 1
         rcall   XXON_TX0
+.endif
+.if U0FC_TYPE == 2
+        cbi_    U0RTS_PORT, U0RTS_BIT
+.endif
         jmp     FALSE_
 ;***************************************************
 ; TX1   c --    output character to UART 1
@@ -4517,12 +4535,26 @@ IFILL_BUFFER_2:
         ret
 
 IWRITE_BUFFER:
+.if OPERATOR_UART == 0
+.if U0FC_TYPE == 1
         rcall   DOLIT
         .dw     XOFF
         call    EMIT
-        in      t9, SREG
+.endif
+.if U0FC_TYPE == 2
+        sbi_    U0RTS_PORT, U0RTS_BIT
+.endif
+.else  ;; UART1
+.if U1FC_TYPE == 1
+        rcall   DOLIT
+        .dw     XOFF
+        call    EMIT
+.endif
+.if U1FC_TYPE == 2
+        sbi_    U1RTS_PORT, U1RTS_BIT
+.endif
+.endif
         movw    zl, ibasel
-        cli
         sub_pflash_z
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
@@ -4565,10 +4597,25 @@ IWRITE_BUFFER2:
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
         // reenable interrupts
-        out     SREG, t9
+.if OPERATOR_UART == 0
+.if U0FC_TYPE == 1
         rcall   DOLIT
         .dw     XON
         call    EMIT
+.endif
+.if U0FC_TYPE == 2
+        cbi_    U0RTS_PORT, U0RTS_BIT
+.endif
+.else
+.if U1FC_TYPE == 1
+        rcall   DOLIT
+        .dw     XON
+        call    EMIT
+.endif
+.if U1FC_TYPE == 2
+        cbi_    U1RTS_PORT, U1RTS_BIT
+.endif
+.endif
          ret
         ; ret to RWW section
         ; verify that RWW section is safe to read
@@ -4714,7 +4761,12 @@ WARM_3:
         ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS0)|(3<<UCSZ00)
         out_    UCSR0C,t0
-        ; Init rx1 interrupts
+.if U0FC_TYPE == 1
+        sbr     FLAGS2, (1<<ixoff_tx0)
+.endif
+.if U0FC_TYPE == 2
+        sbi_    U0RTS_DDR, U0RTS_BIT
+.endif
 .endif
 
 ; Init UART 1
@@ -4729,14 +4781,16 @@ WARM_3:
         ; Set frame format: 8data, 1stop bit
         ldi     t0, (1<<USBS1)|(3<<UCSZ10)
         out_    UCSR1C,t0
-        ; Init rx1 interrupts
+.if U1FC_TYPE == 1
+        sbr     FLAGS2, (1<<ixoff_tx1)
+.endif
+.if U1FC_TYPE == 2
+        sbi_    U1RTS_DDR, U1RTS_BIT
+.endif
 .endif
         rcall   DP_TO_RAM
         sei
 
-        rcall   DOLIT
-        .dw     XON
-        call    EMIT
         rcall   VER
 ; Turnkey ?
         rcall   TURNKEY
@@ -4785,7 +4839,7 @@ IRQ_V_L:
         rcall   DOLIT
         .dw     ivec
         call    PLUS
-        jmp    STORE
+        jmp     STORE
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
         fdw     IRQ_V_L
