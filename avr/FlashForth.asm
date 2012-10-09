@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          06.04.2012                                        *
+;    Date:          15.01.2012                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -52,8 +52,7 @@
   .def t1 = r17
   .def t2 = r0          ; Not in interrupt
   .def t3 = r1          ; Not in interrupt
-  .def il = r18
-  .def ih = r19
+
   .def pl = r20
   .def ph = r21
 
@@ -565,7 +564,7 @@ NEQUAL:
         breq    NEQUAL5
         rcall   ONEMINUS
         rcall   CFETCHPP
-        call    XFOR
+        rcall   TOR
         rjmp    NEQUAL4
 NEQUAL2:
         rcall   NEQUALSFETCH
@@ -576,16 +575,15 @@ NEQUAL2:
         call    LEAVE
         rjmp    NEQUAL4
 NEQUAL3:
-        rcall   II
+        rcall   RFETCH
         rcall   ZEROSENSE
         brne    NEQUAL4
         rcall   FALSE_
 NEQUAL4:
-        subi    il,1
-        sbci    ih,0
+        call    XNEXT
         brcc    NEQUAL2
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         rjmp    NEQUAL6
 NEQUAL5:
         rcall   TRUE_
@@ -630,7 +628,7 @@ SCAN_L:
         .db     NFA|4,"scan",0
 SCAN:
         rcall   STORE_P_TO_R
-        call    XFOR
+        rcall   TOR
         rjmp    SCAN3
 SCAN1:
         rcall   CFETCHPP
@@ -641,13 +639,10 @@ SCAN1:
         rcall   ONEMINUS
         rjmp    SCAN4
 SCAN3:
-        subi    il,1
-        sbci    ih,0
+        call    XNEXT
         brcc    SCAN1
 SCAN4:
-        rcall   II
-        pop     ih
-        pop     il
+        rcall   RFROM
         rcall   ONEPLUS
         rcall   R_TO_P
         ret
@@ -1015,13 +1010,14 @@ TWOFETCH:
         jmp     FETCH_A
 
 ; 2!    x1 x2 a-addr --            store 2 cells
-;   TUCK ! CELL+ ! ;
+;   SWAP OVER ! CELL+ ! ;
 ;   the top of stack is stored at the lower adrs
         fdw     TWOFETCH_L
 TWOSTORE_L:
         .db     NFA|2,"2!",0
 TWOSTORE:
-        rcall   TUCK
+        rcall   SWOP
+        rcall   OVER
         rcall   CELLPLUS
         rcall   STORE_A
         jmp     STORE
@@ -1193,7 +1189,7 @@ FCR:
 TYPE_L:
         .db     NFA|4,"type",0
 TYPE:
-        rcall   XFOR
+        rcall   TOR
         rjmp    TYPE2       ; XFOR
 TYPE1:  
         rcall   CFETCHPP
@@ -1201,8 +1197,8 @@ TYPE1:
 TYPE2:
         rcall   XNEXT
         brcc    TYPE1
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         jmp     DROP
 
 
@@ -1334,14 +1330,6 @@ RFETCH:
         push    tosl
         push    tosh
         ijmp
-
-        fdw     RFETCH_L
-II_L:
-        .db     NFA|COMPILE|1,"i"
-II:
-        pushtos
-        movw    tosl, il
-        ret
 
 
 ;   ABS     n   --- n1      absolute value of n
@@ -1475,7 +1463,8 @@ TWOSLASH:
 PLUSSTORE_L:
         .db     NFA|2,"+!",0
 PLUSSTORE:
-        rcall   TUCK
+        rcall   SWOP
+        rcall   OVER
         rcall   FETCH_A
         rcall   PLUS
         rcall   SWOP
@@ -1875,7 +1864,7 @@ UDOTR_L:
 UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
-        rcall   XFOR
+        rcall   TOR
         rcall   FALSE_
         rjmp    UDOTR2
 UDOTR1:
@@ -1883,8 +1872,8 @@ UDOTR1:
 UDOTR2: 
         rcall   XNEXT
         brcc    UDOTR1
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -2024,12 +2013,13 @@ SOURCE:
 
 
 ; /STRING  a u n -- a+n u-n          trim string
-;   tuck - >r + r>
+;   swap over - >r + r>
         fdw      SOURCE_L
 SLASHSTRING_L:
         .db     NFA|7,"/string"
 SLASHSTRING:
-        rcall   TUCK
+        rcall   SWOP
+        rcall   OVER
         rcall   MINUS
         rcall   TOR
         rcall   PLUS
@@ -2097,7 +2087,7 @@ CMOVE_L:
 CMOVE:
         rcall   SWOP
         rcall   STORE_P_TO_R
-        rcall   XFOR
+        rcall   TOR
         rjmp    CMOVE2
 CMOVE1:
         rcall   CFETCHPP
@@ -2106,8 +2096,8 @@ CMOVE1:
 CMOVE2:
         rcall   XNEXT
         brcc    CMOVE1
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         rcall   R_TO_P
         jmp     DROP
 
@@ -2184,6 +2174,8 @@ findi:
 findi1:
 FIND_1: 
         rcall   TWODUP
+;        rcall   OVER
+;        rcall   CFETCH_A
         rcall   NEQUAL
         rcall   DUPZEROSENSE
         breq    findi2
@@ -2706,7 +2698,7 @@ DP_TO_EEPROM:
         rcall   INI
         rcall   DOLIT
         .dw     4
-        rcall   XFOR
+        rcall   TOR
 DP_TO_EEPROM_0: 
         rcall   FETCHPP
         rcall   DUP
@@ -2719,12 +2711,13 @@ DP_TO_EEPROM_0:
 DP_TO_EEPROM_1:
         rcall   DROP
 DP_TO_EEPROM_2:
+;        call    CELL
         rcall   PTWOPLUS
 DP_TO_EEPROM_3:
         rcall   XNEXT
         brcc    DP_TO_EEPROM_0
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         rcall   R_TO_P
         jmp     DROP
 
@@ -2851,7 +2844,7 @@ DOLIT:
         ijmp    ; (z)
 
 ; DUP must not be reachable from user code with rcall
-        fdw     II_L
+        fdw     RFETCH_L
 DUP_L:
         .db     NFA|INLINE|3, "dup"
 DUP:
@@ -3283,7 +3276,7 @@ DOTID:
         rcall   DOLIT
         .dw     0x0f
         rcall   AND_
-        rcall   XFOR
+        rcall   TOR
         rjmp    DOTID3
 DOTID1:
         rcall   CFETCHPP
@@ -3292,8 +3285,8 @@ DOTID1:
 DOTID3:
         rcall   XNEXT
         brcc    DOTID1  
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         jmp     DROP
 
  ; >pr   c -- c      Filter a character to printable 7-bit ASCII
@@ -3380,7 +3373,7 @@ DUMP:
         rcall   DOLIT
         .dw     16
         rcall   USLASH
-        rcall   XFOR
+        rcall   TOR
         rjmp    DUMP7
 DUMP1:  
         rcall   CR
@@ -3393,7 +3386,7 @@ DUMP1:
         call    EMIT
         rcall   DOLIT
         .dw     15
-        rcall   XFOR
+        rcall   TOR
 DUMP2:
         rcall   CFETCHPP
         rcall   DOLIT
@@ -3401,28 +3394,28 @@ DUMP2:
         rcall   UDOTR
         rcall   XNEXT
         brcc    DUMP2
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
 
         rcall   DOLIT
         .dw     16
         rcall   MINUS
         rcall   DOLIT
         .dw     15
-        rcall   XFOR
+        rcall   TOR
 DUMP4:  
         rcall    CFETCHPP
         rcall   TO_PRINTABLE
         call    EMIT
         rcall   XNEXT
         brcc    DUMP4
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
 DUMP7:
         rcall   XNEXT
         brcc    DUMP1
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         jmp     DROP
 
 ; IALLOT   n --    allocate n bytes in ROM
@@ -3656,7 +3649,7 @@ FOR_L:
         .db     NFA|IMMED|COMPILE|3,"for"
 FOR:
         rcall   DOLIT
-        fdw     XFOR
+        fdw     TOR
         rcall   COMMAXT_A
         rcall   IHERE
         rcall   FALSE_
@@ -3672,7 +3665,7 @@ NEXT:
         rcall   THEN_
         rcall   DOLIT
         fdw     XNEXT
-        rcall   INLINE0
+        rcall   COMMAXT_A
         rcall   BRCCC
 
         rcall   UNTIL1
@@ -3680,22 +3673,20 @@ NEXT:
         rcall   DOLIT
         fdw     XNEXT1
         jmp     INLINE0
-
-XFOR:
+; (next) decrement top of return stack
+XNEXT:  
         pop     zh
         pop     zl
-        push    il
-        push    ih
-        movw    il, tosl
-        poptos
+        pop     xh
+        pop     xl
+        sbiw    xl, 1
+        push    xl
+        push    xh
         ijmp
-XNEXT:
-        subi    il,1
-        sbci    ih,0
         ret
 XNEXT1:
-        pop     ih
-        pop     il
+        pop     t1
+        pop     t0
         ret
 
 ; leave clear top of return stack
@@ -3703,9 +3694,15 @@ XNEXT1:
 LEAVE_L:
         .db     NFA|COMPILE|5,"leave"
 LEAVE:
-        clr     ih
-        clr     il
-        ret
+        pop     zh
+        pop     zl
+        pop     t1
+        pop     t0
+        clr     t0
+        clr     t1
+        push    t0
+        push    t1
+        ijmp
 ;***************************************************
 ; RDROP compile a pop
         fdw      LEAVE_L
@@ -3921,7 +3918,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega  6.10.2012",0xd,0xa
+        .db 29,"FlashForth Atmega 15.1.2012",0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4133,8 +4130,6 @@ FF_ISR_EXIT:
         pop     tosl
         pop     ph
         pop     pl
-        pop     ih
-        pop     il
         pop     t3
         pop     t2
 
@@ -4192,8 +4187,6 @@ FF_ISR:
 
         push    t2
         push    t3
-        push    il
-        push    ih
         push    pl
         push    ph
         push    tosl
@@ -4329,7 +4322,8 @@ TX0_LOOP:
         sbrs    t0, UDRE0
         rjmp    TX0_LOOP
         out_    UDR0, tosl
-        rjmp    STORE_DROP
+        poptos
+        ret
 
 .if U0FC_TYPE == 1
 XXON_TX0_TOS:
@@ -4422,7 +4416,8 @@ TX1_LOOP:
         sbrs    t0, UDRE1
         rjmp    TX1_LOOP
         out_    UDR1, tosl
-        rjmp    STORE_DROP
+        poptos
+        ret
 
 XXON_TX1_TOS:
         poptos
@@ -4894,8 +4889,9 @@ ISTORE:
         add     xl, t0
         st      x+, tosl
         st      x+, tosh
+        poptos
         sbr     FLAGS1, (1<<idirty)
-        rjmp    STORE_DROP
+        ret
 
         fdw     LITERAL_L
 STORE_L:
@@ -4908,7 +4904,6 @@ STORE_RAM:
         poptos
         std     Z+1, tosh
         std     Z+0, tosl
-STORE_DROP:
         poptos
         ret
 STORE1:
@@ -4937,8 +4932,9 @@ ESTORE1:
         out     eedr, tosh
         sbi     eecr, eemwe
         sbi     eecr, eewe
-        rjmp    STORE_DROP
 
+        poptos
+        ret
 LOCKEDQ:
         sbrs    FLAGS1, fLOCK
         ret
@@ -5064,8 +5060,9 @@ ICSTORE:
         andi    t0, (PAGESIZEB-1)
         add     xl, t0
         st      x+, tosl
+        poptos
         sbr     FLAGS1, (1<<idirty)
-        rjmp    CSTORE_DROP
+        ret
 
         fdw     CFETCH_L
 CSTORE_L:
@@ -5077,7 +5074,6 @@ CSTORE_RAM:
         movw zl, tosl
         poptos
         std Z+0, tosl
-CSTORE_DROP:
         poptos
         ret
 CSTORE1:
@@ -5094,7 +5090,8 @@ ECSTORE:
         out     eedr, tosl
         sbi     eecr, eemwe
         sbi     eecr, eewe
-        rjmp    CSTORE_DROP
+        poptos
+        ret
 
 ;;; Disable writes to flash and eeprom
         fdw     CSTORE_L
