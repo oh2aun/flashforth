@@ -30,14 +30,14 @@
 .equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE = 1
+.equ IDLE_MODE = 0
 
 ; Set to 1 for CPU load measurement
 ; Not yet implemented
 .equ CPU_LOAD = 0
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED = 1       ; set to 1 to enable
+.equ CPU_LOAD_LED = 0       ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrc
 .equ CPU_LOAD_PORT = portc
 .equ CPU_LOAD_BIT = 5

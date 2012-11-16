@@ -3453,6 +3453,12 @@ XA_FROM:
         add_pflash_tos
         ret
 
+        fdw     XA_FROM_L
+PFL_L:
+        .db     NFA|3,"pfl"
+PFL:
+         call   DOCREATE
+        .dw     PFLASH
 ;***************************************************************
 ; check that the relative address is within reach of conditional branch
 ; instructions and leave the clipped relative address on the stack
@@ -3461,7 +3467,7 @@ XA_FROM:
 ;       abs > (qabort)
 ;       and 2/ ;
 .if 0
-        fdw     XA_FROM_L
+        fdw     PFL_L
 BRQ_L:
         .db     NFA|3,"br?"
 BRQ:
@@ -3532,7 +3538,7 @@ BRNEC:
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-        fdw     XA_FROM_L
+        fdw     PFL_L
 IF_L:
         .db     NFA|IMMED|COMPILE|2,"if",0
 IF_:
