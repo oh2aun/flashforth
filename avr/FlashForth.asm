@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          15.01.2012                                        *
+;    Date:          17.11.2012                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2771,7 +2771,8 @@ QUIT1:
         .db     3," ok"
         rcall    TYPE
         rcall   PROMPT_
-        jmp     QUIT0
+        rjmp    QUIT0
+        ret
 
         fdw     QUIT_L
 PROMPT_L:
@@ -3680,6 +3681,7 @@ NEXT:
         fdw     XNEXT1
         jmp     INLINE0
 ; (next) decrement top of return stack
+        .db     NFA|7,"(next) "
 XNEXT:  
         pop     zh
         pop     zl
@@ -3924,7 +3926,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 29,"FlashForth Atmega 15.1.2012",0xd,0xa
+        .db 30,"FlashForth Atmega 17.11.2012",0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4560,6 +4562,11 @@ IWRITE_BUFFER:
         sbi_    U1RTS_PORT, U1RTS_BIT
 .endif
 .endif
+        rcall   DOLIT
+        .dw     10
+        rcall   MS
+        ; Disable interrupts
+        cli
         movw    zl, ibasel
         sub_pflash_z
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
@@ -4603,6 +4610,7 @@ IWRITE_BUFFER2:
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
         // reenable interrupts
+        sei
 .if OPERATOR_UART == 0
 .if U0FC_TYPE == 1
         rcall   DOLIT
@@ -4646,6 +4654,7 @@ VERIFY_ERROR:
         rcall   DOLIT
         .dw     '^'
         call    EMIT
+
         rjmp    WARM_
                 
         fdw     PAUSE_L
