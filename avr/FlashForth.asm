@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          17.11.2012                                        *
+;    Date:          18.11.2012                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -206,8 +206,8 @@
 .equ NFA= 0x80      ; Name field mask
 .equ IMMED= 0x40    ; Immediate mask
 .equ INLINE= 0x20   ; Inline mask for 1 and 2 cell code
-.equ INLINE4= 0x20   ; Inline mask for 4 cell code
-.equ INLINE5= 0x20   ; Inline mask for 5 cell code
+.equ INLINE4= 0x00   ; Inline mask for 4 cell code
+.equ INLINE5= 0x00   ; Inline mask for 5 cell code
 .equ COMPILE= 0x10  ; Compile only mask
 .equ NFAmask= 0xf   ; Name field length mask
 
@@ -1211,6 +1211,7 @@ XSQUOTE:
         add_pflash_tos
         rcall   CFETCHPP
         rcall   DUP
+        rcall   ONEPLUS
         rcall   ALIGNED
         lsr     tosh
         ror     tosl
@@ -3926,7 +3927,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 17.11.2012",0xd,0xa
+        .db 30,"FlashForth Atmega 18.11.2012",0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts

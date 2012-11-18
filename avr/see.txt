@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      see.txt                                           *
-\    Date:          17.11.2012                                        *
+\    Date:          18.11.2012                                        *
 \    FF Version:    Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -24,7 +24,11 @@ hex ram
      *@ 3 rshift 7f and dup 40 and
      if ff80 or then 2* over + cell+ u.4 cell+ ;
 : .reg ( addr -- addr ) 
-   dup @ 4 rshift 1f and [char] r emit decimal 2 u.r hex cell+ ;
+   dup @ 4 rshift 1f and ." r" decimal 2 u.r hex cell+ ;
+: .ldi ( addr -- addr )
+  *@ dup 4 rshift dup 000f and 0010 + 
+  ." r" decimal 2 u.r hex
+  00f0 and swap 000f and + 2 u.r cell+ ;
 : ?call ( addr -- addr f ) *@ fe0e and 940e = ;
 : ?ret ( addr -- addr f ) *@ 9508 = ;
 : ?rcall ( addr -- addr f ) *@ f000 and d000 = ;
@@ -38,6 +42,7 @@ hex ram
 : ?st-y ( addr -- addr f ) *@ fe0f and 920a = ;
 : ?ldy+ ( addr -- addr f ) *@ fe0f and 9009 = ;
 : ?ijmp ( addr -- addr f ) *@ 9409 = ;
+: ?ldi ( addr -- addr f ) *@ f000 and e000 = ;
 : (see) ( addr -- addr' | false )
   dup u.4
   *@ u.4
@@ -49,15 +54,16 @@ hex ram
   ?rjmp if 5sp ." rjmp  " .rjmp else
   ?ijmp if 5sp ." ijmp" drop false else
   ?ret  if 5sp ." ret"  drop false else
-  ?jmp if *@+ ." jmp   " @xtaddr c>n .id drop false else
-  ?pop if 5sp ." pop   " .reg else
+  ?jmp  if *@+ ." jmp   " @xtaddr c>n .id drop false else
+  ?pop  if 5sp ." pop   " .reg else
   ?push if 5sp ." push  " .reg else
-  ?st-y if 5sp ." ld    " .reg ." ,y+" else
-  ?ldy+ if 5sp ." st    -y, " .reg else
+  ?ldy+ if 5sp ." ld    " .reg ." y+" else
+  ?st-y if 5sp ." st    -y " .reg else
+  ?ldi  if 5sp ." ldi   " .ldi else
   cell+
   then then then then then 
   then then then then then 
-  then then then
+  then then then then
   cr ;
 
 : see ( "word" -- ) 
