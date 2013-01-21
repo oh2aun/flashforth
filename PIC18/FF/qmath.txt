@@ -1,0 +1,129 @@
+\                                                                     *
+\    Filename:      qmath.txt                                         *
+\    Date:          21.1.2013                                         *
+\    FF Version:    3.8                                               *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ Double and triple and quad math words
+\ Divide a 64 bit unsigned number with a 32 bit unsigned number
+\ The result is a 32 bit remainder and 32 bit quotient
+\ For PIC18F architecture
+\ NOTE: temporary values are kept in the flash buffer
+
+
+ram hex
+\ Assembler definitions
+1 con f,     \ Destination File
+
+\ registers for parameter stack handling
+$ffed con Sminus
+$ffec con plusS
+
+: as2 ( opcode "name" -- ) ( f a -- )
+  constant
+  does> rot ic, or ic, ;
+
+$6a as2 clrf,           ( f a -- )  
+$04 as3 decf,           ( f d a -- )  
+: movff,                ( fs fd -- )
+  swap $0fff and $c000 or i, $0fff and $f000 or i, ;    
+$6e as2 movwf,          ( f a -- )    
+$34 as3 rlcf,           ( f d a -- )  
+$5c as3 subwf,          ( f d a -- )  
+$58 as3 subwfb,         ( f d a -- )  
+$0e00 as1 movlw,        ( k -- )  
+$e2 constant cc,    \ bc
+
+
+\ These buffers are in the flash buffer
+\ Do not execute uq/ while writing to flash
+$f000 con dividend
+$f008 con divisor
+$f00c con dcnt
+$f00d con tmp
+$ffd8 con status
+
+: uq/mod ( qu du -- du-rem du-quot )
+  iflush \ empty the flash buffer before using it for temp data
+  [ Sminus divisor 3 + movff,  ]
+  [ Sminus divisor 2 + movff,  ]
+  [ Sminus divisor 1 + movff,  ]
+  [ Sminus divisor 0 + movff,  ]
+  [ Sminus dividend 7 + movff,  ]
+  [ Sminus dividend 6 + movff,  ]
+  [ Sminus dividend 5 + movff,  ]
+  [ Sminus dividend 4 + movff,  ]
+  [ Sminus dividend 3 + movff,  ]
+  [ Sminus dividend 2 + movff,  ]
+  [ Sminus dividend 1 + movff,  ]
+  [ Sminus dividend 0 + movff,  ]
+  [ $20 movlw,  ]
+  [ dcnt a, movwf,  ]
+  [ begin,  ]
+  [   tmp a, clrf,  ]
+  [   status 0 a, bcf,  ]
+  [   dividend 0 + f, a, rlcf,  ]
+  [   dividend 1 + f, a, rlcf,  ]
+  [   dividend 2 + f, a, rlcf,  ]
+  [   dividend 3 + f, a, rlcf,  ]
+  [   dividend 4 + f, a, rlcf,  ]
+  [   dividend 5 + f, a, rlcf,  ]
+  [   dividend 6 + f, a, rlcf,  ]
+  [   dividend 7 + f, a, rlcf,  ]
+  [   tmp          f, a, rlcf,  ]
+  [   divisor  0 + w, a, movf,  ]
+  [   dividend 4 + w, a, subwf,  ]
+  [   divisor  1 + w, a, movf,  ]
+  [   dividend 5 + w, a, subwfb,  ]
+  [   divisor  2 + w, a, movf,  ]
+  [   dividend 6 + w, a, subwfb,  ]
+  [   divisor  3 + w, a, movf,  ]
+  [   dividend 7 + w, a, subwfb,  ]
+  [   0 movlw,  ]
+  [   tmp w, a, subwfb,  ]
+  [   cc, if, ]
+  [      divisor  0 + w, a, movf,  ]
+  [      dividend 4 + f, a, subwf,  ]
+  [      divisor  1 + w, a, movf,  ]
+  [      dividend 5 + f, a, subwfb,  ]
+  [      divisor  2 + w, a, movf,  ]
+  [      dividend 6 + f, a, subwfb,  ]
+  [      divisor  3 + w, a, movf,  ]
+  [      dividend 7 + f, a, subwfb,  ]
+  [      dividend 0 + 0  a, bsf, ]
+  [   then,  ]
+  [   dcnt f, a, decf,  ]
+  [ z, until,  ]
+  [ dividend 4 + plusS movff,  ]
+  [ dividend 5 + plusS movff,  ]
+  [ dividend 6 + plusS movff,  ]
+  [ dividend 7 + plusS movff,  ]
+  [ dividend 0 + plusS movff,  ]
+  [ dividend 1 + plusS movff,  ]
+  [ dividend 2 + plusS movff,  ]
+  [ dividend 3 + plusS movff,  ]
+;
+
+\ multiply single number with double number.
+\ Triple precision (48-bit) result
+: ut* ( ud u - ut)
+  dup >r  swap >r  um*  r> r> um* >r
+  0 swap  0 d+  r> + 
+;
+
+\ Divide triple number with single number
+\ Double result
+: ut/ ( ut u - ud)
+  dup >r um/mod  r> swap >r
+  um/mod  swap drop r> 
+;
+
+\ Scale with triple number intermediate result
+: um*/ ( ud1 u1 u2 -- ud2)
+  >r ut* cwd r> ut/
+;
+
+
