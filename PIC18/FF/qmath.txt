@@ -8,9 +8,6 @@
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
 \ Double and triple and quad math words
-\ Divide a 64 bit unsigned number with a 32 bit unsigned number
-\ The result is a 32 bit remainder and 32 bit quotient
-\ For PIC18F architecture
 \ NOTE: temporary values are kept in the flash buffer
 
 
@@ -21,11 +18,14 @@ ram hex
 \ registers for parameter stack handling
 $ffed con Sminus
 $ffec con plusS
+$ffef con Srw
 
 : as2 ( opcode "name" -- ) ( f a -- )
   constant
   does> rot ic, or ic, ;
 
+$24 as3 addwf,          ( f d a -- )  
+$20 as3 addwfc,         ( f d a -- )  
 $6a as2 clrf,           ( f a -- )  
 $04 as3 decf,           ( f d a -- )  
 : movff,                ( fs fd -- )
@@ -39,13 +39,15 @@ $e2 constant cc,    \ bc
 
 
 \ These buffers are in the flash buffer
-\ Do not execute uq/ while writing to flash
+\ Do not execute uq/mod while writing to flash
 $f000 con dividend
 $f008 con divisor
 $f00c con dcnt
 $f00d con tmp
 $ffd8 con status
 
+\ Divide a 64 bit unsigned number with a 32 bit unsigned number
+\ The result is a 32 bit remainder and 32 bit quotient
 : uq/mod ( qu du -- du-rem du-quot )
   iflush \ empty the flash buffer before using it for temp data
   [ Sminus divisor 3 + movff,  ]
@@ -107,16 +109,67 @@ $ffd8 con status
   [ dividend 3 + plusS movff,  ]
 ;
 
+\ extend a double number to a quad number
+: d>q ( d -- q )
+  [   0 movlw,  ]
+  [   Srw f, a, btfsc, ]
+  [   $ff movlw,       ]
+  [   plusS a, movwf,  ]
+  [   plusS a, movwf,  ]
+  [   plusS a, movwf,  ]
+  [   plusS a, movwf,  ]
+;
+
+\ add a double number to quad number
+: qm+ ( q d -- q )
+  iflush
+  [ 0 movlw,               ]
+  [ Srw f, a, btfsc,       ]
+  [ $ff movlw,             ]
+  [ tmp 8 +  a, movwf,     ]
+  [ Sminus tmp 3 + movff,  ]
+  [ Sminus tmp 2 + movff,  ]
+  [ Sminus tmp 1 + movff,  ]
+  [ Sminus tmp 0 + movff,  ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ Sminus w, a, movf,     ]
+  [ tmp 0 + w, a, movf,    ]
+  [ plusS f, a, addwf,     ]
+  [ tmp 1 + w, a, movf,    ]
+  [ plusS f, a, addwfc,    ]
+  [ tmp 2 + w, a, movf,    ]
+  [ plusS f, a, addwfc,    ]
+  [ tmp 3 + w, a, movf,    ]
+  [ plusS f, a, addwfc,    ]
+  [ tmp 8 + w, a, movf,    ]
+  [ plusS f, a, addwfc,    ]
+  [ plusS f, a, addwfc,    ]
+  [ plusS f, a, addwfc,    ]
+  [ plusS f, a, addwfc,    ]
+;
+
+\ multiply two double numbers with a quad result
+: uq* ( ud ud -- uq )
+
+;
+
 \ multiply single number with double number.
 \ Triple precision (48-bit) result
-: ut* ( ud u - ut)
+: ut* ( ud u -- ut)
   dup >r  swap >r  um*  r> r> um* >r
   0 swap  0 d+  r> + 
 ;
 
+  
 \ Divide triple number with single number
 \ Double result
-: ut/ ( ut u - ud)
+: ut/ ( ut u -- ud)
   dup >r um/mod  r> swap >r
   um/mod  swap drop r> 
 ;
