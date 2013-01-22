@@ -156,7 +156,42 @@ $ffd8 con status
 
 \ multiply two double numbers with a quad result
 : uq* ( ud ud -- uq )
-
+  $f012 !
+  $f010 !
+  $f016 !
+  $f014 !
+  $f010 @ $f014 @ um*
+  $f012 @ $f016 @ um* $f002 ! $f000 !
+  $f010 @ $f016 @ um* $f006 ! $f004 !
+  [ Sminus w, a, movf,    ]
+  [ $f004  w, a, movf,    ]
+  [ Srw    f, a, addwf,   ]
+  [ $f005  w, a, movf,    ]
+  [ plusS  f, a, addwfc,  ]
+  [ $f006  w, a, movf,    ]
+  [ $f000  f, a, addwfc,  ]
+  [ $f007  w, a, movf,    ]
+  [ $f001  f, a, addwfc,  ]
+  [ 0            movlw,   ]
+  [ $f002  f, a, addwfc,  ]
+  [ $f003  f, a, addwfc,  ]
+  $f012 @ $f014 @ um* $f006 ! $f004 !
+  [ Sminus w, a, movf,    ]
+  [ $f004  w, a, movf,    ]
+  [ Srw    f, a, addwf,   ]
+  [ $f005  w, a, movf,    ]
+  [ plusS  f, a, addwfc,  ]
+  [ $f006  w, a, movf,    ]
+  [ $f000  f, a, addwfc,  ]
+  [ $f007  w, a, movf,    ]
+  [ $f001  f, a, addwfc,  ]
+  [ 0            movlw,   ]
+  [ $f002  f, a, addwfc,  ]
+  [ $f003  f, a, addwfc,  ]
+  [ $f000 plusS  movff,   ]
+  [ $f001 plusS  movff,   ]
+  [ $f002 plusS  movff,   ]
+  [ $f003 plusS  movff,   ]
 ;
 
 \ multiply single number with double number.
