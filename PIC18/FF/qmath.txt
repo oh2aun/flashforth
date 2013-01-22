@@ -1,13 +1,13 @@
 \                                                                     *
 \    Filename:      qmath.txt                                         *
-\    Date:          21.1.2013                                         *
+\    Date:          22.1.2013                                         *
 \    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
-\ Double and triple and quad math words
+\ Triple and Quad math words
 \ NOTE: temporary values are kept in the flash buffer
 
 
@@ -19,7 +19,9 @@ ram hex
 $ffed con Sminus
 $ffec con plusS
 $ffef con Srw
+$ffd8 con status
 
+\ Assembler words
 : as2 ( opcode "name" -- ) ( f a -- )
   constant
   does> rot ic, or ic, ;
@@ -35,16 +37,16 @@ $34 as3 rlcf,           ( f d a -- )
 $5c as3 subwf,          ( f d a -- )  
 $58 as3 subwfb,         ( f d a -- )  
 $0e00 as1 movlw,        ( k -- )  
-$e2 constant cc,    \ bc
+$e2 con cc,    \ bc
 
 
-\ These buffers are in the flash buffer
-\ Do not execute uq/mod while writing to flash
+\ These variables are overlapping the flash buffer
+\ The flash buffer is written to flash before
+\ the variables are used.
 $f000 con dividend
 $f008 con divisor
 $f00c con dcnt
 $f00d con tmp
-$ffd8 con status
 
 \ Divide a 64 bit unsigned number with a 32 bit unsigned number
 \ The result is a 32 bit remainder and 32 bit quotient
@@ -154,15 +156,16 @@ $ffd8 con status
   [ plusS f, a, addwfc,    ]
 ;
 
-\ multiply two double numbers with a quad result
+\ multiply two double numbers to a quad result
 : uq* ( ud ud -- uq )
-  $f012 !
-  $f010 !
-  $f016 !
-  $f014 !
-  $f010 @ $f014 @ um*
-  $f012 @ $f016 @ um* $f002 ! $f000 !
-  $f010 @ $f016 @ um* $f006 ! $f004 !
+  iflush
+  $f001 !
+  $f008 !
+  $f00e !
+  $f00c !
+  $f008 @ $f00c @ um*
+  $f001 @ $f00e @ um* $f002 ! $f000 !
+  $f008 @ $f00e @ um* $f006 ! $f004 !
   [ Sminus w, a, movf,    ]
   [ $f004  w, a, movf,    ]
   [ Srw    f, a, addwf,   ]
@@ -175,7 +178,7 @@ $ffd8 con status
   [ 0            movlw,   ]
   [ $f002  f, a, addwfc,  ]
   [ $f003  f, a, addwfc,  ]
-  $f012 @ $f014 @ um* $f006 ! $f004 !
+  $f00a @ $f00c @ um* $f006 ! $f004 !
   [ Sminus w, a, movf,    ]
   [ $f004  w, a, movf,    ]
   [ Srw    f, a, addwf,   ]
