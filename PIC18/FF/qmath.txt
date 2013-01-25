@@ -159,12 +159,12 @@ $f00d con tmp
 \ multiply two double numbers to a quad result
 : uq* ( ud ud -- uq )
   iflush
-  $f001 !
+  $f00a !
   $f008 !
   $f00e !
   $f00c !
   $f008 @ $f00c @ um*
-  $f001 @ $f00e @ um* $f002 ! $f000 !
+  $f00a @ $f00e @ um* $f002 ! $f000 !
   $f008 @ $f00e @ um* $f006 ! $f004 !
   [ Sminus w, a, movf,    ]
   [ $f004  w, a, movf,    ]
