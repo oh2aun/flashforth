@@ -1,6 +1,6 @@
 \                                                                     *
 \    Filename:      qmath.txt                                         *
-\    Date:          22.1.2013                                         *
+\    Date:          26.1.2013                                         *
 \    FF Version:    3.8                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -156,16 +156,26 @@ $f00d con tmp
   [ plusS f, a, addwfc,    ]
 ;
 
-\ multiply two double numbers to a quad result
-: uq* ( ud ud -- uq )
+\ multiply two double numbers to a quad result. 228 bytes
+: uq** ( ud ud -- uq )
   iflush
-  $f00a !
-  $f008 !
-  $f00e !
-  $f00c !
-  $f008 @ $f00c @ um*
-  $f00a @ $f00e @ um* $f002 ! $f000 !
-  $f008 @ $f00e @ um* $f006 ! $f004 !
+  [ Sminus $f00b movff, Sminus $f00a movff, ] 
+  [ Sminus $f009 movff, Sminus $f008 movff, ] 
+  [ Sminus $f00f movff, Sminus $f00e movff, ] 
+  [ Sminus $f00d movff, Sminus $f00c movff, ] 
+  [ $f008 plusS movff, $f009 plusS movff, ] 
+  [ $f00c plusS movff, $f00d plusS movff, ] 
+  um*
+  [ $f00a plusS movff, $f00b plusS movff, ] 
+  [ $f00e plusS movff, $f00f plusS movff, ]
+  um*
+  [ Sminus $f003 movff, Sminus $f002 movff, ] 
+  [ Sminus $f001 movff, Sminus $f000 movff, ] 
+  [ $f008 plusS movff, $f009 plusS movff, ]
+  [ $f00e plusS movff, $f00f plusS movff, ] 
+  um*
+  [ Sminus $f007 movff, Sminus $f006 movff, ] 
+  [ Sminus $f005 movff, Sminus $f004 movff, ] 
   [ Sminus w, a, movf,    ]
   [ $f004  w, a, movf,    ]
   [ Srw    f, a, addwf,   ]
@@ -178,7 +188,11 @@ $f00d con tmp
   [ 0            movlw,   ]
   [ $f002  f, a, addwfc,  ]
   [ $f003  f, a, addwfc,  ]
-  $f00a @ $f00c @ um* $f006 ! $f004 !
+  [ $f00a plusS movff, $f00b plusS movff, ]
+  [ $f00c plusS movff, $f00d plusS movff, ] 
+  um*
+  [ Sminus $f007 movff, Sminus $f006 movff, ] 
+  [ Sminus $f005 movff, Sminus $f004 movff, ] 
   [ Sminus w, a, movf,    ]
   [ $f004  w, a, movf,    ]
   [ Srw    f, a, addwf,   ]
@@ -191,10 +205,8 @@ $f00d con tmp
   [ 0            movlw,   ]
   [ $f002  f, a, addwfc,  ]
   [ $f003  f, a, addwfc,  ]
-  [ $f000 plusS  movff,   ]
-  [ $f001 plusS  movff,   ]
-  [ $f002 plusS  movff,   ]
-  [ $f003 plusS  movff,   ]
+  [ $f000 plusS  movff, $f001 plusS  movff, ]
+  [ $f002 plusS  movff, $f003 plusS  movff, ]
 ;
 
 \ multiply single number with double number.
