@@ -156,8 +156,8 @@ $f00d con tmp
   [ plusS f, a, addwfc,    ]
 ;
 
-\ multiply two double numbers to a quad result. 228 bytes
-: uq** ( ud ud -- uq )
+\ multiply two double numbers to a quad result.
+: uq* ( ud ud -- uq )
   iflush
   [ Sminus $f00b movff, Sminus $f00a movff, ] 
   [ Sminus $f009 movff, Sminus $f008 movff, ] 
