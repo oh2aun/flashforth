@@ -114,7 +114,7 @@ $f00d con tmp
 \ extend a double number to a quad number
 : d>q ( d -- q )
   [   0 movlw,  ]
-  [   Srw f, a, btfsc, ]
+  [   Srw 7 a, btfsc,  ]
   [   $ff movlw,       ]
   [   plusS a, movwf,  ]
   [   plusS a, movwf,  ]
@@ -126,7 +126,7 @@ $f00d con tmp
 : qm+ ( q d -- q )
   iflush
   [ 0 movlw,               ]
-  [ Srw f, a, btfsc,       ]
+  [ Srw 7  a, btfsc,       ]
   [ $ff movlw,             ]
   [ tmp 8 +  a, movwf,     ]
   [ Sminus tmp 3 + movff,  ]
