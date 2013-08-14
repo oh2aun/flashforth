@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          04.10.2011                                        *
-;    File Version:  3.8                                               *
+;    Date:          14.08.2013                                        *
+;    File Version:  3.81                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -37,8 +37,11 @@
 #define OPERATOR_TX  TX0
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
-
-		extern _stack
+#if IDLE_MODE == ENABLE
+#undefine IDLE_MODE      ; Not supported for USB
+#define IDLE_MODE DISABLE 
+#endif
+        extern _stack
         extern keyUSBUSART
         extern keyQUSBUSART
         extern USBCheckBusStatus
@@ -82,6 +85,7 @@ size /= 2
             endw
             btfss   TXcnt, #v(bitno), A
             endm
+
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Ap  - Temporary Ram Pointer
@@ -321,14 +325,14 @@ FF_RESET code
 ;; 1 millisecond tick counter
 FF_INTERRUPT code
 #ifdef IDLEN
-#ifdef IDLE_MODE
-#ifdef CPU_LOAD
+#if IDLE_MODE == ENABLE
+#if CPU_LOAD == ENABLE
         bsf     T0CON, TMR0ON, A
 #endif
 #endif
 #endif
 irq_ms:
-#ifdef MS_TMR1  ;****************************
+#if MS_TMR == 1  ;****************************
         btfss   PIR1, TMR1IF, A
         bra     irq_ms_end
         movlw   tmr1ms_val_hi
@@ -339,14 +343,14 @@ irq_ms:
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
 #else
-#ifdef MS_TMR2 ;******************************
+#if MS_TMR == 2 ;******************************
         btfss   PIR1, TMR2IF, A
         bra     irq_ms_end
         bcf     PIR1, TMR2IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
 #else
-#ifdef MS_TMR3 ;******************************
+#if MS_TMR == 3 ;******************************
         btfss   PIR2, TMR3IF, A
         bra     irq_ms_end
         movlw   tmr1ms_val_hi
@@ -360,8 +364,8 @@ irq_ms:
 #endif
 #endif
 #ifdef IDLEN
-#ifdef IDLE_MODE
-#ifdef CPU_LOAD
+#if IDLE_MODE == ENABLE
+#if CPU_LOAD == ENABLE
         btfsc   FLAGS2, fLOAD, A
         bra     irq_ms_end
         movf    TMR0L, W
@@ -419,7 +423,7 @@ irq_async_rx:
         addlw   d'255' - RX1_OFF_FILL
         bnc     irq_async_rx_2
         
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
         btfss   FLAGS2, fFC, A
         rcall   XXOFF
 #endif
@@ -436,12 +440,12 @@ irq_async_rx_2:
         movf    TWrw, W, A
                 
         sublw   0x0f                    ; ctrl-o
-#ifdef CTRL_O_WARM_RESET
+#if CTRL_O_WARM_RESET == ENABLE
         bnz     irq_async_rx_3 
         reset                           ; Make a warm start
 #endif
 irq_async_rx_3:
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
         addlw   0x04                    ; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
@@ -566,7 +570,7 @@ L_IDLE:
         db      NFA|4,"idle"
 IDLE:
 #ifdef IDLEN
-#ifdef IDLE_MODE
+#if IDLE_MODE == ENABLE
         rcall   IDLE_HELP
         tstfsz  TWrw, A
         decf    status, F, A
@@ -581,7 +585,7 @@ L_BUSY:
         db      NFA|4,"busy"
 BUSY:
 #ifdef IDLEN
-#ifdef IDLE_MODE
+#if IDLE_MODE == ENABLE
         rcall   IDLE_HELP
         bnz     BUSY1
         incf    status, F, A
@@ -593,7 +597,7 @@ BUSY1:
 
 
 #ifdef IDLEN
-#ifdef IDLE_MODE
+#if IDLE_MODE == ENABLE
 IDLE_HELP:
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
@@ -694,7 +698,7 @@ TX1_SEND:
         rcall   BUSY
         movf    Sminus, W, A
         movf    Sminus, W, A
-#ifndef USE_8BIT_ASCII
+#if USE_8BIT_ASCII == DISABLE
         andlw   h'7f'
 #endif
         movwf   TXREG, A
@@ -711,7 +715,7 @@ TX1_SEND:
 TX1_2:
         rcall   BUSY
         movf    Sminus, W
-#ifndef USE_8BIT_ASCII
+#if USE_8BIT_ASCII == DISABLE
         movlw   h'7f'
         andwf   Srw, F, A
 #endif
@@ -769,7 +773,7 @@ RX1Q:
         movwf   plusS
         bnz     RX1Q2
         rcall   IDLE
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
         btfss   FLAGS2, fFC, A
         rcall   XXON
 #endif
@@ -944,7 +948,7 @@ write_buffer_to_imem:
 ;; from the UART.
 ;; The assumption is that the serial line is silent then.
 #ifndef USB_CDC
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
         btfss   FLAGS2, fFC, A
         rcall   XXXOFF
 #endif
@@ -1538,8 +1542,8 @@ PAUSE:
 PAUSE0:
 #endif
 #ifdef IDLEN
-#ifdef IDLE_MODE
-#ifdef CPU_LOAD
+#if IDLE_MODE == ENABLE
+#if CPU_LOAD == ENABLE
         btfss   FLAGS2, fLOAD, A
         bra     PAUSE_IDLE0
         bcf     FLAGS2, fLOAD, A
@@ -1562,22 +1566,22 @@ PAUSE_IDLE0:
 #endif
         movf    status, W, A
         bnz     PAUSE_IDLE1        
-#if CPU_LOAD_LED == 1
+#if CPU_LOAD_LED == ENABLE
 		bcf		CPU_LOAD_TRIS, CPU_LOAD_BIT, A
-#if CPU_LOAD_LED_POLARITY == 1
+#if CPU_LOAD_LED_POLARITY == POSITIVE
 		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
 		bsf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #endif
 #endif
         bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
-#ifdef CPU_LOAD
+#if CPU_LOAD == ENABLE
         bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
 #endif
         sleep
 PAUSE_IDLE1:
-#if CPU_LOAD_LED == 1
-#if CPU_LOAD_LED_POLARITY == 1
+#if CPU_LOAD_LED == ENABLE
+#if CPU_LOAD_LED_POLARITY == POSITIVE
 		bsf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
 		bcf		CPU_LOAD_PORT, CPU_LOAD_BIT, A
@@ -1727,7 +1731,7 @@ RX0:
 RX0_2:
         rcall   BUSY
         movff   keyCHAR, plusS
-#ifdef CTRL_O_WARM_RESET
+#if CTRL_O_WARM_RESET == ENABLE
         movlw   0xf
         subwf   Srw, W, A
         bnz     RX0_3
@@ -1772,7 +1776,7 @@ RX0Q1:
 #endif
 #endif
 ; ***************************************************
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
 XXOFF:
         btfsc   FLAGS2, ixoff, A
         return
@@ -2093,8 +2097,11 @@ EMPTY:
 L_WARM:
         db      NFA|4,"warm"
 WARM_:  
+#ifdef USB_CDC
         goto    WARM
-;        reset                   ; Perform a reset, jumps to h'0000' and resets stuff
+#else
+        reset                   ; Perform a reset, jumps to h'0000' and resets stuff
+#endif
 main:
 		movlw	0xf
 		iorwf	ADCON1, F, A
@@ -2149,20 +2156,20 @@ WARM_ZERO_2:
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
 
-#ifdef IDLE_MODE
+#if IDLE_MODE == ENABLE
         movlw   h'08'           ; TMR0 used for CPU_LOAD
         movwf   T0CON           ; prescale = 1
 #endif
 		movlw	d'100'
 		movwf	load, A
 
-#ifdef MS_TMR1
+#if MS_TMR == 1
         movlw   h'81'           ; prescale = 1
         movwf   T1CON, A
         setf    TMR1H, A
         bsf     PIE1,TMR1IE, A
 #else
-#ifdef MS_TMR2
+#if MS_TMR == 2
         ;; Timer 2 for 1 ms system tick
         movlw   h'7d'      ; Prescale = 4, Postscale = 16
         movwf   T2CON, A
@@ -2170,7 +2177,7 @@ WARM_ZERO_2:
         movwf   PR2, A
         bsf     PIE1, TMR2IE, A
 #else
-#ifdef MS_TMR3
+#if MS_TMR == 3
         movlw   h'81'           ; prescale = 1
         movwf   T3CON, A
         setf    TMR3H, A
@@ -2217,7 +2224,7 @@ WARM_ZERO_2:
 WARM_2:
         call    DP_TO_RAM
 
-#ifdef FC_TYPE_SW
+#if FC_TYPE_SW == ENABLE
         bsf     FLAGS2, ixoff, A ; Force sending of XON in RX1?
 #endif
 #ifdef HW_FC_CTS_TRIS
@@ -2241,7 +2248,7 @@ WARM_2:
         rcall   KEY
         rcall   LIT
         dw      h'1b'
-        rcall   NOTEQUAL
+        rcall   XOR ; NOTEQUAL
         call    ZEROSENSE
         bz      STARTQ2
 STARTQ1:
@@ -2258,19 +2265,22 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'21',"FlashForth V3.8 USB\r\n"
+        db d'22',"FlashForth V3.81 USB\r\n"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'17',"FlashForth V3.8\r\n"
+        db d'18',"FlashForth V3.81\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
-		movlw	HIGH dpcode ;(dp_user_dictionary>>8) ;
-		subwf	Srw, W, A
-        btfsc   STATUS, N, A
-		bra     ISTORERR
-		return
+        movlw   HIGH FLASH_HI+1
+        cpfslt  Srw, A
+        bra     ISTORERR
+        movlw   HIGH dpcode ;(dp_user_dictionary>>8) ;
+        cpfslt  Srw, A
+        return
+        bra     ISTORERR
+
 ;**********************************************************		
         db      NFA|2,"or"
 OR_A:   
@@ -2971,7 +2981,7 @@ ACC3:
         rcall   OVER
         rcall   UMIN
         rcall   TWODUP
-        rcall   NOTEQUAL
+        rcall   XOR; NOTEQUAL
         rcall   ZEROSENSE
         bnz     ACC1
 ACC6:
@@ -3198,38 +3208,18 @@ L_MPLUS:
 MPLUS:
         call    STOD
         goto    DPLUS
-#if 0
-        clrf    TABLAT, A
-        movf    Sminus, W, A
-        bnn     MPLUS1
-        setf    TABLAT, A
-MPLUS1:
-        movwf   TBLPTRH, A
-        movff   Sminus, TBLPTRL
-        movlw   4
-        subwf   Sp, F, A
-        movlw   0
-        subwfb  Sbank, F, A
 
-        movf    TBLPTRL, W, A
-        addwf   plusS, F, A
-        movf    TBLPTRH, W, A
-        addwfc  plusS, F, A
-        movf    TABLAT, W, A
-        addwfc  plusS, F, A
-        addwfc  plusS, F, A
-        return
-#endif
 ;   -   n1/u1 n2/u2 -- n3/u3 n3 = n1 - n2 
         dw      L_MPLUS
 L_MINUS:
         db      NFA|1,"-"
 MINUS:
-        movff   Sminus, Tp
+		swapf   Sminus, W, A
+        movwf   Tp, A 
         movf    Sminus, W, A
         movf    Sminus, F, A
         subwf   Srw, F, A
-        movf    Tp, W, A 
+        swapf   Tp, W, A 
         subwfb  plusS, F, A
         return
 
@@ -3384,7 +3374,11 @@ WITHIN:
 L_NOTEQUAL:
         db      NFA|2,"<>"
 NOTEQUAL:
-        goto    XOR
+        rcall   MINUS
+        movf    Sminus, W, A
+        iorwf   Srw, A
+        bnz     test_true 		; x1 not equal to x2
+        bra     test_false 		; x1 equal to x2
 
 ;***************************************************
 ;   0=      n/u -- flag         return true if TOS=0
@@ -3448,8 +3442,7 @@ L_ULESS:
 ULESS:
         rcall   MINUS
         swapf   Sminus, W, A
-        btfss   STATUS, C, A
-        bra     test_true
+        bnc     test_true
         bra     test_false
 
 ;***************************************************
@@ -4530,7 +4523,7 @@ IPARSEWORD:
         bra     IEXECUTE        ; Not a compile only word
         rcall   STATE           ; Compile only word check
         call    XSQUOTE
-        db      d'3',"CO?"
+        db      d'12',"COMPILE ONLY"
         rcall   QABORT
 IEXECUTE:
         bcf     FLAGS1, noclear
@@ -4705,7 +4698,7 @@ DP_TO_EEPROM_0:
         rcall   FETCHPP
         call    DUP
         rcall   PFETCH
-        call    NOTEQUAL
+        call    XOR; NOTEQUAL
         movf    Sminus, W
         iorwf   Sminus, W
         bz      DP_TO_EEPROM_1
@@ -4768,7 +4761,7 @@ QUIT1:
         rcall   DP_TO_EEPROM
          
         call    XSQUOTE
-        db      3," ok"
+        db      5,"\r\n ok"
         call    TYPE
         rcall   PROMPT
         bra     QUIT0
@@ -4810,7 +4803,7 @@ QABORT:
         call    ZEROSENSE
         bnz     QABO1
 QABORT1:        
-		call	SPACE_
+        call    SPACE_
         call    TYPE
         rcall   ABORT  ; ABORT never returns
 QABO1:  goto    TWODROP
@@ -4916,14 +4909,16 @@ CREATE:
         rcall   FIND
         call    NIP
         call    ZEROEQUAL
-        rcall   QABORTQ         ; ABORT if word has already been defined
+        call    XSQUOTE
+        db      d'15',"ALREADY DEFINED"
+        rcall   QABORT         ; ABORT if word has already been defined
         rcall   DUP_A           ; Check the word length 
         call    CFETCH_A
         call    ONE
         rcall   LIT_A
         dw      h'10'
         call    WITHIN
-		rcall	QABORTQ          ; Abort if there is no name for create
+        rcall   QABORTQ          ; Abort if there is no name for create
 
         rcall   LATEST
         rcall   FETCH_A
@@ -5636,7 +5631,7 @@ INLINE0:
         call    DUP
         rcall   LIT_A
         dw      h'0012'
-        call    NOTEQUAL
+        call    XOR; NOTEQUAL
         call    ZEROSENSE
         bz      INLINE1
         call    ICOMMA
@@ -5899,8 +5894,21 @@ DDOT:
         call    TYPE
         goto    SPACE_
 
-;***************************************************
         dw      L_DDOT
+L_MEMHI:
+        db      NFA|2,"hi"
+MEMHI:
+        call    LIT
+        dw      FLASHHI
+        call    CSE
+        call    PLUS
+        goto    FETCH
+FLASHHI:
+        dw      FLASH_HI+1
+        dw      EEPROM_HI+1
+        dw      RAM_HI+1
+;***************************************************
+        dw      L_MEMHI
 L_FETCH_P:
         db      NFA|2,"@p"
 FETCH_P:

@@ -1,0 +1,5 @@
+: .free
+  cr ." Flash:" flash hi here - u. ." bytes"
+  cr ." Eeprom:" eeprom hi here - u. ." bytes"
+  cr ." Ram:" ram hi here - u. ." bytes"
+;

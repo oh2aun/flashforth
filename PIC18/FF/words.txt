@@ -176,10 +176,10 @@ Dictionary of FlashForth 3.8.
            Push x from the parameter stack to the return stack
 
 ?abort     ( flag c-addr u -- )
-           Print message and abort if flag is false
+           Print message and abort if flag is true
 
 ?abort?    ( flag -- )
-           If flag is false output ? and abort
+           If flag is true output ? and abort
 
 ?dnegate   ( d n -- d )
            Negate d if n is negative

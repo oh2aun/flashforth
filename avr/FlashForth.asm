@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          18.11.2012                                        *
+;    Date:          11.06.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1195,7 +1195,7 @@ TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        rcall   XNEXT
+        call   XNEXT
         brcc    TYPE1
         pop     t1
         pop     t0
@@ -2535,7 +2535,7 @@ IPARSEWORD1:
         rjmp    IEXECUTE        ; Not a compile only word
         rcall   STATE_          ; Compile only word check
         rcall   XSQUOTE
-        .db     3,"CO?"
+        .db     12,"COMPILE ONLY",0
         rcall   QABORT
 IEXECUTE:
         cbr     FLAGS1, (1<<noclear)
@@ -2605,7 +2605,7 @@ IUNKNOWN:
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         rcall   TYPE
-        rcall   FALSE_
+        rcall   TRUE_
         rcall   QABORTQ         ; Never returns & resets the stacks
 INOWORD: 
         jmp     DROP
@@ -2814,7 +2814,7 @@ QABORT:
 QABORT1:        
         rcall   SPACE_
         rcall   TYPE
-        rcall   ABORT  ; ABORT never rets
+        rcall   ABORT  ; ABORT never returns
 QABO1:  jmp     TWODROP
 
 ; ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
@@ -2965,13 +2965,16 @@ CREATE:
         rcall   FIND
         rcall   NIP
         rcall   ZEROEQUAL
-        rcall   QABORTQ         ; ABORT if word has already been defined
+        rcall   XSQUOTE
+        .db     15,"ALREADY DEFINED"
+        rcall   QABORT         ; ABORT if word has already been defined
         rcall   DUP             ; Check the word length 
         rcall   CFETCH_A
         rcall   ONE
         rcall   DOLIT
         .dw     16
         rcall   WITHIN
+ ;       rcall   ZEROEQUAL
         rcall   QABORTQ          ; Abort if there is no name for create
 
         rcall   LATEST_
@@ -3013,6 +3016,7 @@ POSTPONE:
         rcall   WORD
         rcall   FIND
         rcall   DUP
+	rcall	ZEROEQUAL
         rcall   QABORTQ
         rcall   ZEROLESS
         rcall   ZEROSENSE
@@ -3227,7 +3231,7 @@ R0_:
 ;link    set     $
         .db     NFA|3,"ini"
 INI:
-        rcall   DOCREATE
+         call   DOCREATE
         .dw     dpSTART
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
@@ -3915,7 +3919,7 @@ PCFETCH:
         fdw      L_PCFETCH
 L_PTWOPLUS:
 kernellink:
-        .db      NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
+        .db     NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
 PTWOPLUS:
         add     pl, r_two
         adc     ph, zero
@@ -3927,7 +3931,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 18.11.2012",0xd,0xa
+        .db 30,"FlashForth Atmega 11.06.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts

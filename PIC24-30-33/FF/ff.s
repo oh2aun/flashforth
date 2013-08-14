@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          08.10.2011                                        *
-;    File Version:  4.8                                               *
+;    Date:          11.06.2013                                        *
+;    File Version:  4.81                                              *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -171,9 +171,6 @@ load_acc:   .space 4
 ms_count:   .space 2
 intcon1dbg: .space 2
 
-.if WRITE_METHOD == 2
-itmo:       .space 2
-.endif
 
 .if DEBUG_INFO == 1
 upcurrdbg:  .space 2
@@ -948,10 +945,8 @@ WARM_ABAUD2:
         cp      W0, W1
         bra     z, COLD
         rcall   DP_TO_RAM
-.if WRITE_METHOD == 2
-        rcall   DP_PUSH
-.endif
-; Wait 10 ms for UARTs to reset 
+
+				; Wait 10 ms for UARTs to reset 
         mlit    10
         rcall   MS
 
@@ -1013,8 +1008,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   43
-        .ascii  "FlashForth V4.8 (C) Mikael Nordman GPL V3\r\n"
+        .byte   44
+        .ascii  "FlashForth V4.81 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -1083,17 +1078,6 @@ PAUSE_BUSY:
         bset    CPU_LOAD_PORT, #CPU_LOAD_BIT
 .endif
 .endif
-.endif
-.if WRITE_METHOD == 2
-        mov     #u0, W0
-        sub     upcurr, WREG
-        bra     nz, PAUSE2
-        mov     ms_count, W0  ; itmo - ms_count
-        sub     itmo, WREG    ; itmo - w0 -> W0
-        bra     nn, PAUSE2
-        btsc    iflags, #edirty
-        rcall   DP_TO_EEPROM
-        rcall   IFLUSH
 .endif
 PAUSE2:
         mov     upcurr, W0
@@ -1482,19 +1466,6 @@ IFLUSH:
         bra     write_buffer_to_imem
         return
         
-.if WRITE_METHOD == 2
-BFLUSH:
-        mov     [W14], W2
-        mov     #PFLASH, W0
-        sub     W2, W0, W2
-        mov     #IBUFMASK, W1
-        and     W2, W1, W0
-        cp      ibase       ; ibase - address
-        bra     z, IFLUSH
-        bra     n, IFLUSH
-        return
-.endif
-
 ; data addr IC! Address is in W0
 ICSTORE:
         rcall   ISTORE_ADDRCHK
@@ -1538,18 +1509,7 @@ ISTORE_SUB:
         add     W2, W1, W0
         mov     [W14--], W1
         bset    iflags, #idirty
-.if WRITE_METHOD == 2
-SET_FLASH_W_TMO:
-        mov     ms_count, W3
-        add     #WRITE_TIMEOUT, W3
-        mov     W3, itmo
-.endif
         return              ; !!!!!!!!!!!!!!!!!!
-.if WRITE_METHOD == 2
-SET_EEPROM_W_TMO:
-        bset    iflags, #edirty
-        bra     SET_FLASH_W_TMO
-.endif
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
@@ -5148,13 +5108,12 @@ INTER1:
         cp0     [W14--]
         bra     z, INTER11  ; Interpretable word
         rcall   STATE       ; Compile only word
-        cp0     [W14--]
-        bra     nz, INTER11
+	rcall	ZEROEQUAL
         rcall   XSQUOTE
-        .byte   13
-        .ascii  "Compile Only\n"
+        .byte   12
+        .ascii  "COMPILE ONLY"
         .align  2
-        bra     QABORT1
+        rcall   QABORT
 INTER11:
         mov     [W14++], [W14]      ; dup
         mlit    handle(SEMICOLON)+PFLASH
@@ -5169,9 +5128,6 @@ INTER11:
         cp0     [W14--]
         btsc    SRL, #Z
         bset    iflags, #noclear
-.if WRITE_METHOD == 2
-        rcall   BFLUSH
-.endif
         rcall   EXECUTE         ; Execute a word
         btss    iflags, #noclear
         bra     INTER1
@@ -5456,35 +5412,13 @@ check_sp:
         rcall   FETCH
         rcall   TIB
         rcall   WITHIN
-        cp0     [W14--]
-        bra     z, check_sp_err
-        return
-check_sp_err:
-.if WRITE_METHOD == 2
-        rcall   DP_POP
-.endif
-        rcall   S0
-        rcall   FETCH
-        rcall   SPSTORE
+	rcall	ZEROEQUAL
         rcall   XSQUOTE
         .byte   3
         .ascii  "sp?"
         .align  2
-        rcall   TYPE
-        goto    CR
-.if WRITE_METHOD == 2
-DP_PUSH:
-        mov     #dpSTART, W0
-        mov     #dpSAVE, W1
-        bra     DP_POP_LOOP
-DP_POP:
-        mov     #dpSTART, W1
-        mov     #dpSAVE, W0
-DP_POP_LOOP:
-        repeat  #MARKER_LENGTH-1
-        mov     [W0++], [W1++]
+        rcall   QABORT
         return
-.endif
 ; QUIT     --    R: i*x --    interpret from kbd
         .pword  paddr(DP_TO_EEPROM_L)+PFLASH
 QUIT_L:
@@ -5498,14 +5432,9 @@ QUIT:
         mlit    XON
         rcall   EMIT
 QUIT0:  
-.if WRITE_METHOD == 2
-        rcall   DP_PUSH
-.endif
-.if WRITE_METHOD == 1
         rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM 
-.endif
 QUIT1: 
         rcall   check_sp
         rcall   CR
@@ -5515,22 +5444,11 @@ QUIT1:
         mlit    HOLD_SIZE             ; Reserve  for hold buffer
         rcall   MINUS
         rcall   ACCEPT
-
-.if WRITE_METHOD == 2
-.if FC1_TYPE == 1
-        mov     #XOFF, W2
-        mov     W2, U1TXREG
-        bset    iflags, #ixoff1
-.endif
-.endif
         rcall   SPACE_
         rcall   INTERPRET
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-.if WRITE_METHOD == 2
-        btss    iflags, #edirty      ; If dirty then write after timeout in PAUSE
-.endif
         rcall   DP_TO_EEPROM   
         rcall   XSQUOTE
         .byte   3
@@ -5560,11 +5478,6 @@ ABORT:
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE
-.if WRITE_METHOD == 2
-        rcall   IFLUSH
-        rcall   DP_POP
-        rcall   DP_TO_EEPROM        ; If dirty then write after timeout in PAUSE
-.endif
         goto    QUIT            ; QUIT never returns
 
 ; ?ABORT   f --       abort & print ?
@@ -5574,15 +5487,11 @@ QABORTQ_L:
         .ascii  "?abort?"
         .align  2
 QABORTQ:
-        cp0     [W14--]
-        bra     z, QABORTQ1
         rcall   XSQUOTE
         .byte   1
         .ascii  "?"
         .align  2
-        bra     QABORT1
-QABORTQ1:
-        return
+        bra     QABORT
 
 ; ?ABORT   f c-addr u --       abort & print msg
         .pword  paddr(QABORTQ_L)+PFLASH
@@ -5593,7 +5502,7 @@ QABORT_L:
 QABORT:
         rcall   ROT
         cp0     [W14--]
-        bra     z, QABO1
+        bra     nz, QABO1
 QABORT1:        
         rcall   TYPE
         rcall   ABORT  ; ABORT never returns
@@ -5696,9 +5605,16 @@ CREATE:
         rcall   WORD
         mov     [W14++], [W14]      ; Remember word
         rcall   FIND
-        rcall   SWOP
-        sub     W14, #2, W14
-        rcall   QABORTQ           ; ABORT if word has already been defined
+        rcall   NIP
+        rcall   XSQUOTE
+        .byte   15
+        .ascii  "ALREADY DEFINED"
+        .align  2
+        rcall   QABORT           ; ABORT if word has already been defined
+        rcall   ONE
+        mlit    #15
+        rcall   WITHIN
+	rcall	QABORTQ          ; Abort if there is no name for create
 
         mov     [W14++], [W14]      ; Check if there was no word at all
         rcall   CFETCH
@@ -6418,9 +6334,6 @@ DOTS2:
         .ascii  "iallot"
         .align  2
 IALLOT:
-.if WRITE_METHOD == 2
-        rcall   SET_EEPROM_W_TMO
-.endif
         rcall   IDP
         goto    PLUSSTORE
 
@@ -6431,9 +6344,6 @@ ALLOT_L:
         .ascii  "allot"
         .align  2
 ALLOT:
-.if WRITE_METHOD == 2
-        rcall   SET_EEPROM_W_TMO
-.endif
         rcall   DP
         goto    PLUSSTORE
 

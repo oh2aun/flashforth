@@ -262,3 +262,16 @@ FlashForth V3.8
 - CPU load measurement. LOAD fetches the load of the previous 256 ms period.
 - Load indicator LED option
 - 2CON, 2VARIABLE
+
+FlashForth V3.81
+----------------
+- The configuration file p18f-main.cfg syntax changed
+- HI prints the highest available address for each memory type
+- <> returns well formed flag
+- Quad and triple precision math words in qmath.txt
+- .FREE prints the available free memory of each type.
+- Default return stack save area increased to 31 cells.
+- ?ABORT logic inverted due to alignement with standard forth.
+- Error messages ALREADY DEFINED and COMPILE ONLY.
+- Write to unimplemented flash prevented. This prevents USB PICs from hanging.
+

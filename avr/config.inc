@@ -1,20 +1,20 @@
 ;;; FlashForth device configuration for Atmega devices
 
 ; Select the include file for your micro controller
-;.include "m128def.inc"   ; Tested
+.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-.include "m328pdef.inc"    ; Tested
+;.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
 
 ; Oscillator frequency in herz
-.equ FREQ_OSC = 8000000
+.equ FREQ_OSC = 16000000
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART = 0              ; 0 or 1
+.equ OPERATOR_UART = 1              ; 0 or 1
 
 ;;; UART0 configuration
 .equ BAUDRATE0 = 38400 				; Serial baudrate UART0
-.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U0FC_TYPE = 2                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3
@@ -27,7 +27,7 @@
 .equ U1RTS_BIT = 4
 
 ; Default number base
-.equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT = 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE = 0
