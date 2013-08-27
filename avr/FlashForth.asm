@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          11.06.2013                                        *
+;    Date:          27.08.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1486,7 +1486,11 @@ WITHIN:
 NOTEQUAL_L:
         .db     NFA|2,"<>",0
 NOTEQUAL:
-        jmp     XOR_
+	rcall	MINUS        	; MINUS leaves a valid zero flag
+	brne	NOTEQUAL1
+	rjmp	FALSE_F
+NOTEQUAL1:
+	jmp	TRUE_F
 
         fdw     ZEROLESS_L
 EQUAL_L:
@@ -1515,7 +1519,7 @@ ULESS_L:
         .db     NFA|2,"u<",0
 ULESS:
         rcall   MINUS
-        brpl    ULESS1        ; Carry test  
+        brcc    ULESS1        ; Carry test  
         rjmp    TRUE_F
 ULESS1:
         jmp     FALSE_F
@@ -2605,7 +2609,7 @@ IUNKNOWN:
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         rcall   TYPE
-        rcall   TRUE_
+        rcall   FALSE_
         rcall   QABORTQ         ; Never returns & resets the stacks
 INOWORD: 
         jmp     DROP
@@ -3931,7 +3935,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 11.06.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 27.08.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts

@@ -3811,7 +3811,10 @@ NOTEQUAL_L:
         .ascii  "<>" 
         .align  2
 NOTEQUAL:
-        goto    XOR
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     NZ, test_true
+        bra     test_false
 
 ;   =       x1 x2 -- flag       return true if x1 = x2
         .pword  paddr(NOTEQUAL_L)+PFLASH
