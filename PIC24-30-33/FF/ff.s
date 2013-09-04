@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          11.06.2013                                        *
+;    Date:          04.09.2013                                        *
 ;    File Version:  4.81                                              *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1729,7 +1729,7 @@ FLOCK_L:
         .byte   NFA|3
         .ascii  "fl+"
         .align  2
-        bset    iflags, #fLOCK
+        bclr    iflags, #fLOCK
         return
 
         .pword   paddr(FLOCK_L)+PFLASH
@@ -1737,7 +1737,7 @@ FUNLOCK_L:
         .byte   NFA|3
         .ascii  "fl-"
         .align  2
-        bclr    iflags, #fLOCK
+        bset    iflags, #fLOCK
         return
         
 LOCKED:
@@ -5111,7 +5111,6 @@ INTER1:
         cp0     [W14--]
         bra     z, INTER11  ; Interpretable word
         rcall   STATE       ; Compile only word
-	rcall	ZEROEQUAL
         rcall   XSQUOTE
         .byte   12
         .ascii  "COMPILE ONLY"
@@ -5196,7 +5195,7 @@ IUNKNOWN:                        ; ?????
         dec2    W14, W14
         rcall   CFETCHPP
         rcall   TYPE
-        rcall   TRUE_
+        rcall   FALSE_
         rcall   QABORTQ
 ;        bra     INTER1
 INTER6: 
@@ -5415,10 +5414,9 @@ check_sp:
         rcall   FETCH
         rcall   TIB
         rcall   WITHIN
-	rcall	ZEROEQUAL
         rcall   XSQUOTE
         .byte   3
-        .ascii  "sp?"
+        .ascii  "SP?"
         .align  2
         rcall   QABORT
         return
@@ -5507,6 +5505,7 @@ QABORT:
         cp0     [W14--]
         bra     nz, QABO1
 QABORT1:        
+        rcall   SPACE_
         rcall   TYPE
         rcall   ABORT  ; ABORT never returns
 QABO1:  sub     W14, #4, W14        ; 2drop
@@ -5534,7 +5533,6 @@ TICK:
         rcall   BL
         rcall   WORD
         rcall   FIND
-        rcall   ZEROEQUAL
         goto    QABORTQ
 
 ; CHAR   -- char           parse ASCII character
@@ -5609,20 +5607,18 @@ CREATE:
         mov     [W14++], [W14]      ; Remember word
         rcall   FIND
         rcall   NIP
+        rcall   ZEROEQUAL
         rcall   XSQUOTE
         .byte   15
         .ascii  "ALREADY DEFINED"
         .align  2
         rcall   QABORT           ; ABORT if word has already been defined
-        rcall   ONE
-        mlit    #15
-        rcall   WITHIN
-	rcall	QABORTQ          ; Abort if there is no name for create
-
-        mov     [W14++], [W14]      ; Check if there was no word at all
+        mov     [W14++], [W14]      ; Remember word
         rcall   CFETCH
-        rcall   ZEROEQUAL
-        rcall   QABORTQ         ; Abort if there is no name for create
+        rcall   ONE
+        mlit    #16
+        rcall   WITHIN
+        rcall   QABORTQ          ; Abort if there is no name for create
 
         rcall   LATEST
         rcall   FETCH

@@ -2978,7 +2978,6 @@ CREATE:
         rcall   DOLIT
         .dw     16
         rcall   WITHIN
- ;       rcall   ZEROEQUAL
         rcall   QABORTQ          ; Abort if there is no name for create
 
         rcall   LATEST_
