@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          27.08.2013                                        *
+;    Date:          09.09.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2011  Mikael Nordman
+; Copyright (C) 2013  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -162,6 +162,28 @@
   .dw ((@0<<1)+PFLASH)
 .endmacro
 
+.macro m_pop_zh
+.ifdef EIND
+        pop     zh
+.endif
+.endmacro
+.macro m_pop_xh
+.ifdef EIND
+        pop     xh
+ .endif
+.endmacro
+.macro m_pop_t0
+.ifdef EIND
+        pop     t0
+ .endif
+.endmacro
+.macro mijmp
+.ifdef EIND
+        eijmp
+.else
+        ijmp
+.endif
+.endmacro
 
 ; Symbol naming compatilibity
 
@@ -236,8 +258,13 @@
 .equ BS_=0x08
 
 ;;; Memory mapping prefixes
-.equ PRAM    = 0x0000                 ; 4 Kbytes of ram (atm128)
-.equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm128)
+.equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
+.equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
+.if (FLASHEND == 0x1ffff)              ; 128 Kwords flash
+.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm256)
+.equ PFLASH  = 0
+.equ RAMPZV  = 3
+.else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
 .equ PFLASH  = 0
@@ -255,6 +282,7 @@
 .if (FLASHEND == 0x1fff)              ; 8  Kwords flash
 .equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
+.endif
 .endif
 .endif
 .endif
@@ -298,8 +326,8 @@
 
 ;****************************************************
 .dseg
-ibuf:       .byte PAGESIZEB
-ivec:       .byte INT_VECTORS_SIZE
+ibuf:         .byte PAGESIZEB
+ivec:         .byte INT_VECTORS_SIZE
 
 rxqueue0:
 rbuf0_wr:    .byte 1
@@ -424,6 +452,7 @@ umslashmod3:
 EXIT_L:
         .db     NFA|4,"exit",0
 EXIT:
+        m_pop_t0
         pop     t0
         pop     t0
         ret
@@ -721,7 +750,7 @@ EXECUTE:
         rampv_to_c
         ror     zh
         ror     zl
-        ijmp
+        mijmp
 
         fdw     EXECUTE_L
 FEXECUTE_L:
@@ -752,22 +781,26 @@ DOCREATE_L:
         .db     NFA|3, "(c)"
 DOCREATE:
         pushtos
+        m_pop_zh
         pop     zh
         pop     zl
         lsl     zl
         rol     zh
         lpm_    tosl, z+
         lpm_    tosh, z+
+        m_pop_zh
         pop     zh
         pop     zl
-        ijmp
+        mijmp
 
 ;;; Resolve the runtime action of the word created by using does>
 DODOES_L:
         .db     NFA|3, "(d)"
 DODOES:
+        m_pop_xh
         pop     xh
         pop     xl
+        m_pop_zh
         pop     zh
         pop     zl
         lsl     zl
@@ -776,7 +809,7 @@ DODOES:
         lpm_    tosl, z+
         lpm_    tosh, z+
         movw    z, x
-        ijmp    ; (z)
+        mijmp    ; (z)
 
 ;   SP@     -- addr         get parameter stack pointer
         fdw     CONSTANT_L
@@ -797,6 +830,7 @@ SPSTORE:
 ;   RPEMPTY     -- EMPTY THE RETURN STACK       
         .db     NFA|3,"rp0"
 RPEMPTY:
+        m_pop_xh
         pop     xh
         pop     xl
         rcall   R0_
@@ -805,7 +839,7 @@ RPEMPTY:
         out     sph, tosh
         poptos
         movw    zl, xl
-        ijmp
+        mijmp
 
 ; DICTIONARY POINTER FOR the current section
 ; Flash -- sets the data section to flash
@@ -964,7 +998,11 @@ COMMAXT:
 STORECFF1: 
 ;        rcall   CALL_
         rcall   DOLIT
-        .dw     0x940E      ; call jmp:0x940d
+.ifdef EIND
+        .dw     0x940F  ; On Atmega 2560 all code is on 128 - 256 Kword area.
+.else
+        .dw     0x940E  ; call jmp:0x940d
+.endif
         call    ICOMMA
         sub_pflash_tos
         rampv_to_c
@@ -1301,28 +1339,31 @@ ROT:
 TOR_L:
         .db     NFA|COMPILE|2,">r",0
 TOR:
+        m_pop_zh
         pop     zh
         pop     zl
         push    tosl
         push    tosh
         poptos
-        ijmp
+        mijmp
 
         fdw     TOR_L
 RFROM_L:
         .db     NFA|COMPILE|2,"r>",0
 RFROM:
+        m_pop_zh
         pop     zh
         pop     zl
         pushtos
         pop     tosh
         pop     tosl
-        ijmp
+        mijmp
 
         fdw     RFROM_L
 RFETCH_L:
         .db     NFA|COMPILE|2,"r@",0
 RFETCH:
+        m_pop_zh
         pop     zh
         pop     zl
         pushtos
@@ -1330,7 +1371,7 @@ RFETCH:
         pop     tosl
         push    tosl
         push    tosh
-        ijmp
+        mijmp
 
 
 ;   ABS     n   --- n1      absolute value of n
@@ -1486,11 +1527,11 @@ WITHIN:
 NOTEQUAL_L:
         .db     NFA|2,"<>",0
 NOTEQUAL:
-	rcall	MINUS        	; MINUS leaves a valid zero flag
-	brne	NOTEQUAL1
-	rjmp	FALSE_F
+        rcall	MINUS        	; MINUS leaves a valid zero flag
+        brne	NOTEQUAL1
+        rjmp	FALSE_F
 NOTEQUAL1:
-	jmp	TRUE_F
+        jmp	TRUE_F
 
         fdw     ZEROLESS_L
 EQUAL_L:
@@ -1544,23 +1585,25 @@ STORE_P:
 STORE_P_TO_R_L:
         .db     NFA|COMPILE|4,"!p>r",0
 STORE_P_TO_R:
+        m_pop_zh
         pop     zh
         pop     zl
         push    pl
         push    ph
         movw    pl, tosl
         poptos
-        ijmp
+        mijmp
 
         fdw     STORE_P_TO_R_L
 R_TO_P_L:
         .db     NFA|COMPILE|3,"r>p"
 R_TO_P:
+        m_pop_zh
         pop     zh
         pop     zl
         pop     ph
         pop     pl
-        ijmp
+        mijmp
 
         fdw     R_TO_P_L
 PFETCH_L:
@@ -1997,6 +2040,7 @@ USER:
         rcall   XDOES
 DOUSER:
         pushtos
+        m_pop_zh
         pop     zh
         pop     zl
         lsl     zl
@@ -2839,6 +2883,7 @@ DOLIT_L:
         .db     NFA|3, "lit"
 DOLIT:
         pushtos
+        m_pop_zh
         pop     zh
         pop     zl
         lsl     zl
@@ -2847,7 +2892,7 @@ DOLIT:
         lpm_    tosh, z+
         ror     zh
         ror     zl
-        ijmp    ; (z)
+        mijmp    ; (z)
 
 ; DUP must not be reachable from user code with rcall
         fdw     RFETCH_L
@@ -3019,7 +3064,7 @@ POSTPONE:
         rcall   WORD
         rcall   FIND
         rcall   DUP
-	rcall	ZEROEQUAL
+        rcall   ZEROEQUAL
         rcall   QABORTQ
         rcall   ZEROLESS
         rcall   ZEROSENSE
@@ -3125,11 +3170,19 @@ SEMICOLON:
         breq    RCALL_TO_JMP
         poptos
         rcall   MINUS_FETCH
+.ifdef EIND
+        subi    tosl, 0x0f
+.else
         subi    tosl, 0x0e
+.endif
         sbci    tosh, 0x94
         brne    ADD_RETURN
 CALL_TO_JMP:
+.ifdef EIND
+        ldi     tosl, 0x0d
+.else
         ldi     tosl, 0x0c
+.endif
         ldi     tosh, 0x94
         rcall   SWOP
         jmp     STORE
@@ -3145,7 +3198,11 @@ RCALL_TO_JMP:
         .dw     -2
         rcall   IALLOT
         rcall   DOLIT
+.ifdef EIND
+        .dw     0x940d
+.else
         .dw     0x940c      ; jmp:0x940c
+.endif
         call    ICOMMA
         sub_pflash_tos
         rampv_to_c
@@ -3209,7 +3266,7 @@ STATE_:
 LATEST_L:
         .db     NFA|6,"latest",0
 LATEST_:
-        rcall   DOCREATE
+        call    DOCREATE
         .dw     dpLATEST
 
 ; S0       -- a-addr      start of parameter stack
@@ -3691,6 +3748,7 @@ NEXT:
 ; (next) decrement top of return stack
         .db     NFA|7,"(next) "
 XNEXT:  
+        m_pop_zh
         pop     zh
         pop     zl
         pop     xh
@@ -3698,7 +3756,7 @@ XNEXT:
         sbiw    xl, 1
         push    xl
         push    xh
-        ijmp
+        mijmp
         ret
 XNEXT1:
         pop     t1
@@ -3710,6 +3768,7 @@ XNEXT1:
 LEAVE_L:
         .db     NFA|COMPILE|5,"leave"
 LEAVE:
+        m_pop_zh
         pop     zh
         pop     zl
         pop     t1
@@ -3718,7 +3777,7 @@ LEAVE:
         clr     t1
         push    t0
         push    t1
-        ijmp
+        mijmp
 ;***************************************************
 ; RDROP compile a pop
         fdw      LEAVE_L
@@ -3934,7 +3993,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 27.08.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 09.09.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4021,6 +4080,33 @@ MEMQ:
         rcall   DOLIT
         .dw     NFAmask
         jmp     AND_
+;;; *************************************************
+;;; WARM user area data
+.equ warmlitsize= 22
+WARMLIT:
+        .dw      0x0200                ; cse, state
+        .dw      usbuf+ussize-4        ; S0
+        .dw      urbuf+ursize-2        ; R0
+        fdw      OP_TX_
+        fdw      OP_RX_
+        fdw      OP_RXQ
+        .dw      up0                   ; Task link
+        .dw      BASE_DEFAULT          ; BASE
+        .dw      utibbuf               ; TIB
+        fdw      OPERATOR_AREA         ; TASK
+        .dw      0                     ; ustatus & uflg
+;;; *************************************
+;;; EMPTY dictionary data
+.equ coldlitsize=12
+;.section user_eedata
+COLDLIT:
+STARTV: .dw      0
+DPC:    .dw      OFLASH
+DPE:    .dw      ehere
+DPD:    .dw      dpdata
+LW:     fdw      lastword
+STAT:   fdw      DOTSTATUS
+;;; *************************************************
 end_of_dict:
 
 ;FF_DP code:
@@ -4139,6 +4225,90 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x44
             rcall FF_ISR
 .endif
+.if 0x46 < INT_VECTORS_SIZE
+.org BOOT_START + 0x46
+            rcall FF_ISR
+.endif
+.if 0x48 < INT_VECTORS_SIZE
+.org BOOT_START + 0x48
+            rcall FF_ISR
+.endif
+.if 0x4a < INT_VECTORS_SIZE
+.org BOOT_START + 0x4a
+            rcall FF_ISR
+.endif
+.if 0x4c < INT_VECTORS_SIZE
+.org BOOT_START + 0x4c
+            rcall FF_ISR
+.endif
+.if 0x4e < INT_VECTORS_SIZE
+.org BOOT_START + 0x4e
+            rcall FF_ISR
+.endif
+.if 0x50 < INT_VECTORS_SIZE
+.org BOOT_START + 0x50
+            rcall FF_ISR
+.endif
+.if 0x52 < INT_VECTORS_SIZE
+.org BOOT_START + 0x52
+            rcall FF_ISR
+.endif
+.if 0x54 < INT_VECTORS_SIZE
+.org BOOT_START + 0x54
+            rcall FF_ISR
+.endif
+.if 0x56 < INT_VECTORS_SIZE
+.org BOOT_START + 0x56
+            rcall FF_ISR
+.endif
+.if 0x58 < INT_VECTORS_SIZE
+.org BOOT_START + 0x58
+            rcall FF_ISR
+.endif
+.if 0x5a < INT_VECTORS_SIZE
+.org BOOT_START + 0x5a
+            rcall FF_ISR
+.endif
+.if 0x5c < INT_VECTORS_SIZE
+.org BOOT_START + 0x5c
+            rcall FF_ISR
+.endif
+.if 0x5e < INT_VECTORS_SIZE
+.org BOOT_START + 0x5e
+            rcall FF_ISR
+.endif
+.if 0x60 < INT_VECTORS_SIZE
+.org BOOT_START + 0x60
+            rcall FF_ISR
+.endif
+.if 0x62 < INT_VECTORS_SIZE
+.org BOOT_START + 0x62
+            rcall FF_ISR
+.endif
+.if 0x64 < INT_VECTORS_SIZE
+.org BOOT_START + 0x64
+            rcall FF_ISR
+.endif
+.if 0x68 < INT_VECTORS_SIZE
+.org BOOT_START + 0x68
+            rcall FF_ISR
+.endif
+.if 0x6a < INT_VECTORS_SIZE
+.org BOOT_START + 0x6a
+            rcall FF_ISR
+.endif
+.if 0x6c < INT_VECTORS_SIZE
+.org BOOT_START + 0x6c
+            rcall FF_ISR
+.endif
+.if 0x6e < INT_VECTORS_SIZE
+.org BOOT_START + 0x6e
+            rcall FF_ISR
+.endif
+.if 0x70 < INT_VECTORS_SIZE
+.org BOOT_START + 0x70
+            rcall FF_ISR
+.endif
 
 .org BOOT_START + INT_VECTORS_SIZE
 FF_ISR_EXIT:
@@ -4178,6 +4348,7 @@ FF_ISR:
         in_     xh, SREG
         st      -y, xh
         st      -y, xl
+        m_pop_xh
         pop     xh
         pop     xl
 
@@ -4216,7 +4387,7 @@ FF_ISR:
         adc     xh, t1
         ld      zh, x+  ; >xa dependency !!!!
         ld      zl, x+
-        ijmp    ;(z)
+        mijmp    ;(z)
 
 RX0_ISR:
         ldi     zl, low(rbuf0)
@@ -4292,33 +4463,6 @@ RX1_OVF:
         rjmp    TX1_SEND
 TX1_ISR:
 .endif
-;;; *************************************************
-;;; WARM user area data
-.equ warmlitsize= 22
-WARMLIT:
-        .dw      0x0200                ; cse, state
-        .dw      usbuf+ussize-4        ; S0
-        .dw      urbuf+ursize-2        ; R0
-        fdw      OP_TX_
-        fdw      OP_RX_
-        fdw      OP_RXQ
-        .dw      up0                   ; Task link
-        .dw      BASE_DEFAULT          ; BASE
-        .dw      utibbuf               ; TIB
-        fdw      OPERATOR_AREA         ; TASK
-        .dw      0                     ; ustatus & uflg
-;;; *************************************************
-;;; *************************************
-;;; EMPTY dictionary data
-.equ coldlitsize=12
-;.section user_eedata
-COLDLIT:
-STARTV: .dw      0
-DPC:    .dw      OFLASH
-DPE:    .dw      ehere
-DPD:    .dw      dpdata
-LW:     fdw      lastword
-STAT:   fdw      DOTSTATUS
 
 ;***************************************************
 ; TX0   c --    output character to UART 0
@@ -4735,6 +4879,10 @@ WARM_2:
 .ifdef RAMPZ
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
+.endif
+.ifdef EIND
+        ldi     t0, 1
+        out_    EIND, t0
 .endif
 ; init warm literals
         rcall   DOLIT

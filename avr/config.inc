@@ -1,7 +1,9 @@
 ;;; FlashForth device configuration for Atmega devices
 
 ; Select the include file for your micro controller
-.include "m128def.inc"   ; Tested
+;.include "m2561def.inc"   ; 
+.include "m2560def.inc"   ; 
+;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
 ;.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
