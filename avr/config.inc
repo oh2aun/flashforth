@@ -12,11 +12,11 @@
 .equ FREQ_OSC = 16000000
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART = 1              ; 0 or 1
+.equ OPERATOR_UART = 0              ; 0 or 1
 
 ;;; UART0 configuration
 .equ BAUDRATE0 = 38400 				; Serial baudrate UART0
-.equ U0FC_TYPE = 2                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          09.09.2013                                        *
+;    Date:          27.09.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1233,7 +1233,7 @@ TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        call   XNEXT
+        call    XNEXT
         brcc    TYPE1
         pop     t1
         pop     t0
@@ -1243,6 +1243,7 @@ TYPE2:
 ; (S"    -- c-addr u      run-time code for S"
         .db      NFA|3,"(s",0x22
 XSQUOTE:
+        m_pop_zh
         rcall   RFETCH
         lsl     tosl
         rol     tosh
@@ -1255,8 +1256,11 @@ XSQUOTE:
         ror     tosl
         rcall   RFROM
         rcall   PLUS
-        rcall   TOR
-        ret
+        movw    zl, tosl
+        poptos
+        mijmp
+;        rcall   TOR
+;        ret
 
         fdw     TYPE_L
 SQUOTE_L:
@@ -3993,7 +3997,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 09.09.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 27.09.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4080,6 +4084,27 @@ MEMQ:
         rcall   DOLIT
         .dw     NFAmask
         jmp     AND_
+
+;;; Enable flow control
+        fdw     FUNLOCK_L
+FCON_L:
+        .db     NFA|3,"u1+"
+        cbr     FLAGS2, (1<<fFC_tx1)
+        ret
+
+;;; Disable flow control
+        fdw     FCON_L
+FCOFF_L:
+        .db     NFA|3,"u1-"
+        sbr     FLAGS2, (1<<fFC_tx1)
+        ret
+
+;;; Clear watchdog timer
+        fdw     FCOFF_L
+CWD_L:
+        .db     NFA|INLINE|3,"cwd"
+        wdr
+        ret
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 22
@@ -5278,26 +5303,7 @@ FUNLOCK_L:
         cbr     FLAGS1, (1<<fLOCK)
         ret
 
-;;; Enable flow control
-        fdw     FUNLOCK_L
-FCON_L:
-        .db     NFA|3,"u1+"
-        cbr     FLAGS2, (1<<fFC_tx1)
-        ret
 
-;;; Disable flow control
-        fdw     FCON_L
-FCOFF_L:
-        .db     NFA|3,"u1-"
-        sbr     FLAGS2, (1<<fFC_tx1)
-        ret
-
-;;; Clear watchdog timer
-        fdw     FCOFF_L
-CWD_L:
-        .db     NFA|INLINE|3,"cwd"
-        wdr
-        ret
 
         fdw     CWD_L
 VALUE_L:
