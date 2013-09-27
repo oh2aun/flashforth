@@ -3092,6 +3092,7 @@ IDP:
 ;link   set     $
         .db     NFA|7,"(does>)"
 XDOES:
+        m_pop_zh
         rcall   RFROM
         rcall   LATEST_
         rcall   FETCH_A
