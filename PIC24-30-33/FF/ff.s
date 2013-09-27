@@ -5660,7 +5660,6 @@ POSTPONE:
         rcall   WORD
         rcall   FIND
         mov     [W14++], [W14]      ; dup
-        rcall   ZEROEQUAL
         rcall   QABORTQ
         rcall   ZEROLESS
         cp0     [W14--]

@@ -2,7 +2,7 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"   ; 
-.include "m2560def.inc"   ; 
+.include "m2560def.inc"   ; Tested
 ;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
 ;.include "m328pdef.inc"    ; Tested
@@ -15,7 +15,9 @@
 .equ OPERATOR_UART = 0              ; 0 or 1
 
 ;;; UART0 configuration
-.equ BAUDRATE0 = 38400 				; Serial baudrate UART0
+;;; Note: With Arduino Uno R3 and MEGA R3 the USB to to serial bridge does not support
+;;; flow control. Only way to get upload files is with TeraTerm and 1 ms intercharacter delay.
+.equ BAUDRATE0 = 38400				; Serial baudrate UART0
 .equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd

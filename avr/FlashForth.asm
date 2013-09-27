@@ -2855,7 +2855,7 @@ QABORTQ:
         jmp     QABORT
 
 
-; ?ABORT   f c-addr u --       abort & print msg
+; ?ABORT   f c-addr u --       abort & print msg if flag is false
         fdw     QABORTQ_L
 QABORT_L:
         .db     NFA|6,"?abort",0
@@ -3068,7 +3068,6 @@ POSTPONE:
         rcall   WORD
         rcall   FIND
         rcall   DUP
-        rcall   ZEROEQUAL
         rcall   QABORTQ
         rcall   ZEROLESS
         rcall   ZEROSENSE
@@ -3531,29 +3530,6 @@ PFL:
          call   DOCREATE
         .dw     PFLASH
 ;***************************************************************
-; check that the relative address is within reach of conditional branch
-; instructions and leave the clipped relative address on the stack
-; br?   ( rel-addr limit -- clipped-rel-addr)
-;       2dup 2/ swap
-;       abs > (qabort)
-;       and 2/ ;
-.if 0
-        fdw     PFL_L
-BRQ_L:
-        .db     NFA|3,"br?"
-BRQ:
-        rcall   TWODUP
-        rcall   TWOSLASH
-        rcall   SWOP_A          ; rel-addr limit limit' rel-addr
-        rcall   ABS_            ; rel-addr limit limit' rel-addr
-        rcall   GREATER
-        rcall   XSQUOTE
-        .db      3,"BR?"
-        rcall   QABORT         ;  ?RANGE ABORT if TRUE
-BRQ1:
-        rcall   AND_
-        jmp     TWOSLASH
-.endif
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .db     NFA|4,",?0=",0    ; Just for see to work !
 COMMAZEROSENSE:
