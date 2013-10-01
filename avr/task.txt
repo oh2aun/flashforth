@@ -1,8 +1,8 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          01.12.2011                                      *
-\    FF Version:    3.8                                             *
+\    Date:          01.10.2013                                      *
+\    FF Version:                                                    *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -86,6 +86,41 @@ hex ram
  
   \ Point to  free returns stack cell
   r0 @ 4 - rsave !        \ extra space for TOS saving in PAUSE
+
+  \ s0 = ssave = r0 + ssize - 2
+  c@ r0 @ + dup s0 ! dup ssave ! \ s0
+
+  \ tiu = s0 + 2
+  2+ tiu !
+  0 ul!
+  op!                  \ run the operator task again
+;
+
+\ Initialise a user area and link it to the task loop
+\ May only be executed from the operator task
+\ Special version for atmega2560 with 3 byte return address
+: tinit2560 ( taskloop-addr task-addr -- )
+  \ use task user area
+  @+ up!                          \ a addsize-addr
+
+  \ Pointer to task area
+  dup 2- task ! 
+
+  \ reset status and cr flag
+  0 task 2+ !
+
+  \ rsave = uarea+addsize+rsize
+  c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
+
+  \ Save r0
+  dup r0 !                       \  a ssize-addr r0
+
+  \ Store task-loop address to the return stack
+  rot >xa over 1- !       \ ssize-a 
+  1 swap 2- c!            \ Store the high byte
+
+  \ Point to  free returns stack cell
+  r0 @ 5 - rsave !        \ extra space for TOS saving in PAUSE
 
   \ s0 = ssave = r0 + ssize - 2
   c@ r0 @ + dup s0 ! dup ssave ! \ s0
