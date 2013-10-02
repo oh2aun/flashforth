@@ -55,13 +55,14 @@ hex ram
 : task: ( tibsize stacksize rsize addsize -- )
   flash create 
   up@ s0 - dup          \ Basic size     ts ss rs as bs bs
-  ram here flash + ,    \ User pointer   ts ss rs as bs
+  ram here + flash ,    \ User pointer   ts ss rs as bs
   4 for
     over c, +
   next
   cell+                 \ Task size
   ram allot
 ;
+
 
 \ Initialise a user area and link it to the task loop
 \ May only be executed from the operator task
@@ -75,58 +76,26 @@ hex ram
   \ reset status and cr flag
   0 task 2+ !
 
-  \ rsave = uarea+addsize+rsize
+  \ r0 = uarea+addsize+rsize
   c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
 
   \ Save r0
-  dup r0 !                       \  a ssize-addr r0
+  r0 !                           \  a ssize-addr
+
+  \ s0 = r0 + ssize
+  c@ r0 @ + s0 !                 \  a
 
   \ Store task-loop address to the return stack
-  rot >xa swap 1- !       \ ssize-a 
- 
-  \ Point to  free returns stack cell
-  r0 @ 4 - rsave !        \ extra space for TOS saving in PAUSE
+  r0 @ x>r                       \  rsp
 
-  \ s0 = ssave = r0 + ssize - 2
-  c@ r0 @ + dup s0 ! dup ssave ! \ s0
-
-  \ tiu = s0 + 2
-  2+ tiu !
-  0 ul!
-  op!                  \ run the operator task again
-;
-
-\ Initialise a user area and link it to the task loop
-\ May only be executed from the operator task
-\ Special version for atmega2560 with 3 byte return address
-: tinit2560 ( taskloop-addr task-addr -- )
-  \ use task user area
-  @+ up!                          \ a addsize-addr
-
-  \ Pointer to task area
-  dup 2- task ! 
-
-  \ reset status and cr flag
-  0 task 2+ !
-
-  \ rsave = uarea+addsize+rsize
-  c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
-
-  \ Save r0
-  dup r0 !                       \  a ssize-addr r0
-
-  \ Store task-loop address to the return stack
-  rot >xa over 1- !       \ ssize-a 
-  1 swap 2- c!            \ Store the high byte
-
-  \ Point to  free returns stack cell
-  r0 @ 5 - rsave !        \ extra space for TOS saving in PAUSE
-
-  \ s0 = ssave = r0 + ssize - 2
-  c@ r0 @ + dup s0 ! dup ssave ! \ s0
+  \ Store SP to return stack
+  1- dup s0 @ swap !             \ rsp
+  
+  \ Store current rsp and space for saving TOS,P in PAUSE
+  5 - rsave !                    \ 
 
   \ tiu = s0 + 2
-  2+ tiu !
+  s0 @ 2+ tiu !
   0 ul!
   op!                  \ run the operator task again
 ;

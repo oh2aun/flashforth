@@ -295,22 +295,20 @@
 .equ utibsize=     TIB_SIZE
 
 ;;; User variables and area
-.equ us0=          -32         ; Start of parameter stack
-.equ ur0=          -30         ; Start of ret stack
-.equ uemit=        -28         ; User EMIT vector
-.equ ukey=         -26         ; User KEY vector
-.equ ukeyq=        -24         ; User KEY? vector
-.equ ulink=        -22         ; Task link
-.equ ubase=        -20         ; Number Base
-.equ utib=         -18         ; TIB address
-.equ utask=        -16         ; Task area pointer
-.equ ustatus=      -14
-.equ uflg=         -13
-.equ ursave=       -12         ; Saved ret stack pointer
-.equ ussave=       -10         ; Saved parameter stack pointer
-.equ upsave=       -8
-.equ usource=      -6          ; Two cells
-.equ utoin=        -2          ; Input stream
+.equ us0=          -28         ; Start of parameter stack
+.equ ur0=          -26         ; Start of ret stack
+.equ uemit=        -24         ; User EMIT vector
+.equ ukey=         -22         ; User KEY vector
+.equ ukeyq=        -20         ; User KEY? vector
+.equ ubase=        -18         ; Number Base
+.equ utib=         -16         ; TIB address
+.equ utask=        -14         ; Task area pointer
+.equ ustatus=      -12
+.equ uflg=         -11
+.equ usource=      -10          ; Two cells
+.equ utoin=        -6          ; Input stream
+.equ ulink=        -4         ; Task link
+.equ ursave=       -2         ; Saved ret stack pointer
 .equ uhp=           0          ; Hold pointer
 
 
@@ -1989,7 +1987,7 @@ RSAVE_: rcall   DOUSER
 SSAVE_L:
         .db     NFA|5,"ssave"
 SSAVE_: rcall   DOUSER
-        .dw     ussave
+        .dw     ursave
 
 
 ; ULINK   -- a-addr     link to next task
@@ -3498,32 +3496,30 @@ IALLOT:
     
 
 ;***************************************************************
+;  Store the execcution vector addr to the return stack
+; leave the updated return stack pointer on the data stack
+; x>r ( addr rsp -- rsp' )
         fdw     DUMP_L
-TO_XA_L:
-        .db     NFA|3,">xa"
-TO_XA:
+X_TO_R_L:
+        .db     NFA|3,"x>r"
+X_TO_R:
+        movw    zl, tosl
+        poptos
         sub_pflash_tos
         rampv_to_c
         ror     tosh
         ror     tosl
-        mov     t0, tosh
-        mov     tosh, tosl
-        mov     tosl, t0
+        adiw    zl, 1
+        st      -z, tosl
+        st      -z, tosh
+.ifdef EIND
+        st      -z, r_one
+.endif
+        st      -z, zero
+        movw    tosl, zl
         ret
-
-        fdw     TO_XA_L
-XA_FROM_L:
-        .db     NFA|3,"xa>"
-XA_FROM:
-        mov     t0, tosh
-        mov     tosh, tosl
-        mov     tosl, t0
-        lsl     tosl
-        rol     tosh
-        add_pflash_tos
-        ret
-
-        fdw     XA_FROM_L
+;***************************************************************
+        fdw     X_TO_R_L
 PFL_L:
         .db     NFA|3,"pfl"
 PFL:
@@ -3554,12 +3550,6 @@ IDPMINUS:
 ;       rjmp, ( rel-addr -- )
 RJMPC:
         rcall   TWOSLASH
-;        rcall   DOLIT
-;        .dw     0x0FFF
-;        rcall   AND_
-;        rcall   DOLIT
-;        .dw     0xc000
-;        rcall   OR_
         andi    tosh, 0x0f
         ori     tosh, 0xc0
         jmp     ICOMMA
@@ -4084,7 +4074,7 @@ CWD_L:
         ret
 ;;; *************************************************
 ;;; WARM user area data
-.equ warmlitsize= 22
+.equ warmlitsize= 28
 WARMLIT:
         .dw      0x0200                ; cse, state
         .dw      usbuf+ussize-4        ; S0
@@ -4092,11 +4082,14 @@ WARMLIT:
         fdw      OP_TX_
         fdw      OP_RX_
         fdw      OP_RXQ
-        .dw      up0                   ; Task link
         .dw      BASE_DEFAULT          ; BASE
         .dw      utibbuf               ; TIB
         fdw      OPERATOR_AREA         ; TASK
         .dw      0                     ; ustatus & uflg
+        .dw      0                     ; source
+        .dw      0                     ; source
+        .dw      0                     ; TOIN
+        .dw      up0                   ; Task link
 ;;; *************************************
 ;;; EMPTY dictionary data
 .equ coldlitsize=12
@@ -4387,7 +4380,7 @@ FF_ISR:
         ldi     t1, high(ivec)
         add     xl, t0
         adc     xh, t1
-        ld      zh, x+  ; >xa dependency !!!!
+        ld      zh, x+  ; x>r dependency !!!!
         ld      zl, x+
         mijmp    ;(z)
 
@@ -5386,33 +5379,30 @@ PAUSE:
 PAUSE1:
         in      t2, SREG
         cli
+        push    yh        ; SP
+        push    yl
+        push    tosh      ; TOS
         push    tosl
-        push    tosh
+        push    ph        ; P
+        push    pl
         movw    zl, upl
-        sbiw    zl, -ursave
-        in      t0, spl
-        st      z+, t0
         in      t0, sph
-        st      z+, t0
-        st      z+, yl
-        st      z+, yh
-        st      z+, pl
-        st      z+, ph
-        sbiw    zl, (usource-ulink)
-        ld      xl, z+
-        ld      xh, z+
+        st      -z, t0
+        in      t0, spl
+        st      -z, t0
+        ld      xh, -z     ; UP
+        ld      xl, -z
         movw    upl, xl
-        sbiw    xl, -ursave
-        ld      t0, x+
-        out     spl, t0
-        ld      t0, x+
+        ld      t0, -x
         out     sph, t0
-        pop     tosh
+        ld      t0, -x
+        out     spl, t0
+        pop     pl
+        pop     ph
         pop     tosl
-        ld      yl, x+
-        ld      yh, x+
-        ld      pl, x+
-        ld      ph, x+
+        pop     tosh
+        pop     yl
+        pop     yh
         out     SREG, t2
         ret
 
