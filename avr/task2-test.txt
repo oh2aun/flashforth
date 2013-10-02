@@ -27,7 +27,7 @@ ram variable delay
 
 0 18 20 0 task: task2
 : task2loop 
-  400 delay !
+  100 delay !
   pin5 ddrc mset  \  Output 
   begin 
     delay @ ms 
@@ -42,5 +42,5 @@ ram variable delay
 
 : t2go ['] task2loop task2 tinit task2 run ;
 
-\ ' t2go is turnkey
-\ warm
+' t2go is turnkey
+warm

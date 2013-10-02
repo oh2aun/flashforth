@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task-test-arduino-uno.txt                       *
-\    Date:          01.10.2013                                      *
+\    Date:          02.10.2013                                      *
 \    FF Version:                                                    *
 \    MCU:           ArduinoMega2560R3                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -39,9 +39,9 @@ ram variable delay
 ;
 
 : t1go 
-  ['] taskloop task1 tinit2560 
+  ['] taskloop task1 tinit
   task1 run
 ;
 
-\  ' t1go is turnkey
-\ warm
+' t1go is turnkey
+warm

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          27.09.2013                                        *
+;    Date:          02.10.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -39,7 +39,6 @@
   .def zero = r5        ; read only zero
   .def r_one = r6       ; read only one
   .def r_two = r7       ; read only two
-  .def r_four = r8      ; read only four
   .def wflags  = r9     ; not in interrupt
 
   .def ibasel=r10       ; Not in interrupt
@@ -305,10 +304,10 @@
 .equ utask=        -14         ; Task area pointer
 .equ ustatus=      -12
 .equ uflg=         -11
-.equ usource=      -10          ; Two cells
+.equ usource=      -10         ; Two cells
 .equ utoin=        -6          ; Input stream
-.equ ulink=        -4         ; Task link
-.equ ursave=       -2         ; Saved ret stack pointer
+.equ ulink=        -4          ; Task link
+.equ ursave=       -2          ; Saved ret stack pointer
 .equ uhp=           0          ; Hold pointer
 
 
@@ -864,7 +863,8 @@ RAM_L:
 FRAM_N: 
         .db     NFA|3,"ram"
 FRAM:
-        sts     cse, r_four
+        ldi     t0, 4
+        sts     cse, t0
         ret
 
 ; DP    -- a-addr          
@@ -1982,16 +1982,8 @@ RSAVE_: rcall   DOUSER
         .dw     ursave
 
 
-; SSAVE   -- a-addr     Saved parameter stack pointer
-        fdw     RSAVE_L
-SSAVE_L:
-        .db     NFA|5,"ssave"
-SSAVE_: rcall   DOUSER
-        .dw     ursave
-
-
 ; ULINK   -- a-addr     link to next task
-        fdw     SSAVE_L
+        fdw     RSAVE_L
 ULINK_L:
         .db     NFA|5,"ulink"
 ULINK_: rcall   DOUSER
@@ -3964,7 +3956,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 27.09.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 02.10.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4077,8 +4069,8 @@ CWD_L:
 .equ warmlitsize= 28
 WARMLIT:
         .dw      0x0200                ; cse, state
-        .dw      usbuf+ussize-4        ; S0
-        .dw      urbuf+ursize-2        ; R0
+        .dw      utibbuf-4             ; S0
+        .dw      usbuf-1               ; R0
         fdw      OP_TX_
         fdw      OP_RX_
         fdw      OP_RXQ
@@ -4855,15 +4847,13 @@ WARM_2:
         mov     r_one, yl
         ldi     yl, 2
         mov     r_two, yl
-        ldi     yl, 4
-        mov     r_four, yl
 ; Init Stack pointer
-        ldi     yl, low(usbuf+ussize-4)
-        ldi     yh, high(usbuf+ussize-4)
+        ldi     yl, low(utibbuf-4)
+        ldi     yh, high(utibbuf-4)
 
 ; Init Return stack pointer
-        ldi     t0, low(urbuf+ursize-2)
-        ldi     t1, high(urbuf+ursize-2)
+        ldi     t0, low(usbuf-1)
+        ldi     t1, high(usbuf-1)
         out     spl, t0
         out     sph, t1
 ; Init user pointer
