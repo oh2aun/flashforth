@@ -2,10 +2,10 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"   ; 
-;.include "m2560def.inc"   ; Tested
+.include "m2560def.inc"   ; Tested
 ;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-.include "m328pdef.inc"    ; Tested
+;.include "m328pdef.inc"    ; Tested
 ;.include "m644pdef.inc"
 
 ; Oscillator frequency in herz
@@ -60,7 +60,7 @@
 .equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE = 64          ; 32 cells return stack
+.equ RETURN_STACK_SIZE = 96          ; 32 cells return stack
 .equ PARAMETER_STACK_SIZE = 64       ; 32 cells parameter stack
 .equ TIB_SIZE = 84                   ; 74 chars tib size +  10 chars hold area
 

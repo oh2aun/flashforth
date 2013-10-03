@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          02.10.2013                                        *
+;    Date:          03.10.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -3497,10 +3497,11 @@ X_TO_R_L:
 X_TO_R:
         movw    zl, tosl
         poptos
-        sub_pflash_tos
-        rampv_to_c
-        ror     tosh
-        ror     tosl
+;        sub_pflash_tos
+;        rampv_to_c
+;        ror     tosh
+;        ror     tosl
+        rcall   TO_XA
         adiw    zl, 1
         st      -z, tosl
         st      -z, tosh
@@ -3512,6 +3513,16 @@ X_TO_R:
         ret
 ;***************************************************************
         fdw     X_TO_R_L
+TO_XA_L:
+        .db NFA|3,">xa"
+TO_XA:
+         sub_pflash_tos
+         rampv_to_c
+         ror tosh
+         ror tosl
+         ret
+;***************************************************************
+         fdw    TO_XA_L
 PFL_L:
         .db     NFA|3,"pfl"
 PFL:
@@ -3956,7 +3967,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 02.10.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 03.10.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -4367,13 +4378,9 @@ FF_ISR:
         push    tosh
 
         subi    xl, 1
-        clr     xh
-        ldi     t0, low(ivec)
-        ldi     t1, high(ivec)
-        add     xl, t0
-        adc     xh, t1
-        ld      zh, x+  ; x>r dependency !!!!
+        ldi     xh, high(ivec)
         ld      zl, x+
+        ld      zh, x+
         mijmp    ;(z)
 
 RX0_ISR:
@@ -4980,7 +4987,11 @@ IRQ_SEMI_L:
         .db     NFA|IMMED|2,";i",0
 IRQ_SEMI:
         rcall   DOLIT
+.ifdef EIND
+        .dw     0x940D     ; jmp
+.else
         .dw     0x940C     ; jmp
+.endif
         rcall   ICOMMA
         rcall   DOLIT
         .dw     FF_ISR_EXIT
@@ -4992,6 +5003,7 @@ IRQ_SEMI:
         fdw     IRQ_SEMI_L
 IRQ_V_L:
         .db     NFA|4,"int!",0
+IRQ_V:
         rcall   DOLIT
         .dw     ivec
         call    PLUS
@@ -5251,6 +5263,7 @@ ECSTORE:
 
 ;;; Disable writes to flash and eeprom
         fdw     CSTORE_L
+
 FLOCK_L:
         .db     NFA|3,"fl-"
         sbr     FLAGS1, (1<<fLOCK)

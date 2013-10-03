@@ -1,0 +1,43 @@
+\ *********************************************************************
+\    Interrupts example for FlashForth                                *
+\    Filename:      irqAtmega2560.txt                                 *
+\    Date:          03.10.2013                                        *
+\    FF Version:    Atmega                                            *
+\    MCU:           Atmega2560                                        *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ Disable interrupt before removing the interrupt code
+irqOvf3Dis
+-irqOvf3
+marker -irqOvf3
+\ Timer 3 definitions from m128def.inc
+$91 constant tccr3b
+$71 constant timsk3
+$46 constant ovf3Ivec
+
+\ Counter for timer overflows
+variable counter
+
+\ The interrupt routine
+: t3OverflowIsr
+  1 counter +!
+;i
+
+: irqOvf3Init
+  \ Store the interrupt vector
+  ['] t3OverflowIsr >xa ovf3Ivec int!
+  \ Activate counter 3
+  1 tccr3b mset
+  \ Activate timer3 overflow interrupt
+  1 timsk3 mset
+;
+: irqOvf3Dis
+  1 timsk3 mclr
+;
+
+irqOvf3Init
+
+counter @ .
