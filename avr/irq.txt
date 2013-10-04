@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      irq.txt                                           *
-\    Date:          10.12.2011                                        *
+\    Date:          04.10.2013                                        *
 \    FF Version:    Atmega                                            *
 \    MCU:           Atmega128                                         *
 \    Copyright:     Mikael Nordman                                    *
@@ -16,7 +16,7 @@ marker -irqOvf3
 \ Timer 3 definitions from m128def.inc
 $8a constant tccr3b
 $7d constant etimsk
-$3a constant ovf3Ivec
+#30 constant ovf3Ivec
 
 \ Counter for timer overflows
 variable counter
@@ -28,7 +28,7 @@ variable counter
 
 : irqOvf3Init
   \ Store the interrupt vector
-  ['] t3OverflowIsr >xa ovf3Ivec int!
+  ['] t3OverflowIsr ovf3Ivec int!
   \ Activate counter 3
   1 tccr3b mset
   \ Activate timer3 overflow interrupt

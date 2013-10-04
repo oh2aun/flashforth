@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          03.10.2013                                        *
+;    Date:          04.10.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1257,8 +1257,6 @@ XSQUOTE:
         movw    zl, tosl
         poptos
         mijmp
-;        rcall   TOR
-;        ret
 
         fdw     TYPE_L
 SQUOTE_L:
@@ -2030,7 +2028,11 @@ BASE:
 USER_L:
         .db     NFA|4,"user",0
 USER:
-        rcall   CONSTANT_
+        rcall   CREATE
+        rcall   CELL
+        rcall	NEGATE
+        rcall   IALLOT
+        call    ICOMMA
         rcall   XDOES
 DOUSER:
         pushtos
@@ -2754,7 +2756,6 @@ DP_TO_EEPROM_0:
 DP_TO_EEPROM_1:
         rcall   DROP
 DP_TO_EEPROM_2:
-;        call    CELL
         rcall   PTWOPLUS
 DP_TO_EEPROM_3:
         rcall   XNEXT
@@ -2832,7 +2833,6 @@ ABORT:
         rcall   S0
         rcall   FETCH_A
         rcall   SPSTORE
-        ;bsf     RCSTA, CREN, A
         jmp     QUIT            ; QUIT never rets
 
 ; ?ABORT   f --       abort & print ?
@@ -2863,7 +2863,7 @@ QABO1:  jmp     TWODROP
 ;         i*x x1 --       R: j*x --      x1<>0
         fdw     QABORT_L
 ABORTQUOTE_L:
-        .db     NFA|IMMED|COMPILE|6,"abort",'"',0
+        .db     NFA|IMMED|COMPILE|6,"abort",0x22,0
 ABORTQUOTE:
         rcall   SQUOTE
         rcall   DOLIT
@@ -3497,10 +3497,6 @@ X_TO_R_L:
 X_TO_R:
         movw    zl, tosl
         poptos
-;        sub_pflash_tos
-;        rampv_to_c
-;        ror     tosh
-;        ror     tosl
         rcall   TO_XA
         adiw    zl, 1
         st      -z, tosl
@@ -3967,7 +3963,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 03.10.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 04.10.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -3983,8 +3979,6 @@ DI_L:
         .db     NFA|INLINE|2,"di",0
         cli
         ret
-        
-
 ;***************************************************
 ; marker --- name
         .dw     0
@@ -4999,15 +4993,18 @@ IRQ_SEMI:
         jmp     LEFTBRACKET
 
 
-; int!  ( addr n  --  )   store interrupt vector
+; int!  ( addr n  --  )   store to interrupt vector number
         fdw     IRQ_SEMI_L
 IRQ_V_L:
         .db     NFA|4,"int!",0
 IRQ_V:
-        rcall   DOLIT
-        .dw     ivec
-        call    PLUS
-        jmp     STORE
+        movw    zl, tosl
+        sbiw    zl, 1
+        lsl     zl
+        ldi     zh, high(ivec)
+        poptos
+        rcall   TO_XA
+        jmp     STORE_RAM_2
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
         fdw     IRQ_V_L
@@ -5070,6 +5067,7 @@ STORE:
 STORE_RAM:
         movw    zl, tosl
         poptos
+STORE_RAM_2:
         std     Z+1, tosh
         std     Z+0, tosl
         poptos
