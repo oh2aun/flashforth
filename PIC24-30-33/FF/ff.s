@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          04.09.2013                                        *
-;    File Version:  4.81                                              *
+;    Date:          08.10.2013                                        *
+;    File Version:  4.82                                              *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -1009,7 +1009,7 @@ WARM1:
         rcall   CR
         rcall   XSQUOTE
         .byte   44
-        .ascii  "FlashForth V4.81 (C) Mikael Nordman GPL V3\r\n"
+        .ascii  "FlashForth V4.82 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -6403,7 +6403,47 @@ FCY_:
         mov     W0, [++W14]
         return
 
+; C4+ ( n1 -- n2) call C  function unsigned  short func(unsigned short n1);
+        .extern C4add
         .pword  paddr(CPU_CLK_L)+PFLASH
+CFOURADD_L:
+        .byte   NFA|3
+        .ascii  "C4+"
+        .align  2
+CFOURADD_:
+        mov     [W14], W0
+        call    _C4add
+        mov     W0, [W14]
+        return
+
+; C01 ( func n1 --) call C  function  void func(int n1);
+        .pword  paddr(CFOURADD_L)+PFLASH
+C01_L:
+        .byte   NFA|3
+        .ascii  "C01"
+        .align  2
+C01_:
+        mov     [W14--], W0
+        mov     [W14], W13
+        call    W13
+        mov     [W14--], W0
+        return
+
+; C12 ( func n1 n2 --n ) call C  function int func(int n1, int n2);
+        .pword  paddr(C01_L)+PFLASH
+C12_L:
+        .byte   NFA|3
+        .ascii  "C12"
+        .align  2
+C12_:
+        mov     [W14--], W1
+        mov     [W14--], W0
+        mov     [W14], W13
+        call    W13
+        mov     W0, [W14]
+        return
+
+        .pword  paddr(C12_L)+PFLASH
 FALSE_L:
         .byte   NFA|INLINE|5
         .ascii  "false"
