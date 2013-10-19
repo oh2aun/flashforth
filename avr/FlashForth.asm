@@ -215,7 +215,7 @@
 #define ms_value -(FREQ_OSC/1000)
 #define BOOT_SIZE 0x400
 #define BOOT_START FLASHEND - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START BOOT_START - 0x0c00
+#define KERNEL_START BOOT_START - 0x0C80
 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -5450,7 +5450,7 @@ OPERATOR_AREA:
 ICOMMA_L:
         .db     NFA|2, "i,",0
 ICOMMA:
-        rcall   IHERE
+        call   IHERE
         rcall   STORE
         call    CELL
         jmp     IALLOT
@@ -5461,7 +5461,7 @@ ICOMMA:
 ICCOMMA_L:
         .db     NFA|3,"ic,"
 ICCOMMA:
-        rcall   IHERE
+        call   IHERE
         rcall   CSTORE
         call    ONE
         jmp     IALLOT
