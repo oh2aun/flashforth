@@ -1,0 +1,37 @@
+\ Some tests for the Atmega assembler
+\ needs the assembler and see
+-asmtest
+marker -asmtest
+: asmtest ( n1 n2 -- ) 
+  = if ." OK" else ." ERROR" then cr ;
+
+#30 #28 mov, flash here 2- @ $2fec asmtest  \ Rd,Rr:
+
+#17 #15 ldi, flash here 2- @ $e01f asmtest  \ Rd,k:
+
+#17 $1234 lds, 
+flash here 4 - @+ swap @ u. u. \ Rd: 9110 1234
+
+$09 constant Y+
+9 Y+ $31 ldd,
+ flash here 2 - @ $a899 asmtest
+
+$01 constant Z+
+9 Z+ $31 ldd,
+ flash here 2 - @ $a891 asmtest
+
+: testif
+  [ ne, if, ]
+  true
+  [ else, ]
+  false
+  [ then, ]
+;
+see testif
+
+: testuntil
+  [ begin, ]
+  true drop
+  [ ne, until, ]
+; 
+see testuntil

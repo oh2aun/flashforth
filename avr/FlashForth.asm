@@ -277,10 +277,12 @@
 .if (FLASHEND == 0x3fff)              ; 16 Kwords flash
 .equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
+.equ RAMPZV  = 0
 .else
 .if (FLASHEND == 0x1fff)              ; 8  Kwords flash
 .equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
+.equ RAMPZV  = 0
 .endif
 .endif
 .endif
@@ -3543,14 +3545,12 @@ PFL:
          call   DOCREATE
         .dw     PFLASH
 ;***************************************************************
-#if 0
         fdw    PFL_L
 ZFL_L:
         .db     NFA|3, "zfl"
 ZFL:
          call   DOCREATE
         .dw     RAMPZV
-#endif
 ;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .db     NFA|4, ",?0=",0    ; Just for see to work !
@@ -3601,7 +3601,7 @@ BRNEC:
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-        fdw     PFL_L
+        fdw     ZFL_L
 IF_L:
         .db     NFA|IMMED|COMPILE|2,"if",0
 IF_:
