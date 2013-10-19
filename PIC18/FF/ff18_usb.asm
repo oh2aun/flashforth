@@ -2140,6 +2140,9 @@ WARM_ZERO_2:
 
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
 
+        clrf    PIE1, A         ; Disable all peripheral interrupts
+        clrf    PIE2, A
+	
         movlw   spbrgval
         movwf   SPBRG, A
 ; TX enable

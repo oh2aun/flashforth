@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          04.10.2013                                        *
+;    Date:          17.10.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -973,7 +973,25 @@ CHARPLUS_L:
 CHARPLUS:
         adiw    tosl, 1
         ret
-
+#if 0
+; k22:  ( k16 k6 opcode mask -- k16 xxxx.xxxk.kkkk.xxxk )
+        rcall   CREATECC
+        rcall   XDOES
+        rcall   DODOES
+        rcall   TOR
+	rcall	DUP
+        rcall   DOLIT
+        .dw     0x1
+	rcall	AND
+	rcall   SWOP
+	rcall   DOLIT
+	.dw	0x3
+	rcall	RSHIFT
+	rcall	OR
+	rcall	RFROM
+	rcall	MASKC
+	jmp	ICOMMA
+#endif
 ; CHARS    n1 -- n2            chars->adrs units
         fdw     CHARPLUS_L
 CHARS_L:
@@ -3525,8 +3543,17 @@ PFL:
          call   DOCREATE
         .dw     PFLASH
 ;***************************************************************
+#if 0
+        fdw    PFL_L
+ZFL_L:
+        .db     NFA|3, "zfl"
+ZFL:
+         call   DOCREATE
+        .dw     RAMPZV
+#endif
+;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
-        .db     NFA|4,",?0=",0    ; Just for see to work !
+        .db     NFA|4, ",?0=",0    ; Just for see to work !
 COMMAZEROSENSE:
         sbrc    FLAGS1, idup
         rjmp    COMMAZEROSENSE1
