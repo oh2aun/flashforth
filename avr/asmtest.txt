@@ -22,16 +22,21 @@ $01 constant Z+
 
 : testif
   [ ne, if, ]
-  true
+      true
   [ else, ]
-  false
+      false
   [ then, ]
 ;
 see testif
 
 : testuntil
+  [ #16 #0 ldi, ]
+  [ #17 #0 ldi, ]
+  [ #18 #1 ldi, ]
   [ begin, ]
-  true drop
-  [ ne, until, ]
+  [   #16 #6 add, ] \ R6 contains 1
+  [   #17 #5 adc, ] \ R5 contains 0
+  [   #18 #5 adc, ]
+  [ eq, until, ]
 ; 
 see testuntil
