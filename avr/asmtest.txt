@@ -20,15 +20,31 @@ $01 constant Z+
 9 Z+ $31 ldd,
  flash here 2 - @ $a891 asmtest
 
-: testif
-  [ ne, if, ]
+\ Leave true flag if zero flag is true
+: testif0
+  [ sez,    ] \ Set zero flag
+  [ eq, if, ] \ if zero
       true
-  [ else, ]
+  [ else, ]   \ else not zero
       false
   [ then, ]
 ;
-see testif
+testif0
+see testif0
 
+\ Leave true flag if zero flag is false
+: testif1 
+  [ clz,    ]      \ Clear zero flag
+  [ eq, not, if, ] \ if not zero
+      true
+  [ else, ]        \ else zero 
+      false
+  [ then, ]
+;
+testif1
+see testif1
+
+\ Increment 24 bit value until result is zero
 : testuntil
   [ #16 #0 ldi, ]
   [ #17 #0 ldi, ]
@@ -37,6 +53,7 @@ see testif
   [   #16 #6 add, ] \ R6 contains 1
   [   #17 #5 adc, ] \ R5 contains 0
   [   #18 #5 adc, ]
-  [ eq, until, ]
-; 
+  [ eq, until, ]    \ until R18 is zero
+;
+testuntil
 see testuntil

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          26.10.2013                                        *
+;    Date:          15.11.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -3639,19 +3639,18 @@ UNTIL:
         rcall   COMMAZEROSENSE
         rcall   BRNEC
         cbr     FLAGS1, (1<<izeroeq)
-UNTIL1:
-        rcall   IHERE
-        rcall   MINUS
-        rcall   TWOMINUS
-        jmp     RJMPC
+	jmp	AGAIN_
 
-; AGAIN    adrs --      uncond'l backward branch
+				; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
         fdw     UNTIL_L
 AGAIN_L:
         .db     NFA|IMMED|COMPILE|5,"again"
 AGAIN_:
-        rjmp    UNTIL1
+        rcall   IHERE
+        rcall   MINUS
+        rcall   TWOMINUS
+        jmp     RJMPC
 
 ; WHILE    addr1 -- addr2 addr1         branch for WHILE loop
 ; addr1 : address of BEGIN
@@ -3714,7 +3713,7 @@ NEXT:
         rcall   COMMAXT_A
         rcall   BRCCC
 
-        rcall   UNTIL1
+        rcall   AGAIN_
 
         rcall   DOLIT
         fdw     XNEXT1
@@ -4116,10 +4115,11 @@ RX1_OVF:
 TX1_ISR:
 .endif
 
+.if IDLE_MODE == 1
 IDLE_LOAD:
         lds     t0, status
         cpi     t0, 0
-        brne    PAUSE1
+        brne    IDLE_LOAD1
         sbrs    FLAGS2, fLOADled
         ret
 .if CPU_LOAD_LED == 1
@@ -4130,7 +4130,6 @@ IDLE_LOAD:
         sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .endif
 .endif
-.if IDLE_MODE == 1
 .ifdef SMCR
         ldi     t0, (1<<SE)
         out_    SMCR, t0
@@ -4147,16 +4146,9 @@ IDLE_LOAD:
         cbr     t0, (1<<SE)
         out_    MCUCR, zero
 .endif
-.endif
-.if CPU_LOAD_LED == 1
-.if CPU_LOAD_LED_POLARITY == 1
-        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.else
-        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.endif
-.endif
-PAUSE1:
+IDLE_LOAD1:
         ret
+.endif
 
 
 end_of_dict:
@@ -4396,6 +4388,16 @@ TIMER1_ISR:
         rjmp    FF_ISR_EXIT3
 
 FF_ISR:
+.if IDLE_MODE == 1
+.if CPU_LOAD_LED == 1
+        sbrc    FLAGS2, fLOADled
+.if CPU_LOAD_LED_POLARITY == 1
+        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.else
+        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.endif
+.endif
+.endif
         st      -y, xh
         in_     xh, SREG
         st      -y, xh
@@ -4942,7 +4944,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 26.10.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 15.11.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -5322,7 +5324,9 @@ TURNKEY:
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
+.if IDLE_MODE == 1
         rcall   IDLE_LOAD
+.endif
         in      t2, SREG
         cli
         push    yh        ; SP

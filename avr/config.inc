@@ -36,7 +36,7 @@
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE = 1
 
-; CPU load indicator led definitions 
+; CPU load indicator led definitions. Needs IDLE_MODE
 .equ CPU_LOAD_LED = 1       ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrb
 .equ CPU_LOAD_PORT = portb
