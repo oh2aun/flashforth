@@ -278,7 +278,7 @@
 .equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0c00
+.equ KERNEL_SIZE=0x0c80
 .else
 .if (FLASHEND == 0x1fff)              ; 8  Kwords flash
 .equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth

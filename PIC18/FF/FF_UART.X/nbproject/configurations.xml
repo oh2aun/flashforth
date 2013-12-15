@@ -34,7 +34,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>PICkit2PlatformTool</platformTool>
         <languageToolchain>MPASMWIN</languageToolchain>
-        <languageToolchainVersion>5.49</languageToolchainVersion>
+        <languageToolchainVersion>5.53</languageToolchainVersion>
         <platform>2</platform>
       </toolsSet>
       <compileType>
@@ -70,39 +70,13 @@
         <property key="hex-output-format" value="INHX32"/>
         <property key="map-file" value=""/>
       </MPASMWIN-LD>
-      <Simulator>
-        <property key="animationupdates.realtimewatchupdates" value="false"/>
-        <property key="animationupdates.steptime" value=""/>
-        <property key="animationupdates.updatetime" value=""/>
-        <property key="breakoptions.coreerrors" value="Ignore"/>
-        <property key="breakoptions.corewarnings" value="Ignore"/>
-        <property key="breakoptions.peripheralerrors" value="Ignore"/>
-        <property key="breakoptions.peripheralwarnings" value="Ignore"/>
-        <property key="breakoptions.stimulusmessages.notes" value="Ignore"/>
-        <property key="breakoptions.stimulusmessags.errors" value="Ignore"/>
-        <property key="breakoptions.stimulusmessags.warnings" value="Ignore"/>
-        <property key="breakoptions.wdtwarnings" value="Ignore"/>
-        <property key="codecoverage.enabled" value="Disable"/>
-        <property key="codecoverage.enableoutputtofile" value="false"/>
-        <property key="codecoverage.outputfile" value=""/>
-        <property key="oscillator.auxfrequency" value="120"/>
-        <property key="oscillator.auxfrequencyunit" value="Mega"/>
-        <property key="oscillator.frequency" value="1"/>
-        <property key="oscillator.frequencyunit" value="Mega"/>
-        <property key="oscillator.rcfrequency" value="250"/>
-        <property key="oscillator.rcfrequencyunit" value="Kilo"/>
-        <property key="performancedata.show" value="false"/>
-        <property key="periphADC1.altscl" value="false"/>
-        <property key="periphADC2.altscl" value="false"/>
-        <property key="tracecontrol.select" value="0"/>
-        <property key="tracecontrol.timestamp" value="2"/>
-        <property key="tracecontrol.tracebufmax" value="54600"/>
-        <property key="tracecontrol.tracefile" value="/home/mikael/mpdeftrace.log"/>
-        <property key="tracecontrol.traceresetonrun" value="false"/>
-        <property key="uart1io.output" value="window"/>
-        <property key="uart1io.outputfile" value=""/>
-        <property key="uart1io.uartioenabled" value="false"/>
-      </Simulator>
+      <PICkit2PlatformTool>
+        <property key="pk2settings.3state" value="false"/>
+        <property key="pk2settings.preserveee" value="false"/>
+        <property key="pk2settings.setvddvoltage" value=""/>
+        <property key="pk2settings.userpgmexec" value="true"/>
+        <property key="pk2settings.usetargetpower" value="false"/>
+      </PICkit2PlatformTool>
       <mpasmsuite>
         <property key="absolute-mode" value="false"/>
         <property key="eeprom-width" value="8"/>
