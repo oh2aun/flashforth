@@ -21,10 +21,20 @@ FlashForth V3.9
 - ?ABORT logic inverted due to alignement with standard forth.
 - Error messages ALREADY DEFINED and COMPILE ONLY.
 - Write to unimplemented flash prevented. This prevents USB PICs from hanging.
-- Print out restart reason when FF starts. See datasheet for STKPTR and RCON for details.
+- Print out start reason when FF starts. Restart reasons are
+  P = Power on  reset
+  B = Brown out reset
+  W = Watchdog timeout reset
+  R = Reset Instruction
+  F = HW stack full
+  E = HW stack empty
 - Support for PIC18(L)F2X/4XK22 devices
 - MPLABX project files.
-- Smaller return stack usage.
+- Smaller return stack usage in interrupts and um/mod
+- Remove flash write verification. Not needed in practice. Flash write has never failed.
+- Save PRODL:PRODH  during interrupts. Multiplications are now interrupt safe.
+- Load independent drift free TICKS from TIMER1 and TIMER3.
+
 
 FlashForth V3.8
 ---------------

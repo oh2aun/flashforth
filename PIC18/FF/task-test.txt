@@ -52,3 +52,4 @@ $0 $10 $20 $4 task: tblink
  ' blink1 is turnkey
 
 cr decimal load . cr
+

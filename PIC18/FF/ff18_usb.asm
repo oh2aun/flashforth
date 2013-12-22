@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          14.12.2013                                        *
+;    Date:          22.12.2013                                        *
 ;    File Version:  3.9                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2011  Mikael Nordman
+; Copyright (C) 2013  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -145,7 +145,7 @@ NFAmask equ 0x0f
 
 ;;; FLAGS2
 fLOAD   equ 2           ; 256 mS Load sample available
-fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control                       
+fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
 
 ;;; FLAGS1
@@ -175,39 +175,37 @@ iaddr_hi res 1       ; Instruction Memory access address
 p_lo     res 1       ; p pointer
 p_hi     res 1
 FLAGS1   res 1       ; Some flags                                    
+FLAGS2   res 1       ; More flags
 RXhead   res 1       ; Head of serial RX interrupt buffer
 RXtail   res 1       ; Tail of serial RX interrupt buffer
 TXhead   res 1       ; Head of serial TX interrupt buffer
 TXtail   res 1       ; Tail of serial TX interrupt buffer
 ms_count res 1       ; millisecond counter 2 bytes
 ms_cnt_h res 1       ; millisecond counter 2 bytes
-FLAGS2   res 1       ; More flags
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
 status   res 1       ; if zero, cpu idle is allowed (f056)
 RXcnt    res 1       ; Number of characters in the RX fifo
 TXcnt    res 1       ; Number of characters in the TX fifo
+irq_v    res 2       ; Interrupt vector
 load_acc res 3
-load     res 1       ; CPU load  (24)
+load     res 1       ; CPU load  (26)
 
-#ifdef p18fxx2xx8_fix_1
-SINTCON  res 1       ; Save INTCON before disabling interrupts
-SPIE1    res 1       ; Save PIE1 before disabling interrupts
-SPIE2    res 1       ; Save PIE2 before disabling interrupts
-#endif
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
+#else
+ihtp     res 1
+ihtbank  res 1
+ihpclath res 1
+ihtablat res 1
 #endif
-SpF      res 1       ; Save Forth Sp during C context
-SbankF   res 1	     ; Also used for temp by um/mod
-acs_byte res 1       ; byte to be used in assy embedded in C. Align interrupt parameter stack
-
+acs_byte res 1       ; Access bank byte to be used in assy embedded in C.
+;;; One byte of free access bank is needed by the USB library.
 
 IRQ_STACK udata
-irq_s0   res h'10'   ; Multiple of h'10'. Interrupt parameter stack. 8 cells deep
-
+irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
 
 ;;; The UART interface interrupt buffer areas
 #ifdef USB_CDC
@@ -225,17 +223,34 @@ TXbuf       res TX1_BUF_SIZE
 #endif
 
 #ifdef USB_CDC
-USER_AREA udata  ;; 0x122 bytes, coordinate witk linker file
+USER_AREA udata  ;; 0x122 bytes, coordinate with linker file
 #endif
 ;;; Interrupt high priority save variables
+#ifdef USB_CDC
 ihtp        res 1
 ihtbank     res 1
 ihpclath    res 1
+ihtablat    res 1
+#endif
 ihtblptrl   res 1
 ihtblptrh   res 1
-ihtablat    res 1
 ihsp        res 1
 ihsbank     res 1
+ihprodl     res 1
+ihprodh     res 1
+ihap        res 1
+ihabank     res 1
+
+#ifdef p18fxx2xx8_fix_1
+SINTCON     res 1       ; Save INTCON before disabling interrupts
+SPIE1       res 1       ; Save PIE1 before disabling interrupts
+SPIE2       res 1       ; Save PIE2 before disabling interrupts
+#endif
+
+#ifdef USB_CDC
+SpF         res 1       ; Save Forth Sp during C context
+SbankF      res 1       ; 
+#endif
 
 ;;; FORTH variables
 dpSTART     res 2
@@ -243,7 +258,6 @@ dpFLASH     res 2
 dpEEPROM    res 2 
 dpRAM       res 2
 dpLATEST    res 2
-irq_v       res 2       ; Interrupt vector
 upcurr      res 2       ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
@@ -340,10 +354,12 @@ irq_ms:
 #if MS_TMR == 1  ;****************************
         btfss   PIR1, TMR1IF, A
         bra     irq_ms_end
-        movlw   tmr1ms_val_hi
-        movwf   TMR1H, A
-        movlw   tmr1ms_val_lo
-        movwf   TMR1L, A
+        bcf     T1CON, TMR1ON
+        movlw   tmr1ms_val&0xff
+        subwf   TMR1L, F, A
+        movlw   (tmr1ms_val>>8)&0xff
+        subwfb  TMR1H, F, A
+        bsf     T1CON, TMR1ON
         bcf     PIR1, TMR1IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
@@ -358,10 +374,12 @@ irq_ms:
 #if MS_TMR == 3 ;******************************
         btfss   PIR2, TMR3IF, A
         bra     irq_ms_end
-        movlw   tmr1ms_val_hi
-        movwf   TMR3H, A
-        movlw   tmr1ms_val_lo
-        movwf   TMR3L, A
+        bcf     T3CON, TMR3ON
+        movlw   tmr1ms_val&0xff
+        subwf   TMR3L, F, A
+        movlw   (tmr1ms_val>>8)&0xff
+        subwfb  TMR3H, F, A
+        bsf     T3CON, TMR3ON
         bcf     PIR2, TMR3IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
@@ -371,18 +389,14 @@ irq_ms:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-        btfsc   FLAGS2, fLOAD, A
-        bra     irq_ms_end
         movf    TMR0L, W
         addwf   load_acc, F, A
         movf    TMR0H, W
+        clrf    TMR0H, A
+        clrf    TMR0L, A
         addwfc  load_acc+1, F, A
         movlw   0
         addwfc  load_acc+2, F, A
-        bcf     T0CON, TMR0ON, A
-        clrf    TMR0H, A
-        clrf    TMR0L, A
-        bsf     T0CON, TMR0ON, A
         movf    ms_count, W, A
         bnz     irq_ms_end
         bsf     FLAGS2, fLOAD, A
@@ -395,18 +409,17 @@ irq_ms_end:
         movff   Tp, ihtp
         movff   Tbank, ihtbank
 irq_user:
-        banksel irq_v
-        movf    irq_v+1, W, BANKED
+        movf    irq_v+1, W, A
         bz      irq_user_skip
                 
         movff   PCLATH, ihpclath
 
         movwf   PCLATH
-        movf    irq_v, W
+        movf    irq_v, W, A
         movwf   PCL              ; Now the interrupt routine is executing
 
 irq_user_end:                    ; The user interrupt must jump to here.
-        movff   ihpclath, PCLATH     ; Restore PCLATH
+        movff   ihpclath, PCLATH ; Restore PCLATH
 irq_user_skip:
 
 ;;; ************************************************
@@ -523,7 +536,7 @@ WARMLIT:
         dw      OPERATOR_AREA  ; TASK vector 
         dw      DEFAULT_BASE   ; BASE
         dw      utibbuf+h'f000'; TIB
-        dw      0               ; ustatus & uflg
+        dw      0              ; ustatus & uflg
 ;;; **************************************
 
 #ifdef USB_CDC
@@ -645,9 +658,12 @@ ANDLW_:
         dw      h'0b00'
 
 ; [i   --    Save registers for the Forth interrupt context
+;;;     16 instruction cycles
         dw      L_ANDLW_
 L_LI:
         db      NFA|INLINE|COMPILE|2,"[i"
+        movff   PRODL, ihprodl
+        movff   PRODH, ihprodh
         movff   TBLPTRL, ihtblptrl
         movff   TBLPTRH, ihtblptrh
         movff   TABLAT, ihtablat
@@ -657,6 +673,7 @@ L_LI:
         return
 
 ; i]   --    Restore registers for the Forth interrupt context
+;;;     14 instruction cycles
         dw      L_LI
 L_IR:
         db      NFA|INLINE|COMPILE|2,"i]"
@@ -665,6 +682,8 @@ L_IR:
         movff   ihtablat, TABLAT
         movff   ihtblptrl, TBLPTRL
         movff   ihtblptrh, TBLPTRH
+        movff   ihprodl, PRODL
+        movff   ihprodh, PRODH
         return
 
 ;***************************************************
@@ -791,33 +810,30 @@ QUERR3: rcall   asmemit
         goto    ABORT         ;    goto    ABORT
 
 ;*******************************************************
-;;; Multiplikation routine from the PIC datasheet adapted to FORTH.
-;;; Not interrupt safe !
-;;; Uses the temporary registers:
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank
+;;; Multiplication routine from the PIC datasheet adapted to FORTH.
+;;; Uses the registers:
+;;; TBLPTRH TBLPTRL PCLATH TABLAT TOSL TOSH PRODL PRODH
 ;;; 42 clock cycles
 umstar0:
         rcall   SETTBLPTR
         movff   Sminus, PCLATH
         movff   Sminus, TABLAT
-        push
         movf    TBLPTRL, W, A
-        mulwf   TABLAT, A       ; ARG1L * ARG2L ->
-                                ; PRODH:PRODL
+        
+        push
+        mulwf   TABLAT, A       ; ARG1L * ARG2L ->  PRODH:PRODL
         movff   PRODL, plusS
         movff   PRODH, plusS
 
         movf    TBLPTRH, W, A
-        mulwf   PCLATH, A       ; ARG1H * ARG2H ->
-                                ; PRODH:PRODL
+        mulwf   PCLATH, A       ; ARG1H * ARG2H -> PRODH:PRODL
         movf    PRODL, W, A
         movwf   TOSL, A
         movf    PRODH, W, A
         movwf   TOSH, A
 
         movf    TBLPTRL, W, A
-        mulwf   PCLATH, A       ; ARG1L * ARG2H ->
-                                ; PRODH:PRODL
+        mulwf   PCLATH, A       ; ARG1L * ARG2H -> PRODH:PRODL
         movf    PRODL, W, A
         addwf   Srw, F, A
         movf    PRODH, W, A
@@ -826,8 +842,7 @@ umstar0:
         addwfc  TOSH, F, A
 
         movf    TBLPTRH, W, A   
-        mulwf   TABLAT, A       ; ARG1H * ARG2L ->
-                                ; PRODH:PRODL
+        mulwf   TABLAT, A       ; ARG1H * ARG2L -> PRODH:PRODL
         movf    PRODL, W, A     ;
         addwf   Srw, F, A       ; Add cross
         movf    PRODH, W, A     ; products
@@ -842,28 +857,23 @@ umstar0:
 
 ;***********************************************************
 ;;; 320 - 384 cycles for 16 or 32 bit division
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp TOSL TOSH TOSU
-;;; Not interrupt safe !
+;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank PRODL PRODH
 
-#define DIVIDEND_0      SpF
-#define DIVIDEND_1      SbankF
-#define DIVIDEND_2      TABLAT 
+#define DIVIDEND_0      PRODL
+#define DIVIDEND_1      PRODH
+#define DIVIDEND_2      TABLAT
 #define DIVIDEND_3      PCLATH
 #define DIVISOR_0       TBLPTRL
 #define DIVISOR_1       TBLPTRH
-#define DCNT            acs_byte    ;  5 bit counter
+#define DCNT            Tbank   ; NOTE 4-bit counter
 
 umslashmod0:
         rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
         movff   Sminus, DIVIDEND_3
         movff   Sminus, DIVIDEND_2
-UMSLASHMOD0:
-        movf    Sminus, W, A
-        movwf   DIVIDEND_1, A
-        movf    Sminus, W, A
-        movwf   DIVIDEND_0, A
-        movlw   h'10'
-        movwf   DCNT, A             ; 19
+        movff   Sminus, DIVIDEND_1
+        movff   Sminus, DIVIDEND_0
+        clrf    DCNT, A             ; 19
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     STATUS, C, A
@@ -1005,28 +1015,11 @@ write_buffer_to_imem_2:
         movff   SINTCON, INTCON
 #endif
 
-        bsf     INTCON, GIE, A        
-
-verify_imem:
-        movlw   d'64'
-        movwf   PCLATH, A
-        lfsr    Tptr, flash_buf
-        movff   ibase_lo, TBLPTRL
-        movff   ibase_hi, TBLPTRH
-verify_imem_1:
-        tblrd*+
-        movf    TABLAT, W
-        cpfseq  Tplus, A
-        bra     verify_imem_2
-        decfsz  PCLATH, F, A
-        bra     verify_imem_1
         bcf     FLAGS1, idirty, A ; Mark flash buffer clean
         setf    ibase_hi, A       ; Mark flash buffer empty
-                
+        bsf     INTCON, GIE, A        
         return
 
-verify_imem_2:
-        reset
 magic:
         movlw   h'55'
         movwf   EECON2, A
@@ -1513,8 +1506,8 @@ PAUSE:
 #ifdef USB_CDC
         movff   Sp, SpF             ; Save Forth stack pointer
         movff   Sbank, SbankF
-        lfsr    1, _stack
-        lfsr    2, _stack           ; Initialize C stack pointer
+        lfsr    Tptr, _stack
+        lfsr    Aptr, _stack        ; Initialize C stack pointer
 
         call    USBCheckBusStatus
         call    USBDriverService
@@ -1540,27 +1533,27 @@ PAUSE0:
         movff   load_acc, plusS
         movff   load_acc+1, plusS
         movff   load_acc+2, plusS
-        clrf    plusS, A
         clrf    load_acc, A
         clrf    load_acc+1, A
         clrf    load_acc+2, A
         bsf     INTCON, GIE, A
+        clrf    plusS, A
         rcall   LIT
-        dw      clock / d'1570'
+        dw      CPU_LOAD_VAL
         call    UMSLASHMOD
-        call    NIP
         movf    Sminus, W, A
         movff   Sminus, load
+        call    DROP
 PAUSE_IDLE0:
 #endif
         movf    status, W, A
         bnz     PAUSE_IDLE1        
 #if CPU_LOAD_LED == ENABLE
-        bcf             CPU_LOAD_TRIS, CPU_LOAD_BIT, A
+        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
-        bcf             CPU_LOAD_PORT, CPU_LOAD_BIT, A
+        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
-        bsf             CPU_LOAD_PORT, CPU_LOAD_BIT, A
+        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #endif
 #endif
         bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
@@ -1571,9 +1564,9 @@ PAUSE_IDLE0:
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
 #if CPU_LOAD_LED_POLARITY == POSITIVE
-        bsf             CPU_LOAD_PORT, CPU_LOAD_BIT, A
+        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
-        bcf             CPU_LOAD_PORT, CPU_LOAD_BIT, A
+        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #endif
 #endif
 #endif
@@ -1776,37 +1769,43 @@ IFLUSH:
 ; Print restart reason
 RQ:
 RQ_STKFUL:
-	btfss	0, STKFUL, A
-	bra	RQ_STKUNF
+        btfss   0, STKFUL, A
+        bra     RQ_STKUNF
         rcall   XSQUOTE
-        db      d'3',"FUL"
+        db      d'1',"F"
         rcall   TYPE
 RQ_STKUNF:
-	btfss	0, STKUNF, A
-	bra	RQ_BOR
+        btfss   0, STKUNF, A
+        bra     RQ_BOR
         rcall   XSQUOTE
-        db      d'3',"UNF"
+        db      d'1',"E"
         rcall   TYPE
 RQ_BOR:
-	btfsc	1, BOR
-	bra	RQ_POR
+        btfsc   1, BOR
+        bra     RQ_POR
         rcall   XSQUOTE
-        db      d'4',"BOR "
+        db      d'1',"B"
         rcall   TYPE
-RQ_POR:	
-	btfsc	1, POR
-	bra	RQ_TO
+RQ_POR: 
+        btfsc   1, POR
+        bra     RQ_TO
         rcall   XSQUOTE
-        db      d'3',"POR"
+        db      d'1',"P"
         rcall   TYPE
 RQ_TO:
-	btfsc	1, TO
-	bra	RQ_END
+        btfsc   1, TO
+        bra     RQ_RI
         rcall   XSQUOTE
-        db      d'3',"WDT"
+        db      d'1',"W"
+        rcall   TYPE
+RQ_RI:
+        btfsc   1, RI
+        bra     RQ_END
+        rcall   XSQUOTE
+        db      d'1',"R"
         rcall   TYPE
 RQ_END:
-	return
+        return
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
 ; : mset ( mask addr -- )
@@ -2070,13 +2069,11 @@ BTFSS_:
         rcall   AS3_DOES
         dw      h'00a0'
 
-        
 ;;;
 LOCKED:
         btfss   FLAGS1, fLOCK
         return
         bra     ISTORERR
-
 ;******************************************************
         dw      L_BTFSS
 L_EMPTY:
@@ -2090,8 +2087,6 @@ EMPTY:
         dw      h'000c'
         call    CMOVE
         goto    DP_TO_RAM
-init_clk:
-
         return
 ;*******************************************************
         dw      L_EMPTY
@@ -2124,11 +2119,11 @@ main:
                             ; Clear ram
 WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
-        movff	RCON, 1         ; Save reset reasons
-        clrf	STKPTR, A       ; Clear return stack
+        movff   RCON, 1         ; Save reset reasons
+        clrf    STKPTR, A       ; Clear return stack
         movlw   h'1f'
         movwf   RCON, A
-        lfsr    Sptr, 2
+        lfsr    Sptr, 2         ; Zero ram from 2 upwards
 #ifdef USB_CDC
         lfsr    Tptr, cdc_notice
 #else
@@ -2150,7 +2145,7 @@ WARM_ZERO_2:
         setf    ibase_hi, A     ; Mark flash buffer empty
 
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
-	
+        
         clrf    PIE1, A         ; Disable all peripheral interrupts
         clrf    PIE2, A
         
@@ -2185,11 +2180,7 @@ WARM_ZERO_2:
 
 #if MS_TMR == 1
         ;; Timer 1 for 1 ms system tick
-#ifdef T1RD16
-        movlw   h'03'           ; Fosc/4,prescale = 1, 16-bit write
-#else   ; RD16
-        movlw   h'81'           ; Fosc/4,prescale = 1, 16-bit wrire
-#endif
+        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON, A
         setf    TMR1H, A
         bsf     PIE1,TMR1IE, A
@@ -2204,11 +2195,7 @@ WARM_ZERO_2:
 #else
 #if MS_TMR == 3
         ;; Timer 3 for 1 ms system tick
-#ifdef T3RD16
-        movlw   h'03'           ; Fosc/4,prescale = 1, 16-bit write
-#else   ; RD16
-        movlw   h'81'           ; Fosc/4,prescale = 1, 16-bit wrire
-#endif
+        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T3CON, A
         setf    TMR3H, A
         bsf     PIE2,TMR3IE, A
@@ -2239,7 +2226,6 @@ WARM_ZERO_2:
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
         bsf     INTCON, GIE, A
- 
 
         rcall   LIT
         dw      dp_start
@@ -2259,9 +2245,9 @@ WARM_2:
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
 
-        rcall   VER
         rcall   RQ
-	
+        rcall   VER
+        
         rcall   TURNKEY
         call    ZEROSENSE
         bz      STARTQ2
@@ -2294,10 +2280,10 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'21',"FlashForth V3.9 USB\r\n"
+        db d'22'," FlashForth V3.9 USB\r\n"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'17',"FlashForth V3.9\r\n"
+        db d'18'," FlashForth V3.9\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
@@ -2546,17 +2532,6 @@ RPEMPTY:
         movwf   PCL, A
 
 ; MEMORY OPERATIONS =============================
-;;; Check that a ram address does not point to kernel variables
-;;; 6-10 cycles
-#ifdef SAFE_CHECK1
-chkramaddr:
-        movlw   h'60'
-        cpfslt  Tp, A
-        return
-        movf    Tbank, W, A
-        bnz     return1
-#endif
-
 ISTORERR:
         call    DOTS
         rcall   XSQUOTE
@@ -2579,9 +2554,6 @@ STORE:
 STORE1:
         movff   Sminus, Tbank
         movff   Sminus, Tp
-#ifdef SAFE_CHECK1
-        rcall   chkramaddr
-#endif
         swapf   Tplus, W, A
         movff   Sminus, Tminus
         movff   Sminus, Trw
@@ -2604,9 +2576,6 @@ CSTORE:
 CSTORE1:
         movff   Sminus, Tbank
         movff   Sminus, Tp
-#ifdef SAFE_CHECK1
-        rcall   chkramaddr
-#endif
         movf    Sminus, W, A
         movff   Sminus, Trw
         return
@@ -3567,18 +3536,17 @@ PPLUS:
         return
 ;***************************************************
         dw      L_PPLUS
-L_PNPLUS:
-        db      NFA|3,"p++" ; ( n -- ) Add n to p
-PNPLUS:
-        movff   Sminus, Tp
-        movf    Sminus, W, A
+L_PTWOPLUS:
+        db      NFA|3,"p2+" ; ( n -- ) Add 2 to p
+PTWOPLUS:
+        movlw   2
         addwf   p_lo, F, A
-        movf    Tp, W, A
+        movlw   0
         addwfc  p_hi, F, A
         return
 ;***************************************************
 ; UEMIT  -- addr         Address of EMIT user vector
-        dw      L_PNPLUS
+        dw      L_PTWOPLUS
 L_UEMIT:
         db      NFA|5,"'emit"
 UEMIT:
@@ -4739,8 +4707,7 @@ DP_TO_EEPROM_0:
 DP_TO_EEPROM_1:
         call    DROP
 DP_TO_EEPROM_2:
-        call    CELL
-        rcall   PNPLUS
+        rcall   PTWOPLUS
 DP_TO_EEPROM_3:
         decf    TOSL, F
         bc      DP_TO_EEPROM_0
@@ -4791,9 +4758,8 @@ QUIT1:
         movf    state, W, A
         bnz     QUIT1
         rcall   DP_TO_EEPROM
-         
         call    XSQUOTE
-        db      4," ok "
+        db      3," ok"
         call    TYPE
         rcall   PROMPT
         bra     QUIT0
@@ -4816,7 +4782,7 @@ ABORT:
         call    SPSTORE
         goto    QUIT            ; QUIT never returns
 
-; ?ABORT   f --       abort & print ?
+; ?ABORT?   f --       abort & print ?
         dw      L_ABORT
 L_QABORTQ:
         db      NFA|7,"?abort?"
@@ -5957,16 +5923,16 @@ PCFETCH:
         goto    CFETCH
 ;***************************************************
         dw      L_PCFETCH
-L_PTWOPLUS:
+L_PNPLUS:
 kernellink:
-        db      NFA|3,"p2+" ; ( n -- ) Add 2 to p
-PTWOPLUS:
-        movlw   2
+        db      NFA|3,"p++" ; ( n -- ) Add n to p
+PNPLUS:
+        movff   Sminus, Tp
+        movf    Sminus, W, A
         addwf   p_lo, F, A
-        movlw   0
+        movf    Tp, W, A
         addwfc  p_hi, F, A
         return
-
 ;***************************************************
 ; marker --- name
         dw      0
@@ -5986,6 +5952,7 @@ MARKER:
         call    FRAM
         rcall   XDOES
         call    DODOES
+; dup 8 + @ fence u> abort" FENCE"
         rcall   INI
         call    TEN
         goto    CMOVE
