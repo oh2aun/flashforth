@@ -48,14 +48,5 @@ hex ram
 \ addr -- addr+1 n 
 : count c@+ ;
 
-eeprom 0 value fence ram
-
-: forget2 ( --- name )
-  bl word latest @ (f) ?abort?
-  dup fence u> abort" FENCE"
-  c>n 2- dup @ ?abort?
-  dup flash dp ! @ latest ! ram
-;
-
 hex ram
 

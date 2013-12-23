@@ -8,12 +8,12 @@
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
-      <itemPath>../FF_0000.lkr</itemPath>
+      <itemPath>../lkr/FF_0000.lkr</itemPath>
     </logicalFolder>
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
-      <itemPath>../ff18_usb.asm</itemPath>
+      <itemPath>../src/ff18_usb.asm</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -73,9 +73,9 @@
       <PICkit2PlatformTool>
         <property key="pk2settings.3state" value="false"/>
         <property key="pk2settings.preserveee" value="false"/>
-        <property key="pk2settings.setvddvoltage" value=""/>
+        <property key="pk2settings.setvddvoltage" value="5.00"/>
         <property key="pk2settings.userpgmexec" value="true"/>
-        <property key="pk2settings.usetargetpower" value="false"/>
+        <property key="pk2settings.usetargetpower" value="true"/>
       </PICkit2PlatformTool>
       <mpasmsuite>
         <property key="absolute-mode" value="false"/>

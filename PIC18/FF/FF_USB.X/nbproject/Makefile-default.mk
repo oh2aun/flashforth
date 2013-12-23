@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../ff18_usb.asm ../P18F_USB_REG.asm
+SOURCEFILES_QUOTED_IF_SPACED=../src/ff18_usb.asm ../src/P18F_USB_REG.asm
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1472/ff18_usb.o ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1472/ff18_usb.o.d ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff18_usb.o ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff18_usb.o.d ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1472/ff18_usb.o ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o
+OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff18_usb.o ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o
 
 # Source Files
-SOURCEFILES=../ff18_usb.asm ../P18F_USB_REG.asm
+SOURCEFILES=../src/ff18_usb.asm ../src/P18F_USB_REG.asm
 
 
 CFLAGS=
@@ -75,55 +75,55 @@ FIXDEPS=fixDeps
 	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
 MP_PROCESSOR_OPTION=18f2455
-MP_LINKER_DEBUG_OPTION=
+MP_LINKER_DEBUG_OPTION= -u_DEBUGCODESTART=0x5dc0 -u_DEBUGCODELEN=0x240 -u_DEBUGDATASTART=0x3f4 -u_DEBUGDATALEN=0xb
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1472/ff18_usb.o: ../ff18_usb.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff18_usb.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff18_usb.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/ff18_usb.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG  -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1472/ff18_usb.lst\\\" -e\\\"${OBJECTDIR}/_ext/1472/ff18_usb.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1472/ff18_usb.o\\\" \\\"../ff18_usb.asm\\\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/ff18_usb.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ff18_usb.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/_ext/1360937237/ff18_usb.o: ../src/ff18_usb.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff18_usb.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff18_usb.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff18_usb.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PICKIT2=1 -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.o\\\" \\\"../src/ff18_usb.asm\\\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/ff18_usb.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff18_usb.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
-${OBJECTDIR}/_ext/1472/P18F_USB_REG.o: ../P18F_USB_REG.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/P18F_USB_REG.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG  -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.lst\\\" -e\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.o\\\" \\\"../P18F_USB_REG.asm\\\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/P18F_USB_REG.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/P18F_USB_REG.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o: ../src/P18F_USB_REG.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PICKIT2=1 -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o\\\" \\\"../src/P18F_USB_REG.asm\\\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 else
-${OBJECTDIR}/_ext/1472/ff18_usb.o: ../ff18_usb.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff18_usb.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff18_usb.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/ff18_usb.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1472/ff18_usb.lst\\\" -e\\\"${OBJECTDIR}/_ext/1472/ff18_usb.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1472/ff18_usb.o\\\" \\\"../ff18_usb.asm\\\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/ff18_usb.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ff18_usb.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/_ext/1360937237/ff18_usb.o: ../src/ff18_usb.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff18_usb.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff18_usb.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff18_usb.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/ff18_usb.o\\\" \\\"../src/ff18_usb.asm\\\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/ff18_usb.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff18_usb.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
-${OBJECTDIR}/_ext/1472/P18F_USB_REG.o: ../P18F_USB_REG.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/P18F_USB_REG.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/P18F_USB_REG.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.lst\\\" -e\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1472/P18F_USB_REG.o\\\" \\\"../P18F_USB_REG.asm\\\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/P18F_USB_REG.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/P18F_USB_REG.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o: ../src/P18F_USB_REG.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o\\\" \\\"../src/P18F_USB_REG.asm\\\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/P18F_USB_REG.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 endif
 
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: link
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk  ../FF_USB_18F2455.lib  ../FF_USB_0000.lkr
+dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk  ../lib/FF_USB_18F2455.lib  ../lkr/FF_USB_0000.lkr
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_LD} $(MP_EXTRA_LD_PRE) "../FF_USB_0000.lkr"  -p$(MP_PROCESSOR_OPTION)  -w -x -u_DEBUG -z__ICD2RAM=1 -m"${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"   -z__MPLAB_BUILD=1  -z__MPLAB_DEBUG=1 $(MP_LINKER_DEBUG_OPTION) -odist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}   ../FF_USB_18F2455.lib  
+	${MP_LD} $(MP_EXTRA_LD_PRE) "../lkr/FF_USB_0000.lkr"  -p$(MP_PROCESSOR_OPTION)  -w -x -u_DEBUG -z__ICD2RAM=1 -m"${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"   -z__MPLAB_BUILD=1  -z__MPLAB_DEBUG=1 -z__MPLAB_DEBUGGER_PICKIT2=1 $(MP_LINKER_DEBUG_OPTION) -odist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}   ../lib/FF_USB_18F2455.lib  
 else
-dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk  ../FF_USB_18F2455.lib ../FF_USB_0000.lkr
+dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk  ../lib/FF_USB_18F2455.lib ../lkr/FF_USB_0000.lkr
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_LD} $(MP_EXTRA_LD_PRE) "../FF_USB_0000.lkr"  -p$(MP_PROCESSOR_OPTION)  -w  -m"${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"   -z__MPLAB_BUILD=1  -odist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}   ../FF_USB_18F2455.lib  
+	${MP_LD} $(MP_EXTRA_LD_PRE) "../lkr/FF_USB_0000.lkr"  -p$(MP_PROCESSOR_OPTION)  -w  -m"${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"   -z__MPLAB_BUILD=1  -odist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}   ../lib/FF_USB_18F2455.lib  
 endif
 
 

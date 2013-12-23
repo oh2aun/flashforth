@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          22.12.2013                                        *
+;    Date:          23.12.2013                                        *
 ;    File Version:  3.9                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -30,17 +30,18 @@
 ;**********************************************************************
 
 
-#include "p18f-main.cfg"
-#include "p18fxxxx.cfg"
+#include "../config/p18f-main.cfg"
+#include "../config/p18fxxxx.cfg"
 
 #ifdef USB_CDC 
+
 #define OPERATOR_TX  TX0
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
-#if IDLE_MODE == ENABLE
+
 #undefine IDLE_MODE      ; Not supported for USB
 #define IDLE_MODE DISABLE 
-#endif
+
         extern _stack
         extern keyUSBUSART
         extern keyQUSBUSART
@@ -58,6 +59,7 @@
         global ms_count
         global acs_byte
         global device_dsc
+
 #else ; Normal UART
 
 #define OPERATOR_TX  TX1_
@@ -222,9 +224,12 @@ TXbufmask   equ TX1_BUF_SIZE - 1
 TXbuf       res TX1_BUF_SIZE
 #endif
 
-#ifdef USB_CDC
-USER_AREA udata  ;; 0x122 bytes, coordinate with linker file
+#ifdef p18fxx2xx8_fix_1
+SINTCON     res 1       ; Save INTCON before disabling interrupts
+SPIE1       res 1       ; Save PIE1 before disabling interrupts
+SPIE2       res 1       ; Save PIE2 before disabling interrupts
 #endif
+
 ;;; Interrupt high priority save variables
 #ifdef USB_CDC
 ihtp        res 1
@@ -241,12 +246,6 @@ ihprodh     res 1
 ihap        res 1
 ihabank     res 1
 
-#ifdef p18fxx2xx8_fix_1
-SINTCON     res 1       ; Save INTCON before disabling interrupts
-SPIE1       res 1       ; Save PIE1 before disabling interrupts
-SPIE2       res 1       ; Save PIE2 before disabling interrupts
-#endif
-
 #ifdef USB_CDC
 SpF         res 1       ; Save Forth Sp during C context
 SbankF      res 1       ; 
@@ -258,6 +257,11 @@ dpFLASH     res 2
 dpEEPROM    res 2 
 dpRAM       res 2
 dpLATEST    res 2
+
+#ifdef USB_CDC
+USER_AREA udata
+#endif
+
 upcurr      res 2       ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
@@ -265,7 +269,7 @@ ussize      equ PARAMETER_STACK_SIZE
 utibsize    equ TIB_SIZE + HOLD_SIZE
 
 ;;; User variables and area 
-#ifdef SKIP_MULTITASKING
+#if MULTITASKING == DISABLE
 
 ursize      equ d'4'          ; No return stack storage, just some parameter stack underrun protection
 
@@ -476,11 +480,10 @@ irq_async_rx_4:
 irq_async_rx_end:  
 ;;; *******************************************************************************
 ;;; UART TX interrupt routine
-#if TX1_BUF_SIZE > 0
 irq_async_tx:
         btfss   PIR1, TXIF, A
         bra     irq_async_tx_end
-
+#if TX1_BUF_SIZE > 0
         movf    TXcnt, W, A
         bz      irq_async_tx_1
 
@@ -502,9 +505,9 @@ irq_async_tx_0:
         decfsz  TXcnt, F, A
         bra     irq_async_tx_end
 irq_async_tx_1: 
+#endif
         bcf     PIE1, TXIE, A           ;  Disable TX interrupts. Queue is empty
 irq_async_tx_end:
-#endif
 ;;; *****************************************************************
 #ifdef HW_FC_RTS_PORT
 irq_fc:
@@ -698,12 +701,17 @@ TX1_:
         rcall   TX1_SEND
         bra     PAUSE          ; Pause during a character is sent out
 TX1_LOOP:
+#if IDLE_MODE == ENABLE
         rcall   IDLE
+        bsf     PIE1, TXIE, A  ;  Enable TX interrupts. Wakeup from idle mode when TXREG is EMPTY
+#endif
         rcall   PAUSE
         btfss   PIR1, TXIF, A
         bra     TX1_LOOP       ; Dont pause if paused before sending.
 TX1_SEND:
+#if IDLE_MODE == ENABLE
         rcall   BUSY
+#endif
         movf    Sminus, W, A
         movf    Sminus, W, A
 #if USE_8BIT_ASCII == DISABLE
@@ -717,11 +725,15 @@ TX1_SEND:
 ;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
         bra     TX1_2
+#if IDLE_MODE == ENABLE
         rcall   IDLE
+#endif
         bra     TX1_
         
 TX1_2:
+#if IDLE_MODE == ENABLE
         rcall   BUSY
+#endif
         movf    Sminus, W
 #if USE_8BIT_ASCII == DISABLE
         movlw   h'7f'
@@ -748,13 +760,17 @@ TX1_2:
 L_RX1_:
         db      NFA|3,"rx1"
 RX1_:
-        rcall   PAUSE
         rcall   QUERR
         rcall   RX1Q
+#if IDLE_MODE == ENABLE
+        rcall   IDLE
+#endif
         movf    Sminus, W, A
         iorwf   Sminus, W, A
         bz      RX1_
-
+#if IDLE_MODE == ENABLE
+        rcall   BUSY
+#endif
         lfsr    Tptr, RXbuf
         movf    RXtail, W, A
         movff   TWrw, plusS    ;  Take a char from the buffer
@@ -776,11 +792,10 @@ RX1_:
 L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
-        rcall   BUSY
+        rcall   PAUSE
         movf    RXcnt, W, A
         movwf   plusS
         bnz     RX1Q2
-        rcall   IDLE
 #if FC_TYPE_SW == ENABLE
         btfss   FLAGS2, fFC, A
         rcall   XXON
@@ -873,7 +888,7 @@ umslashmod0:
         movff   Sminus, DIVIDEND_2
         movff   Sminus, DIVIDEND_1
         movff   Sminus, DIVIDEND_0
-        clrf    DCNT, A             ; 19
+        clrf    DCNT, A             ; count to 16; 19
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     STATUS, C, A
@@ -1573,7 +1588,7 @@ PAUSE_IDLE1:
 #endif
 
 PAUSE000:
-#ifndef SKIP_MULTITASKING
+#if MULTITASKING == ENABLE
         ; Set user pointer in Tp, Tbank (FSR1)
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
@@ -1667,10 +1682,8 @@ TX0:
         bra     TX0_0                ; Put char in USB buffer if UB TX is ready
 
         clrf    TX0cnt, A
-        rcall   IDLE
         bra     TX0                  ; PAUSE if the USB TX is not ready
 TX0_0:
-        rcall   BUSY
         movff   ms_count, TX0tmr
         incf    TX0tmr, F, A
         incf    TX0tmr, F, A
@@ -1687,10 +1700,10 @@ TX0_SEND:                            ; Called from PAUSE in case of timeout
         movf    TX0cnt, W, A
         movwf   ep3Bi+1, BANKED      ; BD3.COUNTER
         movlw   0x40
-        ANDWF   ep3Bi, F, BANKED     ; BD3.STAT
-        BTG     ep3Bi, 0x6, BANKED
-        MOVLW   0x88
-        IORWF   ep3Bi, F, BANKED     ; BD3.STAT
+        andwf   ep3Bi, F, BANKED     ; BD3.STAT
+        btg     ep3Bi, 0x6, BANKED
+        movlw   0x88
+        iorwf   ep3Bi, F, BANKED     ; BD3.STAT
         clrf    TX0cnt, A
         return
 TX0_1:
@@ -1699,7 +1712,7 @@ TX0_1:
 TX0_2:  
         return
 ;***************************************************
-; KEY   -- c    get character from the serial line
+; KEY   -- c    get character from the USB line
         dw      L_TX0
 L_RX0:
         db      NFA|3,"rx0"
@@ -1708,10 +1721,8 @@ RX0:
         call    keyUSBUSART
         addlw   0x0
         bnz     RX0_2
-        rcall   IDLE
         bra     RX0
 RX0_2:
-        rcall   BUSY
         movff   keyCHAR, plusS
 #if CTRL_O_WARM_RESET == ENABLE
         movlw   0xf
@@ -2209,7 +2220,7 @@ WARM_ZERO_2:
         dw      warmlitsize
         call    CMOVE
         
-#ifndef SKIP_MULTITASKING
+#if MULTITASKING == ENABLE
         rcall   LIT
         dw      u0+h'f000'     ; ULINK
         call    ULINK
@@ -2221,7 +2232,9 @@ WARM_ZERO_2:
         rcall   FETCH
         rcall   STORE
 #endif
+#if IDLE_MODE == ENABLE
         call    BUSY
+#endif
         rcall   FRAM
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
@@ -3911,7 +3924,7 @@ BIN:    rcall   CELL
         rcall   BASE
         goto    STORE
 
-#ifndef SKIP_MULTITASKING
+#if MULTITASKING == ENABLE
 ; ULINK   -- a-addr     link to next task
         dw      L_BIN
 L_ULINK:
@@ -5185,7 +5198,9 @@ MS:
         rcall   TICKS
         call    PLUS
 MS1:    
+#if IDLE_MODE == ENABLE
         call    IDLE
+#endif
         call    PAUSE
         rcall   DUP_A
         rcall   TICKS
@@ -5194,7 +5209,9 @@ MS1:
         movf    Sminus, W, A
         iorwf   Sminus, W, A
         bz      MS1
+#if IDLE_MODE == ENABLE
         call    BUSY
+#endif
         goto    DROP
 
 ;  .id ( nfa -- ) 
@@ -5295,7 +5312,6 @@ DOTS2:
         goto    TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
-#ifndef SKIP_DUMP
         dw      L_DOTS
 L_DUMP:
         db      NFA|4,"dump"
@@ -5346,7 +5362,7 @@ DUMP7:
         bc      DUMP1
         pop
         goto    DROP
-#endif
+
 ; IALLOT   n --    allocate n bytes in ROM
 ;       dw      link
 ;link   set     $
@@ -5364,11 +5380,7 @@ IALLOT:
 ;       2dup 2/ swap
 ;       abs > (qabort)
 ;       and 2/ ;
-#ifndef SKIP_DUMP
         dw     L_DUMP
-#else
-        dw      L_DOTS
-#endif
 L_BRQ:
         db      NFA|3,"br?"
 BRQ:
@@ -5902,9 +5914,9 @@ MEMHI:
         call    PLUS
         goto    FETCH
 FLASHHI:
-        dw      FLASH_HI+1
-        dw      EEPROM_HI+1
-        dw      RAM_HI+1
+        dw      FLASH_HI
+        dw      EEPROM_HI
+        dw      RAM_HI
 ;***************************************************
         dw      L_MEMHI
 L_FETCH_P:
@@ -5952,7 +5964,6 @@ MARKER:
         call    FRAM
         rcall   XDOES
         call    DODOES
-; dup 8 + @ fence u> abort" FENCE"
         rcall   INI
         call    TEN
         goto    CMOVE

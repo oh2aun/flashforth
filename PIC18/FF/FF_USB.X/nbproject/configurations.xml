@@ -8,13 +8,13 @@
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
-      <itemPath>../FF_USB_0000.lkr</itemPath>
+      <itemPath>../lkr/FF_USB_0000.lkr</itemPath>
     </logicalFolder>
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
-      <itemPath>../ff18_usb.asm</itemPath>
-      <itemPath>../P18F_USB_REG.asm</itemPath>
+      <itemPath>../src/ff18_usb.asm</itemPath>
+      <itemPath>../src/P18F_USB_REG.asm</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -42,7 +42,7 @@
         <targetDevice>PIC18F2455</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>Simulator</platformTool>
+        <platformTool>PICkit2PlatformTool</platformTool>
         <languageToolchain>MPASMWIN</languageToolchain>
         <languageToolchainVersion>5.53</languageToolchainVersion>
         <platform>2</platform>
@@ -50,7 +50,7 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../FF_USB_18F2455.lib</linkerLibFileItem>
+            <linkerLibFileItem>../lib/FF_USB_18F2455.lib</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <loading>
@@ -81,43 +81,13 @@
         <property key="hex-output-format" value="INHX32"/>
         <property key="map-file" value="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"/>
       </MPASMWIN-LD>
-      <Simulator>
-        <property key="breakoptions.coreerrors" value="Ignore"/>
-        <property key="breakoptions.corewarnings" value="Ignore"/>
-        <property key="breakoptions.peripheralerrors" value="Ignore"/>
-        <property key="breakoptions.peripheralwarnings" value="Ignore"/>
-        <property key="breakoptions.stimulusmessages.notes" value="Ignore"/>
-        <property key="breakoptions.stimulusmessags.errors" value="Ignore"/>
-        <property key="breakoptions.stimulusmessags.warnings" value="Ignore"/>
-        <property key="breakoptions.wdtwarnings" value="Ignore"/>
-        <property key="codecoverage.enabled" value="Disable"/>
-        <property key="codecoverage.enableoutputtofile" value="false"/>
-        <property key="codecoverage.outputfile" value=""/>
-        <property key="oscillator.auxfrequency" value="120"/>
-        <property key="oscillator.auxfrequencyunit" value="Mega"/>
-        <property key="oscillator.frequency" value="1"/>
-        <property key="oscillator.frequencyunit" value="Mega"/>
-        <property key="oscillator.rcfrequency" value="250"/>
-        <property key="oscillator.rcfrequencyunit" value="Kilo"/>
-        <property key="performancedata.show" value="false"/>
-        <property key="periphADC1.altscl" value="false"/>
-        <property key="periphADC1.minTacq" value=""/>
-        <property key="periphADC1.tacqunits" value="microseconds"/>
-        <property key="periphADC2.altscl" value="false"/>
-        <property key="periphADC2.minTacq" value=""/>
-        <property key="periphADC2.tacqunits" value="microseconds"/>
-        <property key="tracecontrol.include.timestamp" value="false"/>
-        <property key="tracecontrol.select" value="0"/>
-        <property key="tracecontrol.stallontracebufferfull" value="false"/>
-        <property key="tracecontrol.timestamp" value="2"/>
-        <property key="tracecontrol.tracebufmax" value="546000"/>
-        <property key="tracecontrol.tracefile"
-                  value="/home/mikael/ff/PIC18/FF/FF_USB.X/defmplabxtrace.log"/>
-        <property key="tracecontrol.traceresetonrun" value="false"/>
-        <property key="uart1io.output" value="window"/>
-        <property key="uart1io.outputfile" value=""/>
-        <property key="uart1io.uartioenabled" value="false"/>
-      </Simulator>
+      <PICkit2PlatformTool>
+        <property key="pk2settings.3state" value="false"/>
+        <property key="pk2settings.preserveee" value="false"/>
+        <property key="pk2settings.setvddvoltage" value="5.00"/>
+        <property key="pk2settings.userpgmexec" value="true"/>
+        <property key="pk2settings.usetargetpower" value="false"/>
+      </PICkit2PlatformTool>
       <mpasmsuite>
         <property key="absolute-mode" value="false"/>
         <property key="eeprom-width" value="8"/>

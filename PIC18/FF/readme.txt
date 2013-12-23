@@ -34,6 +34,7 @@ FlashForth V3.9
 - Remove flash write verification. Not needed in practice. Flash write has never failed.
 - Save PRODL:PRODH  during interrupts. Multiplications are now interrupt safe.
 - Load independent drift free TICKS from TIMER1 and TIMER3.
+- New directory structure
 
 
 FlashForth V3.8
