@@ -1,7 +1,7 @@
-Compiling FlashForth 3.8
+Compiling FlashForth 3.9
 ------------------------
 
-FlashForth 3.8 (FF) can be compiled
+FlashForth 3.9 (FF) can be compiled
 with the USB library and without.
 
 FF may also be compiled for installation via

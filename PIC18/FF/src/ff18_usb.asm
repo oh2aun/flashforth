@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          23.12.2013                                        *
+;    Date:          24.12.2013                                        *
 ;    File Version:  3.9                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -30,8 +30,8 @@
 ;**********************************************************************
 
 
-#include "../config/p18f-main.cfg"
-#include "../config/p18fxxxx.cfg"
+#include "p18f-main.cfg"
+#include "p18fxxxx.cfg"
 
 #ifdef USB_CDC 
 
