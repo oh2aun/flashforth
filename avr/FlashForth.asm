@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          15.11.2013                                        *
+;    Date:          26.12.2013                                        *
 ;    File Version:  Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -185,6 +185,24 @@
 .endmacro
 
 ; Symbol naming compatilibity
+; UART0 symbols for Atmega32
+.ifndef UCSR0A
+.equ UCSR0A=UCSRA
+.equ UDRE0=UDR
+.equ UCSR0B=UCSRB
+.equ UCSR0C=UCSRC
+.equ RXEN0=RXEN
+.equ TXEN0=TXEN
+.equ RXCIE0=RXCIE
+.equ UCSZ00=UCSZ0
+.equ USBS0=USBS
+.equ UBRR0H=UBRRH
+.equ UBRR0L=UBRRL
+.endif
+
+.ifndef SPMCSR
+.equ SPMCSR=SPMCR
+.endif
 
 .ifndef SPMEN
 .equ SPMEN=SELFPRGEN
@@ -339,7 +357,7 @@ rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
 rbuf0:       .byte RX0_BUF_SIZE
 
-.ifdef UDR1
+.ifdef UCSR1A
 rxqueue1:
 rbuf1_wr:    .byte 1
 rbuf1_rd:    .byte 1
@@ -1174,6 +1192,9 @@ ACC_LF:
         rcall   CFETCH_A
         rcall   ZEROSENSE
         breq    ACC6
+        rcall   FALSE_
+        rcall   FCR
+        rcall   CSTORE_A
         rjmp    ACC1
 ACC2:
         rcall   FALSE_
@@ -1786,7 +1807,7 @@ min1:   jmp     DROP
 CFETCH_A:       
         jmp     CFETCH
 
-        .db     NFA|2,"c@",0
+        .db     NFA|2,"c!",0
 CSTORE_A:       
         jmp     CSTORE
 
@@ -3984,7 +4005,7 @@ MARKER:
         jmp     CMOVE
 
 
-.ifdef UDR1
+.ifdef UCSR1A
 ;***************************************************
 ; TX1   c --    output character to UART 1
         fdw     RX0Q_L
@@ -4425,7 +4446,6 @@ FF_ISR:
 
         push    t0
         push    t1
-
         push    t2
         push    t3
         push    pl
@@ -4477,7 +4497,7 @@ RX0_OVF:
         rjmp    TX0_SEND
 TX0_ISR:
 
-.ifdef UDR1
+.ifdef UCSR1A
 RX1_ISR: rjmp   RX1_ISRR
 .endif
 ;;; Enable load led
@@ -4516,7 +4536,7 @@ TX0_:
 TX0_LOOP:
         rcall   PAUSE
         in_     t0, UCSR0A
-        sbrs    t0, UDRE0
+        sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_LOOP
         out_    UDR0, tosl
         poptos
@@ -4546,7 +4566,7 @@ XXOFF_TX0_1:
 .endif
 TX0_SEND:
         in_     zl, UCSR0A
-        sbrs    zl, UDRE0
+        sbrs    zl, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_SEND
         out_    UDR0, zh
         ret
@@ -4770,7 +4790,7 @@ IFLUSH:
         ret
 
 ;***************************************************
-.ifdef UDR1
+.ifdef UCSR1A
         fdw     RX1Q_L
 .else
         fdw     RX0Q_L
@@ -4889,7 +4909,6 @@ WARM_3:
         sbi_    U0RTS_DDR, U0RTS_BIT
 .endif
 .endif
-
 ; Init UART 1
 .ifdef UBRR1L
         ; Set baud rate
@@ -4944,7 +4963,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 15.11.2013",0xd,0xa,0
+        .db 30,"FlashForth Atmega 26.12.2013",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts

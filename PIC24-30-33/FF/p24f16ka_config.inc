@@ -2,7 +2,7 @@
 config FOSCSEL, FNOSC_FRCPLL
 config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF & POSCMOD_NONE
 config FWDT, FWDTEN_ON 
-config FPOR, MCLRE_OFF & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
+config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
@@ -42,11 +42,11 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; UART buffer sizes
 .equ TX1_BUF_SIZE, 16
 .equ RX1_BUF_SIZE, 32
-.equ RX1_OFF_FILL, 16   ; Fill level for XOFF
+.equ RX1_OFF_FILL, 4   ; Fill level for XOFF
 
 .equ TX2_BUF_SIZE, 16
 .equ RX2_BUF_SIZE, 32
-.equ RX2_OFF_FILL, 16   ; Fill level for XOFF
+.equ RX2_OFF_FILL, 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 96           ; 48 cells return stack
@@ -66,16 +66,8 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; 'E' is printed before each eeprom write
 .equ DEBUG_FLASH, 0
 
-; Write method 1 writes to flash always before the prompt. -> Robust. More wear on the flash
-; - Recommended for all chips if delays between characters is large.
-; - Recommended for dsPIC30F and PIC24F16KAxxx.
-; Write method 2 writes to flash when needed and after WRITE_TIMEOUT ms timeout.-> Less Robust.Less wear on the flash
-; - Pretty good for dsPIC33 and for PIC24 with large flash block size.
-; - NOT WORKING CASE: If a word is executed that starts on the prevoius flash page
-;   and it continues on the current flash page which has not yet been written to flash,
-;   a reset will occur.
-.equ WRITE_METHOD, 1
-.equ WRITE_TIMEOUT, 500
+; Include the example for calling a C function. C4+,  C4add.c
+.equ C_EXAMPLE, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1

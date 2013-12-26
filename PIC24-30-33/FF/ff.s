@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          08.10.2013                                        *
-;    File Version:  4.82                                              *
+;    Date:          26.12.2013                                        *
+;    File Version:  4.9                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -332,21 +332,18 @@ U1_SKIP_FC_1:
         
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_2
+        mov     #RX1_OFF_FILL, W0
+        cp      rbuf_lv1
+        bra     n, __U1RXInterrupt3
 .if FC1_TYPE == 1
-        mov     rbuf_wr1, W0
-        and     W0, #0xf, W0
-        bra     nz, __U1RXInterrupt3
 __U1RXInterrupt2:
-;        btsc    U1STA, #UTXBF
-;        bra     __U1RXInterrupt2
+        btsc    U1STA, #UTXBF
+        bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
 .else
 .if  FC1_TYPE == 2
-        mov     #RX1_OFF_FILL, W0
-        cp      rbuf_lv1
-        bra     n, __U1RXInterrupt3
         bset    U1RTSPORT, #U1RTSPIN
 .endif
 .endif
@@ -429,10 +426,10 @@ U2_SKIP_FC_1:
         
         btsc    iflags, #fFC2
         bra     U2_SKIP_FC_2
+        mov     #RX2_OFF_FILL, W0
+        cp      rbuf_lv2
+        bra     n, __U2RXInterrupt3
 .if FC2_TYPE == 1
-        mov     rbuf_wr2, W0
-        and     W0, #0xf, W0
-        bra     nz, __U2RXInterrupt3
 __U2RXInterrupt2:
         btsc    U2STA, #UTXBF
         bra     __U2RXInterrupt2
@@ -441,9 +438,6 @@ __U2RXInterrupt2:
         bset    iflags, #ixoff2
 .else
 .if  FC2_TYPE == 2
-        mov     #RX2_OFF_FILL, W0
-        cp      rbuf_lv2
-        bra     n, __U2RXInterrupt3
         bset    U2RTSPORT, #U2RTSPIN
 .endif
 .endif
@@ -559,10 +553,10 @@ wbtil:
         bclr    iflags, #istream
         ; The delay here should be 10 character times long
         ; times = Fcy/baud*40
-        mov     #(FCY/BAUDRATE1*40), W2     ;  This loop takes about 5 milliseconds @ 27 Mips
+        mov     #(FCY/BAUDRATE1*10), W2     ;  This loop takes about 5 milliseconds @ 27 Mips
 wbtil2: 
         btsc    iflags, #istream    ; Check for UART  activity.
-        bra     wbtil               ;
+        bra     wbtil               ; 5 cycles per round
         dec     W2, W2              ;
         bra     nz, wbtil2          ;
 .endif
@@ -1008,8 +1002,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   44
-        .ascii  "FlashForth V4.82 (C) Mikael Nordman GPL V3\r\n"
+        .byte   43
+        .ascii  "FlashForth V4.9 (C) Mikael Nordman GPL V3\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -3607,6 +3601,9 @@ ACC_LF:
         rcall   CFETCH
         rcall   ZEROSENSE
         bra     z, ACC6
+        rcall   FALSE_
+        rcall   FCR
+        rcall   CSTORE
         bra     ACC1
 ACC2:
         mov     [W14++], [W14]      ; dup
@@ -6404,46 +6401,21 @@ FCY_:
         return
 
 ; C4+ ( n1 -- n2) call C  function unsigned  short func(unsigned short n1);
-        .extern C4add
         .pword  paddr(CPU_CLK_L)+PFLASH
+.if C_EXAMPLE == 1
 CFOURADD_L:
         .byte   NFA|3
         .ascii  "C4+"
         .align  2
 CFOURADD_:
         mov     [W14], W0
+        .extern C4add
         call    _C4add
         mov     W0, [W14]
         return
 
-; C01 ( func n1 --) call C  function  void func(int n1);
         .pword  paddr(CFOURADD_L)+PFLASH
-C01_L:
-        .byte   NFA|3
-        .ascii  "C01"
-        .align  2
-C01_:
-        mov     [W14--], W0
-        mov     [W14], W13
-        call    W13
-        mov     [W14--], W0
-        return
-
-; C12 ( func n1 n2 --n ) call C  function int func(int n1, int n2);
-        .pword  paddr(C01_L)+PFLASH
-C12_L:
-        .byte   NFA|3
-        .ascii  "C12"
-        .align  2
-C12_:
-        mov     [W14--], W1
-        mov     [W14--], W0
-        mov     [W14], W13
-        call    W13
-        mov     W0, [W14]
-        return
-
-        .pword  paddr(C12_L)+PFLASH
+.endif
 FALSE_L:
         .byte   NFA|INLINE|5
         .ascii  "false"

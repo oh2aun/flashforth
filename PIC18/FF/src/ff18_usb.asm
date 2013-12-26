@@ -2949,24 +2949,27 @@ ACC1:
         subwf   Splus, W, A
         bnz     ACC_LF
         
-        call    TRUE_
+        rcall   ONE
         rcall   FCR
         rcall   CSTORE
-        rcall   DROP
-        bra     ACC6
+        rcall   DROP            ; CR
+        bra     ACC6            ; CR END OF LINE
 ACC_LF:
         movf    Sminus, W, A
         movlw   LF_
         subwf   Splus, W, A
         bnz     ACC2
-        rcall   DROP
+        rcall   DROP            ; LF
 
         rcall   FCR
         rcall   CFETCH
         rcall   ZEROSENSE
-        bz      ACC6
-        bra     ACC1
-ACC2:
+        bz      ACC6            ; LF END OF LINE, CR has not been received
+        call    FALSE_
+        rcall   FCR
+        rcall   CSTORE
+        bra     ACC1            ; CR has been received
+ACC2:                   	; NOT CR, NOT LF
         call    FALSE_
         rcall   FCR
         rcall   CSTORE
