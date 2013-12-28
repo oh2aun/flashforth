@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../ff.s ../C4add.c
+SOURCEFILES_QUOTED_IF_SPACED=../src/ff.s ../src/C4add.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1472/ff.o ${OBJECTDIR}/_ext/1472/C4add.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1472/ff.o.d ${OBJECTDIR}/_ext/1472/C4add.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff.o ${OBJECTDIR}/_ext/1360937237/C4add.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff.o.d ${OBJECTDIR}/_ext/1360937237/C4add.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1472/ff.o ${OBJECTDIR}/_ext/1472/C4add.o
+OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff.o ${OBJECTDIR}/_ext/1360937237/C4add.o
 
 # Source Files
-SOURCEFILES=../ff.s ../C4add.c
+SOURCEFILES=../src/ff.s ../src/C4add.c
 
 
 CFLAGS=
@@ -79,40 +79,40 @@ MP_LINKER_FILE_OPTION=,--script=p24HJ128GP502.gld
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: compile
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1472/C4add.o: ../C4add.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/C4add.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/C4add.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../C4add.c  -o ${OBJECTDIR}/_ext/1472/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/C4add.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -I"/home/mikael/git/PIC24-30-33/FF" -msmart-io=1 -Wall -msfr-warn=off
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+${OBJECTDIR}/_ext/1360937237/C4add.o: ../src/C4add.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../src/C4add.c  -o ${OBJECTDIR}/_ext/1360937237/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1360937237/C4add.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -I"/home/mikael/git/PIC24-30-33/FF" -msmart-io=1 -Wall -msfr-warn=off
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 else
-${OBJECTDIR}/_ext/1472/C4add.o: ../C4add.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/C4add.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/C4add.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../C4add.c  -o ${OBJECTDIR}/_ext/1472/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1472/C4add.o.d"      -g -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -I"/home/mikael/git/PIC24-30-33/FF" -msmart-io=1 -Wall -msfr-warn=off
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+${OBJECTDIR}/_ext/1360937237/C4add.o: ../src/C4add.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  ../src/C4add.c  -o ${OBJECTDIR}/_ext/1360937237/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1360937237/C4add.o.d"      -g -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -I"/home/mikael/git/PIC24-30-33/FF" -msmart-io=1 -Wall -msfr-warn=off
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 endif
 
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1472/ff.o: ../ff.s  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff.o 
-	${MP_CC} $(MP_EXTRA_AS_PRE)  ../ff.s  -o ${OBJECTDIR}/_ext/1472/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -I"../" -Wa,-MD,"${OBJECTDIR}/_ext/1472/ff.o.d",--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_PICKIT2=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1472/ff.lst$(MP_EXTRA_AS_POST)
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+${OBJECTDIR}/_ext/1360937237/ff.o: ../src/ff.s  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff.s  -o ${OBJECTDIR}/_ext/1360937237/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff.o.d",--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_PICKIT2=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff.lst$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
 	
 else
-${OBJECTDIR}/_ext/1472/ff.o: ../ff.s  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1472 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/ff.o 
-	${MP_CC} $(MP_EXTRA_AS_PRE)  ../ff.s  -o ${OBJECTDIR}/_ext/1472/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -I"../" -Wa,-MD,"${OBJECTDIR}/_ext/1472/ff.o.d",--defsym=__MPLAB_BUILD=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1472/ff.lst$(MP_EXTRA_AS_POST)
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+${OBJECTDIR}/_ext/1360937237/ff.o: ../src/ff.s  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff.s  -o ${OBJECTDIR}/_ext/1360937237/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff.o.d",--defsym=__MPLAB_BUILD=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff.lst$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
 	
 endif
 

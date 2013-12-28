@@ -28,7 +28,7 @@
 ; in the name of this file, and in the identification
 ; displayed when FlashForth starts.
 ;**********************************************************************
-.include    "ff30.inc"
+.include "ff30.inc"
 
 ; Macro for inline literals 
 .macro mlit lval
@@ -5566,7 +5566,7 @@ IHERE_L:
         .align  2
 IHERE:
         mov     dpFLASH, W0
-        mov     W0, [++W14]     ; IHERE must not trash W11=hibyte
+        mov     W0, [++W14]     ; IHERE must not trash W12=hibyte
         return
 ;        rcall   IDP
 ;        goto    FETCH
