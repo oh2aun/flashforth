@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F2455
+device=PIC18F2520
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -30,6 +30,9 @@ file_002=.
 file_003=.
 file_004=.
 file_005=.
+file_006=.
+file_007=.
+file_008=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -37,6 +40,9 @@ file_002=no
 file_003=no
 file_004=no
 file_005=no
+file_006=no
+file_007=no
+file_008=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -44,6 +50,9 @@ file_002=no
 file_003=no
 file_004=yes
 file_005=yes
+file_006=yes
+file_007=yes
+file_008=yes
 [FILE_INFO]
 file_000=src\ff18_usb.asm
 file_001=src\P18F_USB_REG.asm
@@ -51,6 +60,9 @@ file_002=lib\FF_USB_18F2455.lib
 file_003=lkr\FF_USB_0000.lkr
 file_004=install.txt
 file_005=readme.txt
+file_006=C:\Documents and Settings\mikael\Desktop\ff\PIC18\FF\src\p18f2455-2550-4455-4550.cfg
+file_007=C:\Documents and Settings\mikael\Desktop\ff\PIC18\FF\src\p18f14k50.cfg
+file_008=C:\Documents and Settings\mikael\Desktop\ff\PIC18\FF\src\p18f2458-2553-4458-4553.cfg
 [SUITE_INFO]
 suite_guid={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 suite_state=
