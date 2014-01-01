@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          26.12.2013                                        *
-;    File Version:  4.9                                               *
+;    Date:          31.12.2013                                        *
+;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -1002,8 +1002,8 @@ WARM_ABAUD2:
 WARM1:
         rcall   CR
         rcall   XSQUOTE
-        .byte   43
-        .ascii  "FlashForth V4.9 (C) Mikael Nordman GPL V3\r\n"
+        .byte   22
+        .ascii  "FlashForth PIC24 5.0\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -1222,7 +1222,7 @@ OPERATOR_L:
         .ascii  "operator"
         .align  2
 OPERATOR:
-        rcall   DOCREATE
+        call    DOCREATE        ; Use call to align with PIC18 and AVR
         .pword  paddr(OPERATOR_AREA)+PFLASH
 OPERATOR_AREA: 
         .word   ustart-us0      ; user pointer

@@ -1,25 +1,23 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      math.txt                                          *
-\    Date:          14.9.2011                                         *
-\    FF Version:    3.8                                               *
+\    Date:          31.12.2013                                        *
+\    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
-\ Double and mixed math words
+\ Double, triple and mixed math words
 
-\ m*     n1 n2 -- d    signed 16*16->32 multiply
-: m*
+: m*  ( n1 n2 -- d )
   2dup xor >r
   abs swap abs um*
   r> ?dnegate
 ;
 
 : sm/rem ( d1 n1 -- n2 n3 )
-  2dup xor >r
-  over >r
+  2dup xor >r over >r
   abs >r dabs r> um/mod
   swap r> ?negate
   swap r> ?negate
@@ -45,7 +43,31 @@
 : mod ( n1 n2 -- n3 )
   /mod drop
 ;
+
 : */mod ( n1 n2 n3 -- n4 n5 )
   >r m* r> sm/rem
+;
+: */ ( n1 n2 n3 -- n4 )
+  >r m* r> sm/rem nip
+;
+
+\ multiply single number with double number.
+\ Triple precision (48-bit) result
+: ut* ( ud u -- ut)
+  dup >r  swap >r  um*  r> r> um* >r
+  0 swap  0 d+  r> + 
+;
+
+  
+\ Divide triple number with single number
+\ Double result
+: ut/ ( ut u -- ud)
+  dup >r um/mod  r> swap >r
+  um/mod  swap drop r> 
+;
+
+\ Scale with triple number intermediate result
+: um*/ ( ud1 u1 u2 -- ud2)
+  >r ut* cwd r> ut/
 ;
 

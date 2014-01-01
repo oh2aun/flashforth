@@ -1,13 +1,13 @@
 \                                                                     *
 \    Filename:      qmath.txt                                         *
-\    Date:          26.1.2013                                         *
-\    FF Version:    3.8                                               *
+\    Date:          31.12.2013                                        *
+\    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
-\ Triple and Quad math words
+\ Quad math words
 \ NOTE: temporary values are kept in the flash buffer
 
 
@@ -207,26 +207,6 @@ $f00d con tmp
   [ $f003  f, a, addwfc,  ]
   [ $f000 plusS  movff, $f001 plusS  movff, ]
   [ $f002 plusS  movff, $f003 plusS  movff, ]
-;
-
-\ multiply single number with double number.
-\ Triple precision (48-bit) result
-: ut* ( ud u -- ut)
-  dup >r  swap >r  um*  r> r> um* >r
-  0 swap  0 d+  r> + 
-;
-
-  
-\ Divide triple number with single number
-\ Double result
-: ut/ ( ut u -- ud)
-  dup >r um/mod  r> swap >r
-  um/mod  swap drop r> 
-;
-
-\ Scale with triple number intermediate result
-: um*/ ( ud1 u1 u2 -- ud2)
-  >r ut* cwd r> ut/
 ;
 
 

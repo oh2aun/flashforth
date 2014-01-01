@@ -5,8 +5,8 @@
 ;.include "m2560def.inc"   ; Tested
 ;.include "m128def.inc"   ; Tested
 ;.include "m168pdef.inc"
-.include "m328def.inc"    ; Tested
-;.include "m32adef.inc"
+;.include "m328def.inc"    ; Tested
+.include "m32adef.inc"
 ;.include "m644pdef.inc"
 
 ; Oscillator frequency in herz
@@ -19,7 +19,7 @@
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge destroys the 
 ;;; flow control. Best way to upload files is with TeraTerm and 1 ms intercharacter delay.
 .equ BAUDRATE0 = 38400				; Serial baudrate UART0
-.equ U0FC_TYPE = 2                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3
@@ -39,10 +39,10 @@
 
 ; CPU load indicator led definitions. Needs IDLE_MODE
 .equ CPU_LOAD_LED = 1       ; set to 1 to enable
-.equ CPU_LOAD_DDR = ddrc
-.equ CPU_LOAD_PORT = portc  ; avr-p28: portc
-.equ CPU_LOAD_BIT = 5       ; avr-p28: pin5
-.equ CPU_LOAD_LED_POLARITY = 0   ; avr-p28: 0 = low on port turns on led, 
+.equ CPU_LOAD_DDR = ddrb
+.equ CPU_LOAD_PORT = portb  ; avr-p28: portc
+.equ CPU_LOAD_BIT = 7       ; avr-p28: pin5
+.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28: 0 = low on port turns on led, 
                                  ;          1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds

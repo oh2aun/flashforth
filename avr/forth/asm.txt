@@ -133,7 +133,7 @@ e000 f000  Rd,k: ldi,
 9000 fe0f  Rd: lds_
 : lds,     swap lds_ i, ;       \ Rd k16 -- )
 
-9004 fe0f  Rd,Rr: lpm,  ( Rd Rr -- ) \ Rr={Z,Z+}, 2 Z+ lpm_
+9004 fe0f  Rd,Rr: lpm,  ( Rd Rr -- ) \ Rr={Z,Z+}, 2 Z+ lpm,
 9006 fe0e  Rd,Rr: elpm,  ( Rd Rr -- ) \ Rr={Z,Z+}
 9200 fe00  Rd,Rr: st,  ( Rr Rd -- ) \ Rd={Z+,-Z,Y+,-Y,X+,-X,X,Y,Z}
 
@@ -165,10 +165,6 @@ e000 f000  Rd,k: ldi,
 9588 op: sleep,                \ --
 9598 op: break,                \ --
 95a8 op: wdr,                  \ --
-95c8 op: lpmr0,                \ --
-95d8 op: elpmr0,               \ --
-95e8 op: spm:                  \ --
-95f8 op: espm,                 \ --
 9409 op: ijmp,                 \ --
 9419 op: eijmp,                \ --
 9509 op: icall,                \ --

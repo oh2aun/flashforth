@@ -1,9 +1,9 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      double.txt                                      *
-\    Date:          23.09.2011                                      *
-\    FF Version:    4.8                                             *
-\    MCU:           PIC30 PIC24 PIC33 PIC18                         *
+\    Date:          31.12.2013                                      *
+\    FF Version:    5                                               *
+\    MCU:           PIC30 PIC24 PIC33 PIC18 Atmega                  *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
@@ -11,28 +11,10 @@
 \ *******************************************************************
 
 : 2literal ( x x -- )
-  swap postpone literal postpone literal postpone ; ; immediate
+  swap postpone literal postpone literal postpone ; immediate
 
 : 2constant ( x x "name" -- )
   swap con postpone literal ;
 
 : 2variable ( "name" -- )
   variable cell allot ;
-  
-: */ ( n1 n2 n3 -- quotient )
-  */mod nip ;
-
-: fm/mod ( d1 n1 -- n2 n3 )
-  dup >r
-  2dup xor >r
-  >r
-  dabs r@ abs um/mod
-  swap r> ?negate swap
-  r> 0< if
-    negate
-    over if
-      r@ rot - swap 1-
-    then
-  then
-  r> drop
-;

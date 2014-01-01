@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          24.12.2013                                        *
-;    File Version:  3.9                                               *
+;    Date:          31.12.2013                                        *
+;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -2293,10 +2293,10 @@ VER:
         rcall   XSQUOTE
 #ifdef USB_CDC
          ;        1234567890123456789012345678901234567890
-        db d'22'," FlashForth V3.9 USB\r\n"
+        db d'27'," FlashForth 5.0 PIC18 USB\r\n"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'18'," FlashForth V3.9\r\n"
+        db d'22'," FlashForth 5.0 PIC18\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************

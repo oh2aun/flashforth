@@ -1,4 +1,4 @@
-Dictionary of FlashForth 3.8.
+Dictionary of FlashForth 3.9.
 
 !          ( x addr -- )
            Store x to addr

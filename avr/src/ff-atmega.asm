@@ -1,8 +1,9 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          26.12.2013                                        *
-;    File Version:  Atmega                                            *
+;    Date:          31.12.2013                                        *
+;    File Version:  5.0                                               *
+;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -188,7 +189,7 @@
 ; UART0 symbols for Atmega32
 .ifndef UCSR0A
 .equ UCSR0A=UCSRA
-.equ UDRE0=UDR
+.equ UDR0_=UDR
 .equ UCSR0B=UCSRB
 .equ UCSR0C=UCSRC
 .equ RXEN0=RXEN
@@ -198,6 +199,10 @@
 .equ USBS0=USBS
 .equ UBRR0H=UBRRH
 .equ UBRR0L=UBRRL
+.equ URSEL_=0x80
+.else
+.equ UDR0_=UDR0
+.equ URSEL_=0
 .endif
 
 .ifndef SPMCSR
@@ -4466,7 +4471,7 @@ RX0_ISR:
         lds     xl, rbuf0_wr
         add     zl, xl
         adc     zh, zero
-        lds     xh, UDR0
+        lds     xh, UDR0_
 .if OPERATOR_UART == 0
         cpi     xh, 0xf
         brne    pc+2
@@ -4538,7 +4543,7 @@ TX0_LOOP:
         in_     t0, UCSR0A
         sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_LOOP
-        out_    UDR0, tosl
+        out_    UDR0_, tosl
         poptos
         ret
 
@@ -4568,7 +4573,7 @@ TX0_SEND:
         in_     zl, UCSR0A
         sbrs    zl, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_SEND
-        out_    UDR0, zh
+        out_    UDR0_, zh
         ret
 ;***************************************************
 ; RX0    -- c    get character from the UART 0 buffer
@@ -4900,7 +4905,7 @@ WARM_3:
         ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
         out_    UCSR0B,t0
         ; Set frame format: 8data, 1stop bit
-        ldi     t0, (1<<USBS0)|(3<<UCSZ00)
+        ldi     t0, (3<<UCSZ00)|URSEL_
         out_    UCSR0C,t0
 .if U0FC_TYPE == 1
         sbr     FLAGS2, (1<<ixoff_tx0)
@@ -4919,7 +4924,7 @@ WARM_3:
         ldi     t0, (1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)
         out_    UCSR1B,t0
         ; Set frame format: 8data, 1stop bit
-        ldi     t0, (1<<USBS1)|(3<<UCSZ10)
+        ldi     t0, (3<<UCSZ10)
         out_    UCSR1C,t0
 .if U1FC_TYPE == 1
         sbr     FLAGS2, (1<<ixoff_tx1)
@@ -4963,7 +4968,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 30,"FlashForth Atmega 26.12.2013",0xd,0xa,0
+        .db 24,"FlashForth Atmega 5.0",0xd,0xa,0
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
