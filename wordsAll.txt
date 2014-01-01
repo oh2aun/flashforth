@@ -1,0 +1,1247 @@
+Dictionary of FlashForth 5.0
+
+!          ( x addr -- )
+           Store x to addr
+
+!p         ( addr -- )
+           Store addr to p(ointer) register
+
+!p>r       ( addr -- )   Compile Only
+           Push contents of p to return stack and stor addr to p
+
+#          ( ud1 -- ud2 )  Compile Only
+           Convert 1 digit to formatted numeric string
+
+#>         ( ud1 -- c-addr u )    Compile Only
+           Leave address and count of formatted numeric string
+
+#s         ( ud1 -- ud2 )  Compile Only
+           Convert remaining digits to formatted numeric output
+
+'          ( -- xt )
+           Parse word and find it in dictionary
+
+'emit      ( -- addr )  User Variable
+           EMIT vector. TX1 or TX2
+
+'key       ( -- addr )  User Variable
+           KEY vector.  TX1 or TX2
+
+'key?      ( -- addr )  User Variable
+           KEY? vector. TX1 or TX2
+
+'source    ( -- a-addr )     User Variable 
+           Current input source
+
+(          ( -- )
+           Skip input on the same line until ) is encountered
+
+*          (u1/n1 u2/n2 -- u3/n3
+           Signed and unsigned 16*16->16 bit multiplikation
+
+*/         ( n1 n2 n3 -- quotient )
+           Multiply n1 and n2 and divide with n3. 32 bit intermediate result.
+
+*/mod      ( n1 n2 n3 -- rem quot )
+           Multiply n1 with n2 and divide with n3 via 32-bit 
+           intermediate result
+
++          ( n1 n2 -- n3 )
+           Add n1 to n2
+
++!         ( n addr -- )
+           Add n to cell at addr.
+
+,          ( x -- )
+           Append x to the current data section
+
+,"         ( "string" -- )
+           Append a string at HERE.
+
+-          ( n1 n2 -- n3 )
+           Subtract n2 from n1
+
+-@         ( addr -- addr-2 n )
+           Fetch from addr and decrement addr by 2
+
+.          ( n -- )
+           Display n signed according to base
+
+.s         ( -- )
+           Display the stack contents
+
+.st        ( -- )
+           Emit status string for base, current data section,
+           and display the stack contents.
+
+/          ( n1 n2 -- n3 )
+           16/16->16 bit division
+           
+/mod       ( n n  -- rem quot )
+           16/16 -> 16-bit signed division.
+
+/string    ( addr u n -- addr+n u-n )
+           Trim string
+
+0<         ( n -- flag )
+           Leave true flag if n is less than zero
+
+0=         ( x -- flag )
+           Leave true flag if x is zero
+
+1          ( -- 1 ) 
+           Leave one
+
+1+         ( n -- n1 )
+           Add one to n
+
+1-         ( n -- n1 )
+           Subtract 1 from n
+
+2*         ( u1 -- u2 )
+           Shift u1 left one bit
+
+2+         ( n -- n1 )
+           Add two to n
+
+2-         ( n -- n1 )
+           Subtract 2 from n
+
+2/         (n1 -- n2 )
+           Shift n1 right one bit.
+
+2@         ( a-addr -- x1 x2 )
+           Fetch two cells
+
+2!         ( x1 x2 a-addr -- )
+           Store two cells
+
+2constant  ( x x "name" -- )
+           Define a double constant
+
+2drop      ( x1 x2 -- )
+           Drop two cells
+
+2dup       ( x1 x2  -- x1 x2 x1 x2 )
+           Duplicate two top cells
+
+2literal   ( x x -- )
+           Compile a double literl 
+
+2variable ( "name" -- )
+          Define a double variable
+
+:          ( "name" -- )
+           Begin a colon definition
+
+:noname    ( -- addr )
+           Define headerless forth code
+
+;          ( -- )        Compile Only
+           End a colon definition
+
+;i         ( -- )        Compile Only
+           End a interrupt word
+
+<          ( n1 n2 -- flag )
+           Leave true flag if n1 is less than n2
+
+<#         ( -- )        Compile Only
+           Begin numeric conversion
+
+<>         ( x1 x2 -- flag )
+           Leave true flag if x1 and x2 are not equal
+
+=          ( x1 x2 -- flag )
+           Leave true flag if x1 and x2 are equal
+
+>          ( n1 n2 -- flag )
+           Leave trye flag if n1 is grater than n2
+
+>body      ( xt -- a-addr )
+           Leave the parameter field address of 
+           a created word
+
+>digit     ( n -- c )
+           Convert n to ascii character value
+
+>in        ( -- a-addr )      User Variable
+           Holds offset into tib
+
+>number    ( ud  addr1 u1 -- ud addr2 u2 )
+           Convert string to number
+
+>pr        ( c -- c )
+           Convert a character to a graphic ASCII value.
+           Non-graphic characters are converted to a dot.
+
+>r         ( x -- ) ( R: -- x )  Compile Only
+           Push x from the parameter stack to the return stack
+
+?abort     ( flag c-addr u -- )
+           Print message and abort if flag is false
+
+?abort?    ( flag -- )
+           If flag is false output ? and abort
+
+?dnegate   ( d n -- d )
+           Negate d if n is negative
+           
+?negate    ( n1 n2 -- n3 )
+           Negate n1 if n2 is negative
+
+@          ( addr -- x )
+           Fetch x from addr
+
+@+         ( addr1 -- addr2 x )
+           Fetch cell from addr1 and increment addr1 by a cell
+           
+@p         ( -- addr )
+           Fetch the p register to the stack
+
+@ex        ( addr -- )
+           Fetch vector from addr and execute.
+
+[          ( -- )
+           Enter interpreter state
+
+[']        ( "name" -- )         Compile Only
+           Compile xt of name as a literal
+
+[char]     ( "char" -- )         Compile Only
+           Compile inline ascii character
+
+[i         ( -- )                Compile Only
+           Enter Forth interrupt context
+
+\          ( -- )
+           Skip rest of line
+
+]          ( -- )
+           Enter compilation state
+
+abort      ( -- )
+           Reset stack pointer and execute quit
+
+abort"     ( "string" -- )     Compile Only
+           Compile inline string and postpone abort?
+
+abs        ( n -- n1 )
+           Leave absolute value of n
+
+accept     ( c-addr +n -- +n' )
+           Get line from terminal
+
+again      ( addr -- )                  Compile Only
+           begin ... again
+
+ivt        ( -- )
+           Use the normal interrupt vector table
+
+align      ( -- )
+           Align the current data section dictionary pointer
+           to cell boundary
+
+aligned    ( addr -- a-addr )
+           Align addr to a cell boundary.
+
+allot      ( n -- )
+           Adjust the current data section dictionary pointer
+
+and        ( x1 x2 -- x3 )
+           Bitwise and of x1 and x2
+
+base       ( a-addr )     User Variable
+           Numeric conversion base
+
+begin      ( -- a-addr )                Compile Only
+           begin ... again
+           begin ... until
+           begin ... while ... repeat
+
+bin        ( -- )
+           Set base to binary
+
+bl         ( -- c )
+           Ascii space
+
+busy       ( -- )
+           Cpu idle mode not allowed
+           
+c!         ( c addr -- )
+           Store c to addr
+
+c@         ( addr -- c )
+           Fetch c from addr
+
+c@+        ( addr1 -- addr2 c )
+           Fetch char from addr1 and increment addr1
+
+c,         ( c -- )
+           Append c to the current data section
+
+cell       ( -- n )
+           Leave the size of one cell in characters.
+
+cell+      ( addr1 -- addr2 )
+           Add cell size to addr1
+
+cells      ( x1 -- x2 )
+           Convert cells to address units.
+
+char       ( "char" -- n )
+           Parse a char and leave ascii value on stack
+
+char+      ( c-addr1 -- c-addr2 )
+           Add one to c.addr1
+
+chars      ( x1 -- x2 )
+           Convert characters to address units
+
+cf,        ( xt -- )
+           Compile xt into the flash dictionary.
+
+c>n        ( addr1 -- addr2 )
+           Convert cfa to nfa
+
+cmove      ( addr1 addr2 u -- )
+           Move u chars from addr1 to addr2
+
+constant   ( x "name" -- )
+           Create a constant in flash as inline code
+
+cq>        ( queue-addr -- c )
+           Get a character from queue.
+
+cq>?       ( queue-addr -- n )
+           Get the amount of characters in the queue.
+
+cq:        ( size "name" -- )
+           Create a character queue
+
+cq0        ( queue-addr -- )
+           Initalise the queue.
+
+cr         ( -- )
+           Emit CR LF
+
+create     ( "name" -- )
+           Create a word definition and store the current
+           data section pointer.
+
+cwd        ( -- )
+           Clear the WatchDog counter.
+           
+d+         ( d d -- d )
+           Add double numbers
+           
+d-         ( d d -- d )
+           Subtract double numbers
+           
+d.         ( d -- )
+           Display signed double number.
+           
+d0=        ( d -- f )
+           True if d equals zero
+           
+d0<        ( d -- f )
+           True if d is negative
+           
+d<         ( d d -- f )
+           True if less than
+           
+d=         ( d d -- f )
+           True if equal
+
+d>         ( d d -- f )
+           True if greater than
+           
+d2*        ( d -- d )
+           Multiply by 2
+
+d2/        ( d -- d )
+           Divide by 2
+
+dabs       ( d - +d )
+           Absolute value
+
+decimal    ( -- )
+           Set numeric base to decimal 10.
+
+defer      ( "name -- )
+           Define a deferred execution vector
+
+di         ( -- )
+           Disable interrupts
+
+digit?     ( c -- n flag )
+           Convert char to a digit according to base
+           
+dinvert    ( ud -- ud )
+           Invert double number
+
+dnegate    ( d -- -d )
+           Negate double number
+           
+does>      ( -- )                   Compile Only
+           Define the runtime action of a created word.
+
+dp         ( -- addr )       Eeprom variable mirrored in ram
+           Leave the address of the current data section
+           dictionary pointer
+
+drop       ( x1 -- )
+           Drop top of stack
+
+dump       ( addr u -- )
+           Display a memory dump 
+
+dup        ( x -- x x )
+           Duplicate top of stack
+
+ei         ( -- )
+           Enable interrupts
+
+end        ( task-addr -- )
+           Remove a task from the task list.
+
+eeprom     ( -- )
+           Set data section context to eeprom
+
+else       ( addr1 -- addr2 )       Compile Only
+           if ... else ... then
+
+emit       ( c -- )
+           Emit c to the serial port FIFO. FIFO is 46 chars.
+           Executes pause.
+
+empty       ( -- )
+           Reset all dictionary pointers.
+
+evaluate   ( c-addr n -- )
+           Evaluate buffer
+
+execute    ( addr -- )
+           Execute word at addr
+
+exit       ( -- )
+           Exit from a word.
+
+false      ( -- 0 )
+
+Fcy        ( -- u )
+           The internal cpu & peripheral clock cycle in KHz.
+           Foscillator/4
+
+fl-        ( -- )
+           Disable writes to flash and eeprom.
+
+fl+        ( -- )
+           Allow writes to flash and eeprom.
+
+flash      ( -- )
+           Set data section context to flash
+
+fill       ( c-addr u c -- )
+           Fill u bytes with c staring at c-addr
+
+find       ( c-addr -- c-addr 0/1/-1 )
+           Find a word in dictionary
+           Leave 1 if immediate, -1 if normal, 0 if not found
+
+fm/mod     (d n -- rem quot )
+           Floored 32/16 -> 16-bit division
+           
+for        ( u -- )              Compile Only
+           Loop u times. for ... next
+           R@ gets the loop counter  u-1 ... 0
+
+forget     ( "name -- )
+           Forget name
+
+here       ( -- addr )
+           Leave the current data section dictionary pointer
+
+hex        ( -- )
+           Set numeric base to hexadecimal
+
+hold       ( c -- )      Compile Only
+           Append char to formatted numeric string
+
+hp         ( -- a-addr )            User Variable
+           Hold pointer for formatted numeric output
+
+i]         ( -- )                   Compile Only
+           Exit Forth interrupt context
+
+i,         ( x -- )
+           Append x to the flash data section.
+
+ic,        ( c -- )
+           Append c to the flash data section.
+
+idle       ( -- )
+           Cpu idle is allowed
+           
+if         ( -- a-addr )        Compile Only 
+           if ... else ... then
+
+iflush     ( -- )
+           Flush the flash write buffer
+
+immed?     ( addr -- n )
+           Leave a nonzero value if addr contains a immediate flag
+
+immediate  ( -- )
+           Mark latest definition as immediate
+
+in?        ( nfa -- flag )
+           Leave true flag if nfa has inline bit set
+
+inline     ( "name" -- )
+           Inline the following word.
+
+inlined    ( -- )
+           Mark the latest compiled word as inlined.
+
+int!       ( xt vector-no -- )
+           Store an interrupt vector to the interrupt vector table.
+           PIC18: Only vector number 0 supported.
+           PIC30: Alternate interrupt vector table in flash.
+           PIC33: Alternate interrupt vector table in ram.
+           PIC24: Alternate interrupt vector table in ram.
+           Atmega: Interrupt vector table in ram.
+
+interpret  ( c-addr u - )
+           Interpret the buffer
+
+invert     ( x1 -- x2 )
+           Ones complement of x1
+
+irq        ( -- a-addr)         Ram value
+           Interrupt vector. Cleared at warm start.
+
+is         ( x "name" -- )
+           Set the value a deferred word
+
+ivt        ( -- )
+           Use the normal interrupt vector table
+
+key        ( -- c )
+           Get a character from the serial port FIFO.
+           Execute pause until a character is available
+
+key?       ( -- flag )
+           Leave true if character is waiting in the serial port FIFO
+
+latest       ( -- a-addr )
+           Variable holding the address of the latest defined word
+
+leave      ( -- )             COMPILE ONLY
+           Leave a for/next loop when next is encountered.
+           Sets top of return stack to zero
+         
+literal    ( x -- )
+           Compile a literal into the dictionary
+
+load+      ( -- )
+           Enable on the load led
+
+load-      ( -- )
+           Disable on the load led
+           
+lshift     ( x1 u -- x2
+           Shift x1 u bits to the left
+
+m+         ( d1 n -- d2 )
+           Add double number d1 to n
+
+m*         ( n n -- d )
+           Signed 16*16->32 multiply
+           
+marker     ( "name" -- )
+           Mark a dictionary state
+
+max        ( n1 n2 -- n3 )
+           Leave max of n1 and n2
+
+mclr       ( byte-mask byte-ram-addr -- )
+           AND the contents of caddr with the complement of mask
+
+min        ( n1 n2 -- n3 )
+           Leave min of n1 and n2
+
+mod        ( n1 n2 -- remainder )
+           Remainder of n1 divided by n2
+           
+ms         ( +n -- )
+           Pause for +n milliseconds
+
+mset       ( byte-mask byte-ram-caddr -- )
+           OR the contents of caddr with mask.
+
+mtst       ( byte-mask byte-addr -- x )
+           AND the contents of caddr with mask
+
+n=         ( c-addr nfa u -- flag )
+           Compare strings in ram(c-addr) and flash(nfa)
+           flag is true if strings match. u<16.
+
+negate     ( n -- -n )
+           negate n
+
+next       ( bra-addr bc-addr -- )      Compile Only
+           for ... next
+
+n>c        ( nfa -- cfa )
+
+n>l        ( nfa -- lfa )
+           Not implemented.
+           Convert nfa to lfa. Use 2- instead
+
+nip        ( x1 x2 -- x2 )
+           Remove x1 from the stack
+
+number?    ( c-addr -- n/d/c-addr flag )
+           Convert string to number
+           # is decimal prefix
+           $ is hexadecimal prefix
+           % is binary prefix
+           Flag: 0=error, 1=double, 2=single
+
+operator   ( -- addr )
+           Leave the address of the operator task
+
+or         ( x1 x2 -- x3 )
+           Or bitwise x1 with x2
+
+over       ( x1 x2 -- x1 x2 x1 )
+           Copy x1 to top of stack
+
+p+         ( -- )
+           Increment P register by one
+
+p2+        ( -- )
+           Add 2 to P register
+
+p++        ( n -- )
+           Add n to the p register
+
+p!         ( x -- )
+           Store x to the location pointed by the p register
+
+pc!        ( c -- )
+           Store c to the location pointed by the p register
+
+p@         ( -- x )
+           Fetch the cell pointed by the p register
+
+pc@        ( -- c )
+           Fetch the char pointed by the p register
+
+pad        ( -- a-addr )
+           : pad tib ti# + ;
+           Each task has its own pad.
+           If needed the user must allocate it separately with allot for each task
+           FF core does not use the pad.
+
+parse	   ( c -- addr length )
+           Parse a word in TIB
+
+pause      ( -- )
+           Switch to the next task in the round robin task list 
+
+place      ( addr1 u addr2 -- )
+           Place string from addr1 to addr2 as a counted string
+
+postpone   ( "name" -- )           Compile Only
+           Postpone action of immediate word
+
+prompt     ( -- a-addr )           Eeprom defer
+           Deferred execution vector for the info displayed by quit.
+           Default is .ST .
+
+quit       ( -- )
+           Interpret from keyboard
+
+r>         ( -- x ) ( R: x -- )   Compile Only
+           Pop x from the return stack to the parameter stack
+
+r>p        ( -- )                 Compile Only
+           Pop from return stack to p register
+
+r@         ( -- x ) ( R: x -- x ) Compile Only
+           Copy x from the return stack to the parameter stack
+
+r0         ( -- a-addr )
+           Bottom of return stack
+
+ram        ( -- )
+           Set data section context to ram
+
+rdrop      ( -- )             Compile Only
+           Remove top elemnt from return stack
+
+repeat     ( addr2 addr1 -- )    Compile Only
+           begin ... while ... repeat
+
+rot        ( x1 x2 x3 -- x2 x3 x1 )
+           Rotate three top stack items
+
+rshift     ( x1 u -- x2 )
+           Shift x1 u bits to the right
+
+run        ( task-addr -- )
+           Link the task to the task list. The task
+           starts running immediately.
+
+rx0        ( -- c )
+           Receive a character from UART0.
+
+rx0?       ( -- f )
+           Leave TRUE if the UART0 receive buffer is not empty.
+
+rx1        ( -- c )
+           Receive a character from UART1.
+
+rx1?       ( -- f )
+           Leave TRUE if UART1 receive buffer is not empty.
+
+rx1q      ( -- queue-addr )
+           Leave the address of the queue for UART1
+
+rx2        ( -- c )
+           Receive a character from UART2.
+
+rx2?       ( -- f )
+           Leave TRUE if UART2 receive buffer is not empty.
+
+rx2q      ( -- queue-addr )
+           Leave the address of the queue for UART2
+
+rxusb      ( -- c )
+           Receive a character from USB UART.
+
+rxusb?     ( -- f )
+           Leave TRUE if USB UART receive buffer is not empty.
+
+s>d        ( n -- d )
+           Sign extend single to double precision number
+           
+s0         ( -- a-addr )
+           Bottom of parameter stack
+
+
+scan       ( c-addr u c -- c-addr' u'
+           Scan string until c is found.
+           c-addr must point to ram. u<255
+
+sign       ( n -- )
+           Append minus sign to formatted numeric output
+
+sign?      ( addr1 n1 -- addr2 n2 flag )
+           Get optional minus sign
+
+single     ( -- )
+           End all tasks except the operator task.
+           Removes all tasks from the task list
+           except the operator task.
+
+skip       ( c-addr u c -- c-addr' u' )
+           Skip string until c not encountered.
+           c-addr must point to ram. u<255
+
+sm/rem     ( d n -- rem quot )
+           Symmetric 32/16 -> 16 bit division
+           
+sp@        ( -- addr )
+           Leave parameter stack pointer
+
+sp!        ( addr -- )
+           Set the parameter stack pointer to addr
+
+s"         ( "text" -- )           Compile Only
+           Compile string into flash
+
+."         ( "text" -- )           Compile Only
+           Compile string to print into flash
+
+source     ( -- c-addr n )
+           Current input buffer
+
+space      ( -- )
+           Emit one space character
+
+spaces     ( n -- )
+           Emit n space characters
+
+state      ( -- flag )         
+           Compilation state. Flag that can only be changed by [ ] 
+
+swap       ( x1 x2 -- x2 x1 )
+           Swap two top stack items
+
+task	   ( -- addr )
+           Address of the task definition table
+
+task:      ( tibsize stacksize rstacksize addsize -- )
+           Define a task
+           HINT:
+           Use RAM xxx ALLOT to leave space for the PAD
+           of the prevously defined task. 
+           The OPERATOR task does not use PAD.  
+
+tinit      ( taskloop-addr task-addr -- )
+           Initialise the user area and link it to a task loop
+
+then       ( addr -- )          Compile Only
+           if ... else ... then
+
+tib        ( -- addr )     User variable
+           Address of the terminal input buffer
+
+tiu        ( -- addr )     User variable
+           Terminal input buffer pointer
+
+ti#        ( -- n )        Task constant
+           Size of terminal input buffer
+
+ticks      ( -- u )
+           System ticks
+
+to         ( x "name" -- )
+           Store x into value "name".
+
+true       ( -- -1 )
+
+tuck       ( x1 x2 -- x2 x1 x2 )
+           Insert x2 below x1 in the stack
+
+turnkey    ( -- addr )           Eeprom value mirrored in ram
+           Vector for user startup word
+
+type       ( c-addr u -- )
+           Type line to terminal. u < 256
+
+tx0        ( c -- )
+           Send a character to UART 0.
+
+tx1        ( c -- )
+           Send a character to UART 1.
+
+tx1q      ( -- queue-addr )
+           Leave the address of the queue for UART1
+
+tx2        ( c -- )
+           Send a character to UART 2.
+
+tx2q      ( -- queue-addr )
+           Leave the address of the queue for UART2
+
+txusb      ( c -- )
+           Send a character to USB UART.
+
+u0-        ( -- )
+           Disable flow control for UART0 serial interface
+
+u0+        ( -- )
+           Enable flow control for UART0 serial interface (Default)
+
+u1-        ( -- )
+           Disable flow control for UART1 serial interface
+
+u1+        ( -- )
+           Enable flow control for UART1 serial interface (Default)
+
+u2-        ( -- )
+           Disable flow control for UART2 serial interface
+
+u2+        ( -- )
+           Enable flow control for UART2 serial interface (Default)
+
+
+u*/mod     ( u1 u2 u3 -- u4(remainder) u5(quotient) )
+           Unsigned u1*u2/u3 with 32 bit intermediate result
+
+u.         ( u -- )
+           Display u unsigned according to numeric base
+
+u.r        ( u +n -- )
+           Display u in field of width n. 0<n<256
+
+u/         ( u1 u2 -- u3 )
+           Unsigned 16/16->16 bit division
+
+u/mod      ( u1 u2 -- u3(remainder) u4(quotient)
+           Unsigned 16/16->16 bit division
+
+u<         ( u1 u2 -- flag )
+           Leave true flag if u1 is less than u2
+
+u>         ( u1 u2 -- flag )
+           Leave true flag if u1 is greater than u2
+
+ud.        ( ud -- )
+           Display unsigned double number
+           
+ud*        ( ud u -- ud )
+           Unsigned 32x16 -> 32 bit multiply
+
+ud/mod     ( ud u -- u(remainder) ud(quotient)
+           unsigned 32/16 -> 32 bit division
+
+ulink      ( -- a-addr)
+           Link to next task
+
+um*        ( u1 u2 -- ud )
+           Unsigned 16x16 -> 32 bit multiply
+
+um/mod     ( ud u1 -- u2(remainder) u3(quotient)
+           unsigned 32/16 -> 16 bit division
+
+umax       ( u1 u2 -- u )
+           Leave the unsigned larger of u1 and u2.
+
+umin       ( u1 u2 -- u )
+           Leave the unsigned smaller of u1 and u2.
+
+until      ( flag -- )    Compile only
+           begin..until
+
+up         ( -- a-addr )
+           Variable holding the user pointer
+
+user       ( +n "name" -- )
+           Define a user variable at offset +n
+
+uq*        ( ud ud -- uq )
+           Multiply two double numbers to a quad result
+
+uq/mod     ( qu du -- du-rem du-quot )
+           Divide a 64 bit unsigned number with a 32 bit unsigned number
+
+d>q        ( d -- q )
+           Extend a double number to a quad number
+
+qm+        ( q d -- q )
+           Add a double number to quad number
+
+ut*        ( ud u -- ut )
+           Multiply single number with double number
+
+ut/        ( ut u -- ud )
+           Divide triple number with single number
+
+um*/       ( ud1 u1 u2 -- ud2 )
+           Scale with triple number intermediate result
+
+value      ( x "name" -- )
+           Define a value
+
+variable   ( "name" -- )
+           Create a variable in the current data section
+
+warm       ( -- )
+           Make a warm start
+
+while      (addr1 -- addr2 addr1 )       Compile Only
+           begin ... while ... repeat
+
+within     ( x xl xh -- flag )
+           Leave true if  xl <= x < xh
+
+word       ( c -- c-addr )
+           Parse a word in TIB and write the length into TIB
+           Leave the address of the length byte on the stack.
+
+wmove      ( addr1 addr2 u -- ) PIC24
+           Move u cells from addr1 to addr2
+
+words      ( -- )
+           List words
+ 
+xor        ( x1 x2 -- x3 )
+           Xor bitwise x1 with x2.
+
+Atmega Assembler
+----------------
+Conditionals
+------------
+if,    ( cc -- addr )
+else,  ( addr -- addr' )
+then,  ( addr -- )
+begin, ( -- addr )
+until, ( addr cc -- )
+again, ( addr -- )
+
+Condition codes for if, and until,
+----------------------------------
+cs,    ( -- cc )   if/until carry set
+eq,    ( -- cc )   if/until zero
+hs,    ( -- cc )   if/until half carry set
+ie,    ( -- cc )   if/until interrupt enabled
+lo,    ( -- cc )   if/until lower
+lt,    ( -- cc )   if/until less than
+mi,    ( -- cc )   if/until negative
+ts,    ( -- cc )   if/until T flag set
+vs,    ( -- cc )   if/until no overflow
+not,   ( cc -- cc' ) Invert the condition code
+
+Assembly words
+--------------
+adc,    ( Rd Rr -- )    Rd = Rd + Rr + C
+add,    ( Rd Rr -- )    Rd = Rd + Rr
+adiw,   ( Rw k6 -- )    Rdh:Rdl = Rdh:Rdl + k
+and,    ( Rd Rr -- )    Rd =- Rd AND Rr
+andi,   ( Rd k -- )     Rd = Rd AND k
+asr,    ( Rd -- )       Rd(n) = Rd(n+1), n=0..6
+bclr,   ( s -- )        SREG(s) = 0
+bld,    ( Rd b -- )     Rd(b) = T
+break,  ( -- )          Break
+bset,   ( s -- )        SREG(s) = 1
+bst,    ( Rr b -- )     T = Rr(b)
+call,   ( k16 k6 -- )   PC = k
+cbi,    ( P b -- )      I/O(P,b) = 0
+cbr,    ( Rd k -- )     Rd = Rd AND (0xFF - k)
+clc,    ( -- )          C = 0
+clh,    ( -- )          H = 0
+cli,    ( -- )          I = 0
+cln,    ( -- )          N = 0
+clr,    ( Rd -- )       Rd = 0
+cls,    ( -- )          S = 0
+clt,    ( -- )          T = 0
+clv,    ( -- )          V = 0
+clz,    ( -- )          Z = 0
+com,    ( Rd -- )       Rd = 0xFF -Rd
+cp,     ( Rd Rr -- )    ZNVCH <- Rd - Rr
+cpc,    ( Rd Rr -- )    ZNVCH <- Rd - Rr - C
+cpi,    ( Rd k -- )     ZNVCH <- Rd - k
+cpse,   ( Rd Rr -- )    if (Rd = Rr) Skip Next Instruction
+dec,    ( Rd -- )       Rd = Rd - 1
+eicall, ( -- )          Stack <- PC; PC = (EIND:Z)
+eijmp,  ( -- )          PC = (EIND:Z)
+eor,    ( Rd Rr -- )    Rd = Rd XOR Rr
+fmul,   ( Rd Rr -- )    R1:R0 = (Rd x Rr) << 1
+fmuls,  ( Rd Rr -- )    R1:R0 = (Rd x Rr) << 1
+fmulsu, ( Rd Rr -- )    R1:R0 = (Rd x Rr) << 1
+icall,  ( -- )          Stack <- PC; PC = Z
+ijmp,   ( -- )          PC = Z
+in,     ( Rd P -- )     Rd = P
+inc,    ( Rd -- )       Rd = Rd + 1
+jmp,    ( k16 k6 -- )   PC = k
+ld,     ( Rd Rr -- )    Rd = Rr, Rr={Z+,-Z,Y+,-Y,X+,-X,X,Y,Z}
+ldd,    ( Rd RR q -- )  Rd = (RR + q), RR = {Y,Z}
+ldi,    ( Rd k -- )     Rd = k
+lds,    ( Rd k16 -- )   (k) = Rd
+lsl,    ( Rd -- )       Rd(n+1) = Rd(n), Rd(0) ← 0
+lsr,    ( Rd -- )       Rd(n) = Rd(n+1), Rd(7) ← 0
+mov,    ( Rd Rr -- )    Rd = Rr
+movw,   ( Rd Rr -- )    Rd+1:Rd = Rr+1:Rr
+mul,    ( Rd Rr -- )    R1:R0 = Rd x Rr
+muls,   ( Rd Rr -- )    R1:R0 = Rd x Rr
+neg,    ( Rd -- )       Rd = 0x00 − Rd
+nop,    ( -- )          No Operation
+or,     ( Rd Rr -- )    Rd = Rd v Rr
+ori,    ( Rd k -- )     Rd = Rd v K
+out,    ( Rr P -- )     P = Rr
+pop,    ( Rd -- )       Rd = STACK
+push,   ( Rd -- )       STACK = Rr
+rcall,  ( k12 -- )      PC = PC + k + 1
+ret,    ( -- )          PC = STACK
+reti,   ( -- )          PC = STACK
+rjmp,   ( k12 -- )      PC = PC + k + 1
+rol,    ( Rd -- )       Rd(0) = C, Rd(n+1) = Rd(n),C = Rd(7)
+ror,    ( Rd -- )       Rd(7) = C, Rd(n) = Rd(n+1),C= Rd(0)
+sbc,    ( Rd Rr -- )    Rd = Rd - Rr - C
+sbci,   ( Rd k -- )     Rd = Rd - K - C
+sbi,    ( P b -- )      I/O(P,b) = 1
+sbic,   ( P b -- )      if (P(b)=0)  Skip Next Instruction
+sbis,   ( P b -- )      if (P(b)=1)  Skip Next Instruction
+sbiw,   ( Rw k6 -- )    Rdh:Rdl = Rdh:Rdl - K
+sbr,    ( Rd k -- )     Rd = Rd v K
+sbrc,   ( Rd b -- )     if (Rr(b)=0) Skip Next Instruction
+sbrs,   ( Rd b -- )     if (Rr(b)=1) Skip Next Instruction
+sec,    ( -- )          C=1
+seh,    ( -- )          H=1
+sei,    ( -- )          I=1
+sen,    ( -- )          N=1
+ser,    ( Rd -- )       Rd = 0xFF
+ses,    ( -- )          S=1
+set,    ( -- )          T=1
+sev,    ( -- )          V=1
+sez,    ( -- )          Z=1
+sleep,  ( -- )          Sleep
+st,     ( Rr RD -- )    (RD) = Rr, RD = {X,Y,Z,X+,-X,Y+,-Y,Z+,-Z}
+std,    ( Rr RD q -- )  (RD + q) = Rr, RD = {Y,Z} 
+sts,    ( k16 Rd -- )   (k) = Rr
+sub,    ( Rd Rr -- )    Rd = Rd - Rr
+subi,   ( Rd k -- )     Rd = Rd - K
+swap,   ( Rd -- )       Rd(3..0) = Rd(7..4), Rd(7..4) = Rd(3..0)
+tst,    ( Rd -- )       Rd = Rd AND Rd
+wdr,    ( -- )          Watchdog Reset
+
+Register constants
+------------------
+RD RR registers
+------------
+Z       ( -- 0 )
+Z+      ( -- 1 )
+-Z      ( -- 2 )
+Y       ( -- 8 )
+Y+      ( -- 9 )
+-Y      ( -- 10 )
+X       ( -- 12 )
+X+      ( -- 13 )
+-X      ( -- 14 )
+
+Rw registers
+------------
+XH:XL   ( -- 01 )
+YH:YL   ( -- 02 )
+ZH:ZL   ( -- 03 )
+
+
+Rd Rr registers
+---------------
+R0      ( -- 0 )
+R1      ( -- 1 )
+R2      ( -- 2 )
+R3      ( -- 3 )
+R4      ( -- 4 )
+R5      ( -- 5 )
+R6      ( -- 6 )
+R7      ( -- 7 )
+R8      ( -- 8 )
+R9      ( -- 9 )
+R10     ( -- 10 )
+R11     ( -- 11 )
+R12     ( -- 12 )
+R13     ( -- 13 )
+R14     ( -- 14 )
+R15     ( -- 15 )
+R16     ( -- 16 )
+R17     ( -- 17 )
+R18     ( -- 18 )
+R19     ( -- 19 )
+R20     ( -- 20 )
+R21     ( -- 21 )
+R22     ( -- 22 )
+R23     ( -- 23 )
+R24     ( -- 24 )
+R25     ( -- 25 )
+R26     ( -- 26 )
+R27     ( -- 27 )
+R28     ( -- 28 )
+R29     ( -- 29 )
+R30     ( -- 30 )
+R31     ( -- 31 )
+
+
+PIC18 assembler
+---------------
+addwf,  ( f d a -- )  
+addwfc, ( f d a -- )  
+andwf,  ( f d a -- )  
+clrf,   ( f a -- )  
+comf,   ( f d a -- )  
+cpfseq, ( f a -- )  
+cpfsgt, ( f a -- )  
+cpfslt, ( f a -- )  
+decf,   ( f d a -- )  
+decfsz, ( f d a -- )  
+dcfsnz, ( f d a -- )  
+incf,   ( f d a -- )  
+incfsz, ( f d a -- )  
+infsnz, ( f d a -- )  
+iorwf,  ( f d a -- )  
+movf,   ( f d a -- )  
+movff,  ( fs fd -- )
+movwf,  ( f a -- )    
+mulwf,  ( f a -- )    
+negf,   ( f a -- )    
+rlcf,   ( f d a -- )  
+rlncf,  ( f d a -- )  
+rrcf,   ( f d a -- )  
+rrncf,  ( f d a -- )  
+setf,   ( f d a -- )  
+subfwb, ( f d a -- )  
+subwf,  ( f d a -- )  
+subwfb, ( f d a -- )  
+swapf,  ( f d a -- )  
+tstfsz, ( f a -- )    
+xorwf,  ( f d a -- )  
+bcf,    ( f b a -- )  
+bsf,    ( f b a -- )  
+btfsc,  ( f b a -- )  
+btfss,  ( f b a -- )  
+btg,    ( f b a -- )  
+addlw,  ( k -- )  
+andlw,  ( k -- )  
+iorlw,  ( k -- )  
+lfsr,   ( k f -- )
+movlb,  ( k -- )  
+movlw,  ( k -- )  
+mullw,  ( k -- )  
+sublw,  ( k -- )  
+xorlw,  ( k -- )
+bra,    ( n -- )  
+call,   ( n -- )  
+clrwdt, ( -- )    
+daw,    ( -- )    
+goto,   ( n -- )  
+pop,    ( -- )    
+push,   ( -- )    
+rcall,  ( n -- )  
+reset,  ( -- )    
+retfie, ( -- )    
+retlw,  ( k -- )  
+return, ( -- )    
+sleep,  ( -- )    
+nop,    ( -- )    
+tblrd*, ( -- )  
+tblrd*+,( -- )  
+tblrd*-,( -- )  
+tblrd+*,( -- )  
+tblwt*, ( -- )  
+tblwt*+,( -- )  
+tblwt*-,( -- )  
+tblwt+*,( -- )  
+cc,
+nc,
+mi,
+pl,
+z,
+nz,
+ov,
+nov,
+z,         ( -- cc )
+nz,        ( -- cc )
+not,       ( cc -- not-cc )
+if,        ( cc -- here )
+else,      ( back-addr -- here )
+then,      ( back-addr -- )
+begin,     ( -- here )
+again,     ( back-addr -- )
+until,     ( back-addr cc -- )
+
+
+PIC24-30-33 assembler
+---------------------
+rcall,     ( rel-addr -- )
+bra,       ( cc rel-addr -- )
+return,    ( -- )
+retfie,    ( -- )
+bclr,      ( bit ram-addr -- )
+bset,      ( bit ram-addr -- )
+btst,      ( bit ram-addr -- )
+btsc,      ( bit ram-addr -- )
+btss,      ( bit ram-addr -- )
+z,         ( -- cc )
+nz,        ( -- cc )
+not,       ( cc -- not-cc )
+if,        ( cc -- here )
+else,      ( back-addr -- here )
+then,      ( back-addr -- )
+begin,     ( -- here )
+again,     ( back-addr -- )
+until,     ( back-addr cc -- )
