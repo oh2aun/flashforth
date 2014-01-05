@@ -1,8 +1,8 @@
 \ *********************************************************************
 \    Servo controller for FlashForth                                  *
 \    Filename:      servo.txt                                         *
-\    Date:          20.02.2011                                        *
-\    FF Version:    3.7                                               *
+\    Date:          05.01.2014                                        *
+\    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -15,22 +15,22 @@
 \ to prove that Forth interrupt routines really works.
 \
 
-tmr0ie intcon mclr       \ disable the tmr0 irq to prevent crash
-false di is irq ei       \ zero the interrupt vector
+tmr0ie intcon mclr  \ disable the tmr0 irq to prevent crash
+0 0 int!            \ zero the interrupt vector
 -servo
 marker -servo
 hex ram
 
 \ The needed PIC registers
-$ff8a con latb      
-$ff93 con trisb     
-$ffd5 con t0con     
-$ffd6 con tmr0l
-$fff2 con intcon
+$ff8a constant latb      
+$ff93 constant trisb     
+$ffd5 constant t0con     
+$ffd6 constant tmr0l
+$fff2 constant intcon
 
 \ intcon bits
-$0020 con tmr0ie
-$0004 con tmr0if
+$0020 constant tmr0ie
+$0004 constant tmr0if
 
 \ Pulse lengths in timerclocks for 4 channels
 : array create cells allot does> swap 2* + ; 
@@ -40,11 +40,11 @@ ram 8 array timeout
 ram variable segment    \ The current timeout segment
 ram variable sbit       \ The current servo bit
 
-Fcy #1000 /          con clk/us
-0 #1500 clk/us *  -  con midhi
-0 #500 clk/us * -    con midlo
-0 #12000 clk/us * -  con endlo
-0 #2000 clk/us * -   con stime
+Fcy #1000 /          constant clk/us
+0 #1500 clk/us *  -  constant midhi
+0 #500 clk/us * -    constant midlo
+0 #12000 clk/us * -  constant endlo
+0 #2000 clk/us * -   constant stime
 
 \ Servo control interrupt routine
 : sirq
@@ -79,7 +79,7 @@ Fcy #1000 /          con clk/us
       midlo r@ 2* 1+ timeout ! 
   next
   %10001000 t0con c!         \ TMR0 16 bit, no prescaler
-  ['] sirq di is irq ei      \ Store the interrupt vector
+  ['] sirq 0 int!            \ Store the interrupt vector
   tmr0if intcon mclr         \ clear the timer 0 interrupt flag
   tmr0ie intcon mset         \ set the timer 0 interrupt enable
 ;
@@ -93,4 +93,3 @@ Fcy #1000 /          con clk/us
   >r over 2* timeout di ! ei
   r> swap 2* timeout cell+ di ! ei
 ;
-

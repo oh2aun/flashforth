@@ -2,10 +2,10 @@
 marker -help
 ram hex
 
-$1b con esc
-$09 con tab
-$0d con ret
-$4000 con ahelp
+$1b constant esc
+$09 constant tab
+$0d constant ret
+$4000 constant ahelp
 
 : h= ( caddr caddr1 u -- flag )
   swap !p>r

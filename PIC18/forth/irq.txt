@@ -13,7 +13,7 @@
 \ You must also clear any related interrupt enable bits 
 \ and interrupt flags before zeroing the interrupt vector
 
-false di to irq ei
+0 0 int!
 -uirq
 marker -uirq
 ram hex
@@ -24,8 +24,8 @@ $48 as3 infsnz,         ( f d a -- )
   4 lshift over 8 rshift $f and or $ee00 or i, $ff and $f000 or i, ;  
 1 constant f,     \ Destination File
 
-1 con Treg
-$ffe6 con Tplus   \ Treg (FSR1) is interrupt safe
+1     constant Treg
+$ffe6 constant Tplus   \ Treg (FSR1) is interrupt safe
 ram variable icnt
 
 \ Interrupt routine written in assembly
@@ -35,8 +35,9 @@ ram variable icnt
   [ Tplus f, a, incf,   ]
 ;i
 
-' irq_asm is irq
+' irq_asm 0 int!
 
+icnt @ icnt @ u. u.
 \
 \ Interrupt routine written in Forth
 \
@@ -49,9 +50,10 @@ ram variable icnt1
   i] 
 ;i
 
-' irq_forth is irq
+' irq_forth 0 int!
 
 \ Install the interrupt for warm start
-: init ['] irq_forth is irq ; 
+: init ['] irq_forth 0 int! ; 
 ' init is turnkey
 
+icnt1 @ icnt1 @ u. u.

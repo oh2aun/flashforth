@@ -40,10 +40,10 @@
 ; CPU load indicator led definitions. Needs IDLE_MODE
 .equ CPU_LOAD_LED = 1       ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrb
-.equ CPU_LOAD_PORT = portb  ; avr-p28: portc
-.equ CPU_LOAD_BIT = 7       ; avr-p28: pin5
-.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28: 0 = low on port turns on led, 
-                                 ;          1 = high on port turns on led 
+.equ CPU_LOAD_PORT = portb  ; avr-p28:portc arduinomega:portb arduinouno:portb
+.equ CPU_LOAD_BIT = 7       ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
+.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
+                                 ; arduino : 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
 .equ TURNKEY_DELAY = 2000  ; milliseconds

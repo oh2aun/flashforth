@@ -85,8 +85,8 @@ hex ram
   c@+ rsave @ + dup dup s0 ! ssave ! \ ssize-addr s0
   swap c@ + tiu !
   0 ul!
-  0 up@  #14 - !
-  op!                  \ run the operator task again
+  0 task 2+ !        \ set the idle status and cr flag
+  op!                \ run the operator task again
 ;
 
 \ Insert a new task after operator in the linked list.

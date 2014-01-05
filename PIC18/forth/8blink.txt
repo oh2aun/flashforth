@@ -15,8 +15,8 @@
 marker -8blink
 ram hex
 
-$ff81 con portb
-$ff93 con trisb
+$ff81 constant portb
+$ff93 constant trisb
 $2 user bitmask    \ The bitmask
 $4 user delay      \ The delay time in milliseconds
 

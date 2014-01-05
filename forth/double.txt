@@ -14,7 +14,7 @@
   swap postpone literal postpone literal postpone ; immediate
 
 : 2constant ( x x "name" -- )
-  swap con postpone literal ;
+  swap constant postpone literal ;
 
 : 2variable ( "name" -- )
   variable cell allot ;

@@ -61,8 +61,8 @@ Dictionary of FlashForth 5.0
 -          ( n1 n2 -- n3 )
            Subtract n2 from n1
 
--@         ( addr -- addr-2 n )
-           Fetch from addr and decrement addr by 2
+-@         ( a-addr -- a-addr-2 n )
+           Fetch from a-addr and decrement a-addr by 2
 
 .          ( n -- )
            Display n signed according to base
@@ -75,7 +75,7 @@ Dictionary of FlashForth 5.0
            and display the stack contents.
 
 /          ( n1 n2 -- n3 )
-           16/16->16 bit division
+           16/16->16 bit signed division
            
 /mod       ( n n  -- rem quot )
            16/16 -> 16-bit signed division.
@@ -168,7 +168,7 @@ Dictionary of FlashForth 5.0
 >in        ( -- a-addr )      User Variable
            Holds offset into tib
 
->number    ( ud  addr1 u1 -- ud addr2 u2 )
+>number    ( ud  c-addr1 u1 -- ud c-addr2 u2 )
            Convert string to number
 
 >pr        ( c -- c )
@@ -190,11 +190,11 @@ Dictionary of FlashForth 5.0
 ?negate    ( n1 n2 -- n3 )
            Negate n1 if n2 is negative
 
-@          ( addr -- x )
-           Fetch x from addr
+@          ( a-addr -- x )
+           Fetch x from a-addr
 
-@+         ( addr1 -- addr2 x )
-           Fetch cell from addr1 and increment addr1 by a cell
+@+         ( a-addr1 -- a-addr2 x )
+           Fetch cell from a-addr1 and increment a-addr1 by cellsize
            
 @p         ( -- addr )
            Fetch the p register to the stack
@@ -224,7 +224,7 @@ abort      ( -- )
            Reset stack pointer and execute quit
 
 abort"     ( "string" -- )     Compile Only
-           Compile inline string and postpone abort?
+           Compile inline string and postpone ?abort
 
 abs        ( n -- n1 )
            Leave absolute value of n
@@ -232,7 +232,7 @@ abs        ( n -- n1 )
 accept     ( c-addr +n -- +n' )
            Get line from terminal
 
-again      ( addr -- )                  Compile Only
+again      ( a-addr -- )                  Compile Only
            begin ... again
 
 ivt        ( -- )
@@ -268,13 +268,13 @@ bl         ( -- c )
 busy       ( -- )
            Cpu idle mode not allowed
            
-c!         ( c addr -- )
-           Store c to addr
+c!         ( c c-addr -- )
+           Store c to c-addr
 
-c@         ( addr -- c )
+c@         ( c-addr -- c )
            Fetch c from addr
 
-c@+        ( addr1 -- addr2 c )
+c@+        ( c-addr1 -- c-addr2 c )
            Fetch char from addr1 and increment addr1
 
 c,         ( c -- )
@@ -283,10 +283,10 @@ c,         ( c -- )
 cell       ( -- n )
            Leave the size of one cell in characters.
 
-cell+      ( addr1 -- addr2 )
+cell+      ( a-addr1 -- a-addr2 )
            Add cell size to addr1
 
-cells      ( x1 -- x2 )
+cells      ( n1 -- n2 )
            Convert cells to address units.
 
 char       ( "char" -- n )
@@ -295,7 +295,7 @@ char       ( "char" -- n )
 char+      ( c-addr1 -- c-addr2 )
            Add one to c.addr1
 
-chars      ( x1 -- x2 )
+chars      ( n1 -- n2 )
            Convert characters to address units
 
 cf,        ( xt -- )
@@ -308,7 +308,7 @@ cmove      ( addr1 addr2 u -- )
            Move u chars from addr1 to addr2
 
 constant   ( x "name" -- )
-           Create a constant in flash as inline code
+           Create a constant in flash as inline literal code
 
 cq>        ( queue-addr -- c )
            Get a character from queue.
@@ -431,7 +431,6 @@ false      ( -- 0 )
 
 Fcy        ( -- u )
            The internal cpu & peripheral clock cycle in KHz.
-           Foscillator/4
 
 fl-        ( -- )
            Disable writes to flash and eeprom.
@@ -464,6 +463,9 @@ here       ( -- addr )
 
 hex        ( -- )
            Set numeric base to hexadecimal
+
+hi         ( -- u )
+           High limit of the current data space memory.
 
 hold       ( c -- )      Compile Only
            Append char to formatted numeric string
@@ -559,6 +561,9 @@ m+         ( d1 n -- d2 )
 m*         ( n n -- d )
            Signed 16*16->32 multiply
            
+m*/        ( d1 n1 n2 - d2 )
+           Scale d2 = d1*n1/n2 with triple intermediate result
+
 marker     ( "name" -- )
            Mark a dictionary state
 
@@ -641,8 +646,8 @@ pc@        ( -- c )
 
 pad        ( -- a-addr )
            : pad tib ti# + ;
-           Each task has its own pad.
-           If needed the user must allocate it separately with allot for each task
+           Each task has its own pad with initial size of 0.
+           If needed the user must allocate space with allot for each task
            FF core does not use the pad.
 
 parse	   ( c -- addr length )
@@ -707,7 +712,7 @@ rx1        ( -- c )
 rx1?       ( -- f )
            Leave TRUE if UART1 receive buffer is not empty.
 
-rx1q      ( -- queue-addr )
+rx1q       ( -- queue-addr )
            Leave the address of the queue for UART1
 
 rx2        ( -- c )
@@ -716,13 +721,13 @@ rx2        ( -- c )
 rx2?       ( -- f )
            Leave TRUE if UART2 receive buffer is not empty.
 
-rx2q      ( -- queue-addr )
+rx2q       ( -- queue-addr )
            Leave the address of the queue for UART2
 
-rxusb      ( -- c )
+rxu        ( -- c )
            Receive a character from USB UART.
 
-rxusb?     ( -- f )
+rxu?       ( -- f )
            Leave TRUE if USB UART receive buffer is not empty.
 
 s>d        ( n -- d )
@@ -766,8 +771,8 @@ s"         ( "text" -- )           Compile Only
 ."         ( "text" -- )           Compile Only
            Compile string to print into flash
 
-source     ( -- c-addr n )
-           Current input buffer
+source     ( -- c-addr u )
+           Current input buffer address and numbers of chracters
 
 space      ( -- )
            Emit one space character
@@ -829,16 +834,16 @@ tx0        ( c -- )
 tx1        ( c -- )
            Send a character to UART 1.
 
-tx1q      ( -- queue-addr )
+tx1q       ( -- queue-addr )
            Leave the address of the queue for UART1
 
 tx2        ( c -- )
            Send a character to UART 2.
 
-tx2q      ( -- queue-addr )
+tx2q       ( -- queue-addr )
            Leave the address of the queue for UART2
 
-txusb      ( c -- )
+txu        ( c -- )
            Send a character to USB UART.
 
 u0-        ( -- )
@@ -976,16 +981,16 @@ again, ( addr -- )
 
 Condition codes for if, and until,
 ----------------------------------
-cs,    ( -- cc )   if/until carry set
-eq,    ( -- cc )   if/until zero
-hs,    ( -- cc )   if/until half carry set
-ie,    ( -- cc )   if/until interrupt enabled
-lo,    ( -- cc )   if/until lower
-lt,    ( -- cc )   if/until less than
-mi,    ( -- cc )   if/until negative
-ts,    ( -- cc )   if/until T flag set
-vs,    ( -- cc )   if/until no overflow
-not,   ( cc -- cc' ) Invert the condition code
+cs,    ( -- cc )   if,/until, carry set
+eq,    ( -- cc )   if,/until, zero
+hs,    ( -- cc )   if,/until, half carry set
+ie,    ( -- cc )   if,/until, interrupt enabled
+lo,    ( -- cc )   if,/until, lower
+lt,    ( -- cc )   if,/until, less than
+mi,    ( -- cc )   if,/until, negative
+ts,    ( -- cc )   if,/until, T flag set
+vs,    ( -- cc )   if,/until, no overflow
+not,   ( cc -- not-cc ) Invert the condition code
 
 Assembly words
 --------------
@@ -1139,90 +1144,84 @@ R31     ( -- 31 )
 
 PIC18 assembler
 ---------------
-addwf,  ( f d a -- )  
-addwfc, ( f d a -- )  
-andwf,  ( f d a -- )  
-clrf,   ( f a -- )  
-comf,   ( f d a -- )  
-cpfseq, ( f a -- )  
-cpfsgt, ( f a -- )  
-cpfslt, ( f a -- )  
-decf,   ( f d a -- )  
-decfsz, ( f d a -- )  
-dcfsnz, ( f d a -- )  
-incf,   ( f d a -- )  
-incfsz, ( f d a -- )  
-infsnz, ( f d a -- )  
-iorwf,  ( f d a -- )  
-movf,   ( f d a -- )  
-movff,  ( fs fd -- )
-movwf,  ( f a -- )    
-mulwf,  ( f a -- )    
-negf,   ( f a -- )    
-rlcf,   ( f d a -- )  
-rlncf,  ( f d a -- )  
-rrcf,   ( f d a -- )  
-rrncf,  ( f d a -- )  
-setf,   ( f d a -- )  
-subfwb, ( f d a -- )  
-subwf,  ( f d a -- )  
-subwfb, ( f d a -- )  
-swapf,  ( f d a -- )  
-tstfsz, ( f a -- )    
-xorwf,  ( f d a -- )  
-bcf,    ( f b a -- )  
-bsf,    ( f b a -- )  
-btfsc,  ( f b a -- )  
-btfss,  ( f b a -- )  
-btg,    ( f b a -- )  
-addlw,  ( k -- )  
-andlw,  ( k -- )  
-iorlw,  ( k -- )  
-lfsr,   ( k f -- )
-movlb,  ( k -- )  
-movlw,  ( k -- )  
-mullw,  ( k -- )  
-sublw,  ( k -- )  
-xorlw,  ( k -- )
-bra,    ( n -- )  
-call,   ( n -- )  
-clrwdt, ( -- )    
-daw,    ( -- )    
-goto,   ( n -- )  
-pop,    ( -- )    
-push,   ( -- )    
-rcall,  ( n -- )  
-reset,  ( -- )    
-retfie, ( -- )    
-retlw,  ( k -- )  
-return, ( -- )    
-sleep,  ( -- )    
-nop,    ( -- )    
-tblrd*, ( -- )  
-tblrd*+,( -- )  
-tblrd*-,( -- )  
-tblrd+*,( -- )  
-tblwt*, ( -- )  
-tblwt*+,( -- )  
-tblwt*-,( -- )  
-tblwt+*,( -- )  
-cc,
-nc,
-mi,
-pl,
-z,
-nz,
-ov,
-nov,
-z,         ( -- cc )
-nz,        ( -- cc )
-not,       ( cc -- not-cc )
-if,        ( cc -- here )
-else,      ( back-addr -- here )
-then,      ( back-addr -- )
-begin,     ( -- here )
-again,     ( back-addr -- )
-until,     ( back-addr cc -- )
+addwf,  ( f d a -- ) C,DC,Z,OV,N Add WREG and f
+addwfc, ( f d a -- ) C,DC,Z,OV,N Add WREG and Carry bit to f
+andwf,  ( f d a -- ) Z,N         AND WREG with f
+clrf,   ( f a -- )   Z           Clear f
+comf,   ( f d a -- ) Z,N         Complement f
+cpfseq, ( f a -- )               Compare f with WREG, Skip =
+cpfsgt, ( f a -- )               Compare f with WREG, Skip >
+cpfslt, ( f a -- )               Compare f with WREG, Skip <
+decf,   ( f d a -- ) C,DC,Z,OV,N Decrement f
+decfsz, ( f d a -- )             Decrement f, Skip if 0
+dcfsnz, ( f d a -- )             Decrement f, Skip if Not 0
+incf,   ( f d a -- ) C,DC,Z,OV,N Increment f
+incfsz, ( f d a -- )             Increment f, Skip if 0
+infsnz, ( f d a -- )             Increment f, Skip if Not 0
+iorwf,  ( f d a -- ) Z,N         Inclusive OR WREG with f
+movf,   ( f d a -- ) Z,N         Move f
+movff,  ( fs fd -- )             Move fs to fd
+movwf,  ( f a -- )               Move WREG to f
+mulwf,  ( f a -- )               Multiply WREG with f
+negf,   ( f a -- )   C,DC,Z,OV,N Negate F
+rlcf,   ( f d a -- ) C,Z,N       Rotate Left f through Carry
+rlncf,  ( f d a -- ) Z,N         Rotate Left f (No Carry)
+rrcf,   ( f d a -- ) C,Z,N       Rotate Right f through Carry
+rrncf,  ( f d a -- ) Z,N         Rotate Right f (No Carry)
+setf,   ( f d a -- )             Set f
+subfwb, ( f d a -- ) C,DC,Z,OV,N Subtract f from WREG with Borrow
+subwf,  ( f d a -- ) C,DC,Z,OV,N Subtract WREG from f
+subwfb, ( f d a -- ) C,DC,Z,OV,N Subtract WREG from f with Borrow
+swapf,  ( f d a -- )             Swap Nibbles in f
+tstfsz, ( f a -- )               Test f, Skip if 0
+xorwf,  ( f d a -- ) Z,N         Exclusive OR WREG with f
+bcf,    ( f b a -- )             Bit Clear f
+bsf,    ( f b a -- )             Bit Set f
+btfsc,  ( f b a -- )             Bit Test f, Skip if Clear
+btfss,  ( f b a -- )             Bit Test f, Skip if Set
+btg,    ( f b a -- )             Bit Toggle f
+addlw,  ( k -- )     C,DC,Z,OV,N Add Literal and WREG
+andlw,  ( k -- )     Z,N         AND Literal with WREG
+iorlw,  ( k -- )     Z,N         Inclusive OR Literal with WREG
+lfsr,   ( k f -- )               Move literal to FSR 12-bit
+movlb,  ( k -- )                 Move Literal to BSR<3:0>
+movlw,  ( k -- )                 Move Literal to WREG
+mullw,  ( k -- )                 Multiply Literal with WREG
+sublw,  ( k -- )     C,DC,Z,OV,N Subtract WREG from Literal
+xorlw,  ( k -- )     Z,N         Exclusive OR Literal with WREG
+bra,    ( n -- )                 Branch Unconditionally
+call,   ( n -- )                 Call subroutine
+clrwdt, ( -- )                   Clear Watchdog Timer
+daw,    ( -- )                   Decimal Adjust Wreg
+goto,   ( n -- )                 Goto address
+pop,    ( -- )                   Pop Top of Return Stack
+push,   ( -- )                   Push Top of Return Stack
+rcall,  ( n -- )                 Relative Call
+reset,  ( -- )                   Software Device Reset
+retfie, ( -- )                   Return from Interrupt Enable
+retlw,  ( k -- )                 Return with Literal in WREG
+return, ( -- )                   Return from Subroutine
+sleep,  ( -- )                   Go into Standby mode
+nop,    ( -- )                   No Operation
+tblrd*, ( -- )                   Table Read
+tblrd*+,( -- )                   Table Read with Post-Increment
+tblrd*-,( -- )                   Table Read with Post-Decrement
+tblrd+*,( -- )                   Table Read with Pre-Increment
+tblwt*, ( -- )                   Table Write
+tblwt*+,( -- )                   Table Write with Post-Increment
+tblwt*-,( -- )                   Table Write with Post-Decrement
+tblwt+*,( -- )                   Table Write with Pre-Increment
+cc,     ( -- cc )                if,/until, Carry
+mi,     ( -- cc )                if,/until, Minus
+z,      ( -- cc )                if,/until, Zero 
+ov,     ( -- cc )                if,/until, Overflow
+not,    ( cc -- not-cc )
+if,     ( cc -- here )
+else,   ( back-addr -- here )
+then,   ( back-addr -- )
+begin,  ( -- here )
+again,  ( back-addr -- )
+until,  ( back-addr cc -- )
 
 
 PIC24-30-33 assembler

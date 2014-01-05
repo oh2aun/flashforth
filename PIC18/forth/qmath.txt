@@ -2,6 +2,7 @@
 \    Filename:      qmath.txt                                         *
 \    Date:          31.12.2013                                        *
 \    FF Version:    5.0                                               *
+\    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -13,13 +14,13 @@
 
 ram hex
 \ Assembler definitions
-1 con f,     \ Destination File
+1 constant f,     \ Destination File
 
 \ registers for parameter stack handling
-$ffed con Sminus
-$ffec con plusS
-$ffef con Srw
-$ffd8 con status
+$ffed constant Sminus
+$ffec constant plusS
+$ffef constant Srw
+$ffd8 constant status
 
 \ Assembler words
 : as2 ( opcode "name" -- ) ( f a -- )
@@ -37,16 +38,16 @@ $34 as3 rlcf,           ( f d a -- )
 $5c as3 subwf,          ( f d a -- )  
 $58 as3 subwfb,         ( f d a -- )  
 $0e00 as1 movlw,        ( k -- )  
-$e2 con cc,    \ bc
+$e2 constant cc,    \ bc
 
 
 \ These variables are overlapping the flash buffer
 \ The flash buffer is written to flash before
 \ the variables are used.
-$f000 con dividend
-$f008 con divisor
-$f00c con dcnt
-$f00d con tmp
+$f000 constant dividend
+$f008 constant divisor
+$f00c constant dcnt
+$f00d constant tmp
 
 \ Divide a 64 bit unsigned number with a 32 bit unsigned number
 \ The result is a 32 bit remainder and 32 bit quotient

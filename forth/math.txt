@@ -70,4 +70,10 @@
 : um*/ ( ud1 u1 u2 -- ud2)
   >r ut* cwd r> ut/
 ;
+\ Signed scale d1*n1/n2 with intermediate triple result
+: m*/ ( d1 n1 n2 -- d2 )
+   rot dup >r rot rot 2dup xor r> xor >r \ save result sign
+   abs >r abs >r dabs r> r> \ now have S:ud1 u1 u2
+   um*/ r> ?dnegate
+;
 

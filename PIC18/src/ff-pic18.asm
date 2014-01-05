@@ -1199,16 +1199,19 @@ IRQ_SEMI:
         rcall   GOTO_
         goto    LEFTBRACKET
         
-; IRQ   --      VALUE for the interrupt vector
+; INT!   addr vector --     Store the interrupt vector
         dw      L_IRQ_SEMI
-L_IRQ_V:
-        db      NFA|3,"irq"
-IRQ_V:
-        call    VALUE_DOES      ; Must be call for IS to work
-        dw      irq_v+h'f000'
+L_INT:
+        db      NFA|4,"int!"
+INT:
+        call    DROP
+        movf    Sminus, W, A
+        movff	Sminus, irq_v
+        movwf   irq_v+1, A
+        return
 
 ; LITERAL  x --           compile literal x as native code
-        dw      L_IRQ_V
+        dw      L_INT
 L_LITERAL:
         db      NFA|IMMED|7,"literal"
 LITERAL:
@@ -1669,7 +1672,7 @@ pause2:
 ; TX0  c --    output character to the USB serial emulation
         dw      L_PAUSE
 L_TX0:
-        db      NFA|3,"tx0"
+        db      NFA|3,"txu"
 TX0:
         rcall   PAUSE
         lfsr    Tptr, usb_device_state
@@ -1715,7 +1718,7 @@ TX0_2:
 ; KEY   -- c    get character from the USB line
         dw      L_TX0
 L_RX0:
-        db      NFA|3,"rx0"
+        db      NFA|3,"rxu"
 RX0:
         rcall   PAUSE
         call    keyUSBUSART
@@ -1737,7 +1740,7 @@ RX0_3:
 ; KEY?  -- f    return true if a char is waiting
         dw      L_RX0
 L_RX0Q:
-        db      NFA|4,"rx0?"
+        db      NFA|4,"rxu?"
 RX0Q:
         call    keyQUSBUSART
         movwf   plusS, A
@@ -2296,7 +2299,7 @@ VER:
         db d'27'," FlashForth 5.0 PIC18 USB\r\n"
 #else
          ;        1234567890123456789012345678901234567890
-        db d'22'," FlashForth 5.0 PIC18\r\n"
+        db d'23'," FlashForth 5.0 PIC18\r\n"
 #endif 
         goto    TYPE
 ;*******************************************************
@@ -2426,11 +2429,11 @@ TWOVARIABLE_:
 
 ;******************************************************
 ; CONSTANT x name --      define a Forth constant
-;  : CREATE  CELL NEGATE IALLOT I, ;
+;  : CO: CREATE  CELL NEGATE IALLOT I, ;
 ; Note that the constant is stored in flash.
         dw      L_2VARIABLE
 L_CONSTANT:
-        db      NFA|8,"constant"
+        db      NFA|3,"co:"
 CONSTANT_:
         call    CREATE      ; Create a word that in runtime leaves the current DP on the stack
         rcall   CELL
@@ -2444,7 +2447,7 @@ CONSTANT_:
 ;;; : con create -6 iallot postpone literal postpone  ; ;
         dw      L_CONSTANT
 L_CON:
-        db      NFA|3,"con"
+        db      NFA|8,"constant"
 CON:
         call    COLON         ; Create a word header
         rcall   LITERAL       ; Append the constant value  as inline literal
@@ -2452,7 +2455,7 @@ CON:
 
         dw      L_CON
 L_2CON:
-        db      NFA|4,"2con"
+        db      NFA|9,"2constant"
 TWOCON:
         rcall   SWOP
         call    COLON         ; Create a word header
@@ -6036,5 +6039,3 @@ dpcode:
 
        end
 ;********************************************************** 
-
-

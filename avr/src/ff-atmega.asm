@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          31.12.2013                                        *
+;    Date:          04.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -317,6 +317,11 @@
 .equ BOOT_START=FLASHEND - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
 .equ KERNEL_START=BOOT_START - KERNEL_SIZE
 
+;;;  High values for memory areas
+.equ FLASH_HI = 0xffff - KERNEL_START
+.equ EEPROM_HI =PEEPROM + EEPROMEND
+.equ RAM_HI = RAMEND
+	
 ;;; USER AREA for the OPERATOR task
 ;.equ uaddsize=     0          ; No additional user variables 
 .equ ursize=       RETURN_STACK_SIZE
@@ -3959,9 +3964,23 @@ DDOT_L:
         rcall   NUMGREATER
         call    TYPE
         jmp     SPACE_
+;****************************************************
+        fdw      DDOT_L
+MEMHI_L:
+        .db     NFA|2,"hi",0
+MEMHI:
+        rcall   DOLIT
+        fdw     FLASHHI
+        call    CSE_
+        call    PLUS
+        jmp     FETCH
+FLASHHI:
+        .dw      FLASH_HI
+        .dw      EEPROM_HI
+        .dw      RAM_HI
 ;***************************************************
 
-        fdw      DDOT_L
+        fdw      MEMHI_L
 L_FETCH_P:
         .db      NFA|INLINE|2,"@p", 0
 FETCH_P:
@@ -4109,7 +4128,7 @@ RX1_ISRR:
         lds     xl, rbuf1_wr
         add     zl, xl
         adc     zh, zero
-        lds     xh, UDR1
+        in_     xh, UDR1
 .if OPERATOR_UART == 1
         cpi     xh, 0xf
         brne    pc+2
@@ -4384,8 +4403,6 @@ RESET_:     jmp  WARM_
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
-        pop     ph
-        pop     pl
         pop     t3
         pop     t2
 
@@ -4453,8 +4470,6 @@ FF_ISR:
         push    t1
         push    t2
         push    t3
-        push    pl
-        push    ph
         push    tosl
         push    tosh
 
@@ -4471,7 +4486,7 @@ RX0_ISR:
         lds     xl, rbuf0_wr
         add     zl, xl
         adc     zh, zero
-        lds     xh, UDR0_
+        in_     xh, UDR0_
 .if OPERATOR_UART == 0
         cpi     xh, 0xf
         brne    pc+2
@@ -4968,7 +4983,7 @@ VER_L:
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 24,"FlashForth Atmega 5.0",0xd,0xa,0
+        .db 23,"FlashForth Atmega 5.0",0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts

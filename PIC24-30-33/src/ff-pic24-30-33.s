@@ -3228,8 +3228,8 @@ TWOVARIABLE:
 
         .pword  paddr(TWOVARIABLE_L)+PFLASH
 CONSTANT_L:
-        .byte   NFA|8
-        .ascii  "constant"
+        .byte   NFA|3
+        .ascii  "co:"
         .align  2
 CONSTANT:
         rcall   CREATE
@@ -3240,8 +3240,8 @@ CONSTANT:
 
         .pword  paddr(CONSTANT_L)+PFLASH
 CON_L:
-        .byte   NFA|3
-        .ascii  "con"
+        .byte   NFA|8
+        .ascii  "constant"
         .align  2
 CON_:
         rcall   COLON
@@ -3250,8 +3250,8 @@ CON_:
 
         .pword  paddr(CON_L)+PFLASH
 TWOCON_L:
-        .byte   NFA|4
-        .ascii  "2con"
+        .byte   NFA|9
+        .ascii  "2constant"
         .align  2
 TWOCON_:
         rcall   SWOP
@@ -6299,7 +6299,7 @@ WDS3:
         return
 
 ; .S      --           print stack contents
-; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
+; : .s sp@ s0 @ 2+ begin 2dup < 0= while @+ u. repeat 2drop ;
         .pword  paddr(WORDS_L)+PFLASH
 DOTS_L:
         .byte   NFA|2

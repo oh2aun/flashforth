@@ -15,27 +15,27 @@ hex ram
 
 \ NOTE: 18F2455 and friends USB pics do NOT use PORTC for SDA,SCL.
 \ Most others do. 
-ff82 con portc
-ff94 con trisc
+ff82 constant portc
+ff94 constant trisc
 
-ffc5 con sspcon2
-ffc6 con sspcon1
-ffc7 con sspstat
-ffc8 con sspadd
-ffc9 con sspbuf
-ff9e con pir1
+ffc5 constant sspcon2
+ffc6 constant sspcon1
+ffc7 constant sspstat
+ffc8 constant sspadd
+ffc9 constant sspbuf
+ff9e constant pir1
 
 \ pir1 bits
-3 con sspif
+3 constant sspif
 
 \ SSPCON2 bits
-0 con sen
-1 con rsen
-2 con pen
-3 con rcen
-4 con acken
-5 con ackdt
-6 con ackstat
+0 constant sen
+1 constant rsen
+2 constant pen
+3 constant rcen
+4 constant acken
+5 constant ackdt
+6 constant ackstat
 
 : i2cinit ( -- )
   [ trisc %011 0 bsf, ]

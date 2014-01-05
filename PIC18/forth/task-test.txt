@@ -2,7 +2,8 @@
 \                                                                     *
 \    Filename:      task-test.txt                                     *
 \    Date:          21.02.2011                                        *
-\    FF Version:    3.7                                               *
+\    FF Version:    5.0                                               *
+\    MCU            PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -16,8 +17,8 @@ single
 marker -lblink
 ram hex
 
-$ff82 con portc
-$ff94 con trisc
+$ff82 constant portc
+$ff94 constant trisc
 $2 user bitmask    \ The bitmask
 $4 user delay      \ The delay time in milliseconds
 

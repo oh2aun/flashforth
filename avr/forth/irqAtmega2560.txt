@@ -13,7 +13,7 @@
 irqOvf3Dis
 -irqOvf3
 marker -irqOvf3
-\ Timer 3 definitions from m128def.inc
+\ Timer 3 definitions from m2560def.inc
 $91 constant tccr3b
 $71 constant timsk3
 #36 constant ovf3Ivec
@@ -40,4 +40,6 @@ variable counter
 
 irqOvf3Init
 
+counter @ .
+#1000 ms
 counter @ .

@@ -114,7 +114,7 @@ file_026=yes
 file_027=yes
 file_028=yes
 [FILE_INFO]
-file_000=src\ff.s
+file_000=src\ff-pic24-30-33.s
 file_001=src\ff30.inc
 file_002=src\p24f_config.inc
 file_003=src\p24fj_config.inc

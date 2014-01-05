@@ -15,7 +15,7 @@
 -24aa1025
 marker -24aa1025
 
-$a0 con addr-24aa1025
+$a0 constant addr-24aa1025
 
 \ Read one byte from external eeprom
 : eec@ ( addr -- c )

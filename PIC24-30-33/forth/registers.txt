@@ -1,4 +1,4 @@
-$02c6 con trisb
-$02c8 con portb
-$02cb con latb
-$02a8 con adpcfg
+$02c6 constant trisb
+$02c8 constant portb
+$02cb constant latb
+$02a8 constant adpcfg

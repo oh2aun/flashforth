@@ -1,8 +1,9 @@
 \ *********************************************************************
 \    Assembler for FlashForth                                         *
 \    Filename:      asm.txt                                           *
-\    Date:          14.2.2010                                         *
-\    FF Version:    3.4                                               *
+\    Date:          04.1.2014                                         *
+\    FF Version:    5.0                                               *
+\    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -17,7 +18,7 @@
 
 \ Since FlashForth refuses to redefine words,
 \ oneline definitions may safely be copied to the
-\ file that uses the assembler defintions. See i2c.fth for example.
+\ file that uses the assembler defintions. 
 
 -as
 marker -as
@@ -30,32 +31,32 @@ hex ram
 \ b = bit
 \ k = literal
 
-0 con w,     \ Destination W register
-1 con f,     \ Destination File
-0 con a,     \ Force Access Bank
-1 con b,     \ Force Bank Select Register
+0 constant w,     \ Destination W register
+1 constant f,     \ Destination File
+0 constant a,     \ Force Access Bank
+1 constant b,     \ Force Bank Select Register
 
 \ registers for parameter stack handling
-$0000 con Sreg     \ For lfsr
-$ffed con Sminus
-$ffec con plusS
+$0000 constant Sreg     \ For lfsr
+$ffed constant Sminus
+$ffec constant plusS
 
 \ Temporary pointer
-$0001 con Treg     \ For lfsr
-$ffe5 con Tminus
-$ffe4 cons plusT
+$0001 constant Treg     \ For lfsr
+$ffe5 constant Tminus
+$ffe4 constant plusT
 
 : as0 ( opcode "name" -- ) ( -- )
-  constant
+  co:
   does> i, ;
 
 : as2 ( opcode "name" -- ) ( f a -- )
-  constant
+  co:
   does> rot ic, or ic, ;
 
 \ Not needed for structured conditionals
 \ : br1 ( opcode "name" -- ) ( rel-addr -- ) \ bcc
-\   constant
+\   co:
 \   does> swap $1ff br? or i, ;
 
 $24 as3 addwf,          ( f d a -- )  
@@ -113,19 +114,6 @@ $0d00 as1 mullw,        ( k -- )
 $0800 as1 sublw,        ( k -- )  
 $0a00 as1 xorlw,        ( k -- )
 
-\ **************************************
-\ control operations
-\ **************************************
-\ NOT needed, use structured conditonals instead
-\ $e200 br1 bc,         ( n -- )  
-\ $e600 br1 bn,         ( n -- )  
-\ $e300 br1 bnc,        ( n -- )  
-\ $e700 br1 bnn,        ( n -- )  
-\ $e500 br1 bnov,       ( n -- )  
-\ $e000 br1 bz,         ( n -- )  
-\ $e100 br1 bnz,        ( n -- )  
-\ $e400 br1 bov,        ( n -- )  
-
 $d000 br2 bra,          ( n -- )  
 $ec00 br3 call,         ( n -- )  
 $0004 as0 clrwdt,       ( -- )    
@@ -156,12 +144,21 @@ $000f as0 tblwt+*,      ( -- )
 \ structured conditions for  if, while, and until,
 \ ************************************************
 $e2 constant cc,    \ bc
-$e3 constant nc,    \ bnc
 $e6 constant mi,    \ bn
-$e7 constant pl,    \ bnn
 $e0 constant z,     \ bz
-$e1 constant nz,    \ bnz
 $e4 constant ov,    \ bov
-$e5 constant nov,   \ bnov
+: not, 1 xor ;      \ Invert condition
 
+\ **************************************
+\ control operations
+\ **************************************
+\ NOT needed, use structured conditonals instead
+\ $e200 br1 bc,         ( n -- )  
+\ $e600 br1 bn,         ( n -- )  
+\ $e300 br1 bnc,        ( n -- )  
+\ $e700 br1 bnn,        ( n -- )  
+\ $e500 br1 bnov,       ( n -- )  
+\ $e000 br1 bz,         ( n -- )  
+\ $e100 br1 bnz,        ( n -- )  
+\ $e400 br1 bov,        ( n -- )  
 

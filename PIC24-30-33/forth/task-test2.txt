@@ -14,10 +14,10 @@ single
 marker -t1
 ram hex
 \ Registers for dsPIC33FJ128GP802. Change if needed.
-$032c con adpcfg
-$02cc con latb
-$02ca con portb
-$02c8 con trisb
+$032c constant adpcfg
+$02cc constant latb
+$02ca constant portb
+$02c8 constant trisb
 ram variable delay
 : led9off  portb #9  bclr ;
 : led9on   portb #9  bset ;

@@ -16,8 +16,8 @@ single
 marker -lblink
 ram hex
 
-$ff82 con portc
-$ff94 con trisc
+$ff82 constant portc
+$ff94 constant trisc
 $2 user bitmask    \ The bitmask
 $4 user delay      \ The delay time in milliseconds
 

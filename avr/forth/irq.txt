@@ -40,4 +40,6 @@ variable counter
 
 irqOvf3Init
 
-counter @ .
+counter @ u.
+#1000 ms
+counter @ u.

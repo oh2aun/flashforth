@@ -14,8 +14,8 @@
 marker -tcn75
 
 \ set the address for your device here.
-\ $9b con addr-tcn75
-$91 con addr-tcn75
+\ $9b constant addr-tcn75
+$91 constant addr-tcn75
 
 : temp ( -- n )
   i2cinit

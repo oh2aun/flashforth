@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F2520
+device=PIC18F2620
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -66,7 +66,7 @@ file_010=yes
 file_011=yes
 file_012=yes
 [FILE_INFO]
-file_000=src\ff18_usb.asm
+file_000=src\ff-pic18.asm
 file_001=lkr\FF_0000.lkr
 file_002=src\p18f-main.cfg
 file_003=src\p18fxx2xx8.cfg

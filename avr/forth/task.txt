@@ -73,9 +73,6 @@ hex ram
   \ Pointer to task area
   dup 2- task ! 
 
-  \ reset status and cr flag
-  0 task 2+ !
-
   \ r0 = uarea+addsize+rsize
   c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
 
@@ -91,13 +88,14 @@ hex ram
   \ Store SP to return stack
   1- dup s0 @ swap !             \ rsp
   
-  \ Store current rsp and space for saving TOS,P in PAUSE
+  \ Store current rsp and space for saving TOS and P PAUSE
   5 - rsave !                    \ 
 
   \ tiu = s0 + 2
   s0 @ 2+ tiu !
   0 ul!
-  op!                  \ run the operator task again
+  0 task 2+ !         \ set status and cr flag
+  op!                 \ run the operator task again
 ;
 
 \ Insert a new task after operator in the linked list.

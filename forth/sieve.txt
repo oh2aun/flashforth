@@ -16,8 +16,8 @@
 -sieve
 marker -sieve
 decimal ram
-8191 con size inlined
-ram align here size allot con flags inlined
+8191 constant size inlined
+ram align here size allot constant flags inlined
 : sieve
   flags size 1 fill
   0 1 !p>r size 1-

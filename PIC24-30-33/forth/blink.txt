@@ -12,8 +12,8 @@
 marker -blink
 hex ram
 
-$02d6 con latd
-$02d2 con trisd
+$02d6 constant latd
+$02d2 constant trisd
 
 : blink ( n -- )
   1 trisd mclr

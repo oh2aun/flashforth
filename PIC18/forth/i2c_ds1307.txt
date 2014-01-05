@@ -16,7 +16,7 @@
 marker -ds1307
 
 \ i2c device address
-$d0 con addr-ds1307
+$d0 constant addr-ds1307
 
 : time! ( c c c c c c c c -- )
   i2cinit 0 addr-ds1307 i2c-addr1
