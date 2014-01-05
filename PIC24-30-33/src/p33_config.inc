@@ -115,7 +115,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;;; The rest if the memory space is available for flash
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for dsPIC33FJ128GP802
-.equ PFLASH,         0x4800  ; 18 Kbytes RAM, 46(69) KBytes FLASH
+.equ PFLASH,         0x4800  ; 16 Kb RAM, 2 Kb Register, 46(69) KBytes FLASH
 
 ;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4042  ; Memory page erase

@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../src/ff.s ../src/C4add.c
+SOURCEFILES_QUOTED_IF_SPACED=../src/C4add.c ../src/ff-pic24-30-33.s
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff.o ${OBJECTDIR}/_ext/1360937237/C4add.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff.o.d ${OBJECTDIR}/_ext/1360937237/C4add.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/C4add.o ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/C4add.o.d ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff.o ${OBJECTDIR}/_ext/1360937237/C4add.o
+OBJECTFILES=${OBJECTDIR}/_ext/1360937237/C4add.o ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o
 
 # Source Files
-SOURCEFILES=../src/ff.s ../src/C4add.c
+SOURCEFILES=../src/C4add.c ../src/ff-pic24-30-33.s
 
 
 CFLAGS=
@@ -99,20 +99,20 @@ endif
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1360937237/ff.o: ../src/ff.s  nbproject/Makefile-${CND_CONF}.mk
+${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o: ../src/ff-pic24-30-33.s  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o 
-	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff.s  -o ${OBJECTDIR}/_ext/1360937237/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff.o.d",--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_PICKIT2=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff.lst$(MP_EXTRA_AS_POST)
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff-pic24-30-33.s  -o ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d",--defsym=__MPLAB_BUILD=1,--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1,--defsym=__MPLAB_DEBUGGER_PICKIT2=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.lst$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
 	
 else
-${OBJECTDIR}/_ext/1360937237/ff.o: ../src/ff.s  nbproject/Makefile-${CND_CONF}.mk
+${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o: ../src/ff-pic24-30-33.s  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/ff.o 
-	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff.s  -o ${OBJECTDIR}/_ext/1360937237/ff.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff.o.d",--defsym=__MPLAB_BUILD=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff.lst$(MP_EXTRA_AS_POST)
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o 
+	${MP_CC} $(MP_EXTRA_AS_PRE)  ../src/ff-pic24-30-33.s  -o ${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -I"../" -I"./" -I"../src" -Wa,-MD,"${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d",--defsym=__MPLAB_BUILD=1,-g,--no-relax,-ahmlsi=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.lst$(MP_EXTRA_AS_POST)
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d"  $(SILENT)  -rsi ${MP_CC_DIR}../  
 	
 endif
 

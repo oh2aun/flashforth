@@ -91,7 +91,7 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ;;; To be set to the amount of ram + 0x800 register space.
 ;;; The rest if the memory space is available for flash
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
-.equ PFLASH,  0x2000
+.equ PFLASH,  0x2800
 .equ PEEPROM, 0xfe00
 .equ EEPROM_ERASE, 0x4058   ; Erase one word
 .equ EEPROM_WRITE, 0x4004	; Write one word

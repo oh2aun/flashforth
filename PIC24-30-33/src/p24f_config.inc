@@ -1,4 +1,4 @@
-;;; FlashForth device configuration for the PIC24F
+;;; FlashForth device configuration for the PIC24F(J)
 config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 
 .equ FREQ_OSC, (8000000*4)				  ;Clock (Crystal)frequency (Hz)
@@ -85,8 +85,8 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 ;;; To be set to the amount of ram + 0x800.
 ;;; The rest if the memory space is available for flash
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC24HJ128GP502
-.equ PFLASH,       0x1000   ; 4 Kbytes RAM 60 Kbyte flash
+;;; Below is the setting for max amount of ram for dsPIC24FJ64GA002
+.equ PFLASH,       0x2800   ; 8 Kbytes RAM 2Kb register, 54 Kbyte flash
 
 ;;; Memory control defines
 .equ FLASH_ERASE,  0x4042	; Erase one row (1024/1596 bytes)
