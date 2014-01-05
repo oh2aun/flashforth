@@ -51,11 +51,11 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 ; UART buffer sizes
 .equ TX1_BUF_SIZE, 16
 .equ RX1_BUF_SIZE, 32
-.equ RX1_OFF_FILL, 16   ; Fill level for XOFF
+.equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
 .equ TX2_BUF_SIZE, 16
 .equ RX2_BUF_SIZE, 32
-.equ RX2_OFF_FILL, 16   ; Fill level for XOFF
+.equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 96           ; 48 cells return stack

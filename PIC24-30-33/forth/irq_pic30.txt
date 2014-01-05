@@ -1,8 +1,8 @@
 \ *******************************************************************
 \    Simple RTC for FlashForth PIC30F                               *
 \    Filename:      irq_pic30.txt                                   *
-\    Date:          14.11.2010                                      *
-\    FlashForth:    FF4.7                                           *
+\    Date:          05.01.2014                                      *
+\    FlashForth:    FF5.0                                           *
 \    MCU:           PIC 30                                          *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *

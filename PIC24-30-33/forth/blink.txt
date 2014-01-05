@@ -1,7 +1,7 @@
 \ *******************************************************************
 \    Filename:      blink_pic30.txt                                 *
-\    Date:          14.11.2010                                      *
-\    FlashForth:    4.7                                             *
+\    Date:          05.01.2014                                      *
+\    FlashForth:    5.0                                             *
 \    MCU:           PIC 30F                                         *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *

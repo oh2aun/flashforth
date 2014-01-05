@@ -42,11 +42,11 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; UART buffer sizes
 .equ TX1_BUF_SIZE, 16
 .equ RX1_BUF_SIZE, 32
-.equ RX1_OFF_FILL, 4   ; Fill level for XOFF
+.equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
 .equ TX2_BUF_SIZE, 16
 .equ RX2_BUF_SIZE, 32
-.equ RX2_OFF_FILL, 4   ; Fill level for XOFF
+.equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 96           ; 48 cells return stack

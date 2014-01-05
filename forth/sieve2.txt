@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      sieve2.txt                                      *
-\    Date:          07.11.2011                                      *
+\    Date:          05.01.2014                                      *
 \    MCU:           PIC 18 24 30 33  Atmega128                      *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -56,4 +56,3 @@ variable flags2 size2 8 / allot
 : bench2 ticks sieve2 ticks swap - u. ." milliseconds" cr ;
 
 bench2
-

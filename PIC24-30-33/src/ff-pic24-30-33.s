@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff.s                                              *
-;    Date:          31.12.2013                                        *
+;    Date:          05.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -325,7 +325,6 @@ __U1RXInterrupt0:
         bra     z, __U1RXInterrupt3
 .endif
 U1_SKIP_FC_1:
-
         mov     W0, [++W14]
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_TO
@@ -333,12 +332,12 @@ U1_SKIP_FC_1:
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_2
         mov     #RX1_OFF_FILL, W0
-        cp      rbuf_lv1
+        cp      rbuf_lv1            ; rbuf_lvl - #RX1_OFF_FILL
         bra     n, __U1RXInterrupt3
 .if FC1_TYPE == 1
 __U1RXInterrupt2:
-        btsc    U1STA, #UTXBF
-        bra     __U1RXInterrupt2
+;        btsc    U1STA, #UTXBF
+;        bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
@@ -431,8 +430,8 @@ U2_SKIP_FC_1:
         bra     n, __U2RXInterrupt3
 .if FC2_TYPE == 1
 __U2RXInterrupt2:
-        btsc    U2STA, #UTXBF
-        bra     __U2RXInterrupt2
+;        btsc    U2STA, #UTXBF
+;        bra     __U2RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2

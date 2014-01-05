@@ -1,8 +1,8 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      sieve3.txt                                      *
-\    Date:          14.11.2010                                      *
-\    FF Version:    4.7                                             *
+\    Date:          05.01.2014                                      *
+\    FF Version:    5.0                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -41,5 +41,5 @@ ram align here size3 8 / allot constant flags3 inlined
   r>p   . ." primes " cr
 ;
 
-: bench3 ticks swap for sieve3 next ticks swap - u. ." milliseconds" cr ;
+: bench3 ticks sieve3 ticks swap - u. ." milliseconds" cr ;
 
