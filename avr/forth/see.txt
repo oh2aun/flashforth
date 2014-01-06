@@ -1,7 +1,8 @@
 \ *********************************************************************
 \    Filename:      see.txt                                           *
 \    Date:          18.11.2012                                        *
-\    FF Version:    Atmega                                            *
+\    FF Version:    5.0                                               *
+\    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************

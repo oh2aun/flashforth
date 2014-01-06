@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      jmptbl-test.txt                                   *
-\    FlashForth:    3.3                                               *
+\    FlashForth:    5.0                                               *
 \                                                                     *
 \    Author:        Pete Zawasky                                      *
 \    Created:       Tuesday, January 15 2008 - 18:50  ppz             *

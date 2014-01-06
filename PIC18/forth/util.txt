@@ -1,4 +1,4 @@
-\ Needs ?call and @xtaddr from see.fth
+\ Check of some calls could be relative calls
 -rcall?
 marker -rcall?
 hex ram

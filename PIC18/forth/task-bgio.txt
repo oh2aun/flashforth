@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task-bgio.txt                                     *
-\    Date:          12.02.2011                                        *
-\    FF Version:    3.7                                               *
+\    Date:          06.01.2014                                        *
+\    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -10,10 +10,10 @@
 \ *********************************************************************
 \
 \ Test I/O redirection in a background task.
-\ Requires 1 USB-CDC serial connection and one UART connection in FF3.7
+\ Requires 1 USB-CDC serial connection and 1 UART connection in FF5.0
 \ Compilation, write to flash/eeprom is only allowed
 \ in the operator task. 
-\ QUIT and INTERPRET does not work in a background task.
+\ QUIT and INTERPRET do not work in a background task.
 \ ACCEPT works in a background task.
 -bgio
 marker -bgio
@@ -26,13 +26,13 @@ ram hex
   ['] rx1? 'key? !
   cr ." Starting BG task test !" cr
   begin
-    tib dup 20 accept type cr
+    tib dup $20 accept type cr
   again
 ;
 
 \ Define the task area 
-\ tibSize paramStackSize returnStackSize userAreaAdditionaSize --
-$60 $40 $40 $0 task: bgio_task
+\ tibSize paramStackSize returnStackSize userAreaAdditionalSize --
+$20 $20 $20 $0 task: bgio_task
 
 
 \ initalise and run the BG task

@@ -2,13 +2,13 @@
 \                                                                   *
 \    Filename:      sieve2.txt                                      *
 \    Date:          05.01.2014                                      *
-\    MCU:           PIC 18 24 30 33  Atmega128                      *
+\    MCU:           PIC 18 24 30 33  Atmega                         *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
-
+\ sieve2 requires 1 Kbyte of RAM.
 -sieve2
 marker -sieve2
 decimal ram

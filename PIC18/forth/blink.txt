@@ -1,8 +1,9 @@
 \ *********************************************************************
 \    Blinker for FlashForth                                           *
 \    Filename:      blink.txt                                         *
-\    Date:          14.02.2010                                        *
-\    File Version:  3.4                                               *
+\    Date:          06.01.2014                                        *
+\    File Version:  5.0                                               *
+\    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -37,12 +38,13 @@ warm
 -speed
 marker -speed
 : speed ( -- )  \ 833 KHz @ 12 MHz
-        [ 
+    [ 
         trisc 2 0 bcf,
         begin,
                 portc 2 0 bcf,
                 portc 2 0 bsf,
         again,
+    ]
 ;
 
 : set0 [ portc 2 0 bcf, ] ;

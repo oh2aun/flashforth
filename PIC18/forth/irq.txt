@@ -1,8 +1,9 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      irq.txt                                           *
-\    Date:          14.2.2010                                         *
-\    FF Version:    3.4                                               *
+\    Date:          06.01.2014                                        *
+\    FF Version:    5.0                                               *
+\    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -12,6 +13,8 @@
 \ the interrupt word is removed.
 \ You must also clear any related interrupt enable bits 
 \ and interrupt flags before zeroing the interrupt vector
+\ NOTE: Interrupt vector 0 is the high prority interrupt vector.
+\ NOTE: The low priority interrupt vector is not implemented.
 
 0 0 int!
 -uirq

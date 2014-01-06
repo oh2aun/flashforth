@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      jmptbl.txt                                        *
-\    FlashForth:    3.0                                               *
+\    FlashForth:    5.0                                               *
 \    Application:   FP                                                *
 \                                                                     *
 \    Author:        Pete Zawasky                                      *
