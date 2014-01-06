@@ -15,7 +15,7 @@ ram hex
 $1b constant esc
 $09 constant tab
 $0d constant ret
-flash hi $3000 - constant ahelp \ Start of help text area
+flash hi $2fff - constant ahelp \ Start of help text area
 ram
 
 : h= ( caddr caddr1 u -- flag )

@@ -336,10 +336,12 @@ U1_SKIP_FC_1:
         bra     n, __U1RXInterrupt3
 .if FC1_TYPE == 1
 __U1RXInterrupt2:
-;        btsc    U1STA, #UTXBF
-;        bra     __U1RXInterrupt2
+        btsc    U1STA, #UTXBF
+        bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
+ ;       mov     #'<', W0
+ ;       mov     W0, U1TXREG
         bset    iflags, #ixoff1
 .else
 .if  FC1_TYPE == 2
@@ -1506,7 +1508,7 @@ ISTORE_SUB:
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
-        bra     n, ISTORE_ADDRERR
+        bra     LTU, ISTORE_ADDRERR
         return
 ISTORE_ADDRERR:
         bset    INTCON1, #ADDRERR
@@ -2321,6 +2323,8 @@ RX1Q:
         btst    iflags, #ixoff1
         bra     z, RX1Q1
         bclr    iflags, #ixoff1
+;        mlit    '>'
+;        rcall   TX1
         mlit    XON
         rcall   TX1
 .else
@@ -4283,9 +4287,24 @@ DDOT:
         rcall   TYPE
         goto    SPACE_
 
+        .pword  paddr(DDOT_L)+PFLASH
+MEMHI_L:
+        .byte   NFA|2
+        .ascii  "hi"
+        .align  2
+MEMHI:
+        mlit    handle(FLASHHI)+PFLASH
+        call    CSE
+        call    PLUS
+        goto    FETCH
+FLASHHI:
+        .word   PFLASH-1
+        .word   0xffff
+        .word   FLASH_HI
+
 ; DECIMAL  --         set number base to decimal
 ;   #10 BASE ! ;
-        .pword  paddr(DDOT_L)+PFLASH
+        .pword  paddr(MEMHI_L)+PFLASH
 DECIMAL_L:
         .byte   NFA|7
         .ascii  "decimal"
@@ -5426,8 +5445,6 @@ QUIT:
         rcall   RPEMPTY         ; Empty the return stack
         rcall   LEFTBRACKET
         rcall   RAM
-        mlit    XON
-        rcall   EMIT
 QUIT0:  
         rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
@@ -5449,7 +5466,7 @@ QUIT1:
         rcall   DP_TO_EEPROM   
         rcall   XSQUOTE
         .byte   3
-        .ascii  "ok "
+        .ascii  " ok"
         .align  2
         rcall   TYPE
         rcall   PROMPT

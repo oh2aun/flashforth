@@ -126,7 +126,7 @@ Dictionary of FlashForth 5.0
            Duplicate two top cells
 
 2literal   ( x x -- )
-           Compile a double literl 
+           Compile a double literal 
 
 2variable ( "name" -- )
           Define a double variable
@@ -504,11 +504,11 @@ inline     ( "name" -- )
            Inline the following word.
 
 inlined    ( -- )
-           Mark the latest compiled word as inlined.
+           Mark the latest compiled word as for automatic inlining.
 
 int!       ( xt vector-no -- )
            Store an interrupt vector to the interrupt vector table.
-           PIC18: Only vector number 0 supported.
+           PIC18: Dummy vector number for high prority interrupts.
            PIC30: Alternate interrupt vector table in flash.
            PIC33: Alternate interrupt vector table in ram.
            PIC24: Alternate interrupt vector table in ram.
@@ -519,9 +519,6 @@ interpret  ( c-addr u - )
 
 invert     ( x1 -- x2 )
            Ones complement of x1
-
-irq        ( -- a-addr)         Ram value
-           Interrupt vector. Cleared at warm start.
 
 is         ( x "name" -- )
            Set the value a deferred word

@@ -1,13 +1,22 @@
 ;;; FlashForth device configuration for the dsPIC30Fxxxx
+
+;;; Device memory sizes. Set according to your device.
+;;; You can increase the addressable flash range be decreasing the addressable ram.
+;;; Below is the setting for max amount of ram for dsPIC30F4012
+.equ FLASH_SIZE,     0x8000  ; Flash size in bytes without the high byte
+                             ; See program memory size in the device datasheet.
+.equ RAM_SIZE,       0x0800  ; Ram size in bytes
+.equ EEPROM_SIZE,    0x0400  ; Eeprom size
+
 config __FOSC, CSW_FSCM_OFF & FRC_PLL8
 ;config __FOSC, HS;FRC; HS            ;Turn off clock switching and
                               ;fail-safe clock monitoring and
                               ;use the External HS Clock as the
                               ;system clock
 
-config __FWDT, WDT_OFF              ;Turn on Watchdog Timer
+config __FWDT, WDT_OFF              ;Turn off Watchdog Timer
 
-config __FBORPOR, PBOR_ON & BORV_27 & PWRT_16 & MCLR_EN
+config __FBORPOR, PBOR_ON & PWRT_16 & MCLR_EN
                                     ;Set Brown-out Reset voltage and
                                     ;and set Power-up Timer to 16msecs
                                             
@@ -90,11 +99,15 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ CTRL_O_WARM_RESET, 1
 
 ;;; Memory mapping prefixes
-;;; To be set to the amount of ram + 0x800 register space.
-;;; The rest if the memory space is available for flash
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-.equ PFLASH,       0x1000    ; 2 Kbytes RAM  61 Kbytes flash
-.equ PEEPROM,      0xfc00    ; 1 Kbyte EEPROM
+.equ PFLASH,         0x800+RAM_SIZE  
+.if FLASH_SIZE > 0xffff
+.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+.else
+.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)  ;
+.endif
+
+;;; Memory mapping prefix for EEPROM
+.equ PEEPROM, 0x10000-EEPROM_SIZE
 
 ;;; Flash memory commands. Do not modify.
 .equ EEPROM_ERASE, 0x4044     

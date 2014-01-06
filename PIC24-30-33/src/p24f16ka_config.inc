@@ -1,9 +1,17 @@
 ;;; FlashForth device configuration for the PIC24F16KAxxx
+
+;;; Device memory sizes. Set according to your device.
+;;; You can increase the addressable flash range be decreasing the addressable ram.
+;;; Below is the setting for max amount of ram for PIC24F16KA102
+.equ FLASH_SIZE,     0x2C00  ; Flash size in bytes without the high byte
+                             ; See program memory size in the device datasheet.
+.equ RAM_SIZE,       0x0600  ; Ram size in bytes
+.equ EEPROM_SIZE,    0x0200  ; Eeprom size
+
 config FOSCSEL, FNOSC_FRCPLL
-config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF & POSCMOD_NONE
+config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF
 config FWDT, FWDTEN_ON 
 config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
-config FDS, DSWDTEN_OFF& DSBOREN_OFF
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
 .equ BAUDRATE1, 38400		 ; Serial baudrate
@@ -73,14 +81,15 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ CTRL_O_WARM_RESET, 1
 
 ;;; Memory mapping prefixes
-;;; To be set to the amount of ram + 0x800.
-;;; The rest if the memory space is available for flash
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC24F16KA102
-.equ PFLASH,  0x1000
+.equ PFLASH,         0x800+RAM_SIZE
+.if FLASH_SIZE > 0xffff
+.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+.else
+.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)
+.endif
 
-;;; Memory mapping prefixe for EEPROM 
-.equ PEEPROM, 0xfe00          ; 512 bytes of eeprom
+;;; Memory mapping prefix for EEPROM 
+.equ PEEPROM, 0x10000-EEPROM_SIZE
 
 ;;; Meory control defines
 .equ EEPROM_ERASE, 0x4058   ; Erase one word
