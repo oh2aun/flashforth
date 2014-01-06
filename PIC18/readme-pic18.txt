@@ -1,4 +1,4 @@
-FlashForth readme file
+FlashForth PIC18 readme file
 ---------------------------
 
 FlashForth is licensed acording to the GNU General Public License
@@ -10,8 +10,11 @@ and in the word list words.txt for further information
 REVISION HISTORY
 ----------------
 
-FlashForth V3.9
+FlashForth V5.0
 ----------------
+- CON changed to CONSTANT (Inline code)
+- CONSTANT changed to CO: (uses DOCREATE)
+- IRQ changed to INT!
 - The configuration file p18f-main.cfg syntax changed
 - HI prints the highest available address for each memory type
 - <> returns well formed flag

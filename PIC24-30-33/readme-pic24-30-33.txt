@@ -1,5 +1,5 @@
-FlashForth V4.9 readme file
----------------------------
+FlashForth PIC24-30-33 readme file
+----------------------------------
 
 FlashForth is licensed acording to the GNU General Public License
 
@@ -9,13 +9,16 @@ Look in the user guide at http://flashforth.sourceforge.net/ for further informa
 REVISION HISTORY
 ----------------
 
-FlashForth v4.9
+FlashForth V5.0
 ---------------
+- CON changed to CONSTANT (Inline code)
+- CONSTANT changed to CO: (uses DOCREATE)
 - Improved XON/XOFF flow control
-- Aligned fl+/fl- with other FF
+- Aligned FL+/FL- with other FF
 - Aligned ABORT" with other FF
 - Call C function from Forth example.
 - ACCEPT end of line can be CR or LF or CRLF
+- HI, .FREE
 
 FlashForth v4.8
 ----------------
