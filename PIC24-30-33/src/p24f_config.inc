@@ -3,7 +3,10 @@
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for PIC24FJ64GA002
-.equ FLASH_SIZE,     0xAC00  ; Flash size in bytes without the high byte
+;;; NOTE: The last 2 words on the last FLASH page contains the configuration bits.
+;;; If these are overwritten the the device will loose its configuration bits.
+;;; So for example on PIC24FJ64GA002 the FLASH_SIZE is set to 0xAC00 - 0x0400
+.equ FLASH_SIZE,     0xA800  ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
 .equ RAM_SIZE,       0x2000  ; Ram size in bytes
 .equ EEPROM_SIZE,    0       ; Eeprom size

@@ -1408,8 +1408,7 @@ AS_COMMA:
         cp      W2, W12
         bra     nz, AS_COMMA1  ; mov W0, [++W14]  ???
         sub     W14, #2, W14
-        mlit    #-2
-        rcall   IALLOT
+        rcall   IDPMINUS
         mov     #0, W12
         mov     #0, W10
         bra     AS_COMMA2
@@ -2666,10 +2665,10 @@ MPLUS_L:
         .ascii  "m+"
         .align  2
 MPLUS:
-        setm    W1
-        btss    [W14], #15
-        clr     W1
         mov     [W14--], W0
+        setm    W1
+        btss    W0, #15
+        clr     W1
         add     W0, [--W14], [W14++]
         addc    W1, [W14], [W14]
         return
@@ -2714,7 +2713,7 @@ DMINUS:
 
         .pword  paddr(DMINUS_L)+PFLASH
 AND_L:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "and"
         .align  2
 AND:
