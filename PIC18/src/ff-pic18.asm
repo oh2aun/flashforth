@@ -3234,7 +3234,7 @@ MPLUS:
 L_MINUS:
         db      NFA|1,"-"
 MINUS:
-                swapf   Sminus, W, A
+        swapf   Sminus, W, A
         movwf   Tp, A 
         movf    Sminus, W, A
         movf    Sminus, F, A
