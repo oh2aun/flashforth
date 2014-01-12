@@ -652,7 +652,7 @@ LITERAL:
         mov     W1, [++W14]
         rcall   AS_COMMA
         return
-        
+
         .pword   paddr(LITERAL_L)+PFLASH
 IDLE_L:
         .byte   NFA|4
@@ -6002,6 +6002,7 @@ UNTILC_L:
         .ascii  "until,"
         .align  2
 UNTILC:
+        bset    iflags, #tailcall  ; Disable tailcall optimisation
         rcall   NOTC
         rcall   SWOP
         rcall   IHERE

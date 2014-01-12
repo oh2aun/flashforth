@@ -1,0 +1,75 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      doloop.txt                                        *
+\    Date:          06.01.2014                                        *
+\    File Version:  5.0                                               *
+\    MCU:           PIC18 ATmega (not 256)                            *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ do loop for PIC18 and Atmega32,64,128 (not 256)
+-doloop
+marker -doloop
+ram variable ind
+ram variable lim
+: (do)
+  r>
+  ind @ >r lim @ >r
+  >r
+  ind ! lim !
+;
+: (loop)
+  [ ind literal ] @ 
+  1+ dup 
+  [ ind literal ] !
+  [ lim literal ] @ =
+;
+
+: (+loop) ( n -- )
+  dup >r            \ remember increment
+  ind @ + dup ind !
+  lim @ r> 0< 
+  if    <
+  else  1- >
+  then            
+;
+
+: (unloop)
+  r>
+  r> lim ! r> ind !
+  >r
+; 
+
+: do
+  postpone (do)
+  postpone begin
+; immediate
+
+: loop
+  postpone (loop)
+  postpone until
+  postpone (unloop)
+; immediate
+
+: i [ ind literal ] @ ;
+
+: tdo1 do i . loop ;
+
+
+: j r> r> r> dup >r swap >r swap >r ;
+: tdo2 do 10 0 do cr j . i . loop loop ;
+
+: +loop
+  postpone (+loop)
+  postpone until
+  postpone (unloop)
+; immediate
+
+: tdo3 do i . 1 +loop ;
+
+: cwd ; \ for those who do not have it
+: tdo ticks #1000 0 do #1000 0 do cwd loop loop  ticks swap - u. ;
+: tfor ticks #1000 for #1000 for cwd next next ticks swap - u. ;
+

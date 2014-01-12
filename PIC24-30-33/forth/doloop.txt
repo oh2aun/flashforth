@@ -1,0 +1,90 @@
+\ *******************************************************************
+\                                                                   *
+\    Filename:      doloop.txt                                      *
+\    Date:          12.01.2014                                      *
+\    FF Version:    5.0                                             *
+\    MCU:           PIC30 PIC24 PIC33                               *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+\ do loop  for PIC24-30-33 Needs TA- from latest FF.
+-doloop
+marker -doloop
+ram variable ind
+ram variable lim
+
+: compile $10 shb ; \ Make word compile only
+
+: (do)
+  r> r>
+  ind @ >r lim @ >r
+  >r >r
+  ind ! lim !
+; compile
+
+: (loop)
+  [ ind $2000 or $ec as, ] \ inc ind
+  [ ind $8000 or $bf as, ] \ mov ind, wreg
+  [ lim 2/ #4 lshift 1 or lim 2/ #12 rshift $80 or as, ] \ mov lim, w1
+  [ $2f00 $eb as, ]        \ clr [++14]
+  [ $0001 $e7 as, ]        \ cpsne w0, w1
+  [ $8f00 $eb as, ]        \ setm [W14]
+; compile
+
+: (+loop) ( n -- )
+  dup >r            \ remember increment
+  [ ind literal ] @ 
+  + dup 
+  [ ind literal ] !
+  [ lim literal ] @ 
+  r> 0< 
+  if    <
+  else  1- >
+  then            
+; compile
+
+: (unloop)
+  r> r>
+  r> lim ! r> ind !
+  >r >r
+; compile
+
+: do
+  postpone (do)
+  postpone begin
+; immediate compile
+
+: loop
+  postpone (loop)
+  postpone until
+  postpone (unloop)
+; immediate compile
+
+: i
+  [ ind $8000 or $bf as, ] \ mov ind, wreg
+  [ $782f00. as, ]         \ mov w0,  [++W14]
+; inlined
+
+
+: j 
+  [ $97b86f. as, ] \ mov [W15-4], WREG
+  [ $782f00. as, ] \ mov w0,  [++W14]
+; inlined
+
+: tdo1 do i . loop ;
+: tdo2 do 10 0 do cr j . i . loop loop ;
+
+: +loop
+  postpone (+loop)
+  postpone until
+  postpone (unloop)
+; immediate compile
+
+: tdo3 do i . 1 +loop ;
+: tdo4 do i . 10 +loop ;
+: tdo5 do i . -10 +loop ;
+
+: tdo ticks #1000 0 do #1000 0 do cwd loop loop  ticks swap - u. ;
+: tfor ticks #1000 for #1000 for cwd next next ticks swap - u. ;

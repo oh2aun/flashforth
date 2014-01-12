@@ -3664,7 +3664,7 @@ BEGIN:
 UNTIL_L:
         .db     NFA|IMMED|COMPILE|5,"until"
 UNTIL:
-;        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         sbrc    FLAGS1, izeroeq
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
