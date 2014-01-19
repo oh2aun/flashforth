@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          31.12.2013                                        *
+;    Date:          19.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1496,9 +1496,8 @@ IS:
         movf    state, W, A
         bz      IS1
         rcall   LITERAL
-        rcall   LIT
+        rcall   DOCOMMAXT
         dw      STORE
-        rcall   COMMAXT
         bra     IS2
 IS1:
         rcall   STORE
@@ -2241,7 +2240,7 @@ WARM_ZERO_2:
         rcall   FRAM
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
-        bsf     INTCON, GIE, A
+        ;bsf     INTCON, GIE, A
 
         rcall   LIT
         dw      dp_start
@@ -2253,7 +2252,6 @@ WARM_ZERO_2:
         rcall   EMPTY
 WARM_2:
         call    DP_TO_RAM
-
 #if FC_TYPE_SW == ENABLE
         bsf     FLAGS2, ixoff, A ; Force sending of XON in RX1?
 #endif
@@ -2356,6 +2354,15 @@ KEYQ:
         rcall   UKEYQ
         goto    FEXECUTE
 
+FETCHLIT:
+        movwf   TBLPTRH
+        tblrd*+
+        movf    TABLAT, W
+        movwf   plusS
+        tblrd*+
+        movf    TABLAT, W
+        movwf   plusS
+        return
 ;***************************************************
 ; LIT   -- x    fetch inline 16 bit literal to the stack
 ; 17 clock cycles
@@ -2366,13 +2373,7 @@ LIT:
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
-        movwf   TBLPTRH
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
+        rcall	FETCHLIT
         pop
         movf    TBLPTRH, W, A
         movwf   PCLATH, A
@@ -2473,13 +2474,7 @@ DOCREATE: ; -- addr  exec action of CREATE
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
-        movwf   TBLPTRH
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
+        rcall   FETCHLIT
         pop                         ; return to the callers caller
 RETURN2:
         return
@@ -2498,17 +2493,24 @@ DODOES:
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
-        movwf   TBLPTRH
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
+        rcall   FETCHLIT
         pop
         movf    Tp, W, A
         movwf   PCL, A
-    
+	
+;;; Compile inline address as subroutine call  
+        db      NFA|3,"(,)"
+DOCOMMAXT:
+        movf    TOSL, W
+        movwf   TBLPTRL
+        movf    TOSH, W
+        rcall   FETCHLIT
+        movf    TBLPTRH, W, A
+        movwf   TOSH, A
+        movf    TBLPTRL, W, A
+        movwf   TOSL, A
+        goto    COMMAXT
+
 ;   SP@     -- addr         get parameter stack pointer
         dw      L_2CON
 L_SPFETCH:
@@ -3050,9 +3052,8 @@ XSQUOTE:
 L_SQUOTE:
         db      NFA|IMMED|COMPILE|2,"s",0x22
 SQUOTE:
-        rcall   LIT
+        rcall   DOCOMMAXT
         dw      XSQUOTE
-        rcall   COMMAXT
         rcall   ROM
         rcall   CQUOTE
         goto    FRAM
@@ -3079,9 +3080,9 @@ L_DOTQUOTE:
         db      NFA|IMMED|COMPILE|2,".",0x22
 DOTQUOTE: 
         rcall   SQUOTE
-        rcall   LIT
+        rcall   DOCOMMAXT
         dw      TYPE
-        goto    COMMAXT
+        return
 
 
 ; ALLOT   n --    allocate n bytes in current data section
@@ -4825,6 +4826,9 @@ QABORT1:
         rcall   ABORT  ; ABORT never returns
 QABO1:  goto    TWODROP
 
+        db      NFA|3,"(,)"
+DOCOMMAXT_A: goto DOCOMMAXT
+
 ; ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
 ;         i*x x1 --       R: j*x --      x1<>0
         dw      L_QABORT
@@ -4832,9 +4836,9 @@ L_ABORTQUOTE:
         db      NFA|IMMED|COMPILE|6,"abort\""
 ABORTQUOTE:
         call    SQUOTE
-        rcall   LIT_A
+        rcall   DOCOMMAXT_A
         dw      QABORT
-        goto    COMMAXT
+        return
 
 ; '    -- xt             find word in dictionary
         dw      L_ABORTQUOTE
@@ -4954,9 +4958,8 @@ CREATE:
         call    ONEPLUS
         call    ALIGNED
         rcall   IALLOT          ; The header has now been created
-        rcall   LIT_A             
+        rcall   DOCOMMAXT_A     ; Append an exeution token
         dw      DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
-        rcall   COMMAXT_A       ; Append an exeution token
         call    ALIGN
         call    HERE            ; compiles the current dataspace dp into the dictionary
         movf    cse, W, A
@@ -4979,9 +4982,9 @@ POSTPONE:
         call    ZEROLESS
         call    ZEROSENSE
         bz      POSTPONE1
-        call    LITERAL
-        rcall   LIT_A
-        dw      COMMAXT
+        rcall   DOCOMMAXT_A
+        dw      DOCOMMAXT
+        goto    ICOMMA
 POSTPONE1:
         goto   COMMAXT
 ;***************************************************************
@@ -5020,12 +5023,11 @@ XDOES:
         dw      L_POSTPONE
 L_DOES:
         db      NFA|IMMED|COMPILE|5,"does>"
-DOES:   rcall   LIT_A
+DOES:   rcall   DOCOMMAXT_A
         dw      XDOES
-        rcall   COMMAXT_A
-        rcall   LIT_A
+        rcall   DOCOMMAXT_A
         dw      DODOES
-        goto    COMMAXT
+        return
 
 
 ;*****************************************************************
@@ -5661,9 +5663,8 @@ INLINE1:
 L_FOR:
         db      NFA|IMMED|COMPILE|3,"for"
 FOR:
-        rcall   LIT_A
+        rcall   DOCOMMAXT_A
         dw      TOR
-        rcall   COMMAXT_A
         rcall   IHERE
         rcall   FALSE_
         call    BRA_
@@ -5696,15 +5697,15 @@ XNEXT:
 
 ; leave clear top of return stack
         dw      L_NEXT
-L_LEAVE:
-        db      NFA|INLINE|COMPILE|5,"leave"
-LEAVE:
+L_ENDIT:
+        db      NFA|INLINE|COMPILE|5,"endit"
+ENDIT:
         clrf    TOSL
         clrf    TOSH
         return
 
 ; RDROP compile a pop
-        dw      L_LEAVE
+        dw      L_ENDIT
 L_RDROP:
         db      NFA|INLINE|COMPILE|5,"rdrop"
 RDROP:

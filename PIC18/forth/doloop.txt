@@ -1,0 +1,89 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      doloop.txt                                        *
+\    Date:          19.01.2014                                        *
+\    File Version:  5.0                                               *
+\    MCU:           PIC18                                             *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+-doloop
+marker -doloop
+: compileonly $10 shb ;
+ram variable ind
+ram variable lim
+: (do)  ( limit index -- R: leave oldindex oldlim ) 
+  r>
+  dup @ >r
+  ind @ >r lim @ >r
+  2+ >r
+  ind ! lim !
+; compileonly
+
+: (loop)
+  [ ind literal ] @ 
+  1+ dup 
+  [ ind literal ] !
+  [ lim literal ] @ =
+; compileonly
+
+: (+loop) ( n -- )
+  dup >r            \ remember increment
+  ind @ + dup ind !
+  lim @ r> 0< 
+  if       <
+  else  1- >
+  then            
+; compileonly
+
+: (unloop)
+  r>
+  r> lim ! r> ind ! rdrop
+  >r
+; compileonly
+
+: do
+  postpone (do)
+  postpone begin
+  flash 2 allot ram
+  postpone begin
+; immediate compileonly
+
+: leave
+  rdrop r> lim ! r> ind ! 
+; compileonly
+
+: i [ ind literal ] @ ;
+
+: j r> r> r> dup >r swap >r swap >r ; compileonly
+
+: loop
+  postpone (loop)
+  postpone until
+  postpone (unloop)
+  flash here swap ! ram
+; immediate compileonly
+
+: unloop
+  postpone (unloop)
+; immediate compileonly
+
+: +loop
+  postpone (+loop)
+  postpone until
+  postpone (unloop)
+  flash here swap ! ram
+; immediate compileonly
+
+: tdo0 10 0 do cr i . loop ;
+: tdo1 do i . i 5 = if leave then loop ;
+: tdo2 do 10 0 do cr j . i . loop loop ;
+: tdo3 do i . 1 +loop ;
+: tdo4 do i . 10 +loop ;
+: tdo5 do i . -10 +loop ;
+
+: tdo ticks  #30000 0 do  loop  ticks swap - u. ;
+: tfor ticks #30000   for next  ticks swap - u. ;
+

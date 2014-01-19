@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff.s                                              *
-;    Date:          05.01.2014                                        *
+;    Filename:      ff-pic24-30-33.s                                  *
+;    Date:          19.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2011  Mikael Nordman
+; Copyright (C) 2014  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -2481,6 +2481,17 @@ EXIT:
         sub     #4, W15
         return
 
+        .byte   NFA|COMPILE|3
+        .ascii  "(,)"
+        .align  2
+DOCOMMAXT:
+         pop    W1
+         pop    W0
+         tblrdl [W0++], [++W14]
+         push   W0
+         push   W1
+         goto   COMMAXT
+
         .pword  paddr(EXIT_L)+PFLASH
 DOCREATE_L:
         .byte   NFA|COMPILE|3
@@ -3170,7 +3181,7 @@ DEFER_DOES:
 
         .pword  paddr(DEFER_L)+PFLASH
 IS_L:
-        .byte   NFA|2
+        .byte   NFA|IMMED|2
         .ascii  "is"
         .align  2
 IS:
@@ -3181,8 +3192,8 @@ IS:
         cp0     [W14--]
         bra     z, IS1
         rcall   LITERAL
-        mlit    handle(STORE)+PFLASH
-        rcall   COMMAXT
+        rcall   DOCOMMAXT
+        .word   handle(STORE)+PFLASH
         bra     IS2
 IS1:
         rcall   STORE
@@ -3191,7 +3202,7 @@ IS2:
 
         .pword  paddr(IS_L)+PFLASH
 TO_L:
-        .byte   NFA|2
+        .byte   NFA|IMMED|2
         .ascii  "to"
         .align  2
 TO:
@@ -3738,8 +3749,8 @@ SQUOTE_L:
         .byte 0x22
         .align  2
 SQUOTE:
-        mlit    handle(XSQUOTE)+PFLASH
-        rcall   COMMAXT
+        rcall   DOCOMMAXT
+        .word   handle(XSQUOTE)+PFLASH
         rcall   FLASH
         rcall   CQUOTE
         goto    RAM
@@ -3771,8 +3782,9 @@ DOTQUOTE_L:
         .align  2
 DOTQUOTE: 
         rcall   SQUOTE
-        mlit    handle(TYPE)+PFLASH
-        goto    COMMAXT
+        rcall   DOCOMMAXT
+        .word   handle(TYPE)+PFLASH
+        return
 
 ;   +!      n/u addr --     add cell to data memory
         .pword  paddr(DOTQUOTE_L)+PFLASH
@@ -5532,8 +5544,9 @@ ABORTQUOTE_L:
         .align  2
 ABORTQUOTE:
         rcall   SQUOTE
-        mlit    handle(QABORT)+PFLASH
-        goto    COMMAXT
+        rcall   DOCOMMAXT
+        .word   handle(QABORT)+PFLASH
+        return
 
 ; '    -- xt             find word in dictionary
         .pword  paddr(ABORTQUOTE_L)+PFLASH
@@ -5648,9 +5661,9 @@ CREATE:
         inc     [W14], [W14]
         rcall   ALIGNED
         rcall   IALLOT          ; The header has now been created
-        mlit    handle(DOCREATE)+PFLASH
+        rcall   DOCOMMAXT       ; Append an exeution token
+        .word   handle(DOCREATE)+PFLASH
                                 ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
-        rcall   COMMAXT         ; Append an exeution token
         rcall   ALIGN
         rcall   HERE            ; compiles the current dataspace dp into the dictionary
         mov     cse, W0
@@ -5676,8 +5689,9 @@ POSTPONE:
         rcall   ZEROLESS
         cp0     [W14--]
         bra     z, POSTPONE1
-        rcall   LITERAL
-        mlit    handle(COMMAXT)+PFLASH
+        rcall   DOCOMMAXT
+        .word   handle(DOCOMMAXT)+PFLASH
+        goto    ICOMMA
 POSTPONE1:
         goto    COMMAXT
 
@@ -5714,10 +5728,11 @@ DOES_L:
         .ascii  "does>"
         .align  2
 DOES:
-        mlit    handle(XDOES)+PFLASH
-        rcall   COMMAXT
-        mlit    handle(DODOES)+PFLASH
-        goto    COMMAXT
+        rcall   DOCOMMAXT
+        .word   handle(XDOES)+PFLASH
+        rcall   DOCOMMAXT
+        .word   handle(DODOES)+PFLASH
+        return
 
 ;*****************************************************************
 ; [        --      enter interpretive state
@@ -6154,7 +6169,7 @@ XNEXT:
         .pword  paddr(NEXT_L)+PFLASH
 LEAVE_L:
         .byte   NFA|INLINE|COMPILE|5
-        .ascii  "leave"
+        .ascii  "endit"
         .align  2
 LEAVE:
         pop     W0  

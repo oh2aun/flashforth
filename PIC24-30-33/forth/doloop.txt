@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      doloop.txt                                      *
-\    Date:          12.01.2014                                      *
+\    Date:          19.01.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -9,20 +9,20 @@
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
-\ do loop  for PIC24-30-33 Needs TA- from latest FF.
 -doloop
 marker -doloop
 ram variable ind
 ram variable lim
 
-: compile $10 shb ; \ Make word compile only
+: compileonly $10 shb ; \ Make word compile only
 
-: (do)
+: (do)   ( limit index -- R: leave oldindex oldlim ) 
   r> r>
-  ind @ >r lim @ >r
-  >r >r
+  dup @ >r           \ R: leave 
+  ind @ >r lim @ >r  \ R: leave oldindex oldlim
+  2+ >r >r           \ R: leave oldindex oldlim returnaddr
   ind ! lim !
-; compile
+; compileonly
 
 : (loop)
   [ ind $2000 or $ec as, ] \ inc ind
@@ -31,7 +31,7 @@ ram variable lim
   [ $2f00 $eb as, ]        \ clr [++14]
   [ $0001 $e7 as, ]        \ cpsne w0, w1
   [ $8f00 $eb as, ]        \ setm [W14]
-; compile
+; compileonly
 
 : (+loop) ( n -- )
   dup >r            \ remember increment
@@ -43,48 +43,56 @@ ram variable lim
   if    <
   else  1- >
   then            
-; compile
+; compileonly
 
 : (unloop)
   r> r>
-  r> lim ! r> ind !
+  r> lim ! r> ind ! rdrop
   >r >r
-; compile
+; compileonly
 
 : do
   postpone (do)
   postpone begin
-; immediate compile
+  flash 2 allot ram
+  postpone begin
+; immediate compileonly
+
+: leave
+  rdrop rdrop r> lim ! r> ind ! rdrop 
+; compileonly
+
+: i
+  [ ind $8000 or $bf as, ] \ mov ind, wreg
+  [ $782f00. as, ]         \ mov w0,  [++W14]
+; inlined compileonly
+
+: j 
+  [ $97b86f. as, ] \ mov [W15-6], WREG
+  [ $782f00. as, ] \ mov w0,  [++W14]
+; inlined compileonly
 
 : loop
   postpone (loop)
   postpone until
   postpone (unloop)
-; immediate compile
-
-: i
-  [ ind $8000 or $bf as, ] \ mov ind, wreg
-  [ $782f00. as, ]         \ mov w0,  [++W14]
-; inlined
-
-
-: j 
-  [ $97b86f. as, ] \ mov [W15-4], WREG
-  [ $782f00. as, ] \ mov w0,  [++W14]
-; inlined
-
-: tdo1 do i . loop ;
-: tdo2 do 10 0 do cr j . i . loop loop ;
+  flash here swap ! ram
+; immediate compileonly
 
 : +loop
   postpone (+loop)
   postpone until
   postpone (unloop)
-; immediate compile
+  flash here swap ! ram
+; immediate compileonly
 
+: tdo0 10 0 do cr i . loop ;
+: tdo1 do i . i 5 = if leave then loop ;
+: tdo2 do 10 0 do cr j . i . loop loop ;
 : tdo3 do i . 1 +loop ;
 : tdo4 do i . 10 +loop ;
 : tdo5 do i . -10 +loop ;
 
-: tdo ticks #1000 0 do #1000 0 do cwd loop loop  ticks swap - u. ;
-: tfor ticks #1000 for #1000 for cwd next next ticks swap - u. ;
+: tdo ticks #30000 0 do loop ticks swap - u. ;
+: tfor ticks #30000 for next ticks swap - u. ;
+

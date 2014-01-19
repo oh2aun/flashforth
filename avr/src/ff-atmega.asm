@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          04.01.2014                                        *
+;    Date:          19.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -175,6 +175,11 @@
 .macro m_pop_t0
 .ifdef EIND
         pop     t0
+ .endif
+.endmacro
+.macro m_push_t0
+.ifdef EIND
+        push    t0
  .endif
 .endmacro
 .macro mijmp
@@ -784,14 +789,10 @@ CONSTANT_:
 DOCREATE_L:
         .db     NFA|3, "(c)"
 DOCREATE:
-        pushtos
         m_pop_zh
         pop     zh
         pop     zl
-        lsl     zl
-        rol     zh
-        lpm_    tosl, z+
-        lpm_    tosh, z+
+        rcall   FETCHLIT
         m_pop_zh
         pop     zh
         pop     zl
@@ -807,13 +808,29 @@ DODOES:
         m_pop_zh
         pop     zh
         pop     zl
-        lsl     zl
-        rol     zh
-        pushtos
-        lpm_    tosl, z+
-        lpm_    tosh, z+
+        rcall   FETCHLIT
         movw    z, x
         mijmp    ; (z)
+FETCHLIT:
+        pushtos
+        lsl     zl
+        rol     zh
+        lpm_    tosl, z+
+        lpm_    tosh, z+
+        ret
+
+        .db     NFA|3, "(,)"
+DOCOMMAXT:
+        m_pop_t0
+        pop     zh
+        pop     zl
+        rcall   FETCHLIT
+	    ror     zh
+        ror     zl
+        push    zl
+        push    zh
+        m_push_t0
+        rjmp     COMMAXT
 
 ;   SP@     -- addr         get parameter stack pointer
         fdw     CONSTANT_L
@@ -980,25 +997,7 @@ CHARPLUS_L:
 CHARPLUS:
         adiw    tosl, 1
         ret
-#if 0
-; k22:  ( k16 k6 opcode mask -- k16 xxxx.xxxk.kkkk.xxxk )
-        rcall   CREATECC
-        rcall   XDOES
-        rcall   DODOES
-        rcall   TOR
-	rcall	DUP
-        rcall   DOLIT
-        .dw     0x1
-	rcall	AND
-	rcall   SWOP
-	rcall   DOLIT
-	.dw	0x3
-	rcall	RSHIFT
-	rcall	OR
-	rcall	RFROM
-	rcall	MASKC
-	jmp	ICOMMA
-#endif
+
 ; CHARS    n1 -- n2            chars->adrs units
         fdw     CHARPLUS_L
 CHARS_L:
@@ -1290,9 +1289,8 @@ XSQUOTE:
 SQUOTE_L:
         .db      NFA|IMMED|COMPILE|2,"s",0x22,0
 SQUOTE:
-        rcall   DOLIT
+        rcall   DOCOMMAXT
         fdw     XSQUOTE
-        rcall   COMMAXT
         rcall   ROM_
         rcall   CQUOTE
         jmp     FRAM
@@ -1317,9 +1315,9 @@ DOTQUOTE_L:
         .db      NFA|IMMED|COMPILE|2,".",0x22,0
 DOTQUOTE:
         rcall   SQUOTE
-        rcall   DOLIT
+        rcall   DOCOMMAXT
         fdw     TYPE
-        jmp     COMMAXT
+        ret
 
         fdw     DOTQUOTE_L
 ALLOT_L:
@@ -2894,9 +2892,9 @@ ABORTQUOTE_L:
         .db     NFA|IMMED|COMPILE|6,"abort",0x22,0
 ABORTQUOTE:
         rcall   SQUOTE
-        rcall   DOLIT
+        rcall   DOCOMMAXT
         fdw     QABORT
-        jmp     COMMAXT
+        ret
 
 ;***************************************************
 ; LIT   -- x    fetch inline 16 bit literal to the stack
@@ -2904,15 +2902,11 @@ ABORTQUOTE:
 DOLIT_L:
         .db     NFA|3, "lit"
 DOLIT:
-        pushtos
         m_pop_zh
         pop     zh
         pop     zl
-        lsl     zl
-        rol     zh
-        lpm_    tosl, z+
-        lpm_    tosh, z+
-        ror     zh
+        rcall   FETCHLIT
+	    ror     zh
         ror     zl
         mijmp    ; (z)
 
@@ -3090,11 +3084,11 @@ POSTPONE:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    POSTPONE1
-        rcall   LITERAL
-        rcall   DOLIT
-        fdw     COMMAXT
+        rcall   DOCOMMAXT
+        fdw     DOCOMMAXT
+        jmp     ICOMMA
 POSTPONE1:
-        jmp    COMMAXT
+        jmp     COMMAXT
 
 
 IDP_L:
@@ -3131,12 +3125,11 @@ XDOES:
         fdw     POSTPONE_L
 DOES_L:
         .db     NFA|IMMED|COMPILE|5,"does>"
-DOES:   rcall   DOLIT
+DOES:   rcall   DOCOMMAXT
         fdw     XDOES
-        rcall   COMMAXT_A
-        rcall   DOLIT
+        rcall   DOCOMMAXT
         fdw     DODOES
-        jmp     COMMAXT
+        ret
 
 
 ;*****************************************************************
@@ -3724,9 +3717,8 @@ INLINE1:
 FOR_L:
         .db     NFA|IMMED|COMPILE|3,"for"
 FOR:
-        rcall   DOLIT
+        call    DOCOMMAXT
         fdw     TOR
-        rcall   COMMAXT_A
         rcall   IHERE
         rcall   FALSE_
         rcall   RJMPC
@@ -3739,9 +3731,8 @@ NEXT_L:
         .db     NFA|IMMED|COMPILE|4,"next", 0
 NEXT:
         rcall   THEN_
-        rcall   DOLIT
+        call    DOCOMMAXT
         fdw     XNEXT
-        rcall   COMMAXT_A
         rcall   BRCCC
 
         rcall   AGAIN_
@@ -3770,7 +3761,7 @@ XNEXT1:
 ; leave clear top of return stack
         fdw     NEXT_L
 LEAVE_L:
-        .db     NFA|COMPILE|5,"leave"
+        .db     NFA|COMPILE|5,"endit"
 LEAVE:
         m_pop_zh
         pop     zh
@@ -5324,7 +5315,7 @@ DEFER_DOES:
 
         fdw     DEFER_L
 IS_L:
-        .db     NFA|2,"is",0
+        .db     NFA|IMMED|2,"is",0
 IS:
         rcall   TICK
         call    TWOPLUS
@@ -5334,9 +5325,8 @@ IS:
         call    ZEROSENSE
         breq    IS1
         rcall   LITERAL
-        call    DOLIT
+        call    DOCOMMAXT
         fdw     STORE
-        call    COMMAXT
         rjmp    IS2
 IS1:
         rcall   STORE
@@ -5345,7 +5335,7 @@ IS2:
 
         fdw     IS_L
 TO_L:
-        .db     NFA|2,"to",0
+        .db     NFA|IMMED|2,"to",0
 TO:
         jmp     IS
 
