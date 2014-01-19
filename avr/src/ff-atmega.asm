@@ -825,7 +825,7 @@ DOCOMMAXT:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-	    ror     zh
+	ror     zh
         ror     zl
         push    zl
         push    zh
@@ -2906,7 +2906,7 @@ DOLIT:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-	    ror     zh
+        ror     zh
         ror     zl
         mijmp    ; (z)
 
@@ -3538,8 +3538,17 @@ TO_XA:
          ror tosh
          ror tosl
          ret
+
+         fdw     TO_XA_L
+XA_FROM_L:
+        .db NFA|3,"xa>"
+XA_FROM:
+         lsl     tosl
+         rol     tosh
+         add_pflash_tos
+         ret
 ;***************************************************************
-         fdw    TO_XA_L
+         fdw    XA_FROM_L
 PFL_L:
         .db     NFA|3,"pfl"
 PFL:

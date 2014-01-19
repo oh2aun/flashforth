@@ -3,7 +3,7 @@
 \    Filename:      doloop.txt                                        *
 \    Date:          19.01.2014                                        *
 \    File Version:  5.0                                               *
-\    MCU:           ATmega (not 256)                                  *
+\    MCU:           Atmega (not 256)                                  *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -17,17 +17,22 @@ ram variable ind
 ram variable lim
 : (do)  ( limit index -- R: leave oldindex oldlim ) 
   r>
-  dup @ >r
+  dup xa> @ >r
   ind @ >r lim @ >r
   1+ >r
   ind ! lim !
 ; compileonly
 
+: (?do)
+  2dup xor
+  if
+    [ '  (do) ] again  \ branch to (do) 
+  then
+  r> xa> @ >r 2drop
+;
 : (loop)
-  [ ind literal ] @ 
-  1+ dup 
-  [ ind literal ] !
-  [ lim literal ] @ =
+  ind @ 1+ dup ind !
+  lim @ =
 ; compileonly
 
 : (+loop) ( n -- )
@@ -52,11 +57,18 @@ ram variable lim
   postpone begin
 ; immediate compileonly
 
+: ?do
+  postpone (?do)
+  postpone begin
+  flash 2 allot ram
+  postpone begin
+; immediate compileonly
+
 : leave
   rdrop r> lim ! r> ind ! 
 ; compileonly
 
-: i [ ind literal ] @ ; compileinly
+: i [ ind literal ] @ ; compileonly
 
 : j r> r> r> dup >r swap >r swap >r ; compileonly
 
@@ -64,7 +76,7 @@ ram variable lim
   postpone (loop)
   postpone until
   postpone (unloop)
-  flash here swap ! ram
+  flash here >xa swap ! ram
 ; immediate compileonly
 
 : unloop
@@ -75,17 +87,6 @@ ram variable lim
   postpone (+loop)
   postpone until
   postpone (unloop)
-  flash here swap ! ram
+  flash here >xa swap ! ram
 ; immediate compileonly
-
-: tdo0 10 0 do cr i . loop ;
-: tdo1 do i . i 5 = if leave then loop ;
-: tdo2 do 10 0 do cr j . i . loop loop ;
-: tdo3 do i . 1 +loop ;
-: tdo4 do i . 10 +loop ;
-: tdo5 do i . -10 +loop ;
-
-: cwd ; \ for those who do not have it
-: tdo ticks  #30000 0 do  loop  ticks swap - u. ;
-: tfor ticks #30000   for next  ticks swap - u. ;
 

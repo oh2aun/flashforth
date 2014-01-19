@@ -11,8 +11,11 @@ REVISION HISTORY
 
 FlashForth V5.0
 ---------------
+- DO ?DO LEAVE UNLOOP I J LOOP +LOOP
+- Old LEAVE used with FOR NEXT has chaned to ENDIT
 - CON changed to CONSTANT (Inline code)
 - CONSTANT changed to CO: (uses DOCREATE)
+- IS and TO made immediate words 
 - Improved XON/XOFF flow control
 - Aligned FL+/FL- with other FF
 - Aligned ABORT" with other FF

@@ -22,6 +22,14 @@ ram variable lim
   ind ! lim !
 ; compileonly
 
+: (?do)
+  2dup xor
+  if
+    [ '  (do) ] again  \ branch to (do) 
+  then
+  r> @ >r 2drop
+;
+
 : (loop)
   [ ind literal ] @ 
   1+ dup 
@@ -46,6 +54,13 @@ ram variable lim
 
 : do
   postpone (do)
+  postpone begin
+  flash 2 allot ram
+  postpone begin
+; immediate compileonly
+
+: ?do
+  postpone (?do)
   postpone begin
   flash 2 allot ram
   postpone begin
@@ -76,14 +91,4 @@ ram variable lim
   postpone (unloop)
   flash here swap ! ram
 ; immediate compileonly
-
-: tdo0 10 0 do cr i . loop ;
-: tdo1 do i . i 5 = if leave then loop ;
-: tdo2 do 10 0 do cr j . i . loop loop ;
-: tdo3 do i . 1 +loop ;
-: tdo4 do i . 10 +loop ;
-: tdo5 do i . -10 +loop ;
-
-: tdo ticks  #30000 0 do  loop  ticks swap - u. ;
-: tfor ticks #30000   for next  ticks swap - u. ;
 
