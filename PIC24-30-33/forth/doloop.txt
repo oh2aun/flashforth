@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      doloop.txt                                      *
-\    Date:          19.01.2014                                      *
+\    Date:          20.01.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -18,7 +18,7 @@ ram variable lim
 
 : (do)   ( limit index -- R: leave oldindex oldlim ) 
   r> r>
-  dup @ >r           \ R: leave 
+  dup inline pfl + @ >r 0 >r      \ R: leave 
   ind @ >r lim @ >r  \ R: leave oldindex oldlim
   2+ >r >r           \ R: leave oldindex oldlim returnaddr
   ind ! lim !
@@ -29,7 +29,7 @@ ram variable lim
   if
     [ '  (do) ] again  \ branch to (do) 
   then
-  r> @ >r 2drop
+  r> r> inline pfl + @ >r >r 2drop
 ;
 
 : (loop)
@@ -55,7 +55,7 @@ ram variable lim
 
 : (unloop)
   r> r>
-  r> lim ! r> ind ! rdrop
+  r> lim ! r> ind ! rdrop rdrop
   >r >r
 ; compileonly
 
@@ -74,7 +74,7 @@ ram variable lim
 ; immediate compileonly
 
 : leave
-  rdrop rdrop r> lim ! r> ind ! rdrop 
+  rdrop rdrop r> lim ! r> ind !
 ; compileonly
 
 : i
@@ -91,12 +91,12 @@ ram variable lim
   postpone (loop)
   postpone until
   postpone (unloop)
-  flash here swap ! ram
+  flash here inline pfl - swap ! ram
 ; immediate compileonly
 
 : +loop
   postpone (+loop)
   postpone until
   postpone (unloop)
-  flash here swap ! ram
+  flash here inline pfl - swap ! ram
 ; immediate compileonly
