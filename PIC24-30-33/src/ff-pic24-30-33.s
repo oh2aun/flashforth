@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          19.01.2014                                        *
+;    Date:          21.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -3275,7 +3275,7 @@ TWOCON_:
 
         .pword  paddr(TWOCON_L)+PFLASH
 PFLASH_L:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "pfl"
         .align  2
 PFLASH_:
@@ -3283,6 +3283,27 @@ PFLASH_:
         return
 
         .pword  paddr(PFLASH_L)+PFLASH
+TO_XA_L:
+        .byte   NFA|INLINE|3
+        .ascii  ">xa"
+        .align  2
+TO_XA:
+        mov     #PFLASH, W0
+        mov     [W14], W1
+        sub     W1, W0, [W14]
+        return
+
+        .pword  paddr(TO_XA_L)+PFLASH
+XA_FROM_L:
+        .byte   NFA|INLINE|3
+        .ascii  "xa>"
+        .align  2
+XA_FROM:
+        mov     #PFLASH, W0
+        add     W0, [W14],[W14]
+        return
+
+        .pword  paddr(XA_FROM_L)+PFLASH
 FLASH_L:
         .byte   NFA|5
         .ascii  "flash"

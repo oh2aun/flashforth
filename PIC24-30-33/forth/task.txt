@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          31.12.2013                                      *
+\    Date:          21.01.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
@@ -72,7 +72,7 @@ hex ram
   \ Pointer to task area
   dup 2- task ! 0 task 2+ !
   \ rsave = uarea+cell+addsize+cell
-  c@+ up@ + cell+ rot pfl - over 
+  c@+ up@ + cell+ rot >xa over 
                             \ rsize-addr rbuf task-adr rbuf
   \ Store taskloop-addr in the return stack
   !                 \ rsize-addr rbuf

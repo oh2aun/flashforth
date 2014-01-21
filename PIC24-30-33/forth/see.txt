@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      see.txt                                         *
-\    Date:          12.01.2014                                      *
+\    Date:          21.01.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -88,7 +88,7 @@ flash lookup: mov.amode , , , , , , , ,
 \ :noname ( addr -- addr f ) hi@ $ff = ;
 
 \ goto
-:noname ." goto  " dup@ pfl + c>n .id drop false ;
+:noname ." goto  " dup@ xa> c>n .id drop false ;
 :noname ( addr -- addr f ) hi@ $4 = ;
 
 \ cp0 Wn
