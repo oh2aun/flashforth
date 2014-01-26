@@ -15,38 +15,37 @@
 marker -case
 hex ram
 
-ram variable #of  \ Number of branches to resolve
-
-: (of)  \ Speed and size optimization of case
+\ of compare
+: (of) ( n1 n2 -- n1 flag ) 
   inline over
   inline -
   0=
 ;
 
-: case  (  x -- x #of )
-  #of @  0 #of !  \ allow nesting
+: case  (  -- #of )
+  0
 ; immediate
 
-: of  ( -- orig )  
+: of  ( #of -- #of orig )  
     postpone (of)  ( copy and test case value)
     postpone if    ( add orig to control flow stack )
     postpone drop  ( discard case value if case is matching )
 ; immediate
 
-: default ( -- orig )
+: default ( #of -- #of orig )
   postpone true      ( Force to take the default branch )
   postpone if        ( add orig to control flow stack )
   postpone drop      ( discard case value )
 ; immediate
 
-: endof ( orig1  -- orig2 )
-   postpone else 1 #of +!
+: endof ( orig1  -- orig2 #of )
+   postpone else 
+   swap 1+
 ; immediate
 
-: endcase  ( #of  orig1..orign  -- )
+: endcase  ( orig1..orign #of  -- )
     postpone drop  ( discard case value )
-    #of @ for
-      postpone then
+    for
+      postpone then ( resolve of branches )
     next
-    #of !
 ; immediate
