@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff18_usb.asm                                      *
-;    Date:          19.01.2014                                        *
+;    Date:          26.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -760,7 +760,6 @@ TX1_2:
 L_RX1_:
         db      NFA|3,"rx1"
 RX1_:
-        rcall   QUERR
         rcall   RX1Q
 #if IDLE_MODE == ENABLE
         rcall   IDLE
@@ -806,23 +805,6 @@ RX1Q:
 RX1Q2:
         clrf    plusS
         return
-
-;***************************************************
-; ?UERR -- f    print message and ABORT if UART framing or overrun error occured
-;       dw      link
-;link   set     $
-        db      NFA|1,"~"
-QUERR:
-        btfsc   RCSTA, FERR, A
-        bra     QUERR1
-        btfsc   RCSTA, OERR, A
-        bra     QUERR1
-        return
-QUERR1: movlw   '~'         ; Framing or overrun error
-QUERR3: rcall   asmemit
-        bcf     RCSTA, CREN, A
-        bsf     RCSTA, CREN, A
-        goto    ABORT         ;    goto    ABORT
 
 ;*******************************************************
 ;;; Multiplication routine from the PIC datasheet adapted to FORTH.
@@ -947,9 +929,7 @@ iupdatebuf0:
 fill_buffer_from_imem:
         movlw   d'64'
         movwf   PCLATH, A
-        lfsr    Tptr, flash_buf
-        movff   ibase_lo, TBLPTRL
-        movff   ibase_hi, TBLPTRH
+        rcall   init_ptrs             ; Init TBLPTR and ram pointer
 fill_buffer_from_imem_1:
         tblrd*+
         movff   TABLAT, Tplus
@@ -995,10 +975,8 @@ wbtil2:
         clrf    PIE1, A
         clrf    PIE2, A
 #endif
-
-        movff   ibase_lo, TBLPTRL      ; Erase the flash block
-        movff   ibase_hi, TBLPTRH
-        bsf     EECON1, EEPGD, A
+        rcall   init_ptrs             ; Init TBLPTR and ram pointer
+        bsf     EECON1, EEPGD, A      ; Erase the flash block
         bcf     EECON1, CFGS, A
         bsf     EECON1, WREN, A
         bsf     EECON1, FREE, A
@@ -1009,7 +987,6 @@ wbtil2:
 
         movlw   flash_write_outer_loop
         movwf   Abank, A
-        lfsr    Tptr, flash_buf
 write_buffer_to_imem_1:
         movlw   flash_write_inner_loop
         movwf   Ap, A
@@ -1029,12 +1006,27 @@ write_buffer_to_imem_2:
         movff   SPIE1, PIE1
         movff   SINTCON, INTCON
 #endif
+        bsf     INTCON, GIE, A        
+verify_imem:
+        movlw   d'64'
+        movwf   PCLATH, A
+        rcall   init_ptrs
+verify_imem_1:
+        tblrd*+
+        movf    TABLAT, W
+        cpfseq  Tplus, A
+        reset
+        decfsz  PCLATH, F, A
+        bra     verify_imem_1
 
         bcf     FLAGS1, idirty, A ; Mark flash buffer clean
-        setf    ibase_hi, A       ; Mark flash buffer empty
-        bsf     INTCON, GIE, A        
+        setf    ibase_hi, A ; Mark flash buffer empty
         return
-
+init_ptrs:
+        lfsr    Tptr, flash_buf
+        movff   ibase_lo, TBLPTRL
+        movff   ibase_hi, TBLPTRH
+        return
 magic:
         movlw   h'55'
         movwf   EECON2, A
@@ -1043,11 +1035,10 @@ magic:
         bsf     EECON1, WR, A
         return
 
-
 ;***************************************************
 asmemit:
-        btfss   PIR1, TXIF, A
-        bra     asmemit
+;        btfss   PIR1, TXIF, A
+;        bra     asmemit
         btfss   PIR1, TXIF, A
         bra     asmemit
 asmemit1:
@@ -1272,7 +1263,7 @@ ISTORE_SETUP:
 ;write_cell_to_buffer
         movf    iaddr_lo, W, A
         andlw   0x3f
-                lfsr    Tptr, flash_buf
+        lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         return
         
@@ -1331,7 +1322,7 @@ ICFETCH1:                       ; Called directly by N=
 ;read_byte_from_buffer
         movf    TBLPTRL, W, A
         andlw   0x3f
-                lfsr    Tptr, flash_buf
+        lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         tblrd*+                 ; To satisfy optimisation in N=
         bra     CFETCH2
@@ -2909,11 +2900,7 @@ L_UMIN:
 UMIN:
         rcall   TWODUP
         rcall   UGREATER
-        rcall   ZEROSENSE
-        bz      UMIN1
-        rcall   SWOP
-UMIN1:  goto    DROP
-
+        bra     MINMAX
 
 ; umax    u1 u2 -- u            unsigned maximum
 ;   2DUP U< IF SWAP THEN DROP ;
@@ -2923,10 +2910,7 @@ L_UMAX
 UMAX:
         rcall   TWODUP
         rcall   ULESS
-        rcall   ZEROSENSE
-        bz      UMAX1
-        rcall   SWOP
-UMAX1:  goto    DROP
+        bra     MINMAX
 
         dw      L_UMAX
 L_ONE:
@@ -3723,6 +3707,7 @@ L_MAX:
 MAX:    
         rcall   TWODUP
         rcall   LESS
+MINMAX:
         rcall   ZEROSENSE
         bz      max1
         rcall   SWOP
@@ -3736,10 +3721,7 @@ L_MIN:
         db      NFA|3,"min"
 MIN:    rcall   TWODUP
         rcall   GREATER
-        rcall   ZEROSENSE
-        bz      min1
-        rcall   SWOP
-min1:   goto    DROP
+        bra     MINMAX
 
         db      NFA|2,"c@"
 CFETCH_A:       

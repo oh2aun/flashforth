@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          21.01.2014                                        *
+;    Date:          26.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -621,11 +621,6 @@ wbtil6:
         return
 
 verify_imem_2:
-        mov     #'^', W0
-        mov     W0, U1TXREG
-forceemit1:
-        btss    U1STA, #TRMT
-        bra     forceemit1
         reset
 
 ; LITERAL  x --           append numeric literal as inline code

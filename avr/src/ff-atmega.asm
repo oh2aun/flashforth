@@ -1145,11 +1145,7 @@ UMIN_L:
 UMIN:
         rcall   TWODUP
         rcall   UGREATER
-        rcall   ZEROSENSE
-        breq    UMIN1
-        rcall   SWOP
-UMIN1:  jmp     DROP
-
+        rjmp    MINMAX
 
 ; umax    u1 u2 -- u            unsigned maximum
 ;   2DUP U< IF SWAP THEN DROP ;
@@ -1159,6 +1155,7 @@ UMAX_L:
 UMAX:
         rcall   TWODUP
         rcall   ULESS
+MINMAX:
         rcall   ZEROSENSE
         breq    UMAX1
         rcall   SWOP
@@ -1794,22 +1791,14 @@ MAX_L:
         .db     NFA|3,"max"
 MAX:    rcall   TWODUP
         rcall   LESS
-        rcall   ZEROSENSE
-        breq    max1
-        rcall   SWOP
-max1:   jmp     DROP
+        rjmp    MINMAX
 
         fdw     MAX_L
 MIN_L:
         .db     NFA|3,"min"
 MIN:    rcall   TWODUP
         rcall   GREATER
-        rcall   ZEROSENSE
-        brne    pc+2
-        rjmp    min1
-;        breq    min1
-        rcall   SWOP
-min1:   jmp     DROP
+        rjmp    MINMAX
 
         .db     NFA|2,"c@",0
 CFETCH_A:       
@@ -4744,7 +4733,7 @@ IWRITE_BUFFER1:
         rcall   DO_SPM
         ; re-enable the RWW section
         rcall   IWRITE_BUFFER3
-#if 1
+
         ; read back and check, optional
         ldi     t0, low(PAGESIZEB);init loop variable
         subi    xl, low(PAGESIZEB) ;restore pointer
@@ -4753,10 +4742,10 @@ IWRITE_BUFFER2:
         lpm_    r0, z+
         ld      r1, x+
         cpse    r0, r1
-        rjmp    VERIFY_ERROR     ; emit ^ and reset.
+        rjmp    WARM_     ; reset
         subi    t0, 1
         brne    IWRITE_BUFFER2
-#endif
+
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
         // reenable interrupts
@@ -4800,12 +4789,6 @@ DO_SPM:
         spm
         ret
 
-VERIFY_ERROR:
-        rcall   DOLIT
-        .dw     '^'
-        call    EMIT
-
-        rjmp    WARM_
                 
         fdw     PAUSE_L
 IFLUSH_L:
