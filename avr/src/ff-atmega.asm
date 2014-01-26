@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          19.01.2014                                        *
+;    Date:          26.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -3703,10 +3703,16 @@ REPEAT_:
         rcall   AGAIN_
         jmp     THEN_
 
-L_INLINE:
+        fdw     REPEAT_L
+INLINE_L:
+        .db      NFA|IMMED|COMPILE|6,"inline",0
+        cbr      FLAGS1, (1<<izeroeq)
+        cbr      FLAGS1, (1<<idup)
+        rcall    TICK
+        jmp      INLINE0
 ; in, ( addr -- ) begin @+ dup $9508 <> while i, repeat 2drop ;
-        fdw      L_INLINE
-L_INLINEC:
+        fdw      INLINE_L
+INLINEC_L:
         .db      NFA|3,"in,"
 INLINE0:        
         rcall   FETCHPP
@@ -3722,7 +3728,7 @@ INLINE1:
         jmp     TWODROP
 
 ; FOR   -- bc-addr bra-addr
-        fdw     REPEAT_L
+        fdw     INLINEC_L
 FOR_L:
         .db     NFA|IMMED|COMPILE|3,"for"
 FOR:

@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Case for FlashForth                                              *
 \    Filename:      case.txt                                          *
-\    Date:          05.01.2014                                        *
+\    Date:          26.01.2014                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -15,16 +15,28 @@
 marker -case
 hex ram
 
-variable #of
+ram variable #of  \ Number of branches to resolve
+
+: (of)  \ Speed and size optimization of case
+  inline over
+  inline -
+  0=
+;
+
 : case  (  x -- x #of )
   #of @  0 #of !  \ allow nesting
 ; immediate
 
-
-: of  ( -- orig)
-    postpone over  postpone = ( copy and test case value)
+: of  ( -- orig )  
+    postpone (of)  ( copy and test case value)
     postpone if    ( add orig to control flow stack )
-    postpone drop  ( discards case value if = )
+    postpone drop  ( discard case value if case is matching )
+; immediate
+
+: default ( -- orig )
+  postpone true      ( Force to take the default branch )
+  postpone if        ( add orig to control flow stack )
+  postpone drop      ( discard case value )
 ; immediate
 
 : endof ( orig1  -- orig2 )
