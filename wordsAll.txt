@@ -52,6 +52,9 @@ Dictionary of FlashForth 5.0
 +!         ( n addr -- )
            Add n to cell at addr.
 
++loop      ( n -- )
+           Add n to the loop index and terminate the loop if the limit has been reached.
+
 ,          ( x -- )
            Append x to the current data section
 
@@ -178,11 +181,17 @@ Dictionary of FlashForth 5.0
 >r         ( x -- ) ( R: -- x )  Compile Only
            Push x from the parameter stack to the return stack
 
+>xa        ( a-addr1 -- a-addr2 )  PIC24-30-33 Atmega
+           Convert a flash virtual address to real executable address.
+
 ?abort     ( flag c-addr u -- )
            Print message and abort if flag is false
 
 ?abort?    ( flag -- )
            If flag is false output ? and abort
+
+?do        ( limit index -- )
+           Start a do loop which is not run if the arguemnts are equal
 
 ?dnegate   ( d n -- d )
            Negate d if n is negative
@@ -382,6 +391,9 @@ dinvert    ( ud -- ud )
 
 dnegate    ( d -- -d )
            Negate double number
+
+do         ( limit index --)
+           Start a do loop
            
 does>      ( -- )                   Compile Only
            Define the runtime action of a created word.
@@ -418,6 +430,10 @@ emit       ( c -- )
 empty       ( -- )
            Reset all dictionary pointers.
 
+endit      ( -- )             COMPILE ONLY
+           Leave a for/next loop when next is encountered.
+           Sets top of return stack to zero
+         
 evaluate   ( c-addr n -- )
            Evaluate buffer
 
@@ -473,6 +489,9 @@ hold       ( c -- )      Compile Only
 hp         ( -- a-addr )            User Variable
            Hold pointer for formatted numeric output
 
+i          ( -- n ) COMPILE_ONLY
+           The loop index
+
 i]         ( -- )                   Compile Only
            Exit Forth interrupt context
 
@@ -498,7 +517,7 @@ immediate  ( -- )
            Mark latest definition as immediate
 
 in?        ( nfa -- flag )
-           Leave true flag if nfa has inline bit set
+           Leave a nonzero value if nfa has inline bit set
 
 inline     ( "name" -- )
            Inline the following word.
@@ -508,7 +527,7 @@ inlined    ( -- )
 
 int!       ( xt vector-no -- )
            Store an interrupt vector to the interrupt vector table.
-           PIC18: Dummy vector number for high prority interrupts.
+           PIC18: Dummy vector number (0) for high prority interrupts.
            PIC30: Alternate interrupt vector table in flash.
            PIC33: Alternate interrupt vector table in ram.
            PIC24: Alternate interrupt vector table in ram.
@@ -526,6 +545,9 @@ is         ( x "name" -- )
 ivt        ( -- )
            Use the normal interrupt vector table
 
+j          ( -- n )  COMPILE ONLY
+           The outer loop index
+
 key        ( -- c )
            Get a character from the serial port FIFO.
            Execute pause until a character is available
@@ -536,18 +558,24 @@ key?       ( -- flag )
 latest       ( -- a-addr )
            Variable holding the address of the latest defined word
 
-leave      ( -- )             COMPILE ONLY
-           Leave a for/next loop when next is encountered.
-           Sets top of return stack to zero
-         
+leave      ( -- )
+           Leave a do loop immediately
+
 literal    ( x -- )
            Compile a literal into the dictionary
+
+load       ( -- n )
+           Show the load in percent.
+           The integration interval is 256 mS.
 
 load+      ( -- )
            Enable on the load led
 
 load-      ( -- )
            Disable on the load led
+
+loop       ( -- )
+           Increment the loop index and terminate the loop if the limit has been reached.
            
 lshift     ( x1 u -- x2
            Shift x1 u bits to the left
@@ -961,12 +989,15 @@ wmove      ( addr1 addr2 u -- ) PIC24
 
 words      ( -- )
            List words
+
+xa>        ( a-addr1 -- a-addr2 ) PIC24-30-33 Atmega
+           Convert a real executable address to virtual flash address
  
 xor        ( x1 x2 -- x3 )
            Xor bitwise x1 with x2.
 
 Atmega Assembler
-----------------
+================
 Conditionals
 ------------
 if,    ( cc -- addr )
@@ -1140,7 +1171,7 @@ R31     ( -- 31 )
 
 
 PIC18 assembler
----------------
+===============
 addwf,  ( f d a -- ) C,DC,Z,OV,N Add WREG and f
 addwfc, ( f d a -- ) C,DC,Z,OV,N Add WREG and Carry bit to f
 andwf,  ( f d a -- ) Z,N         AND WREG with f
@@ -1222,7 +1253,7 @@ until,  ( back-addr cc -- )
 
 
 PIC24-30-33 assembler
----------------------
+=====================
 rcall,     ( rel-addr -- )
 bra,       ( cc rel-addr -- )
 return,    ( -- )
