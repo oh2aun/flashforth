@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          26.01.2014                                        *
+;    Date:          31.01.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -417,8 +417,8 @@ umslashmod0:
         ld t3, Y+
         ld t6, Y+
   
-        ld t1, Y+
-        ld t2, Y+
+        ld tosl, Y+
+        ld tosh, Y+
 
 ; unsigned 32/16 -> 16/16 division
         ; set loop counter
@@ -427,8 +427,8 @@ umslashmod0:
 umslashmod1:
         ; shift left, saving high bit
         clr t7
-        lsl t1
-        rol t2
+        lsl tosl
+        rol tosh
         rol t3
         rol t6
         rol t7
@@ -443,7 +443,7 @@ umslashmod1:
         ; dividend is large enough
         ; do the subtraction for real
         ; and set lowest bit
-        inc t1
+        inc tosl
         sub t3, t4
         sbc t6, t5
 
@@ -456,9 +456,7 @@ umslashmod3:
         st -Y,t6
         st -Y,t3
 
-        ; put quotient on stack
-        mov tosl, t1
-        mov tosh, t2     ; 6 + 272 + 6 =284 cycles
+        ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
         ret
 ; *******************************************************************
 ; EXIT --   Compile a return
@@ -1658,7 +1656,7 @@ PPLUS_L:
 PPLUS:
         add     pl, r_one
         adc     ph, zero
-        ret
+        ret   
 
         fdw     PPLUS_L
 PNPLUS_L:
@@ -3366,7 +3364,7 @@ TO_PRINTABLE_L:
 TO_PRINTABLE:   
         cpi     tosl, 0
         brmi    TO_PRINTABLE1
-        cpi     tosl, 0x1f
+        cpi     tosl, 0x20
         brpl    TO_PRINTABLE2
 TO_PRINTABLE1:
         ldi     tosl, '.'
@@ -5460,8 +5458,8 @@ MEMQ:
 
 ;*******************************************************
 umstar0:
-        movw t0, tosl
-        poptos
+        ld  t0, Y+
+        ld  t1, Y+
         mul tosl,t0
         movw t4, r0 ; r0=t2, r1=t3
         clr t6
@@ -5477,8 +5475,8 @@ umstar0:
         mul tosh, t1
         add t6, r0
         adc t7, r1
-        movw tosl, t4
-        pushtos
+        st -Y, t5
+        st -Y, t4
         movw tosl, t6
         ret
 

@@ -50,11 +50,11 @@
 
 ; UART buffer sizes
 .equ TX0_BUF_SIZE = 0
-.equ RX0_BUF_SIZE = 32
+.equ RX0_BUF_SIZE = 32  ; 8,16,32,64
 .equ RX0_OFF_FILL = 4   ; Fill level for XOFF
 
 .equ TX1_BUF_SIZE = 0
-.equ RX1_BUF_SIZE = 32
+.equ RX1_BUF_SIZE = 32  ; 8,16,32,64
 .equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task

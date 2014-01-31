@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      doloop.txt                                        *
-\    Date:          19.01.2014                                        *
+\    Date:          31.01.2014                                        *
 \    File Version:  5.0                                               *
 \    MCU:           Atmega (not 256)                                  *
 \    Copyright:     Mikael Nordman                                    *
@@ -12,9 +12,12 @@
 \ do loop for Atmega32,64,128 (not 256)
 -doloop
 marker -doloop
+
 : compileonly $10 shb ;
-ram variable ind
-ram variable lim
+
+#18 constant ind inlined   \ R18:R19 are unused by the kernel 
+ram here constant lim inlined 2 allot   \ constant variable address
+
 : (do)  ( limit index -- R: leave oldindex oldlim ) 
   r>
   dup xa> @ >r
@@ -23,21 +26,28 @@ ram variable lim
   ind ! lim !
 ; compileonly
 
-: (?do)
+: (?do) ( limit index -- R: leave oldindex oldlim ) 
   2dup xor
   if
     [ '  (do) ] again  \ branch to (do) 
   then
   r> xa> @ >r 2drop
-;
+; compileonly
+
 : (loop)
-  ind @ 1+ dup ind !
-  lim @ =
+  [ $0d26 i, $1d35 i, ] \ add 1 to r18:r19
+  lim @
+  [ $1b82 i, ] \ sub tosl, r18
+  [ $0b93 i, ] \ sub tosh, r19
+  0=
 ; compileonly
 
 : (+loop) ( n -- )
-  dup >r            \ remember increment
-  ind @ + dup ind !
+  dup >r         \ remember increment
+  [ $0f28 i, ]   \ add r18, tosl
+  [ $1f39 i, ]   \ add r19, tosh
+  [ $2f82 i, ]   \ mov tosl, r18
+  [ $2f93 i, ]   \ mov tosh, r19
   lim @ r> 0< 
   if       <
   else  1- >
@@ -53,14 +63,14 @@ ram variable lim
 : do
   postpone (do)
   postpone begin
-  flash 2 allot ram
+  flash 2 allot ram  \ leave address
   postpone begin
 ; immediate compileonly
 
 : ?do
   postpone (?do)
   postpone begin
-  flash 2 allot ram
+  flash 2 allot ram  \ leave address
   postpone begin
 ; immediate compileonly
 
@@ -68,7 +78,7 @@ ram variable lim
   rdrop r> lim ! r> ind ! 
 ; compileonly
 
-: i [ ind literal ] @ ; compileonly
+: i ind @ ; compileonly
 
 : j r> r> r> dup >r swap >r swap >r ; compileonly
 
