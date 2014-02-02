@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      doloop.txt                                      *
-\    Date:          21.01.2014                                      *
+\    Date:          02.02.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -11,51 +11,31 @@
 \ *******************************************************************
 -doloop
 marker -doloop
-ram variable ind
-ram variable lim
+
+ram here constant ind inlined 2 allot
 
 : compileonly $10 shb ; \ Make word compile only
 
-: (do)   ( limit index -- R: leave oldindex oldlim ) 
-  r> r>
-  dup xa> @ >r 0 >r      \ R: leave 
-  ind @ >r lim @ >r  \ R: leave oldindex oldlim
-  2+ >r >r           \ R: leave oldindex oldlim returnaddr
-  ind ! lim !
+: (do)   ( limit index -- R: leave oldindex xfactor ) 
+  rdrop r>                   \ Address hi byte is always zero
+  dup >t xa> @ >r            \ R: leave 
+  ind @ >r                   \ R: leave oldindex
+  swap $8000 swap - dup >r   \ R: leave oldindex xfactor
+  + ind !
+  t> 2+ >r 0 >r
 ; compileonly
 
 : (?do)
   2dup xor
   if
-    [ '  (do) ] again  \ branch to (do) 
+    [ '  (do) ] again        \ branch to (do) 
   then
   r> r> xa> @ >r >r 2drop
-;
-
-: (loop)
-  [ ind $2000 or $ec as, ] \ inc ind
-  [ ind $8000 or $bf as, ] \ mov ind, wreg
-  [ lim 2/ #4 lshift 1 or lim 2/ #12 rshift $80 or as, ] \ mov lim, w1
-  [ $2f00 $eb as, ]        \ clr [++14]
-  [ $0001 $e7 as, ]        \ cpsne w0, w1
-  [ $8f00 $eb as, ]        \ setm [W14]
 ; compileonly
 
-: (+loop) ( n -- )
-  dup >r            \ remember increment
-  [ ind literal ] @ 
-  + dup 
-  [ ind literal ] !
-  [ lim literal ] @ 
-  r> 0< 
-  if    <
-  else  1- >
-  then            
-; compileonly
-
-: (unloop)
+: unloop
   r> r>
-  r> lim ! r> ind ! rdrop rdrop
+  rdrop r> ind ! rdrop
   >r >r
 ; compileonly
 
@@ -74,29 +54,35 @@ ram variable lim
 ; immediate compileonly
 
 : leave
-  rdrop rdrop r> lim ! r> ind !
+  rdrop rdrop rdrop r> ind ! 0 >r
 ; compileonly
 
-: i
-  [ ind $8000 or $bf as, ] \ mov ind, wreg
-  [ $782f00. as, ]         \ mov w0,  [++W14]
-; inlined compileonly
-
-: j 
-  [ $97b86f. as, ] \ mov [W15-6], WREG
+: i ( -- i   R: xfactor -- xfactor )
+  \ i = index - xfactor
+  [ $97b87f. as, ] \ mov [W15-2], w0
+  [ ind $b5  as, ] \ sub ind, wreg
   [ $782f00. as, ] \ mov w0,  [++W14]
 ; inlined compileonly
 
+: j  ( -- j  R: j-xfactor i-leave j-index i-xfactor -- the same ) 
+  [ $97b86f. as, ] \ mov [W15-4], W0
+  [ $97b8cf. as, ] \ mov [W15-8], W1
+  [ $502f01. as, ] \ sub w0, w1, [++W14]
+; inlined compileonly
+
 : loop
-  postpone (loop)
-  postpone until
-  postpone (unloop)
+  \ postpone (loop)
+  ind $2000 or $ec as, \ inc index
+  0 until,             \ until overflow
+  postpone unloop
   flash here >xa swap ! ram
 ; immediate compileonly
 
 : +loop
-  postpone (+loop)
-  postpone until
-  postpone (unloop)
+  \ postpone (+loop)
+  $78002e.         as,  \ mov [W14--], W0
+  ind $2000 or $b4 as,  \ add index
+  0 until,              \ until overflow
+  postpone unloop
   flash here >xa swap ! ram
 ; immediate compileonly

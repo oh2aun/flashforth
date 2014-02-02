@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          26.01.2014                                        *
+;    Date:          02.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -161,6 +161,7 @@ rbuf2:       .space RX2_BUF_SIZE
 .endif
 .endif
 
+temp:       .space 2
 ibase:      .space 2
 iaddr:      .space 2
 iflags:     .space 2
@@ -649,6 +650,22 @@ LITERAL:
         return
 
         .pword   paddr(LITERAL_L)+PFLASH
+TO_T_L:
+        .byte   NFA|INLINE|2
+        .ascii  ">t"
+        .align 2
+        mov     [W14--], W11
+        return
+
+        .pword   paddr(TO_T_L)+PFLASH
+T_FROM_L:
+        .byte   NFA|INLINE|2
+        .ascii  "t>"
+        .align 2
+        mov     W11, [++W14]
+        return
+
+        .pword   paddr(T_FROM_L)+PFLASH
 IDLE_L:
         .byte   NFA|4
         .ascii  "idle"
@@ -6313,13 +6330,12 @@ WORDS_L:
 WORDS:
         rcall   FALSE_
         rcall   CR
-        rcall   LATEST
-        rcall   FETCH
-        bclr    [W14], #0           ; Compensate for bug in ASM30 súite
+        mlit    handle(kernellink)+PFLASH
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-        mlit    handle(kernellink)+PFLASH
+        rcall   LATEST
+        rcall   FETCH
 WDS1:   mov     [W14++], [W14]      ; dup
         rcall   DOTID
         rcall   SWOP
