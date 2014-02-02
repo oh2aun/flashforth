@@ -36,6 +36,8 @@ hex ram
 : ?bra ( addr -- addr f ) *@ f800 and d000 = ;
 : ?bz ( addr --  addr f ) *@ ff00 and e000 = ;
 : ?bnz ( addr --  addr f ) *@ ff00 and e100 = ;
+: ?bov ( addr --  addr f ) *@ ff00 and e400 = ;
+: ?bnov ( addr --  addr f ) *@ ff00 and e500 = ;
 : ?bc ( addr -- addr f ) *@ ff00 and e200 = ;
 : ?rcall ( addr -- addr f ) *@ f800 and d800 = ;
 : ?bcf ( addr -- addr f ) *@ f000 and 9000 = ;
@@ -49,6 +51,8 @@ hex ram
         ?rcall if 5sp ." rcall " @braddr c>n .id cell+ else
         ?bz if 5sp ." bz    " .bz else
         ?bnz if 5sp ." bnz   " .bz else
+        ?bov if 5sp ." bov   " .bz else
+        ?bnov if 5sp ." bnov  " .bz else
         ?bc if 5sp ." bc    " .bz else 
         ?bra if 5sp ." bra   " .bra else
         ?ret if 5sp ." return" drop false else
@@ -60,7 +64,7 @@ hex ram
         cell+
         then then then then then 
         then then then then then 
-        then then
+        then then then then
         cr ;
 
 : see ( "word" -- ) 

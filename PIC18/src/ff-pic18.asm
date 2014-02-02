@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff18_usb.asm                                      *
-;    Date:          26.01.2014                                        *
+;    Filename:      ff-pic18.asm                                      *
+;    Date:          02.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -170,40 +170,38 @@ FLASH_BUF udata_acs
 flash_buf res 0x40
 
 FORTH_VARS  udata_acs   ; Variables in Access Ram
+indexl   res 1       ; DO LOOP INDEX
+indexh   res 1
 ibase_lo res 1       ; Memory address of ibuffer
 ibase_hi res 1       ; Memory address of ibuffer
-iaddr_lo res 1       ; Instruction Memory access address 
-iaddr_hi res 1       ; Instruction Memory access address
 p_lo     res 1       ; p pointer
 p_hi     res 1
 FLAGS1   res 1       ; Some flags                                    
 FLAGS2   res 1       ; More flags
 RXhead   res 1       ; Head of serial RX interrupt buffer
 RXtail   res 1       ; Tail of serial RX interrupt buffer
+RXcnt    res 1       ; Number of characters in the RX fifo
 TXhead   res 1       ; Head of serial TX interrupt buffer
 TXtail   res 1       ; Tail of serial TX interrupt buffer
+TXcnt    res 1       ; Number of characters in the TX fifo
 ms_count res 1       ; millisecond counter 2 bytes
 ms_cnt_h res 1       ; millisecond counter 2 bytes
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
 status   res 1       ; if zero, cpu idle is allowed (f056)
-RXcnt    res 1       ; Number of characters in the RX fifo
-TXcnt    res 1       ; Number of characters in the TX fifo
 irq_v    res 2       ; Interrupt vector
 load_acc res 3
 load     res 1       ; CPU load  (26)
-
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
 #else
-ihtp     res 1
-ihtbank  res 1
 ihpclath res 1
 ihtablat res 1
 #endif
 acs_byte res 1       ; Access bank byte to be used in assy embedded in C.
+;not_used res 1
 ;;; One byte of free access bank is needed by the USB library.
 
 IRQ_STACK udata
@@ -232,11 +230,11 @@ SPIE2       res 1       ; Save PIE2 before disabling interrupts
 
 ;;; Interrupt high priority save variables
 #ifdef USB_CDC
-ihtp        res 1
-ihtbank     res 1
 ihpclath    res 1
 ihtablat    res 1
 #endif
+ihtp        res 1
+ihtbank     res 1
 ihtblptrl   res 1
 ihtblptrh   res 1
 ihsp        res 1
@@ -245,7 +243,9 @@ ihprodl     res 1
 ihprodh     res 1
 ihap        res 1
 ihabank     res 1
-
+iaddr_lo res 1       ; Instruction Memory access address
+iaddr_hi res 1       ; Instruction Memory access address
+temp        res 2
 #ifdef USB_CDC
 SpF         res 1       ; Save Forth Sp during C context
 SbankF      res 1       ; 
@@ -578,8 +578,24 @@ EXIT:
         pop
         return
 
-; idle
         dw      L_EXIT
+L_TO_T:
+        db      NFA|2,">t"
+TO_T:
+        movff   Sminus, temp+1
+        movff   Sminus, temp+0
+        return
+
+        dw      L_TO_T
+L_T_FROM:
+        db      NFA|2,"t>"
+T_FROM:
+        movff   temp+0, plusS
+        movff   temp+1, plusS
+        return
+
+; idle
+        dw      L_T_FROM
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
@@ -911,19 +927,21 @@ UMSLASHMOD2:
 ;   ibasehi = iaddrhi
 ;endif
 iupdatebuf:
+        banksel iaddr_lo
         movlw   h'c0'
-        andwf   iaddr_lo, W, A
+        andwf   iaddr_lo, W, BANKED
         cpfseq  ibase_lo, A
         bra     iupdatebuf0
-        movf    iaddr_hi, W, A
+        movf    iaddr_hi, W, BANKED
         cpfseq  ibase_hi
         bra     iupdatebuf0
         return
 
 iupdatebuf0:
         rcall   IFLUSH
+        banksel iaddr_lo
         movlw   h'c0'
-        andwf   iaddr_lo, W, A
+        andwf   iaddr_lo, W, BANKED
         movwf   ibase_lo, A
         movff   iaddr_hi, ibase_hi
 fill_buffer_from_imem:
@@ -1261,7 +1279,8 @@ ISTORE_SETUP:
         movff   Sminus, iaddr_lo
         rcall   iupdatebuf
 ;write_cell_to_buffer
-        movf    iaddr_lo, W, A
+        banksel iaddr_lo
+        movf    iaddr_lo, W, BANKED
         andlw   0x3f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
@@ -5248,13 +5267,18 @@ L_WORDS:
         db      NFA|5,"words"
         rcall   FALSE_
         rcall   CR
-        rcall   LATEST
-        rcall   FETCH_A
+
+        rcall   LIT_A
+        dw      kernellink
+
+
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-        rcall   LIT_A
-        dw      kernellink
+
+        rcall   LATEST
+        rcall   FETCH_A
+
 WDS1:   rcall   DUP_A
         rcall   DOTID
         rcall   SWOP_A

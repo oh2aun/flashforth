@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      doloop.txt                                        *
-\    Date:          19.01.2014                                        *
+\    Date:          02.02.2014                                        *
 \    File Version:  5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -11,15 +11,18 @@
 \ *********************************************************************
 -doloop
 marker -doloop
-: compileonly $10 shb ;
-ram variable ind
-ram variable lim
-: (do)  ( limit index -- R: leave oldindex oldlim ) 
+
+: compileonly $10 shb ; \ Set Header bit for compile only word
+
+$f040 constant ind   \ Hardcoded index register address
+
+: (do)  ( limit index --   R: -- leave oldindex xfactor ) 
   r>
-  dup @ >r
-  ind @ >r lim @ >r
-  2+ >r
-  ind ! lim !
+  dup >t @ >r                \ leave
+  ind @ >r                   \ oldindex
+  swap $8000 swap - dup >r   \ xfactor on return stack
+  + ind !
+  t> 2+ >r                   \ return to after the leave pointer
 ; compileonly
 
 : (?do)
@@ -28,27 +31,46 @@ ram variable lim
     [ '  (do) ] again  \ branch to (do) 
   then
   r> @ >r 2drop
-;
+; compileonly
 
+flash          \ append the hex codes to flash
 : (loop)
-  [ ind literal ] @ 
-  1+ dup 
-  [ ind literal ] !
-  [ lim literal ] @ =
+  [ $0e00 , ]  \ movlw 0
+  [ $2a40 , ]  \ incf, ind, F, A
+  [ $2241 , ]  \ addwfc ind+1, F, A
 ; compileonly
 
-: (+loop) ( n -- )
-  dup >r            \ remember increment
-  ind @ + dup ind !
-  lim @ r> 0< 
-  if       <
-  else  1- >
-  then            
+flash          \ append the hex codes to flash
+: (+loop)
+  [ $cfed , ]  \ movff   Sminus, Tp
+  [ $ffe1 , ]  \ 
+  [ $50ed , ]  \ movf    Sminus, W, A
+  [ $2640 , ]  \ addwf   ind, F, A
+  [ $50e1 , ]  \ movf    Tp, W, A
+  [ $2241 , ]  \ addwfc  ind+1, F, A
 ; compileonly
 
-: (unloop)
+flash          \ append the hex codes to flash
+: i ( -- i   R: xfactor -- xfactor ) 
+  [ $cffd , ] \ movff   TOSL, Tp
+  [ $ffe1 , ] \ 
+  [ $cffe , ] \ movff   TOSH, PCLATH
+  [ $fffa , ] \ 
+  [ $0006 , ] \ pop
+  [ $50fd , ] \ movf    TOSL, W, A
+  [ $5c40 , ] \ subwf   indexl, W, A
+  [ $6eec , ] \ movwf   plusS, A
+  [ $50fe , ] \ movf    TOSH, W, A
+  [ $5841 , ] \ subwfb  indexh, W, A
+  [ $6eec , ] \ movwf   plusS, A
+  [ $50e1 , ] \ movf    Tp, W, A
+  [ $6ef9 , ] \ movwf   PCL, A
+; compileonly
+ram
+
+: (unloop) ( R: leave oldindex xfactor -- )
   r>
-  r> lim ! r> ind ! rdrop
+  rdrop r> ind ! rdrop
   >r
 ; compileonly
 
@@ -67,16 +89,12 @@ ram variable lim
 ; immediate compileonly
 
 : leave
-  rdrop r> lim ! r> ind ! 
+  rdrop rdrop r> ind ! 
 ; compileonly
-
-: i [ ind literal ] @ ;
-
-: j r> r> r> dup >r swap >r swap >r ; compileonly
 
 : loop
   postpone (loop)
-  postpone until
+  $e4 until,          \ $e4=overflow
   postpone (unloop)
   flash here swap ! ram
 ; immediate compileonly
@@ -87,8 +105,15 @@ ram variable lim
 
 : +loop
   postpone (+loop)
-  postpone until
+  $e4 until,          \ $e4=overflow
   postpone (unloop)
   flash here swap ! ram
 ; immediate compileonly
+
+: j ( -- j  R: j-xfactor i-leave j-index i-xfactor -- the same )  
+  r> r> r> r> 
+  over r@ - >t
+  >r >r >r >r
+  t>
+; compileonly
 
