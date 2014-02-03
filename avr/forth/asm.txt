@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      asm.txt                                           *
-\    Date:          19.10.2013                                        *
+\    Date:          03.02.2014                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
@@ -195,7 +195,7 @@ e000 f000  Rd,k: ldi,
 9a00 ff00   P,b: sbi,   \ P b --
 9b00 ff00   P,b: sbis,  \ P b --
 
-b000 f800  Rd,P: in,    \ Rd P --
+b000 f800  Rd,P: inn,   \ Rd P --
 b800 f800  Rd,P: out,   \ Rr P --
 
 f800 fe08  Rd,Rr: bld,  \ Rd b --
@@ -225,8 +225,8 @@ f00f constant ie,   \ if/until interrupt enabled
 : else, postpone else ;
 : then, postpone then ;
 : begin, postpone begin ;
-: until, ( addr cc -- ) i, [ ' again pfl - zfl d2/ jmp, ] ;
-: again, ( addr -- ) [ ' again pfl - zfl d2/ jmp, ] ;
+: until, ( addr cc -- ) i, postpone again ;
+: again, ( addr -- ) postpone again ;
 
 $00 constant Z
 $01 constant Z+
