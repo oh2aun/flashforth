@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          31.01.2014                                        *
+;    Date:          03.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -53,7 +53,9 @@
   .def t2 = r0          ; Not in interrupt
   .def t3 = r1          ; Not in interrupt
 
-  .def pl = r20
+  .def il = r18         ; FOR..LOOP INDEX variable
+  .def ih = r19
+  .def pl = r20         ; P Register
   .def ph = r21
 
   .def FLAGS1 = r22     ; Not in interrupt
@@ -387,7 +389,7 @@ dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
-
+temp:       .byte 2 ; temporary data
 status:     .byte 1 ; Idle status of all tasks
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
@@ -860,9 +862,29 @@ RPEMPTY:
         movw    zl, xl
         mijmp
 
+;   RP@ Fetch the return stack pointer        
+        fdw     SPFETCH_L
+RPFETCH_L:
+        .db     NFA|INLINE|COMPILE|3,"rp@"
+RPFETCH:
+        pushtos
+        in      tosl, spl
+        in      tosh, sph
+        ret
+
+;   ><  Swap bytes        
+        fdw     RPFETCH_L
+SWAPB_L:
+        .db     NFA|INLINE|2,"><",0
+SWAPB:
+        mov     t0, tosl
+        mov     tosl, tosh
+        mov     tosh, t0
+        ret
+
 ; DICTIONARY POINTER FOR the current section
 ; Flash -- sets the data section to flash
-        fdw     SPFETCH_L
+        fdw     SWAPB_L
 FLASH_L:
 ROM_N:  
         .db     NFA|5,"flash"
@@ -3659,7 +3681,7 @@ UNTIL:
         rcall   COMMAZEROSENSE
         rcall   BRNEC
         cbr     FLAGS1, (1<<izeroeq)
-	jmp	AGAIN_
+	    jmp     AGAIN_
 
 				; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
@@ -3667,6 +3689,7 @@ UNTIL:
 AGAIN_L:
         .db     NFA|IMMED|COMPILE|5,"again"
 AGAIN_:
+        sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rcall   IHERE
         rcall   MINUS
         rcall   TWOMINUS
@@ -5068,6 +5091,13 @@ ISTORE:
         ret
 
         fdw     LITERAL_L
+TO_T_L:
+        .db     NFA|2, ">t",0
+        ldi     zl, low(temp)
+        ldi     zh, high(temp)
+        rjmp    STORE_RAM_2
+
+        fdw     TO_T_L
 STORE_L:
         .db     NFA|1, "!"
 STORE:
@@ -5146,6 +5176,14 @@ IIFETCH:
         ret
                 
         fdw     STORE_L
+T_FROM_L:
+        .db     NFA|2, "t>",0
+        pushtos
+        ldi     zl, low(temp)
+        ldi     zh, high(temp)
+        rjmp    FETCH_RAM_2
+
+        fdw     T_FROM_L
 FETCH_L:
         .db     NFA|1, "@"
 FETCH:
@@ -5153,6 +5191,7 @@ FETCH:
         brcc    FETCH1
 FETCH_RAM:
         movw    zl, tosl
+FETCH_RAM_2:
         ld      tosl, z+
         ld      tosh, z+
         ret

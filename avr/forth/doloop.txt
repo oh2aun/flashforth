@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      doloop.txt                                        *
-\    Date:          31.01.2014                                        *
+\    Date:          03.02.2014                                        *
 \    File Version:  5.0                                               *
 \    MCU:           Atmega (not 256)                                  *
 \    Copyright:     Mikael Nordman                                    *
@@ -15,18 +15,18 @@ marker -doloop
 
 : compileonly $10 shb ;
 
-#18 constant ind inlined   \ R18:R19 are unused by the kernel 
-ram here constant lim inlined 2 allot   \ constant variable address
+#18 constant ind inlined   \ R18:R19 are unused by the kernel
 
-: (do)  ( limit index -- R: leave oldindex oldlim ) 
+: (do)  ( limit index -- R: leave oldindex xfaxtor ) 
   r>
-  dup xa> @ >r
-  ind @ >r lim @ >r
-  1+ >r
-  ind ! lim !
+  dup >t xa> @ >r            \ R: leave 
+  ind @ >r                   \ R: leave oldindex
+  swap $8000 swap - dup >r   \ R: leave oldindex xfactor
+  + ind !
+  t> 1+ >r
 ; compileonly
 
-: (?do) ( limit index -- R: leave oldindex oldlim ) 
+: (?do) ( limit index -- R: leave oldindex xfactor ) 
   2dup xor
   if
     [ '  (do) ] again  \ branch to (do) 
@@ -34,29 +34,15 @@ ram here constant lim inlined 2 allot   \ constant variable address
   r> xa> @ >r 2drop
 ; compileonly
 
-: (loop)
-  [ $0d26 i, $1d35 i, ] \ add 1 to r18:r19
-  lim @
-  [ $1b82 i, ] \ sub tosl, r18
-  [ $0b93 i, ] \ sub tosh, r19
-  0=
-; compileonly
-
 : (+loop) ( n -- )
-  dup >r         \ remember increment
   [ $0f28 i, ]   \ add r18, tosl
   [ $1f39 i, ]   \ add r19, tosh
-  [ $2f82 i, ]   \ mov tosl, r18
-  [ $2f93 i, ]   \ mov tosh, r19
-  lim @ r> 0< 
-  if       <
-  else  1- >
-  then            
+  inline drop
 ; compileonly
 
-: (unloop)
+: unloop
   r>
-  r> lim ! r> ind ! rdrop
+  rdrop r> ind ! rdrop
   >r
 ; compileonly
 
@@ -75,28 +61,32 @@ ram here constant lim inlined 2 allot   \ constant variable address
 ; immediate compileonly
 
 : leave
-  rdrop r> lim ! r> ind ! 
+  rdrop rdrop r> ind ! 
 ; compileonly
 
-: i ind @ ; compileonly
+: i
+  ind @ rp@ 3 + @ >< -
+; compileonly
 
-: j r> r> r> dup >r swap >r swap >r ; compileonly
+: j
+  rp@ 5 + @ >< rp@ 9 + @ >< - 
+; compileonly
+
 
 : loop
-  postpone (loop)
-  postpone until
-  postpone (unloop)
+  $0d26 i, $1d35 i, \ add 1 to r18:r19
+\  postpone (loop)
+  $f00b i,               \ bra +2 if overflow
+  postpone again
+  postpone unloop
   flash here >xa swap ! ram
-; immediate compileonly
-
-: unloop
-  postpone (unloop)
 ; immediate compileonly
 
 : +loop
   postpone (+loop)
-  postpone until
-  postpone (unloop)
+  $f00b i,               \ bra +2 if overflow
+  postpone again
+  postpone unloop
   flash here >xa swap ! ram
 ; immediate compileonly
 
