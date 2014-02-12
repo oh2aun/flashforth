@@ -3399,13 +3399,13 @@ WORDS_L:
         .db     NFA|5,"words"
         rcall   FALSE_
         rcall   CR
-        rcall   LATEST_
-        rcall   FETCH_A
+        rcall   DOLIT
+        fdw     kernellink
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-        rcall   DOLIT
-        fdw     kernellink
+        rcall   LATEST_
+        rcall   FETCH_A
 WDS1:   rcall   DUP
         rcall   DOTID
         rcall   SWOP_A

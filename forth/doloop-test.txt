@@ -1,5 +1,6 @@
 \ test some do loop words
-
+-test
+marker -test
 : tdo0 3 0 do cr i . loop ;
 : tdo1 do i . i 5 = if leave then loop cr ." leaving" ;
 : tdo2 do 10 0 do j . i . loop loop ;
@@ -15,5 +16,7 @@ tdo0       cr
 10  0 tdo3 cr
 100 0 tdo4 cr
 0 100 tdo5 cr
+decimal
 tdo  cr
 tfor cr
+

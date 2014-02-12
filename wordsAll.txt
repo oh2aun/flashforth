@@ -181,6 +181,9 @@ Dictionary of FlashForth 5.0
 >r         ( x -- ) ( R: -- x )  Compile Only
            Push x from the parameter stack to the return stack
 
+>t         ( x -- )
+           Push to T registert
+
 >xa        ( a-addr1 -- a-addr2 )  PIC24-30-33 Atmega
            Convert a flash virtual address to real executable address.
 
@@ -289,6 +292,9 @@ c@+        ( c-addr1 -- c-addr2 c )
 c,         ( c -- )
            Append c to the current data section
 
+case       ( n -- n )
+	   Start a case construct
+
 cell       ( -- n )
            Leave the size of one cell in characters.
 
@@ -377,6 +383,9 @@ dabs       ( d - +d )
 decimal    ( -- )
            Set numeric base to decimal 10.
 
+default    ( n --  )
+           Default branch in case statement
+
 defer      ( "name -- )
            Define a deferred execution vector
 
@@ -430,9 +439,15 @@ emit       ( c -- )
 empty       ( -- )
            Reset all dictionary pointers.
 
+endcase    ( n -- )
+           End of case construct
+
 endit      ( -- )             COMPILE ONLY
            Leave a for/next loop when next is encountered.
            Sets top of return stack to zero
+
+endof      ( -- )
+           of .. endof in case statement
          
 evaluate   ( c-addr n -- )
            Evaluate buffer
@@ -639,6 +654,9 @@ number?    ( c-addr -- n/d/c-addr flag )
            % is binary prefix
            Flag: 0=error, 1=double, 2=single
 
+of         ( n -- )
+           Branch for value n in case statement
+
 operator   ( -- addr )
            Leave the address of the operator task
 
@@ -810,6 +828,9 @@ state      ( -- flag )
 
 swap       ( x1 x2 -- x2 x1 )
            Swap two top stack items
+
+t>         ( -- x )
+           Pop from T register
 
 task	   ( -- addr )
            Address of the task definition table
