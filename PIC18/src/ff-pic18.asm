@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          02.02.2014                                        *
+;    Date:          13.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1692,9 +1692,9 @@ TX0:
         clrf    TX0cnt, A
         bra     TX0                  ; PAUSE if the USB TX is not ready
 TX0_0:
-        movff   ms_count, TX0tmr
-        incf    TX0tmr, F, A
-        incf    TX0tmr, F, A
+        movf    ms_count, W, A
+        addlw   h'3'
+        movwf   TX0tmr, A
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
         movf    TX0cnt, W, A
@@ -2246,7 +2246,7 @@ WARM_ZERO_2:
         rcall   FRAM
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
-        ;bsf     INTCON, GIE, A
+        bsf     INTCON, GIE, A
 
         rcall   LIT
         dw      dp_start
