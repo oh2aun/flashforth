@@ -358,12 +358,10 @@ irq_ms:
 #if MS_TMR == 1  ;****************************
         btfss   PIR1, TMR1IF, A
         bra     irq_ms_end
-        bcf     T1CON, TMR1ON
-        movlw   tmr1ms_val&0xff
-        subwf   TMR1L, F, A
         movlw   (tmr1ms_val>>8)&0xff
-        subwfb  TMR1H, F, A
-        bsf     T1CON, TMR1ON
+        movwf   TMR1H, A
+        movlw   tmr1ms_val&0xff
+        movwf   TMR1L, A
         bcf     PIR1, TMR1IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
@@ -378,12 +376,10 @@ irq_ms:
 #if MS_TMR == 3 ;******************************
         btfss   PIR2, TMR3IF, A
         bra     irq_ms_end
-        bcf     T3CON, TMR3ON
-        movlw   tmr1ms_val&0xff
-        subwf   TMR3L, F, A
         movlw   (tmr1ms_val>>8)&0xff
-        subwfb  TMR3H, F, A
-        bsf     T3CON, TMR3ON
+        movwf   TMR3H, A
+        movlw   tmr1ms_val&0xff
+        movwf   TMR3L, A
         bcf     PIR2, TMR3IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
