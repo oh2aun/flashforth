@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          13.02.2014                                        *
+;    Date:          22.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -358,10 +358,12 @@ irq_ms:
 #if MS_TMR == 1  ;****************************
         btfss   PIR1, TMR1IF, A
         bra     irq_ms_end
-        movlw   (tmr1ms_val>>8)&0xff
-        movwf   TMR1H, A
-        movlw   tmr1ms_val&0xff
-        movwf   TMR1L, A
+        bcf     T1CON, TMR1ON
+        movlw   low(tmr1ms_val)
+        subwf   TMR1L, F, A
+        movlw   high(tmr1ms_val)
+        subwfb  TMR1H, F, A
+        bsf     T1CON, TMR1ON
         bcf     PIR1, TMR1IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
@@ -376,10 +378,12 @@ irq_ms:
 #if MS_TMR == 3 ;******************************
         btfss   PIR2, TMR3IF, A
         bra     irq_ms_end
-        movlw   (tmr1ms_val>>8)&0xff
-        movwf   TMR3H, A
-        movlw   tmr1ms_val&0xff
-        movwf   TMR3L, A
+        bcf     T3CON, TMR3ON
+        movlw   low(tmr1ms_val)
+        subwf   TMR3L, F, A
+        movlw   high(tmr1ms_val)
+        subwfb  TMR3H, F, A
+        bsf     T3CON, TMR3ON
         bcf     PIR2, TMR3IF, A
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
@@ -1569,8 +1573,12 @@ PAUSE0:
         call    DROP
 PAUSE_IDLE0:
 #endif
-        movf    status, W, A
-        bnz     PAUSE_IDLE1        
+        movf    status, W, A   ; Sleep only if all tasks ar idle
+        bnz     PAUSE_IDLE1
+        banksel upcurr
+        movf    upcurr, W, BANKED
+        sublw   low(u0)        ; Sleep only in operator task
+        bnz     PAUSE_IDLE1    ; Prevents execution delay when many tasks are running
 #if CPU_LOAD_LED == ENABLE
         bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
@@ -2201,7 +2209,6 @@ WARM_ZERO_2:
         ;; Timer 1 for 1 ms system tick
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON, A
-        setf    TMR1H, A
         bsf     PIE1,TMR1IE, A
 #else
 #if MS_TMR == 2
@@ -2216,7 +2223,6 @@ WARM_ZERO_2:
         ;; Timer 3 for 1 ms system tick
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T3CON, A
-        setf    TMR3H, A
         bsf     PIE2,TMR3IE, A
 #endif
 #endif
@@ -2419,20 +2425,20 @@ FEXECUTE:
 L_VARIABLE:
         db      NFA|8,"variable"
 VARIABLE_:
-        call    CREATE  ; Create a word with DOCREATE as runtime.
-                        ; Stores pointer to free current data space.
-        rcall   CELL    ; 2
-        goto    ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
-                        ; runtime is DOCREATE
+        rcall   HERE            ; Make space at here
+        rcall   CELL            ; for a cell
+        rcall   ALLOT           ; in current data space
+        goto    CON             ; Constant as inline literal
 
         dw      L_VARIABLE
 L_2VARIABLE:
         db      NFA|9,"2variable"
 TWOVARIABLE_:
-        call    VARIABLE_
-        rcall   CELL    ; 2
-        goto    ALLOT   ; DP +! . Make space for a 16 bit variable in current data space
-                        ; runtime is DOCREATE
+        rcall   HERE            ; Make space at here
+        rcall   LIT             ; for a two cells
+        dw      h'4'
+        rcall   ALLOT           ; in current data space
+        goto    CON             ; Constant as inline literal
 
 ;******************************************************
 ; CONSTANT x name --      define a Forth constant
@@ -5588,9 +5594,8 @@ BEGIN:
 ;;; Forget the latest compiled two cell instruction
         db      NFA|1," "
 IDPMINUS:
-        movlw   -4
-        movwf   plusS
-        setf    plusS
+        rcall   LIT_A
+        dw      -4
         goto    IALLOT
 
 ; UNTIL    adrs --   Branch bakwards if true
@@ -5697,7 +5702,7 @@ XNEXT:
         subwfb  TOSH, F, A
         return
 
-; leave clear top of return stack
+; endit clear top of return stack
         dw      L_NEXT
 L_ENDIT:
         db      NFA|INLINE|COMPILE|5,"endit"
