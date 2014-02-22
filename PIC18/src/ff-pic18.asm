@@ -245,7 +245,7 @@ ihap        res 1
 ihabank     res 1
 iaddr_lo res 1       ; Instruction Memory access address
 iaddr_hi res 1       ; Instruction Memory access address
-temp        res 2
+areg        res 2
 #ifdef USB_CDC
 SpF         res 1       ; Save Forth Sp during C context
 SbankF      res 1       ; 
@@ -579,23 +579,23 @@ EXIT:
         return
 
         dw      L_EXIT
-L_TO_T:
-        db      NFA|2,">t"
-TO_T:
-        movff   Sminus, temp+1
-        movff   Sminus, temp+0
+L_TO_A:
+        db      NFA|2,">a"
+TO_A:
+        movff   Sminus, areg+1
+        movff   Sminus, areg+0
         return
 
-        dw      L_TO_T
-L_T_FROM:
-        db      NFA|2,"t>"
-T_FROM:
-        movff   temp+0, plusS
-        movff   temp+1, plusS
+        dw      L_TO_A
+L_A_FROM:
+        db      NFA|2,"a>"
+A_FROM:
+        movff   areg+0, plusS
+        movff   areg+1, plusS
         return
 
 ; idle
-        dw      L_T_FROM
+        dw      L_A_FROM
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
@@ -1810,12 +1810,14 @@ RQ_STKUNF:
 RQ_BOR:
         btfsc   1, BOR
         bra     RQ_POR
+        bsf     RCON, BOR
         rcall   XSQUOTE
         db      d'1',"B"
         rcall   TYPE
 RQ_POR: 
         btfsc   1, POR
         bra     RQ_TO
+        bsf     RCON, POR
         rcall   XSQUOTE
         db      d'1',"P"
         rcall   TYPE
@@ -1828,6 +1830,7 @@ RQ_TO:
 RQ_RI:
         btfsc   1, RI
         bra     RQ_END
+        bsf     RCON, RI
         rcall   XSQUOTE
         db      d'1',"R"
         rcall   TYPE
@@ -2148,8 +2151,8 @@ WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
         movff   RCON, 1         ; Save reset reasons
         clrf    STKPTR, A       ; Clear return stack
-        movlw   h'1f'
-        movwf   RCON, A
+        bcf     RCON, 7, A
+        bcf     RCON, 6, A
         lfsr    Sptr, 2         ; Zero ram from 2 upwards
 #ifdef USB_CDC
         lfsr    Tptr, cdc_notice
@@ -2209,6 +2212,7 @@ WARM_ZERO_2:
         ;; Timer 1 for 1 ms system tick
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON, A
+        setf    TMR1H, A
         bsf     PIE1,TMR1IE, A
 #else
 #if MS_TMR == 2
@@ -2223,6 +2227,7 @@ WARM_ZERO_2:
         ;; Timer 3 for 1 ms system tick
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T3CON, A
+        setf    TMR3H, A
         bsf     PIE2,TMR3IE, A
 #endif
 #endif

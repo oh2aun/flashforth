@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          03.02.2014                                        *
+;    Date:          22.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -242,7 +242,7 @@
 
 #define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
 #define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
-#define ms_value -(FREQ_OSC/1000)
+#define ms_value -((FREQ_OSC/1000) - 36)
 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -389,7 +389,7 @@ dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
-temp:       .byte 2 ; temporary data
+areg:       .byte 2 ; A register data
 status:     .byte 1 ; Idle status of all tasks
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
@@ -772,15 +772,36 @@ FEXECUTE:
 VARIABLE_L:
         .db     NFA|8,"variable",0
 VARIABLE_:
-        rcall   CREATE
+        rcall   HERE
         rcall   CELL
-        jmp     ALLOT
+        rcall   ALLOT
+	jmp	CONSTANT_
 
         fdw     VARIABLE_L
+TWOVARIABLE_L:
+        .db     NFA|9,"2variable"
+TWOVARIABLE_:
+        rcall   HERE
+        rcall   DOLIT
+        .dw     0x4
+        rcall   ALLOT
+	jmp	CONSTANT_
+
+        fdw     TWOVARIABLE_L
 CONSTANT_L:
         .db     NFA|8,"constant",0
 CONSTANT_:
         rcall   COLON
+        call    LITERAL
+        jmp     SEMICOLON
+
+        fdw     CONSTANT_L
+TWOCONSTANT_L:
+        .db     NFA|9,"2constant"
+TWOCONSTANT_:
+        rcall   SWOP
+        rcall   COLON
+        call    LITERAL
         call    LITERAL
         jmp     SEMICOLON
 
@@ -833,7 +854,7 @@ DOCOMMAXT:
         rjmp     COMMAXT
 
 ;   SP@     -- addr         get parameter stack pointer
-        fdw     CONSTANT_L
+        fdw     TWOCONSTANT_L
 SPFETCH_L:
         .db     NFA|3,"sp@"
 SPFETCH:
@@ -4181,6 +4202,9 @@ IDLE_LOAD:
         lds     t0, status
         cpi     t0, 0
         brne    IDLE_LOAD1
+        ;cpi	    upl, low(u0)
+        ;brne    IDLE_LOAD1
+	
         sbrs    FLAGS2, fLOADled
         ret
 .if CPU_LOAD_LED == 1
@@ -5091,13 +5115,13 @@ ISTORE:
         ret
 
         fdw     LITERAL_L
-TO_T_L:
-        .db     NFA|2, ">t",0
-        ldi     zl, low(temp)
-        ldi     zh, high(temp)
+TO_A_L:
+        .db     NFA|2, ">a",0
+        ldi     zl, low(areg)
+        ldi     zh, high(areg)
         rjmp    STORE_RAM_2
 
-        fdw     TO_T_L
+        fdw     TO_A_L
 STORE_L:
         .db     NFA|1, "!"
 STORE:
@@ -5176,14 +5200,14 @@ IIFETCH:
         ret
                 
         fdw     STORE_L
-T_FROM_L:
-        .db     NFA|2, "t>",0
+A_FROM_L:
+        .db     NFA|2, "a>",0
         pushtos
-        ldi     zl, low(temp)
-        ldi     zh, high(temp)
+        ldi     zl, low(areg)
+        ldi     zh, high(areg)
         rjmp    FETCH_RAM_2
 
-        fdw     T_FROM_L
+        fdw     A_FROM_L
 FETCH_L:
         .db     NFA|1, "@"
 FETCH:

@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      doloop.txt                                      *
-\    Date:          02.02.2014                                      *
+\    Date:          22.02.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -18,11 +18,11 @@ ram here constant ind inlined 2 allot
 
 : (do)   ( limit index -- R: leave oldindex xfactor ) 
   rdrop r>                   \ Address hi byte is always zero
-  dup >t xa> @ >r            \ R: leave 
+  dup >a xa> @ >r            \ R: leave 
   ind @ >r                   \ R: leave oldindex
   swap $8000 swap - dup >r   \ R: leave oldindex xfactor
   + ind !
-  t> 2+ >r 0 >r
+  a> 2+ >r 0 >r
 ; compileonly
 
 : (?do)
@@ -86,3 +86,4 @@ ram here constant ind inlined 2 allot
   postpone unloop
   flash here >xa swap ! ram
 ; immediate compileonly
+

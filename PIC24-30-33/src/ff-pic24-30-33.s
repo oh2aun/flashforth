@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          02.02.2014                                        *
+;    Date:          22.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -650,22 +650,22 @@ LITERAL:
         return
 
         .pword   paddr(LITERAL_L)+PFLASH
-TO_T_L:
+TO_A_L:
         .byte   NFA|INLINE|2
-        .ascii  ">t"
+        .ascii  ">a"
         .align 2
         mov     [W14--], W11
         return
 
-        .pword   paddr(TO_T_L)+PFLASH
-T_FROM_L:
+        .pword   paddr(TO_A_L)+PFLASH
+A_FROM_L:
         .byte   NFA|INLINE|2
-        .ascii  "t>"
+        .ascii  "a>"
         .align 2
         mov     W11, [++W14]
         return
 
-        .pword   paddr(T_FROM_L)+PFLASH
+        .pword   paddr(A_FROM_L)+PFLASH
 IDLE_L:
         .byte   NFA|4
         .ascii  "idle"
@@ -1067,6 +1067,9 @@ PAUSE:
         clrwdt
 .if IDLE_MODE == 1
         cp0     status
+        bra     nz, PAUSE_BUSY
+        mov     #u0, W0        ; IDLE only in operator task.
+        cp      upcurr
         bra     nz, PAUSE_BUSY
 .if CPU_LOAD_LED == 1
         bclr    CPU_LOAD_TRIS, #CPU_LOAD_BIT
@@ -3237,9 +3240,10 @@ VARIABLE_L:
         .ascii  "variable"
         .align  2
 VARIABLE_:
-        rcall   CREATE
+        rcall   HERE
         rcall   CELL
-        goto    ALLOT
+        rcall   ALLOT
+        goto    CON_
 
         .pword  paddr(VARIABLE_L)+PFLASH
 TWOVARIABLE_L:
@@ -3247,9 +3251,10 @@ TWOVARIABLE_L:
         .ascii  "2variable"
         .align  2
 TWOVARIABLE:
-        rcall   VARIABLE_
-        rcall   CELL
-        goto    ALLOT
+        rcall   HERE
+        mlit	#4
+        rcall   ALLOT
+        goto    CON_
 
         .pword  paddr(TWOVARIABLE_L)+PFLASH
 CONSTANT_L:

@@ -18,11 +18,11 @@ $f040 constant ind   \ Hardcoded index register address
 
 : (do)  ( limit index --   R: -- leave oldindex xfactor ) 
   r>
-  dup >t @ >r                \ leave
+  dup >a @ >r                \ leave
   ind @ >r                   \ oldindex
   swap $8000 swap - dup >r   \ xfactor on return stack
   + ind !
-  t> 2+ >r                   \ return to after the leave pointer
+  a> 2+ >r                   \ return to after the leave pointer
 ; compileonly
 
 : (?do)
@@ -112,8 +112,8 @@ ram
 
 : j ( -- j  R: j-xfactor i-leave j-index i-xfactor -- the same )  
   r> r> r> r> 
-  over r@ - >t
+  over r@ - >a
   >r >r >r >r
-  t>
+  a>
 ; compileonly
 

@@ -19,11 +19,11 @@ marker -doloop
 
 : (do)  ( limit index -- R: leave oldindex xfaxtor ) 
   r>
-  dup >t xa> @ >r            \ R: leave 
+  dup >a xa> @ >r            \ R: leave 
   ind @ >r                   \ R: leave oldindex
   swap $8000 swap - dup >r   \ R: leave oldindex xfactor
   + ind !
-  t> 1+ >r
+  a> 1+ >r
 ; compileonly
 
 : (?do) ( limit index -- R: leave oldindex xfactor ) 

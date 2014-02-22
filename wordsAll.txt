@@ -161,6 +161,9 @@ Dictionary of FlashForth 5.0
 >          ( n1 n2 -- flag )
            Leave trye flag if n1 is grater than n2
 
+>a         ( x -- )
+           Write to the A register
+
 >body      ( xt -- a-addr )
            Leave the parameter field address of 
            a created word
@@ -180,9 +183,6 @@ Dictionary of FlashForth 5.0
 
 >r         ( x -- ) ( R: -- x )  Compile Only
            Push x from the parameter stack to the return stack
-
->t         ( x -- )
-           Push to T registert
 
 >xa        ( a-addr1 -- a-addr2 )  PIC24-30-33 Atmega
            Convert a flash virtual address to real executable address.
@@ -231,6 +231,9 @@ Dictionary of FlashForth 5.0
 
 ]          ( -- )
            Enter compilation state
+
+a>         ( -- x )
+           Read from the A register
 
 abort      ( -- )
            Reset stack pointer and execute quit
@@ -690,14 +693,15 @@ pc@        ( -- c )
 pad        ( -- a-addr )
            : pad tib ti# + ;
            Each task has its own pad with initial size of 0.
-           If needed the user must allocate space with allot for each task
+           If needed the user must allocate space with allot.
            FF core does not use the pad.
 
 parse	   ( c -- addr length )
            Parse a word in TIB
 
 pause      ( -- )
-           Switch to the next task in the round robin task list 
+           Switch to the next task in the round robin task list.
+	   Idle in the operator task if allowed by all tasks.
 
 place      ( addr1 u addr2 -- )
            Place string from addr1 to addr2 as a counted string
@@ -828,9 +832,6 @@ state      ( -- flag )
 
 swap       ( x1 x2 -- x2 x1 )
            Swap two top stack items
-
-t>         ( -- x )
-           Pop from T register
 
 task	   ( -- addr )
            Address of the task definition table

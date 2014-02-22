@@ -12,18 +12,18 @@
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
-config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
+config __FOSCSEL, IESO_ON & FNOSC_PRI ; FNOSC_FRCPLL
+config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NONE
 
 .equ PLL_DIV, 30                          ; Fcy is 27637 KHz
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2                          ; Do not change
 .equ PLL_PRE, 2                           ; Do not change
 .equ FREQ_FIN, 7370000                    ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL ouput frequency. Used with FRCPLL 
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL ouput frequency. Used with FRCPLL
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 .equ FCY, (FREQ_OSC/2)
 
@@ -133,10 +133,10 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ IBUFMASK,       0xfc00
 
 
-.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
-.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART1 divisor
+.equ MS_PR_VAL, ((FCY/1000)-1)		; Timer value for 1 ms ticks
+.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1	; UART1 divisor
 .ifdecl BAUDRATE2
-.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor
+.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1	; UART2 divisor
 .endif
-.equ write_delay, 20                      ; Flash write delay
+.equ write_delay, 20                    ; Flash write delay
 
