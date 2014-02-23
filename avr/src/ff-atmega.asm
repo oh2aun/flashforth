@@ -256,7 +256,7 @@
 .equ ms_pre_tmr0   = 4
 .equ ms_pre_tmr2   = 5
 .endif
-
+.equ CPU_LOAD_VAL  = (FREQ_OSC*256/100000)
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -273,6 +273,7 @@
 .equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
+.equ fLOAD=     5   ; Load measurement ready
 .equ fLOADled=  4   ; 0 = no load led, 1 = load led on
 .equ fFC_tx1=   3   ; 0=Flow Control, 1 = no Flow Control   
 .equ fFC_tx0=   2   ; 0=Flow Control, 1 = no Flow Control   
@@ -395,7 +396,6 @@ rbuf1_lv:    .byte 1
 rbuf1:       .byte RX1_BUF_SIZE
 .endif
 
-;ms_count:   .byte 2
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -403,6 +403,8 @@ dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
 areg:       .byte 2 ; A register data
+load_acc:   .byte 3 ; Load measurement accumulator
+load:       .byte 1 ; Cpu load in percent
 status:     .byte 1 ; Idle status of all tasks
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
@@ -4212,14 +4214,37 @@ TX1_ISR:
 
 .if IDLE_MODE == 1
 IDLE_LOAD:
+.if CPU_LOAD == 1	
+        sbrs    FLAGS2, fLOAD
+        rjmp    CPU_LOAD_END
+        pushtos
+        in      t2, SREG
+        cli
+        cbr     FLAGS2, (1<<fLOAD)
+        lds     tosl, load_acc
+        lds     tosh, load_acc+1
+        pushtos
+        lds     tosl, load_acc+2
+        sts     load_acc, zero
+        sts     load_acc+1, zero
+        sts     load_acc+2, zero
+        out     SREG, t2
+        clr     tosh
+        pushtos
+        ldi     tosl, low(CPU_LOAD_VAL)
+        ldi     tosh, high(CPU_LOAD_VAL)
+        rcall   UMSLASHMOD
+        sts     load, tosl
+        call    TWODROP 
+CPU_LOAD_END:
+.endif
         lds     t0, status
         cpi     t0, 0
         brne    IDLE_LOAD1
         ;cpi	    upl, low(u0)
         ;brne    IDLE_LOAD1
-	
         sbrs    FLAGS2, fLOADled
-        ret
+        rjmp    LOAD_LED_1
 .if CPU_LOAD_LED == 1
         sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 1
@@ -4228,6 +4253,7 @@ IDLE_LOAD:
         sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .endif
 .endif
+LOAD_LED_1:
 .ifdef SMCR
         ldi     t0, (1<<SE)
         out_    SMCR, t0
@@ -4235,6 +4261,9 @@ IDLE_LOAD:
         in_     t0, MCUCR
         sbr     t0, (1<<SE)
         out_    MCUCR, t0
+.endif
+.if CPU_LOAD == 1
+        out_    TCCR1B, zero	; Stop load counter
 .endif
         sleep               ; IDLE mode
 .ifdef SMCR
@@ -4460,23 +4489,43 @@ FF_ISR_EXIT:
         pop     t2
 
         pop     t1
-        pop     t0
-FF_ISR_EXIT2:
-        pop     zh
-        pop     zl
-        rjmp    FF_ISR_EXIT3
+        rjmp    FF_ISR_EXIT2
 MS_TIMER_ISR:
         add     ms_count,  r_one
         adc     ms_count1, zero
+LOAD_ADD:
+        lds     zl, load_acc
+        lds     zh, load_acc+1
+        lds     t0, load_acc+2
+        lds     xh, TCNT1L
+        add     zl, xh
+        lds     xh, TCNT1H
+        adc     zh, xh
+        adc     t0, zero
+        sts     TCNT1H, zero
+        sts     TCNT1L, zero
+        sts     load_acc, zl
+        sts     load_acc+1, zh
+        sts     load_acc+2, t0
+        tst     ms_count
+        brne    FF_ISR_EXIT2
+        sbr     FLAGS2, (1<<fLOAD)
+FF_ISR_EXIT2:
+        pop     t0
+        pop     zh
+        pop     zl
 FF_ISR_EXIT3:
         ld      xl, y+
         ld      xh, y+
         out_    SREG, xh
         ld      xh, y+
         reti
-
+        
 FF_ISR:
 .if IDLE_MODE == 1
+.if CPU_LOAD == 1
+        out_    TCCR1B, r_one	; Start load counter
+.endif
 .if CPU_LOAD_LED == 1
         sbrc    FLAGS2, fLOADled
 .if CPU_LOAD_LED_POLARITY == 1
@@ -4493,6 +4542,10 @@ FF_ISR:
         m_pop_xh
         pop     xh
         pop     xl
+        push    zl
+        push    zh
+        push    t0
+
 .if MS_TIMER == 0
         cpi     xl, low(OC0Aaddr+1)
         breq    MS_TIMER_ISR
@@ -4505,8 +4558,7 @@ FF_ISR:
         cpi     xl, low(OC2Aaddr+1)
         breq    MS_TIMER_ISR
 .endif
-        push    zl
-        push    zh
+
 
 .ifdef URXC0addr
         cpi     xl, low(URXC0addr+1)
@@ -4519,7 +4571,6 @@ FF_ISR:
         breq    RX1_ISR
 .endif
 
-        push    t0
         push    t1
         push    t2
         push    t3
@@ -4594,9 +4645,17 @@ LOADOFF_L:
 .endif
 .endif
         ret
+;;; Enable load led
+        fdw     LOADON_L
+LOAD_L:
+        .db     NFA|4,"load",0
+        pushtos
+        clr     tosh
+        lds     tosl, load
+        ret
 ;***************************************************
 ; TX0   c --    output character to UART 0
-        fdw(LOADOFF_L)
+        fdw(LOAD_L)
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
@@ -4987,7 +5046,6 @@ WARM_3:
         ldi     t0, (1<<OCIE2A)
         out_    TIMSK2, t0
 .endif
-
 
 ; Init UART 0
 .ifdef UBRR0L

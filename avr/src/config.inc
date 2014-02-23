@@ -68,6 +68,6 @@
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
 .equ MS_TIMER = 2
 
-; Enable the cpu load measurement
+; Enable the cpu load measurement Uses Timer 1.
 .equ CPU_LOAD = 1 
 
