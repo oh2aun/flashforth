@@ -65,5 +65,9 @@
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART
 .equ CTRL_O_WARM_RESET = 1
 
+; Select which timer to use for the system millisecond ticks 0, 1, 2
+.equ MS_TIMER = 2
 
+; Enable the cpu load measurement
+.equ CPU_LOAD = 1 
 

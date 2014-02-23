@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          22.02.2014                                        *
+;    Date:          23.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -40,14 +40,15 @@
   .def zero = r5        ; read only zero
   .def r_one = r6       ; read only one
   .def r_two = r7       ; read only two
+  .def t8 = r8          ; Not in interrupt
   .def wflags  = r9     ; not in interrupt
 
   .def ibasel=r10       ; Not in interrupt
   .def ibaseh=r11       ; Not in interrupt
   .def iaddrl=r12       ; Not in interrupt
   .def iaddrh=r13       ; Not in interrupt
-  .def t8 = r14         ; Not in interrupt
-  .def t9 = r15         ; Not in interrupt
+  .def ms_count  = r14       ; Not in interrupt
+  .def ms_count1 = r15       ; Not in interrupt
   .def t0 = r16
   .def t1 = r17
   .def t2 = r0          ; Not in interrupt
@@ -242,7 +243,19 @@
 
 #define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
 #define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
-#define ms_value -((FREQ_OSC/1000) - 36)
+.if FREQ_OSC < 16384000
+.equ ms_value_tmr0 = ((FREQ_OSC/1000/64) - 1)
+.equ ms_value_tmr1 = ((FREQ_OSC/1000) - 1)
+.equ ms_value_tmr2 = ((FREQ_OSC/1000/64) - 1)
+.equ ms_pre_tmr0   = 3
+.equ ms_pre_tmr2   = 4
+.else
+.equ ms_value_tmr0 = ((FREQ_OSC/1000/256) - 1)
+.equ ms_value_tmr1 = ((FREQ_OSC/1000) - 1)
+.equ ms_value_tmr2 = ((FREQ_OSC/1000/128) - 1)
+.equ ms_pre_tmr0   = 4
+.equ ms_pre_tmr2   = 5
+.endif
 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -382,7 +395,7 @@ rbuf1_lv:    .byte 1
 rbuf1:       .byte RX1_BUF_SIZE
 .endif
 
-ms_count:   .byte 2
+;ms_count:   .byte 2
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -3347,8 +3360,8 @@ TICKS:
         pushtos
         in      t2, SREG
         cli
-        lds     tosl, ms_count
-        lds     tosh, ms_count+1
+        mov     tosl, ms_count
+        mov     tosh, ms_count1
         out     SREG, t2
         ret
 
@@ -4451,24 +4464,16 @@ FF_ISR_EXIT:
 FF_ISR_EXIT2:
         pop     zh
         pop     zl
+        rjmp    FF_ISR_EXIT3
+MS_TIMER_ISR:
+        add     ms_count,  r_one
+        adc     ms_count1, zero
 FF_ISR_EXIT3:
         ld      xl, y+
         ld      xh, y+
         out_    SREG, xh
         ld      xh, y+
         reti
-
-TIMER1_ISR:
-        ldi     xl, low(ms_value)
-        ldi     xh, high(ms_value)
-        out_    TCNT1H, xh
-        out_    TCNT1L, xl
-        lds     xl, ms_count
-        lds     xh, ms_count+1
-        adiw    xl, 1
-        sts     ms_count, xl
-        sts     ms_count+1, xh
-        rjmp    FF_ISR_EXIT3
 
 FF_ISR:
 .if IDLE_MODE == 1
@@ -4488,10 +4493,18 @@ FF_ISR:
         m_pop_xh
         pop     xh
         pop     xl
-
-        cpi     xl, low(OVF1addr+1)
-        breq    TIMER1_ISR
-
+.if MS_TIMER == 0
+        cpi     xl, low(OC0Aaddr+1)
+        breq    MS_TIMER_ISR
+.endif
+.if MS_TIMER == 1
+        cpi     xl, low(OC1Aaddr+1)
+        breq    MS_TIMER_ISR
+.endif
+.if MS_TIMER == 2
+        cpi     xl, low(OC2Aaddr+1)
+        breq    MS_TIMER_ISR
+.endif
         push    zl
         push    zh
 
@@ -4932,17 +4945,49 @@ WARM_3:
         ldi     t0, (1<<IVSEL)
         out_    MCUCR, r16
 
+
+.if MS_TIMER == 0
 ; Init ms timer
-        ldi     t0, 1
+        ldi     t0, 2      ; CTC
+        out_    TCCR0A, t0
+        ldi     t0, ms_pre_tmr0
+        out_    TCCR0B, t0
+        ldi     t0, ms_value_tmr0
+        out_    OCR0A, t0
+        ldi     t0, (1<<OCIE0A)
+        out_    TIMSK, t0
+        ldi     t0, (1<<OCIE0A)
+        out_    TIMSK0, t0
+.endif
+.if MS_TIMER == 1
+; Init ms timer
+        ldi     t0, 9      ; CTC, clk/1
         out_    TCCR1B, t0
+        ldi     t0, high(ms_value_tmr1)
+        out_    OCR1AH, t0
+        ldi     t0, low(ms_value_tmr1)
+        out_    OCR1AL, t0
 .ifdef TIMSK
-        ldi     t0, (1<<TOIE1)
+        ldi     t0, (1<<OCIE1A)
         out_    TIMSK, t0
 .endif
 .ifdef TIMSK1
-        ldi     t0, (1<<TOIE1)
+        ldi     t0, (1<<OCIE1A)
         out_    TIMSK1, t0
 .endif
+.endif
+.if MS_TIMER == 2
+; Init ms timer
+        ldi     t0, 2      ; CTC
+        out_    TCCR2A, t0
+        ldi     t0, ms_pre_tmr2
+        out_    TCCR2B, t0
+        ldi     t0, ms_value_tmr2
+        out_    OCR2A, t0
+        ldi     t0, (1<<OCIE2A)
+        out_    TIMSK2, t0
+.endif
+
 
 ; Init UART 0
 .ifdef UBRR0L
