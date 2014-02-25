@@ -243,18 +243,41 @@
 
 #define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
 #define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
-.if FREQ_OSC < 16384000
+
+.if FREQ_OSC < 16384000 ;Hz
 .equ ms_value_tmr0 = ((FREQ_OSC/1000/64) - 1)
 .equ ms_value_tmr1 = ((FREQ_OSC/1000) - 1)
 .equ ms_value_tmr2 = ((FREQ_OSC/1000/64) - 1)
+.ifdef TCCR0B
 .equ ms_pre_tmr0   = 3
+.endif
+.ifdef TCCR0
+.equ ms_pre_tmr0   = 4
+.endif
+.ifdef TCCR2B
 .equ ms_pre_tmr2   = 4
-.else
+.endif
+.ifdef TCCR2
+.equ ms_pre_tmr2   = 3
+.endif
+
+.else ; FREQ_OSC >= 16384000 Hz
+
 .equ ms_value_tmr0 = ((FREQ_OSC/1000/256) - 1)
 .equ ms_value_tmr1 = ((FREQ_OSC/1000) - 1)
 .equ ms_value_tmr2 = ((FREQ_OSC/1000/128) - 1)
+.ifdef TCCR0B
 .equ ms_pre_tmr0   = 4
+.endif
+.ifdef TCCR0
+.equ ms_pre_tmr0   = 6
+.endif
+.ifdef TCCR2B
 .equ ms_pre_tmr2   = 5
+.endif
+.ifdef TCCR2
+.equ ms_pre_tmr2   = 4
+.endif
 .endif
 .equ CPU_LOAD_VAL  = (FREQ_OSC*256/100000)
 ;..............................................................................
@@ -301,16 +324,16 @@
 .equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
 .equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
 .if (FLASHEND == 0x1ffff)              ; 128 Kwords flash
-.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm256)
+.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
-.equ KERNEL_SIZE=0x0c80
+.equ KERNEL_SIZE=0x0d00
 .else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
 .equ PFLASH  = 0
 .equ RAMPZV  = 1
-.equ KERNEL_SIZE=0x0c80
+.equ KERNEL_SIZE=0x0d00
 .else
 .if (FLASHEND == 0x7fff)              ; 32 Kwords flash
 .equ OFLASH = PEEPROM+EEPROMEND+1     ; 56 Kbytes available for FlashForth
@@ -3088,7 +3111,7 @@ CREATE:
 
         rcall   LATEST_
         rcall   FETCH_A
-        rcall   ICOMMA          ; Link field
+        call    ICOMMA          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
         rcall   DUP             
@@ -3308,7 +3331,7 @@ TWOMINUS:
 BL_l:
         .db     NFA|2,"bl",0
 BL:
-        rcall   DOCREATE
+        call    DOCREATE
         .dw     ' '
 
 ; STATE   -- flag                 holds compiler state
@@ -4234,7 +4257,7 @@ IDLE_LOAD:
         pushtos
         ldi     tosl, low(CPU_LOAD_VAL)
         ldi     tosh, high(CPU_LOAD_VAL)
-        rcall   UMSLASHMOD
+        call    UMSLASHMOD
         sts     load, tosl
         call    TWODROP 
 CPU_LOAD_END:
@@ -4278,6 +4301,27 @@ IDLE_LOAD1:
         ret
 .endif
 
+.if CPU_LOAD == 1	
+LOAD_ADD:
+        lds     zl, load_acc
+        lds     zh, load_acc+1
+        lds     t0, load_acc+2
+        in_     xh, TCNT1L
+        add     zl, xh
+        in_     xh, TCNT1H
+        adc     zh, xh
+        adc     t0, zero
+        out_    TCNT1H, zero
+        out_    TCNT1L, zero
+        sts     load_acc, zl
+        sts     load_acc+1, zh
+        sts     load_acc+2, t0
+        tst     ms_count
+        brne    LOAD_ADD_END
+        sbr     FLAGS2, (1<<fLOAD)
+LOAD_ADD_END:
+        rjmp    FF_ISR_EXIT2
+.endif
 
 end_of_dict:
 
@@ -4494,24 +4538,8 @@ FF_ISR_EXIT:
 MS_TIMER_ISR:
         add     ms_count,  r_one
         adc     ms_count1, zero
-.if CPU_LOAD == 1	
-LOAD_ADD:
-        lds     zl, load_acc
-        lds     zh, load_acc+1
-        lds     t0, load_acc+2
-        lds     xh, TCNT1L
-        add     zl, xh
-        lds     xh, TCNT1H
-        adc     zh, xh
-        adc     t0, zero
-        sts     TCNT1H, zero
-        sts     TCNT1L, zero
-        sts     load_acc, zl
-        sts     load_acc+1, zh
-        sts     load_acc+2, t0
-        tst     ms_count
-        brne    FF_ISR_EXIT2
-        sbr     FLAGS2, (1<<fLOAD)
+.if CPU_LOAD == 1
+        rjmp    LOAD_ADD	
 .endif
 FF_ISR_EXIT2:
         pop     t0
@@ -4550,7 +4578,12 @@ FF_ISR:
         push    t0
 
 .if MS_TIMER == 0
+.ifdef OC0Aaddr
         cpi     xl, low(OC0Aaddr+1)
+.endif
+.ifdef OC0addr
+        cpi     xl, low(OC0addr+1)
+.endif
         breq    MS_TIMER_ISR
 .endif
 .if MS_TIMER == 1
@@ -4558,7 +4591,12 @@ FF_ISR:
         breq    MS_TIMER_ISR
 .endif
 .if MS_TIMER == 2
+.ifdef OC2Aaddr
         cpi     xl, low(OC2Aaddr+1)
+.endif
+.ifdef OC2addr
+        cpi     xl, low(OC2addr+1)
+.endif
         breq    MS_TIMER_ISR
 .endif
 
@@ -4980,8 +5018,7 @@ WARM_2:
         out_    RAMPZ, t0
 .endif
 .ifdef EIND
-        ldi     t0, 1
-        out_    EIND, t0
+        out_    EIND, r_one
 .endif
 ; init warm literals
         rcall   DOLIT
@@ -5002,22 +5039,28 @@ WARM_2:
         rcall   EMPTY
 WARM_3:
 ; Move interrupts to boot flash section
-        ldi     t0, (1<<IVCE)
-        out_    MCUCR, r16
-        ldi     t0, (1<<IVSEL)
-        out_    MCUCR, r16
+        out_    MCUCR, r_one   ; (1<<IVCE)
+        out_    MCUCR, r_two   ; (1<<IVSEL)
 
 
 .if MS_TIMER == 0
 ; Init ms timer
-        ldi     t0, 2      ; CTC
-        out_    TCCR0A, t0
+.ifdef TIMSK0
+        out_    TCCR0A, r_two  ; CTC
         ldi     t0, ms_pre_tmr0
         out_    TCCR0B, t0
         ldi     t0, ms_value_tmr0
         out_    OCR0A, t0
-        ldi     t0, (1<<OCIE0A)
-        out_    TIMSK0, t0
+        out_    TIMSK0, r_two ; (1<<OCIE0A)
+.endif
+.ifdef TIMSK
+        ldi     t0, (ms_pre_tmr0 | ( 1<<WGM01 ))
+        out_    TCCR0, t0
+        ldi     t0, ms_value_tmr0
+        out_    OCR0, t0
+        ldi     t0, (1<<OCIE0)
+        out_    TIMSK, t0
+.endif
 .endif
 .if MS_TIMER == 1
 ; Init ms timer
@@ -5032,20 +5075,27 @@ WARM_3:
         out_    TIMSK, t0
 .endif
 .ifdef TIMSK1
-        ldi     t0, (1<<OCIE1A)
-        out_    TIMSK1, t0
+        out_    TIMSK1, r_two ; (1<<OCIE1A)
 .endif
 .endif
 .if MS_TIMER == 2
 ; Init ms timer
-        ldi     t0, 2      ; CTC
-        out_    TCCR2A, t0
+.ifdef TIMSK2
+        out_    TCCR2A, r_two   ; CTC
         ldi     t0, ms_pre_tmr2
         out_    TCCR2B, t0
         ldi     t0, ms_value_tmr2
         out_    OCR2A, t0
-        ldi     t0, (1<<OCIE2A)
-        out_    TIMSK2, t0
+        out_    TIMSK2, r_two ; t0, (1<<OCIE2A)
+.endif
+.ifdef TIMSK
+        ldi     t0, (ms_pre_tmr2 | ( 1<<WGM21 ))
+        out_    TCCR2, t0
+        ldi     t0, ms_value_tmr2
+        out_    OCR2, t0
+        ldi     t0, (1<<OCIE2)
+        out_    TIMSK, t0
+.endif
 .endif
 
 ; Init UART 0
@@ -5480,7 +5530,7 @@ DEFER_DOES:
 IS_L:
         .db     NFA|IMMED|2,"is",0
 IS:
-        rcall   TICK
+        call    TICK
         call    TWOPLUS
         call    TWOPLUS
         rcall   FETCH

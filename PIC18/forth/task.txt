@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task.txt                                          *
-\    Date:          05.01.2014                                        *
+\    Date:          25.02.2014                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -74,9 +74,10 @@ hex ram
 : tinit \ taskloop-addr task-addr -- 
   \ use task user area
   @+ up!                            \ a t+2
-  ul@ 0=                 \ Already running
-  if                     \ Pointer to task area
-    dup 2- task !
+  ul@ if                 \ ? Already running
+    2drop
+  else
+    dup 2- task !        \ Pointer to task area
     \ save area = uarea+cell+addsize
     c@+ up@ + cell+ !p>r                \ a t+3 
     \ s0 = rsave + ssize - 1 
@@ -91,8 +92,6 @@ hex ram
     0 ul!          \ no link yet
     0 up@ #12 - !  \ set idle status
     r>p
-  else
-    2drop
   then
   op!                     \ run the operator task
 ;
@@ -101,8 +100,7 @@ hex ram
 \ May only be executed from the operator task
 \ task-addr -- 
 : run
-  @ up! ul@ 0=                 \ Already running
-  if
+  @ up! ul@ 0= if              \ Already running
     up@                        \ task-uarea
     op! ul@                    \ task-uarea operator-ulink
     over ul!      
@@ -115,8 +113,7 @@ hex ram
 \ End a task by linking it out from the linked list
 \ May only be executed from the operator task
 : end ( task-addr -- )  
-  @ up! ul@
-  if
+  @ up! ul@ if
     up@
     op!
     begin                     \ find the uarea in the linked list
@@ -138,8 +135,7 @@ hex ram
 \ End all tasks except the operator task
 \ May only be executed from the operator task
 : single ( -- )
-  ul@ op@ <>                \ Are there any running tasks
-  if 
+  ul@ op@ <> if             \ Are there any running tasks
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
     begin

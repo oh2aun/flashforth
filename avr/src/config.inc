@@ -2,15 +2,15 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"   ; 
-;.include "m2560def.inc"   ; Tested
-;.include "m128def.inc"   ; Tested
+;.include "m2560def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
+;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
 .include "m328def.inc"    ; Tested
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
 
 ; Oscillator frequency in herz
-.equ FREQ_OSC = 16000000
+.equ FREQ_OSC = 8000000
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART = 0              ; 0 or 1
@@ -20,7 +20,7 @@
 ;;; disturbs the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program.
 .equ BAUDRATE0 = 38400              ; Serial baudrate UART0
-.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U0FC_TYPE = 2                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3
@@ -40,10 +40,10 @@
 
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
-.equ CPU_LOAD_DDR = ddrb
-.equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduinomega:portb arduinouno:portb
+.equ CPU_LOAD_DDR = ddrc
+.equ CPU_LOAD_PORT = portc       ; avr-p28:portc arduinomega:portb arduinouno:portb
 .equ CPU_LOAD_BIT = 5            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
-.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
+.equ CPU_LOAD_LED_POLARITY = 0   ; avr-p28:  0 = low on port turns on led, 
                                  ; arduino : 1 = high on port turns on led 
 
 ; Define the startup delay for the turnkey words. Milliseconds
@@ -65,8 +65,8 @@
 .equ CTRL_O_WARM_RESET = 1
 
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
-.equ MS_TIMER = 2
+.equ MS_TIMER = 0
 
 ; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE = 1
-.equ CPU_LOAD = 1 
+.equ CPU_LOAD = 1
 

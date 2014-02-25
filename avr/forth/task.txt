@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          31.12.2013                                      *
+\    Date:          25.02.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -63,46 +63,40 @@ hex ram
   ram allot
 ;
 
-
 \ Initialise a user area and link it to the task loop
 \ May only be executed from the operator task
 : tinit ( taskloop-addr task-addr -- )
   \ use task user area
   @+ up!                          \ a addsize-addr
-
-  \ Pointer to task area
-  dup 2- task ! 
-
-  \ r0 = uarea+addsize+rsize
-  c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
-
-  \ Save r0
-  r0 !                           \  a ssize-addr
-
-  \ s0 = r0 + ssize
-  c@ r0 @ + s0 !                 \  a
-
-  \ Store task-loop address to the return stack
-  r0 @ x>r                       \  rsp
-
-  \ Store SP to return stack
-  1- dup s0 @ swap !             \ rsp
-  
-  \ Store current rsp and space for saving TOS and P PAUSE
-  5 - rsave !                    \ 
-
-  \ tiu = s0 + 2
-  s0 @ 2+ tiu !
-  0 ul!
-  0 task 2+ !         \ set status and cr flag
+  ul@ if                          \ ? Already running
+    2drop
+  else
+    \ Pointer to task area
+    dup 2- task ! 
+    \ r0 = uarea+addsize+rsize
+    c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
+    \ Save r0
+    r0 !                           \  a ssize-addr
+    \ s0 = r0 + ssize
+    c@ r0 @ + s0 !                 \  a
+    \ Store task-loop address to the return stack
+    r0 @ x>r                       \  rsp
+    \ Store SP to return stack
+    1- dup s0 @ swap !             \ rsp
+    \ Store current rsp and space for saving TOS and P PAUSE
+    5 - rsave !                    \ 
+    \ tiu = s0 + 2
+    s0 @ 2+ tiu !
+    0 ul!
+    0 task 2+ !         \ set status and cr flag
+  then
   op!                 \ run the operator task again
 ;
 
 \ Insert a new task after operator in the linked list.
 \ May only be executed from the operator task
 : run ( task-addr -- )
-  @ up! ul@ 0=                 \ Already running ?
-  if
+  @ up! ul@ 0= if              \ ? Already running
     up@                        \ task-uarea
     op! ul@                    \ task-uarea operator-ulink
     over ul!      
@@ -115,8 +109,7 @@ hex ram
 \ End a task by linking it out from the linked list
 \ May only be executed from the operator task
 : end ( task-addr -- )  
-  @ up! ul@
-  if
+  @ up! ul@ if
     up@
     op!
     begin                   \ find the uarea in the linked list
@@ -138,8 +131,7 @@ hex ram
 \ End all tasks except the operator task
 \ May only be executed from the operator task
 : single ( -- )
-  ul@ op@ <>                \ Are there any running tasks
-  if 
+  ul@ op@ <>  if            \ Are there any running tasks 
     ul@ op@ ul!             \ link operator to himself
     up!                     \ move to next user area
     begin
