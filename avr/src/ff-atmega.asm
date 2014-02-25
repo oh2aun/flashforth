@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          23.02.2014                                        *
+;    Date:          25.02.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -3440,6 +3440,7 @@ WORDS_L:
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
+        rcall   CR
         rcall   LATEST_
         rcall   FETCH_A
 WDS1:   rcall   DUP
@@ -4493,6 +4494,7 @@ FF_ISR_EXIT:
 MS_TIMER_ISR:
         add     ms_count,  r_one
         adc     ms_count1, zero
+.if CPU_LOAD == 1	
 LOAD_ADD:
         lds     zl, load_acc
         lds     zh, load_acc+1
@@ -4510,6 +4512,7 @@ LOAD_ADD:
         tst     ms_count
         brne    FF_ISR_EXIT2
         sbr     FLAGS2, (1<<fLOAD)
+.endif
 FF_ISR_EXIT2:
         pop     t0
         pop     zh
@@ -4646,7 +4649,7 @@ LOADOFF_L:
 .endif
         ret
 ;;; Enable load led
-        fdw     LOADON_L
+        fdw     LOADOFF_L
 LOAD_L:
         .db     NFA|4,"load",0
         pushtos
@@ -5013,8 +5016,6 @@ WARM_3:
         out_    TCCR0B, t0
         ldi     t0, ms_value_tmr0
         out_    OCR0A, t0
-        ldi     t0, (1<<OCIE0A)
-        out_    TIMSK, t0
         ldi     t0, (1<<OCIE0A)
         out_    TIMSK0, t0
 .endif
