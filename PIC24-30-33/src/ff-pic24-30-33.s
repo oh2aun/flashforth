@@ -754,10 +754,12 @@ WARM:
         MOV     W0, [++W14]
 
         clr     W0              ; Fill operator return and parameter stacks with 0x00
-        mov     #ustart, W14
-        repeat  #uareasize/2
+        mov     #ibufl, W14
+        mov     #PFLASH, W1
+FILL_RAM:
         mov.w   W0, [W14++]
-
+        cp      W14, W1
+        bra     nz, FILL_RAM
         mov     #usbuf0, W14
         setm    ibase
         clr     iflags
