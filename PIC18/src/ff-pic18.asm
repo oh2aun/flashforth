@@ -85,7 +85,7 @@ TX_FULL_BIT macro buf_size
 bitno += 1
 size /= 2
             endw
-            btfss   TXcnt, #v(bitno), A
+            btfsc   TXcnt, #v(bitno), A
             endm
 
 ;   FSR0    Sp  - Parameter Stack Pointer
@@ -146,6 +146,7 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
+fTX1REQ equ 3           ; TX1 signal sleep to enable TX1IE
 fLOAD   equ 2           ; 256 mS Load sample available
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
@@ -367,15 +368,11 @@ irq_ms:
         subwfb  TMR1H, F, A
         bsf     T1CON, TMR1ON
         bcf     PIR1, TMR1IF, A
-        infsnz  ms_count, F, A
-        incf    ms_count+1, F, A
 #else
 #if MS_TMR == 2 ;******************************
         btfss   PIR1, TMR2IF, A
         bra     irq_ms_end
         bcf     PIR1, TMR2IF, A
-        infsnz  ms_count, F, A
-        incf    ms_count+1, F, A
 #else
 #if MS_TMR == 3 ;******************************
         btfss   PIR2, TMR3IF, A
@@ -387,11 +384,11 @@ irq_ms:
         subwfb  TMR3H, F, A
         bsf     T3CON, TMR3ON
         bcf     PIR2, TMR3IF, A
+#endif
+#endif
+#endif
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
-#endif
-#endif
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
@@ -685,19 +682,12 @@ L_IR:
         dw      L_IR
 L_TX1_:
         db      NFA|3,"tx1"
-TX1_:
 #if TX1_BUF_SIZE == 0
-        btfss   PIR1, TXIF, A
-        bra     TX1_LOOP
-        rcall   TX1_SEND
-        bra     PAUSE          ; Pause during a character is sent out
-TX1_LOOP:
-#if IDLE_MODE == ENABLE
-        bsf     PIE1, TXIE, A  ;  Enable TX interrupts. Wakeup from idle mode when TXREG is EMPTY
-#endif
+TX1_:
+        bsf     FLAGS2, fTX1REQ, A
         rcall   PAUSE
         btfss   PIR1, TXIF, A
-        bra     TX1_LOOP       ; Dont pause if paused before sending.
+        bra     TX1_
 TX1_SEND:
         movf    Sminus, W, A
         movf    Sminus, W, A
@@ -705,16 +695,15 @@ TX1_SEND:
         andlw   h'7f'
 #endif
         movwf   TXREG, A
+        bcf     FLAGS2, fTX1REQ, A
         return
-
 #else
+TX1_:
+        bsf     FLAGS2, fTX1REQ, A
         rcall   PAUSE                   ; Try other tasks
-;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
+;        btfsc   TXcnt, TXfullBit, A    ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
-        bra     TX1_2
         bra     TX1_
-        
-TX1_2:
         movf    Sminus, W
 #if USE_8BIT_ASCII == DISABLE
         movlw   h'7f'
@@ -724,15 +713,17 @@ TX1_2:
         movf    TXhead, W, A
         movff   Sminus, TWrw
         
-        bcf     INTCON, GIE, A
+;        bcf     INTCON, GIE, A
+        bcf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
 
         incf    TXhead, F, A
         movlw   TXbufmask
         andwf   TXhead, F, A
         incf    TXcnt, F, A
 
-        bsf     INTCON, GIE, A  ; Enable interrupts
+;        bsf     INTCON, GIE, A  ; Enable interrupts
         bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
+        bcf     FLAGS2, fTX1REQ, A
         return
 #endif
 ;***************************************************
@@ -1550,6 +1541,8 @@ PAUSE_IDLE0:
 #if CPU_LOAD == ENABLE
         bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
 #endif
+        btfsc   FLAGS2, fTX1REQ, A
+        bsf     PIE1, TXIE, A  ;  Enable TX interrupts. Wakeup from idle mode when TXREG becomes EMPTY
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE

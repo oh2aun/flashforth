@@ -66,6 +66,7 @@
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
+.equ fTX1REQ, 7
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
@@ -380,17 +381,16 @@ __U1TXInterrupt:
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
         btsc    U1STA, #UTXBF
-        bra     __U1TXInterrupt3
+        bra     __U1RXTXIRQ_END
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14--]
-        bra     z, __U1TXInterrupt3
+        bra     z, __U1RXTXIRQ_END
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROM
         mov     [W14--], W0
         mov     W0, U1TXREG
-__U1TXInterrupt3:
-        bra     __U1RXTXIRQ_END
+        bra     __U1TXInterrupt0
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -467,17 +467,16 @@ __U2TXInterrupt:
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
         btsc    U2STA, #UTXBF
-        bra     __U2TXInterrupt3
+        bra     __U1RXTXIRQ_END
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14--]
-        bra     z, __U2TXInterrupt3
+        bra     z, __U1RXTXIRQ_END
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROM
         mov     [W14--], W0
         mov     W0, U2TXREG
-__U2TXInterrupt3:
-        bra     __U1RXTXIRQ_END
+        bra     __U2TXInterrupt0
 .endif
 .endif
 ;*******************************************************************
@@ -671,13 +670,7 @@ IDLE_L:
         .ascii  "idle"
         .align 2
 IDLE_:
-        mov     #ustatus, W0
-        add     upcurr, WREG
-        cp0.b   [W0]
-        bra     z, IDLE_1
-        dec     status
-        clr.b   [W0]
-IDLE_1:
+        clr     status
         return
         
         .pword   paddr(IDLE_L)+PFLASH
@@ -686,13 +679,7 @@ BUSY_L:
         .ascii  "busy"
         .align 2
 BUSY_:
-        mov     #ustatus, W0
-        add     upcurr, WREG
-        cp0.b   [W0]
-        bra     nz, BUSY_1
-        inc     status
-        setm.b  [W0]
-BUSY_1:
+        setm    status
         return
         
         .pword   paddr(BUSY_L)+PFLASH
@@ -869,7 +856,7 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .ifdecl UTXISEL1
-        bset    U1STA, #UTXISEL1
+        bset    U1STA, #UTXISEL0
 .else
         bset    U1STA, #UTXISEL
 .endif
@@ -908,8 +895,8 @@ WARM_ABAUD1:
         mov.b   WREG, RPOR0+U2TXPIN
 .endif
        bclr    PMD1, #U2MD
-.ifdecl UTXISEL1
-        bset    U2STA, #UTXISEL1
+.ifdecl UTXISEL0
+        bset    U2STA, #UTXISEL0
 .else
         bset    U2STA, #UTXISEL
 .endif
@@ -2165,7 +2152,6 @@ CQUEUE_TOQ:
         disi    #2
         mov     [W0+6], W1      ; W1 = FillLevel
         sub     W1, [W0], W1    ; W1 = Fill - maxLength
-        inc2    W1, W1          ; Dont let the queue fill completely
         asr     W1, #15, W1     ; Extend the sign bit to a flag
         mov     W1, [W14]
         return
@@ -2217,7 +2203,8 @@ CQUEUEZ:
         rcall   FETCHPP         ; addr baseaddr
         rcall   SWOP
         rcall   FETCH           ; baseaddr size
-        mov     [W14--], W2
+        mov     [W14--], W2     ; size
+        dec2    W2, W2          ; Leave two empty pos in the queue
         mov     [W14--], W1     ; W1 points to the base
         disi    #5
         mov     W2, [W1]        ; Store the size
@@ -2281,19 +2268,12 @@ TX1_L:
         .align  2
 TX1:    
         rcall   PAUSE
-        rcall   IDLE_
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
 TX1_1:
-        rcall   BUSY_
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
-        rcall   U1TXQUEUE
-        rcall   CQUEUE_FROMQ
-        mov     [W14--], W0
-        sub     #2, W0              ; If there are less than 2 chars
-        bra     nn, TX1_2           ; in TX queue,
         bset    IFS0, #U1TXIF       ; check if UART TX has space
 TX1_2:
         return
@@ -2327,12 +2307,10 @@ RX1Q_L:
         .ascii  "rx1?"
         .align  2
 RX1Q:
-        rcall   BUSY_
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14]
         bra     nz, RX1Q1
-        rcall   IDLE_        
         btsc    iflags, #fFC1
         bra     RX1Q1      
 .if FC1_TYPE == 1
@@ -2386,18 +2364,11 @@ TX2_L:
         .align  2
 TX2:    
         rcall   PAUSE
-        rcall   IDLE_
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
-        rcall   BUSY_
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
-        rcall   U2TXQUEUE
-        rcall   CQUEUE_FROMQ
-        mov     [W14--], W0
-        sub     #2, W0              ; If there are less than 2 chars
-        bra     nn, TX2_2           ; in TX queue,
         bset    IFS1, #U2TXIF       ; check if UART TX has space
 TX2_2:
         return
@@ -2431,12 +2402,10 @@ RX2Q_L:
         .ascii  "rx2?"
         .align  2
 RX2Q:
-        rcall   BUSY_
         mlit    handle(U2RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROMQ
         cp0     [W14]
         bra     nz, RX2Q1
-        rcall   IDLE_
         btss    iflags, #fFC2
         bra     RX2Q1      
 .if FC2_TYPE == 1
@@ -6319,14 +6288,13 @@ MS:
         rcall   TICKS
         rcall   PLUS
 MS1:    
-        rcall   IDLE_
         rcall   PAUSE
         mov     [W14], W1
         mov     ms_count, W0
         sub     W1, W0, W0         ; time - ticks
         bra     nn, MS1
         sub     W14, #2, W14
-        goto    BUSY_
+        return
 
  ; WORDS    --          list all words in dict.
         .pword  paddr(MS_L)+PFLASH

@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      i2c_base.txt                                      *
-\    Date:          06.01.2014                                        *
+\    Date:          28.02.2014                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -93,8 +93,8 @@ ff9e constant pir1
   [ again,                  ]
 ;
 : sspbuf! ( c -- )          \ sspbuf! takes 90 us @ 100 KHz
-  [ pir1 sspif a, bcf,      ]
     sspbuf c!
+  [ pir1 sspif a, bcf,      ]
   [ begin,                  ]
   [   pir1 sspif a, btfss,  ]
   [ again,                  ]
@@ -111,7 +111,7 @@ ff9e constant pir1
     [ sspcon2 w, a,    movf,  ]
     [ 1 ackstat lshift andlw, ] \ check for Acknowledge from slave
     [ z, if,                  ]
-           drop exit
+       drop exit
     [ then,                   ]
     srsen                       \ Repeated start condition
   again
