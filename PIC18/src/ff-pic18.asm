@@ -189,7 +189,7 @@ ms_cnt_h res 1       ; millisecond counter 2 bytes
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
-status   res 1       ; if zero, cpu idle is allowed (f056)
+status   res 1       ; if zero, cpu idle is allowed (f054)
 irq_v    res 2       ; Interrupt vector
 load_acc res 3
 load     res 1       ; CPU load  (26)
@@ -243,9 +243,11 @@ ihprodl     res 1
 ihprodh     res 1
 ihap        res 1
 ihabank     res 1
+
 iaddr_lo res 1       ; Instruction Memory access address
 iaddr_hi res 1       ; Instruction Memory access address
 areg        res 2
+
 #ifdef USB_CDC
 SpF         res 1       ; Save Forth Sp during C context
 SbankF      res 1       ; 
@@ -599,14 +601,7 @@ A_FROM:
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
-#ifdef IDLEN
-#if IDLE_MODE == ENABLE
-        rcall   IDLE_HELP
-        tstfsz  TWrw, A
-        decf    status, F, A
-        clrf    TWrw, A
-#endif
-#endif
+        clrf    status, A
         return
         
 ; busy
@@ -614,30 +609,10 @@ IDLE:
 L_BUSY:
         db      NFA|4,"busy"
 BUSY:
-#ifdef IDLEN
-#if IDLE_MODE == ENABLE
-        rcall   IDLE_HELP
-        bnz     BUSY1
-        incf    status, F, A
-        setf    TWrw, A
-BUSY1:
-#endif
-#endif
+        setf    status, A
         return
 
-
-#ifdef IDLEN
-#if IDLE_MODE == ENABLE
-IDLE_HELP:
-        movff   upcurr, Tp
-        movff   (upcurr+1), Tbank
-        movlw   ustatus
-        movf    TWrw, F, A
-        return
-#endif
-#endif
-        
-; busy
+; load -- n
         dw      L_BUSY
 L_LOAD:
         db      NFA|4,"load"
@@ -718,16 +693,12 @@ TX1_:
         bra     PAUSE          ; Pause during a character is sent out
 TX1_LOOP:
 #if IDLE_MODE == ENABLE
-        rcall   IDLE
         bsf     PIE1, TXIE, A  ;  Enable TX interrupts. Wakeup from idle mode when TXREG is EMPTY
 #endif
         rcall   PAUSE
         btfss   PIR1, TXIF, A
         bra     TX1_LOOP       ; Dont pause if paused before sending.
 TX1_SEND:
-#if IDLE_MODE == ENABLE
-        rcall   BUSY
-#endif
         movf    Sminus, W, A
         movf    Sminus, W, A
 #if USE_8BIT_ASCII == DISABLE
@@ -741,15 +712,9 @@ TX1_SEND:
 ;        btfsc   TXcnt, TXfullBit, A     ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
         bra     TX1_2
-#if IDLE_MODE == ENABLE
-        rcall   IDLE
-#endif
         bra     TX1_
         
 TX1_2:
-#if IDLE_MODE == ENABLE
-        rcall   BUSY
-#endif
         movf    Sminus, W
 #if USE_8BIT_ASCII == DISABLE
         movlw   h'7f'
@@ -777,15 +742,9 @@ L_RX1_:
         db      NFA|3,"rx1"
 RX1_:
         rcall   RX1Q
-#if IDLE_MODE == ENABLE
-        rcall   IDLE
-#endif
         movf    Sminus, W, A
         iorwf   Sminus, W, A
         bz      RX1_
-#if IDLE_MODE == ENABLE
-        rcall   BUSY
-#endif
         lfsr    Tptr, RXbuf
         movf    RXtail, W, A
         movff   TWrw, plusS    ;  Take a char from the buffer
@@ -2250,9 +2209,6 @@ WARM_ZERO_2:
         call    UPTR
         rcall   FETCH
         rcall   STORE
-#endif
-#if IDLE_MODE == ENABLE
-        call    BUSY
 #endif
         rcall   FRAM
         clrf    INTCON, A
@@ -5213,10 +5169,7 @@ L_MS:
 MS:
         rcall   TICKS
         call    PLUS
-MS1:    
-#if IDLE_MODE == ENABLE
-        call    IDLE
-#endif
+MS1:
         call    PAUSE
         rcall   DUP_A
         rcall   TICKS
@@ -5225,9 +5178,6 @@ MS1:
         movf    Sminus, W, A
         iorwf   Sminus, W, A
         bz      MS1
-#if IDLE_MODE == ENABLE
-        call    BUSY
-#endif
         goto    DROP
 
 ;  .id ( nfa -- ) 

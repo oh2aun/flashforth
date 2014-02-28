@@ -90,7 +90,6 @@ hex ram
     1 pc!          \ return stack size to save area
     @p up@ !       \ end of save area to restore pointer
     0 ul!          \ no link yet
-    0 up@ #12 - !  \ set idle status
     r>p
   then
   op!                     \ run the operator task
@@ -106,7 +105,6 @@ hex ram
     over ul!      
     swap up! ul! 
   then
-  busy                         \ mark the task as busy
   op!                          \ run operator task
 ;
 
@@ -128,7 +126,6 @@ hex ram
     swap up!                  \ next-uarea
     ul!                       \ 
   then
-  idle                        \ mark the task as idle
   op!
 ;
 
@@ -142,7 +139,6 @@ hex ram
       ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
-      idle                  \ mark the task as idle
       up!                   \ and move to next user area
     repeat
     0 ul!
