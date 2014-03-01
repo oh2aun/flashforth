@@ -22,13 +22,13 @@ Dictionary of FlashForth 5.0
            Parse word and find it in dictionary
 
 'emit      ( -- addr )  User Variable
-           EMIT vector. TX1 or TX2
+           EMIT vector. TX0, TX1 or TX2
 
 'key       ( -- addr )  User Variable
-           KEY vector.  TX1 or TX2
+           KEY vector.  TX0, TX1 or TX2
 
 'key?      ( -- addr )  User Variable
-           KEY? vector. TX1 or TX2
+           KEY? vector. TX0, TX1 or TX2
 
 'source    ( -- a-addr )     User Variable 
            Current input source
@@ -250,8 +250,8 @@ accept     ( c-addr +n -- +n' )
 again      ( a-addr -- )                  Compile Only
            begin ... again
 
-ivt        ( -- )
-           Use the normal interrupt vector table
+aivt       ( -- )
+           Activate the alternate interrupt vector table
 
 align      ( -- )
            Align the current data section dictionary pointer
@@ -520,7 +520,7 @@ ic,        ( c -- )
            Append c to the flash data section.
 
 idle       ( -- )
-           Cpu idle is allowed
+           Cpu idle mode is allowed
            
 if         ( -- a-addr )        Compile Only 
            if ... else ... then
@@ -561,7 +561,7 @@ is         ( x "name" -- )
            Set the value a deferred word
 
 ivt        ( -- )
-           Use the normal interrupt vector table
+           Activate the normal interrupt vector table
 
 j          ( -- n )  COMPILE ONLY
            The outer loop index
@@ -583,14 +583,14 @@ literal    ( x -- )
            Compile a literal into the dictionary
 
 load       ( -- n )
-           Show the load in percent.
+           Get the CPU load in percent.
            The integration interval is 256 mS.
 
 load+      ( -- )
-           Enable on the load led
+           Enable on the load led. Atmega only.
 
 load-      ( -- )
-           Disable on the load led
+           Disable on the load led. Atmega only.
 
 loop       ( -- )
            Increment the loop index and terminate the loop if the limit has been reached.
@@ -711,10 +711,10 @@ postpone   ( "name" -- )           Compile Only
 
 prompt     ( -- a-addr )           Eeprom defer
            Deferred execution vector for the info displayed by quit.
-           Default is .ST .
+           Default is .ST
 
 quit       ( -- )
-           Interpret from keyboard
+           Interpret from current input.
 
 r>         ( -- x ) ( R: x -- )   Compile Only
            Pop x from the return stack to the parameter stack
@@ -725,7 +725,7 @@ r>p        ( -- )                 Compile Only
 r@         ( -- x ) ( R: x -- x ) Compile Only
            Copy x from the return stack to the parameter stack
 
-r0         ( -- a-addr )
+r0         ( -- a-addr )          User variable
            Bottom of return stack
 
 ram        ( -- )
@@ -760,7 +760,7 @@ rx1?       ( -- f )
            Leave TRUE if UART1 receive buffer is not empty.
 
 rx1q       ( -- queue-addr )
-           Leave the address of the queue for UART1
+           Leave the address of the queue for UART1. PIC24-30-33
 
 rx2        ( -- c )
            Receive a character from UART2.
@@ -769,13 +769,13 @@ rx2?       ( -- f )
            Leave TRUE if UART2 receive buffer is not empty.
 
 rx2q       ( -- queue-addr )
-           Leave the address of the queue for UART2
+           Leave the address of the queue for UART2. PIC24-30-33
 
 rxu        ( -- c )
-           Receive a character from USB UART.
+           Receive a character from USB UART. PIC18 USB
 
 rxu?       ( -- f )
-           Leave TRUE if USB UART receive buffer is not empty.
+           Leave TRUE if USB UART receive buffer is not empty. PIC18 USB
 
 s>d        ( n -- d )
            Sign extend single to double precision number
@@ -882,16 +882,16 @@ tx1        ( c -- )
            Send a character to UART 1.
 
 tx1q       ( -- queue-addr )
-           Leave the address of the queue for UART1
+           Leave the address of the queue for UART1. PIC24-30-33
 
 tx2        ( c -- )
            Send a character to UART 2.
 
 tx2q       ( -- queue-addr )
-           Leave the address of the queue for UART2
+           Leave the address of the queue for UART2. PIC24-30-33
 
 txu        ( c -- )
-           Send a character to USB UART.
+           Send a character to USB UART. PIC18 USB
 
 u0-        ( -- )
            Disable flow control for UART0 serial interface
@@ -995,6 +995,16 @@ variable   ( "name" -- )
 
 warm       ( -- )
            Make a warm start
+           Reset Reasons displayed after start:
+           S: Reset instruction
+           E: External reset pin
+	   W: Watchdog reset
+           U: Return stack underflow
+	   O: Return stack overflow
+           B: Brown out reset
+           P: Power on reset
+           D: Divide by zero Error
+           A: Address error
 
 while      (addr1 -- addr2 addr1 )       Compile Only
            begin ... while ... repeat

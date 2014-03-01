@@ -133,7 +133,8 @@
 .bss
 ibufl:      .space IBUFSIZEL
 ibufh:      .space IBUFSIZEH
-intcon1dbg: .space 2
+
+intcon1dbg:  .space 2
 
 txqueue1:
 tbuf_len1:   .space 2
@@ -177,13 +178,6 @@ load_acc:   .space 4
 
 ms_count:   .space 2
 
-
-.if DEBUG_INFO == 1
-upcurrdbg:  .space 2
-rpdbg:      .space 2
-spdbg:      .space 2
-.endif
-
 dpSTART:    .space 2
 .ifdef PEEPROM
 dpRAM:      .space 2
@@ -209,10 +203,6 @@ prompt:     .space 2
 state:      .space 2 ; Compilation state
 upcurr:     .space 2 ; Current USER area pointer
 ustart:     .space uareasize ; The operator user area
-.if DEBUG_INFO == 1
-            .align 0x100
-uarea_dbg:  .space 0x100
-.endif
 
 ; Start of code !
 .text
@@ -252,23 +242,13 @@ WARMLIT:
         .word      0x0000
 ;;; *************************************************
 __OscillatorFail:
-        clr     intcon1dbg
-        reset
+;        clr     intcon1dbg
+;        reset
 __AddressError:
 __StackError:
 __MathError:
         mov     INTCON1, W0
         mov     W0, intcon1dbg
-.if DEBUG_INFO == 1
-        mov     W14, spdbg
-        mov     W15, rpdbg
-        mov     upcurr, W0
-        mov     W0, upcurrdbg
-        sub     #(-us0), W0
-        mov     #uarea_dbg, W1
-        repeat  #0x7f
-        mov.w   [W0++], [W1++]
-.endif
         reset
 
 __T1Interrupt:
@@ -379,6 +359,8 @@ __U1TXInterrupt:
         add     W14, #2, W14
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
+        btsc    U1STA, #UTXBF
+        bra     __U1RXTXIRQ_END
         cp0     tbuf_lv1
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
@@ -458,6 +440,8 @@ __U2TXInterrupt:
         add     W14, #2, W14
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
+        btsc    U2STA, #UTXBF
+        bra     __U1RXTXIRQ_END
         cp0     tbuf_lv2
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
@@ -753,8 +737,7 @@ WARM_FILL_IVEC:
 .ifdecl PMD3
         setm    PMD3
 .endif
-        btss    RCON, #SWR
-        clr     intcon1dbg      ; clear if it was not a reset from the reset instruction
+
 WARM_0:
 
 ; Init the serial TX buffer
@@ -933,66 +916,47 @@ WARM_ABAUD2:
         mlit    10
         rcall   MS
 
-; Display INTCON1 restart reason
-        cp0     intcon1dbg
-        bra     z, WARM1
-        rcall   CR
-        rcall   XSQUOTE
-        .byte   8
-        .ascii  "INTCON1:"
-        .align 2
-        rcall   TYPE
-        mov     intcon1dbg, W0
-        mov     W0, [++W14]
-        rcall   UDOT
-        clr     intcon1dbg
-.if (DEBUG_INFO == 1)
-        rcall   CR
-        rcall   XSQUOTE
-        .byte   5
-        .ascii  "RCON:"
-        .align 2
-        rcall   TYPE
-        mov     RCON, W0
-        mov     W0, [++W14]
-        rcall   UDOT
-        rcall   XSQUOTE
-        .byte   3
-        .ascii  "RP:"
-        .align 2
-        rcall   TYPE
-        mov     rpdbg, W0
-        mov     W0, [++W14]
-        rcall   UDOT
-        rcall   XSQUOTE
-        .byte   3
-        .ascii  "SP:"
-        .align 2
-        rcall   TYPE
-        mov     spdbg, W0
-        mov     W0, [++W14]
-        rcall   UDOT
-        rcall   XSQUOTE
-        .byte   3
-        .ascii  "UP:"
-        .align 2
-        rcall   TYPE
-        mov     upcurrdbg, W0
-        mov     W0, [++W14]
-        rcall   UDOT
-        mov     #uarea_dbg, W0
-        mov     W0, [++W14]
-        mlit    0x100
-        rcall   DUMP
-.endif
+; Display INTCON1 and RCON restart reason
+        btsc    intcon1dbg, #STKERR
+        rcall   DOEMIT
+        .word   'O'          ; NOP when executed
+RQ_DIV0:
+        btsc    intcon1dbg, #DIV0ERR
+        rcall   DOEMIT
+        .word   'D'
+RQ_ADDR:
+        btsc    intcon1dbg, #ADDRERR
+        rcall   DOEMIT
+        .word   'A'
+RQ_BOR:
+        btsc    RCON, #BOR
+        rcall   DOEMIT
+        .word   'B'
+RQ_POR:
+        btsc    RCON, #POR
+        rcall   DOEMIT
+        .word   'P'
+RQ_TO:
+        btsc    RCON, #WDTO
+        rcall   DOEMIT
+        .word   'W'
+RQ_RI:
+        btsc    RCON, #SWR
+        rcall   DOEMIT
+        .word   'S'
+RQ_EXTR:
+        btsc    RCON, #EXTR
+        rcall   DOEMIT
+        .word   'E'
+RQ_END:
 
+        clr     intcon1dbg
         clr     RCON
 
 WARM1:
-        rcall   CR
         rcall   XSQUOTE
-        .byte   22
-        .ascii  "FlashForth PIC24 5.0\r\n"
+        .byte   23
+        .ascii  " FlashForth PIC24 5.0\r\n"
         .align 2
         rcall   TYPE
         mlit    XON
@@ -2496,6 +2460,14 @@ DOCREATE:
         tblrdl  [W0], [++W14]
         sub     #4, W15
         return
+DOEMIT:
+        mov.w   [W15-4], W0
+.ifdef PEEPROM
+        clr     TBLPAG
+.endif
+        tblrdl  [W0++], [++W14]
+        mov.w   W0, [W15-4]
+        goto    EMIT
 
         .pword  paddr(DOCREATE_L)+PFLASH
 DODOES_L:

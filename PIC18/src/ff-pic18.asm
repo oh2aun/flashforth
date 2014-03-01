@@ -1751,13 +1751,13 @@ RQ_STKFUL:
         btfss   0, STKFUL, A
         bra     RQ_STKUNF
         rcall   XSQUOTE
-        db      d'1',"F"
+        db      d'1',"O"
         rcall   TYPE
 RQ_STKUNF:
         btfss   0, STKUNF, A
         bra     RQ_BOR
         rcall   XSQUOTE
-        db      d'1',"E"
+        db      d'1',"U"
         rcall   TYPE
 RQ_BOR:
         btfsc   1, BOR
@@ -1784,7 +1784,7 @@ RQ_RI:
         bra     RQ_END
         bsf     RCON, RI
         rcall   XSQUOTE
-        db      d'1',"R"
+        db      d'1',"S"
         rcall   TYPE
 RQ_END:
         return
