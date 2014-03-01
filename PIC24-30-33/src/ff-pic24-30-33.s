@@ -61,8 +61,9 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
-.equ fBUSY,   14  ; 0=IDLE, 1=BUSY
-.equ fIDLE,   13  ; 0=IDLE, 1=BUSY
+.equ BUSYIDLE_MASK, 0xc000
+.equ fBUSY,   15  ; 0=IDLE, 1=BUSY
+.equ fIDLE,   14  ; 0=IDLE, 1=BUSY
 .equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
@@ -75,6 +76,7 @@
 .equ fFC1,    2   ; 0=FC, 1 = noFC for UART1
 .equ ixoff1,  1   ; XON/XOFF flag for UART1
 .equ idirty,  0
+
 
 ;;; For Flow Control
 .equ XON,   0x11
@@ -131,6 +133,8 @@
 .bss
 ibufl:      .space IBUFSIZEL
 ibufh:      .space IBUFSIZEH
+intcon1dbg: .space 2
+
 txqueue1:
 tbuf_len1:   .space 2
 tbuf_wr1:    .space 2
@@ -172,7 +176,6 @@ load:       .space 2
 load_acc:   .space 4
 
 ms_count:   .space 2
-intcon1dbg: .space 2
 
 
 .if DEBUG_INFO == 1
@@ -310,10 +313,9 @@ __U1RXInterrupt:
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
         bset    iflags, #istream      ; Indicate UART activity.
-        mlit    handle(U1RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_TOQ
-        cp0     [W14--]
-        bra     z, U1RX_ERR1
+        mov     rbuf_len1, WREG
+        sub     rbuf_lv1, WREG        ; level - len
+        bra     nn, U1RX_ERR1         ; Queue full ?
         bclr    U1STA, #OERR
         mov     U1RXREG, W0
 .if (CTRL_O_WARM_RESET == 1)
@@ -339,12 +341,8 @@ U1_SKIP_FC_1:
         bra     n, __U1RXInterrupt3
 .if FC1_TYPE == 1
 __U1RXInterrupt2:
-        btsc    U1STA, #UTXBF
-        bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
- ;       mov     #'<', W0
- ;       mov     W0, U1TXREG
         bset    iflags, #ixoff1
 .else
 .if  FC1_TYPE == 2
@@ -381,17 +379,13 @@ __U1TXInterrupt:
         add     W14, #2, W14
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
-        btsc    U1STA, #UTXBF
-        bra     __U1RXTXIRQ_END
-        mlit    handle(U1TXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_FROMQ
-        cp0     [W14--]
+        cp0     tbuf_lv1
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROM
         mov     [W14--], W0
         mov     W0, U1TXREG
-        bra     __U1TXInterrupt0
+        bra     __U1RXTXIRQ_END
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -404,10 +398,9 @@ __U2RXInterrupt:
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
         bset    iflags, #istream      ; Indicate UART activity.
-        mlit    handle(U2RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_TOQ
-        cp0     [W14--]
-        bra     z, U2RX_ERR1
+        mov     rbuf_len2, WREG
+        sub     rbuf_lv2, WREG        ; level - len
+        bra     nn, U2RX_ERR1         ; Queue full ?
         bclr    U2STA, #OERR
         mov     U2RXREG, W0
 
@@ -434,8 +427,6 @@ U2_SKIP_FC_1:
         bra     n, __U2RXInterrupt3
 .if FC2_TYPE == 1
 __U2RXInterrupt2:
-;        btsc    U2STA, #UTXBF
-;        bra     __U2RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2
@@ -467,17 +458,13 @@ __U2TXInterrupt:
         add     W14, #2, W14
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
-        btsc    U2STA, #UTXBF
-        bra     __U1RXTXIRQ_END
-        mlit    handle(U2TXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_FROMQ
-        cp0     [W14--]
+        cp0     tbuf_lv2
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROM
         mov     [W14--], W0
         mov     W0, U2TXREG
-        bra     __U2TXInterrupt0
+        bra     __U1RXTXIRQ_END
 .endif
 .endif
 ;*******************************************************************
@@ -742,7 +729,7 @@ WARM:
         MOV     W0, [++W14]
 
         clr     W0              ; Fill operator return and parameter stacks with 0x00
-        mov     #ibufl, W14
+        mov     #txqueue1, W14  ; Dont overwrite INTCONDBG
         mov     #PFLASH, W1
 FILL_RAM:
         mov.w   W0, [W14++]
@@ -1055,10 +1042,15 @@ PAUSE_L:
 PAUSE:
         clrwdt
 .if IDLE_MODE == 1
+        mov     #BUSYIDLE_MASK, W0
+        and     iflags, WREG
+        bra     nz, PAUSE_BUSY
+.if 0
         btsc    iflags, #fIDLE
         bra     PAUSE_BUSY
         btsc    iflags, #fBUSY
         bra     PAUSE_BUSY
+.endif
         mov     #u0, W0        ; IDLE only in operator task.
         cp      upcurr
         bra     nz, PAUSE_BUSY

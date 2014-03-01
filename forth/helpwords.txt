@@ -231,8 +231,8 @@ within	x xl xh -- flag	Leave true if  xl <= x < xh
 word	c -- c-addr	Copy a word delimited by c to c-addr
 words	--		List words
 xor	x1 x2 -- x3	Xor bitwise x1 with x2.
-btfsc,  f b a --
-btfss,  f b a --
+btfsc,	f b a --
+btfss,	f b a --
 bcf,	f b a --
 bsf,	f b a --
 andlw,	k --
@@ -253,3 +253,4 @@ begin,	-- here
 again,	back-addr --
 until,	back-addr cc --
 |
+
