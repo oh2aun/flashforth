@@ -61,12 +61,13 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
+.equ fBUSY,   14  ; 0=IDLE, 1=BUSY
+.equ fIDLE,   13  ; 0=IDLE, 1=BUSY
 .equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
-.equ fTX1REQ, 7
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
@@ -670,7 +671,7 @@ IDLE_L:
         .ascii  "idle"
         .align 2
 IDLE_:
-        clr     status
+        bclr     iflags, #fIDLE
         return
         
         .pword   paddr(IDLE_L)+PFLASH
@@ -679,7 +680,7 @@ BUSY_L:
         .ascii  "busy"
         .align 2
 BUSY_:
-        setm    status
+        bset     iflags, #fIDLE
         return
         
         .pword   paddr(BUSY_L)+PFLASH
@@ -750,7 +751,6 @@ FILL_RAM:
         mov     #usbuf0, W14
         setm    ibase
         clr     iflags
-        clr     status
 .ifdecl INTTREG
         mov     #IVECTAB, W0
         mov     #IVECSIZE, W1
@@ -1055,8 +1055,10 @@ PAUSE_L:
 PAUSE:
         clrwdt
 .if IDLE_MODE == 1
-        cp0     status
-        bra     nz, PAUSE_BUSY
+        btsc    iflags, #fIDLE
+        bra     PAUSE_BUSY
+        btsc    iflags, #fBUSY
+        bra     PAUSE_BUSY
         mov     #u0, W0        ; IDLE only in operator task.
         cp      upcurr
         bra     nz, PAUSE_BUSY
@@ -2268,7 +2270,7 @@ TX1_L:
         .align  2
 TX1:
 .ifdef UTXISEL
-        setm    status
+        bset    iflags, #fBUSY
 .endif
         rcall   PAUSE
         rcall   TX1Q
@@ -2276,7 +2278,7 @@ TX1:
         bra     z, TX1
 TX1_1:
 .ifdef UTXISEL
-        clr     status
+        bclr    iflags, #fBUSY
 .endif
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
@@ -2369,14 +2371,14 @@ TX2_L:
         .align  2
 TX2:    
 .ifdef UTXISEL
-        setm    status
+        bset    iflags, #fBUSY
 .endif
         rcall   PAUSE
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
 .ifdef UTXISEL
-        clr     status
+        bclr    iflags, #fBUSY
 .endif
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO

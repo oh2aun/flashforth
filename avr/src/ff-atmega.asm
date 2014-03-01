@@ -430,7 +430,6 @@ dpLATEST:   .byte 2
 areg:       .byte 2 ; A register data
 load_acc:   .byte 3 ; Load measurement accumulator
 load:       .byte 1 ; Cpu load in percent
-status:     .byte 1 ; Idle status of all tasks
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
 uvars:      .byte   (-us0)
