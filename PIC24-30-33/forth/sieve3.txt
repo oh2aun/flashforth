@@ -17,7 +17,7 @@
 marker -sieve3
 decimal ram
 8192 constant size3 inlined
-ram variable flags3 size3 8 / allot
+ram variable flags3 inlined size3 8 / allot
 
 : sieve3      
   flags3 [ size3 8 / ] literal -1 fill

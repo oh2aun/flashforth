@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          25.02.2014                                      *
+\    Date:          01.03.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -88,7 +88,7 @@ hex ram
     \ tiu = s0 + 2
     s0 @ 2+ tiu !
     0 ul!
-    0 task 2+ !         \ set status and cr flag
+    0 task 2+ !         \ clear status and cr flag
   then
   op!                 \ run the operator task again
 ;
@@ -102,7 +102,6 @@ hex ram
     over ul!      
     swap up! ul! 
   then
-  busy                         \ mark the task as busy
   op!                          \ run operator task
 ;
 
@@ -124,7 +123,6 @@ hex ram
     swap up!                \ next-uarea
     ul!                     \ 
   then
-  idle                      \ mark the task as idle
   op!
 ;
 
@@ -138,7 +136,6 @@ hex ram
       ul@ op@ <>            \ is this the last linked user area
     while
       ul@ 0 ul!             \ write zero to ulink
-      idle                  \ mark the task as idle
       up!                   \ and move to next user area
     repeat
     0 ul!

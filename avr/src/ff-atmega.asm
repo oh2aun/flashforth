@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          25.02.2014                                        *
+;    Date:          01.03.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -296,6 +296,8 @@
 .equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
+.equ fBUSY=     7   ; 1 = busy
+.equ fIDLE=     6   ; 1 = busy
 .equ fLOAD=     5   ; Load measurement ready
 .equ fLOADled=  4   ; 0 = no load led, 1 = load led on
 .equ fFC_tx1=   3   ; 0=Flow Control, 1 = no Flow Control   
@@ -515,15 +517,7 @@ EXIT:
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
-.if IDLE_MODE == 1
-        rcall   IDLE_HELP
-        breq    IDLE1
-        lds     t0, status 
-        dec     t0
-        sts     status, t0
-        st      x, zero
-.endif
-IDLE1:
+        cbr     FLAGS2, (1<<fIDLE)
         ret
         
 ; busy
@@ -531,27 +525,8 @@ IDLE1:
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
-.if IDLE_MODE == 1
-        rcall   IDLE_HELP
-        brne    BUSY1
-        lds     t0, status
-        inc     t0
-        sts     status, t0
-        st      x, t0
-BUSY1:
-.endif
-        ret
-
-
-.if IDLE_MODE == 1
-IDLE_HELP:
-        movw    xl, upl
-        sbiw    xl, -ustatus 
-        ld      t0, x
-        cpi     t0, 0
-        ret
-.endif
-        
+        sbr     FLAGS2, (1<<fIDLE)
+        ret        
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
 ; : mset ( mask addr -- )
@@ -3404,8 +3379,7 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
-MS1:
-        call    IDLE    
+MS1:    
         rcall   PAUSE
         rcall   DUP
         rcall   TICKS
@@ -3413,7 +3387,6 @@ MS1:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    MS1
-        call    BUSY
         jmp     DROP
 
 ;  .id ( nfa -- ) 
@@ -4117,12 +4090,14 @@ TX1_:
         cpi     tosl, XOFF
         breq    XXOFF_TX1_TOS
 TX1_LOOP:
+        sbr     FLAGS2, (1<<fBUSY)
         rcall   PAUSE
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
         rjmp    TX1_LOOP
         out_    UDR1, tosl
         poptos
+        cbr     FLAGS2, (1<<fBUSY)
         ret
 
 XXON_TX1_TOS:
@@ -4185,11 +4160,9 @@ RX1_:
 RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
-        call    BUSY
         lds     xl, rbuf1_lv
         cpse    xl, zero
         jmp     TRUE_
-        call    IDLE
 .if U1FC_TYPE == 1
         rcall   XXON_TX1
 .endif
@@ -4262,22 +4235,24 @@ IDLE_LOAD:
         call    TWODROP 
 CPU_LOAD_END:
 .endif
-        lds     t0, status
-        cpi     t0, 0
-        brne    IDLE_LOAD1
-        ;cpi	    upl, low(u0)
-        ;brne    IDLE_LOAD1
-        sbrs    FLAGS2, fLOADled
-        rjmp    LOAD_LED_1
 .if CPU_LOAD_LED == 1
+        sbrs    FLAGS2, fLOADled
+        rjmp    LOAD_LED_END
         sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 1
         cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .else
         sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .endif
+LOAD_LED_END:
 .endif
-LOAD_LED_1:
+        sbrc    FLAGS2, fIDLE
+        rjmp    IDLE_LOAD1
+        sbrc    FLAGS2, fBUSY
+        rjmp    IDLE_LOAD1
+        ldi	    t0, low(up0)
+        cp      upl, t0
+        brne    IDLE_LOAD1
 .ifdef SMCR
         ldi     t0, (1<<SE)
         out_    SMCR, t0
@@ -4298,6 +4273,14 @@ LOAD_LED_1:
         out_    MCUCR, zero
 .endif
 IDLE_LOAD1:
+.if CPU_LOAD_LED == 1
+        sbrc    FLAGS2, fLOADled
+.if CPU_LOAD_LED_POLARITY == 1
+        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.else
+        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.endif
+.endif
         ret
 .endif
 
@@ -4557,14 +4540,6 @@ FF_ISR:
 .if CPU_LOAD == 1
         out_    TCCR1B, r_one	; Start load counter
 .endif
-.if CPU_LOAD_LED == 1
-        sbrc    FLAGS2, fLOADled
-.if CPU_LOAD_LED_POLARITY == 1
-        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.else
-        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.endif
-.endif
 .endif
         st      -y, xh
         in_     xh, SREG
@@ -4707,12 +4682,14 @@ TX0_:
         breq    XXOFF_TX0_TOS
 .endif
 TX0_LOOP:
+        sbr     FLAGS2, (1<<fBUSY)
         rcall   PAUSE
         in_     t0, UCSR0A
         sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_LOOP
         out_    UDR0_, tosl
         poptos
+        cbr     FLAGS2, (1<<fBUSY)
         ret
 
 .if U0FC_TYPE == 1
@@ -4777,11 +4754,9 @@ RX0_:
 RX0Q_L:
         .db     NFA|4,"rx0?",0
 RX0Q:
-        call    BUSY
         lds     xl, rbuf0_lv
         cpse    xl, zero
         jmp     TRUE_
-        call    IDLE
 .if U0FC_TYPE == 1
         rcall   XXON_TX0
 .endif
