@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          22.02.2014                                        *
+;    Date:          01.03.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2266,16 +2266,21 @@ TX1_L:
         .byte   NFA|3
         .ascii  "tx1"
         .align  2
-TX1:    
+TX1:
+.ifdef UTXISEL
+        setm    status
+.endif
         rcall   PAUSE
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
 TX1_1:
+.ifdef UTXISEL
+        clr     status
+.endif
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
         bset    IFS0, #U1TXIF       ; check if UART TX has space
-TX1_2:
         return
 
         .pword  paddr(TX1_L)+PFLASH
@@ -2363,10 +2368,16 @@ TX2_L:
         .ascii  "tx2"
         .align  2
 TX2:    
+.ifdef UTXISEL
+        setm    status
+.endif
         rcall   PAUSE
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
+.ifdef UTXISEL
+        clr     status
+.endif
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
         bset    IFS1, #U2TXIF       ; check if UART TX has space
