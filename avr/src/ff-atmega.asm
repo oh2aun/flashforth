@@ -341,7 +341,7 @@
 .equ OFLASH = PEEPROM+EEPROMEND+1     ; 56 Kbytes available for FlashForth
 .equ PFLASH = 0
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0c80
+.equ KERNEL_SIZE=0x0d00
 .else
 .if (FLASHEND == 0x3fff)              ; 16 Kwords flash
 .equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
@@ -453,10 +453,12 @@ dpdata:     .byte   2
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
+        clt
         tst  tosl
         brne umslashmodstart
         tst  tosh
         brne umslashmodstart
+        set  ; Set T flag
         jmp  WARM_
 umslashmodstart:
         movw t4, tosl
@@ -2709,9 +2711,9 @@ INUMBER:
         rjmp    ISINGLE
 IDOUBLE:
         rcall   SWOP_A
-        rcall   LITERAL
+        call    LITERAL
 ISINGLE:        
-        rcall   LITERAL
+        call    LITERAL
         rjmp    IPARSEWORD
 
 INUMBER1:
@@ -3053,6 +3055,7 @@ CR:
         rcall   EMIT
         rcall   DOLIT
         .dw     0x0a       ; LF \n
+EMIT_A:
         jmp     EMIT
 
 ; CREATE   --         create an empty definition
@@ -3363,11 +3366,11 @@ TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
         pushtos
-        in      t2, SREG
+        in_     t2, SREG
         cli
         mov     tosl, ms_count
         mov     tosh, ms_count1
-        out     SREG, t2
+        out_    SREG, t2
         ret
 
         
@@ -3408,7 +3411,7 @@ DOTID:
 DOTID1:
         rcall   CFETCHPP
         rcall   TO_PRINTABLE
-        call    EMIT
+        rcall   EMIT_A
 DOTID3:
         rcall   XNEXT
         brcc    DOTID1  
@@ -3456,7 +3459,7 @@ WDS1:   rcall   DUP
         breq    WDS2
         rcall   DOLIT
         .dw     9
-        call    EMIT
+        rcall   EMIT_A
         rjmp    WDS3
 WDS2:   
         rcall   CR
@@ -3511,7 +3514,7 @@ DUMP1:
         rcall   UDOTR
         rcall   DOLIT
         .dw     ':'
-        call    EMIT
+        rcall   EMIT_A
         rcall   DOLIT
         .dw     15
         rcall   TOR
@@ -3532,9 +3535,9 @@ DUMP2:
         .dw     15
         rcall   TOR
 DUMP4:  
-        rcall    CFETCHPP
+        rcall   CFETCHPP
         rcall   TO_PRINTABLE
-        call    EMIT
+        rcall   EMIT_A
         rcall   XNEXT
         brcc    DUMP4
         pop     t1
@@ -4149,7 +4152,7 @@ RX1_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
-        in      t2, SREG
+        in_     t2, SREG
         cli
         inc     xl
         andi    xl, (RX1_BUF_SIZE-1)
@@ -4157,7 +4160,7 @@ RX1_:
         lds     xl, rbuf1_lv
         dec     xl
         sts     rbuf1_lv, xl
-        out     SREG, t2
+        out_    SREG, t2
         ret
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -4175,6 +4178,7 @@ RX1Q:
         cbi_    U1RTS_PORT, U1RTS_BIT
 .endif
         jmp     FALSE_
+
 ;****************************************************
 RX1_ISRR:
         ldi     zl, low(rbuf1)
@@ -4213,14 +4217,48 @@ RX1_OVF:
         rjmp    TX1_SEND
 TX1_ISR:
 .endif
+;***************************************************
+RQ_EMIT:
+        sbrs    t2, PORF
+        rjmp    RQ_EXTR
+        rcall   DOLIT
+        .dw     'P'
+        rcall   EMIT_A
+RQ_EXTR:
+        sbrs    t2, EXTRF
+        rjmp    RQ_BORF
+        rcall   DOLIT
+        .dw     'E'
+        rcall   EMIT_A
+RQ_BORF:
+        sbrs    t2, BORF
+        rjmp    RQ_WDRF
+        rcall   DOLIT
+        .dw     'B'
+        rcall   EMIT_A
+RQ_WDRF:
+        sbrs    t2, WDRF
+        rjmp    RQ_DIVZERO
+        rcall   DOLIT
+        .dw     'W'
+        rcall   EMIT_A
+RQ_DIVZERO:
+        sbrs    t3, 6 ; T bit
+        rjmp    RQ_END
+        rcall   DOLIT
+        .dw     'D'
+        rcall   EMIT_A
+RQ_END: 
+        jmp    SPACE_
 
+;*****************************************************
 .if IDLE_MODE == 1
 IDLE_LOAD:
 .if CPU_LOAD == 1	
         sbrs    FLAGS2, fLOAD
         rjmp    CPU_LOAD_END
         pushtos
-        in      t2, SREG
+        in_     t2, SREG
         cli
         cbr     FLAGS2, (1<<fLOAD)
         lds     tosl, load_acc
@@ -4230,7 +4268,7 @@ IDLE_LOAD:
         sts     load_acc, zero
         sts     load_acc+1, zero
         sts     load_acc+2, zero
-        out     SREG, t2
+        out_    SREG, t2
         clr     tosh
         pushtos
         ldi     tosl, low(CPU_LOAD_VAL)
@@ -4743,7 +4781,7 @@ RX0_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
-        in      t2, SREG
+        in_     t2, SREG
         cli
         inc     xl
         andi    xl, (RX0_BUF_SIZE-1)
@@ -4751,7 +4789,7 @@ RX0_:
         lds     xl, rbuf0_lv
         dec     xl
         sts     rbuf0_lv, xl
-        out     SREG, t2
+        out_    SREG, t2
         ret
 ;***************************************************
 ; RX0?  -- n    return the number of characters in queue
@@ -4970,10 +5008,19 @@ WARM_1:
         subi    yl, 1
         brne    WARM_1
 
+        in_     t3, SREG
+.ifdef MCUCSR
+        in_     t2, MCUCSR
+        sts     MCUCSR, zero
+.endif
+.ifdef MCUSR
+        in_     t2, MCUSR
+        sts     MCUSR, zero
+.endif
         ldi     xl, 0x1C  ; clear ram from y register upwards
 WARM_2:
         st      x+, zero
-        cpi     xh, 0x10  ; to 0xfff, 4 Kbytes 
+        cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
         brne    WARM_2
         ldi     yl, 1
         mov     r_one, yl
@@ -5119,6 +5166,7 @@ WARM_3:
         rcall   DP_TO_RAM
         sei
 
+        rcall   RQ_EMIT
         rcall   VER
 ; Turnkey ?
         rcall   TURNKEY
@@ -5549,7 +5597,7 @@ PAUSE:
 .if IDLE_MODE == 1
         rcall   IDLE_LOAD
 .endif
-        in      t2, SREG
+        in_     t2, SREG
         cli
         push    yh        ; SP
         push    yl
@@ -5575,7 +5623,7 @@ PAUSE:
         pop     tosh
         pop     yl
         pop     yh
-        out     SREG, t2
+        out_    SREG, t2
         ret
 
 

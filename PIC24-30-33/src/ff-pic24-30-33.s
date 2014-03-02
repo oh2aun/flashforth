@@ -4395,7 +4395,7 @@ PAD:
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        .pword  paddr(PAD_L)+PFLASH
+;;;     .pword  paddr(PAD_L)+PFLASH
 BASE_L:
         .byte   NFA|4
         .ascii  "base"

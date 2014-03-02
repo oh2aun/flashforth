@@ -3939,7 +3939,7 @@ PAD:
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        dw      L_PAD
+;;;     dw      L_PAD
 L_BASE
         db      NFA|4,"base"
 BASE:
