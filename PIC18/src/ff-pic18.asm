@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          22.02.2014                                        *
+;    Date:          02.03.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -606,7 +606,7 @@ IDLE:
 L_BUSY:
         db      NFA|4,"busy"
 BUSY:
-        setf    status, A
+        bsf    status, 7, A
         return
 
 ; load -- n
@@ -831,7 +831,14 @@ umstar0:
 #define DCNT            Tbank   ; NOTE 4-bit counter
 
 umslashmod0:
-        rcall   SETTBLPTR   ; DIVISOR_1, DIVISOR_0
+        rcall   SETTBLPTR     ; DIVISOR_1, DIVISOR_0
+        tstfsz  TBLPTRL, A
+        bra     umslashmod3
+        tstfsz  TBLPTRH, A
+        bra     umslashmod3
+        bsf     status, 0, A  ; Signal divide by zero error
+        bra     WARM
+umslashmod3:
         movff   Sminus, DIVIDEND_3
         movff   Sminus, DIVIDEND_2
         movff   Sminus, DIVIDEND_1
@@ -1747,6 +1754,12 @@ IFLUSH:
 
 ; Print restart reason
 RQ:
+RQ_DIVZERO:
+        btfss   2, 0, A
+        bra     RQ_STKFUL
+        rcall   XSQUOTE
+        db      d'1',"D"
+        rcall   TYPE
 RQ_STKFUL:
         btfss   0, STKFUL, A
         bra     RQ_STKUNF
@@ -2102,10 +2115,11 @@ main:
 WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
         movff   RCON, 1         ; Save reset reasons
+        movff   status, 2
         clrf    STKPTR, A       ; Clear return stack
         bcf     RCON, 7, A
         bcf     RCON, 6, A
-        lfsr    Sptr, 2         ; Zero ram from 2 upwards
+        lfsr    Sptr, 3         ; Zero ram from 3 upwards
 #ifdef USB_CDC
         lfsr    Tptr, cdc_notice
 #else
@@ -3934,7 +3948,7 @@ BASE:
 
 ; USER   n --        holds conversion radix
 ; 18 cycles
-        dw      L_BASE
+        dw      L_PAD
 L_USER:
         db      NFA|4,"user"
 USER:

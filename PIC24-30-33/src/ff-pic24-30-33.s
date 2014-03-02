@@ -4406,7 +4406,7 @@ BASE:
 
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at higher adrs
-        .pword  paddr(BASE_L)+PFLASH
+        .pword  paddr(PAD_L)+PFLASH
 SOURCE_L:
         .byte   NFA|6
         .ascii  "source"

@@ -28,8 +28,8 @@ ram variable delay
 0 18 20 0 task: task2
 : task2loop 
   100 delay !
-  pin5 ddrc mset  \  Output 
-  begin 
+  pin5 ddrc mset  \  Output
+  begin
     delay @ ms 
     pin5 portc mtst
     if

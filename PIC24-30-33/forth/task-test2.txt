@@ -27,9 +27,9 @@ ram variable delay
 40 30 30 0 task: t1
 : tloop 
   $3f adpcfg c!
-  100 delay !
+  #250 delay !
   trisb #9  bclr 
-  trisb #10 bclr 
+  trisb #10 bclr
   begin 
     delay @ ms 
     portb #9 btst

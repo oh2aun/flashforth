@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          01.03.2014                                        *
+;    Date:          02.03.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -453,6 +453,12 @@ dpdata:     .byte   2
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
+        tst  tosl
+        brne umslashmodstart
+        tst  tosh
+        brne umslashmodstart
+        jmp  WARM_
+umslashmodstart:
         movw t4, tosl
 
         ld t3, Y+
@@ -2084,7 +2090,7 @@ PAD:
         jmp     PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        fdw     PAD_L
+;        fdw     PAD_L
 BASE_L:
         .db     NFA|4,"base",0
 BASE:
@@ -2092,7 +2098,7 @@ BASE:
         .dw     ubase
 
 ; USER   n --
-        fdw     BASE_L
+        fdw     PAD_L
 USER_L:
         .db     NFA|4,"user",0
 USER:

@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          28.02.2014                                      *
+\    Date:          02.03.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
@@ -89,6 +89,7 @@ hex ram
     swap c@ + tiu !
     0 ul!
     0 task 2+ !        \ set the cr flag
+    decimal            \ Set the base to decimal
   then
   op!                \ run the operator task again
 ;
