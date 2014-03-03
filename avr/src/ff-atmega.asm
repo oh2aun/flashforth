@@ -364,7 +364,7 @@
 .equ KERNEL_START=BOOT_START - KERNEL_SIZE
 
 ;;;  High values for memory areas
-.equ FLASH_HI = 0xffff - KERNEL_START
+.equ FLASH_HI = 0xffff - (BOOT_SIZE*2) - (KERNEL_SIZE*2)
 .equ EEPROM_HI =PEEPROM + EEPROMEND
 .equ RAM_HI = RAMEND
 	
@@ -2047,7 +2047,6 @@ BIN:    rcall   CELL
         rcall   BASE
         jmp     STORE
 
-#ifndef SKIP_MULTITASKING
 ; RSAVE   -- a-addr     Saved return stack pointer
         fdw     BIN_L
 RSAVE_L:
@@ -2066,9 +2065,6 @@ ULINK_: rcall   DOUSER
 
 ; TASK       -- a-addr              TASK pointer
         fdw     ULINK_L
-#else
-        fdw     BIN_L
-#endif
 TASK_L:
         .db     NFA|4,"task",0
 TASK:   rcall   DOUSER
@@ -2092,7 +2088,7 @@ PAD:
         jmp     PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-;        fdw     PAD_L
+        fdw     PAD_L
 BASE_L:
         .db     NFA|4,"base",0
 BASE:
@@ -2100,7 +2096,7 @@ BASE:
         .dw     ubase
 
 ; USER   n --
-        fdw     PAD_L
+        fdw     BASE_L
 USER_L:
         .db     NFA|4,"user",0
 USER:
@@ -4243,10 +4239,10 @@ RQ_WDRF:
         .dw     'W'
         rcall   EMIT_A
 RQ_DIVZERO:
-        sbrs    t3, 6 ; T bit
+        sbrs    t3, 6 ; T bit MATH error
         rjmp    RQ_END
         rcall   DOLIT
-        .dw     'D'
+        .dw     'M'
         rcall   EMIT_A
 RQ_END: 
         jmp    SPACE_

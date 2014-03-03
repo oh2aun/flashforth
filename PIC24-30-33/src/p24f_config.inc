@@ -9,7 +9,6 @@
 .equ FLASH_SIZE,     0xA800  ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
 .equ RAM_SIZE,       0x2000  ; Ram size in bytes
-.equ EEPROM_SIZE,    0       ; Eeprom size
 
 config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 
@@ -95,10 +94,11 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE
-.if FLASH_SIZE > 0xffff
-.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+.equ HI_TEMP,        PFLASH+FLASH_SIZE
+.if HI_TEMP > 0xffff
+.equ FLASH_HI,       (0xffff)
 .else
-.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)
+.equ FLASH_HI,       (HI_TEMP-1)
 .endif
 
 ;;; Memory control defines
@@ -112,7 +112,7 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ IBUFLEN2,     0x0008   ; Outer write loop
 .equ IBUFMASK,     0xfc00
 
-.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
+.equ MS_PR_VAL, ((FCY/1000)-1)		      ; Timer value for 1 ms ticks
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART1 divisor
 .ifdecl BAUDRATE2
 .equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor

@@ -68,7 +68,7 @@
 
 \ Scale with triple number intermediate result
 : um*/ ( ud1 u1 u2 -- ud2)
-  >r ut* cwd r> ut/
+  >r ut* r> ut/
 ;
 \ Signed scale d1*n1/n2 with intermediate triple result
 : m*/ ( d1 n1 n2 -- d2 )

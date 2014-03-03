@@ -6,7 +6,6 @@
 .equ FLASH_SIZE,     0x15800 ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
 .equ RAM_SIZE,       0x2000  ; Ram size in bytes
-.equ EEPROM_SIZE,    0       ; Eeprom size
 
 .ifndecl IOL1WAY_OFF
 .equ IOL1WAY_OFF, 0xffff
@@ -24,8 +23,6 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NON
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 .equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
-
-.equ FCY, (FREQ_OSC/2)
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
@@ -115,10 +112,11 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NON
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE
-.if FLASH_SIZE > 0xffff
-.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+.equ HI_TEMP,        PFLASH+FLASH_SIZE
+.if HI_TEMP > 0xffff
+.equ FLASH_HI,       (0xffff)
 .else
-.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)  ;
+.equ FLASH_HI,       (HI_TEMP-1)
 .endif
 
 ;;; Memory control defines
@@ -132,7 +130,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NON
 .equ IBUFLEN2,       0x0008   ; Outer write loop
 .equ IBUFMASK,       0xfc00
 
-
+.equ FCY, (FREQ_OSC/2)
 .equ MS_PR_VAL, ((FCY/1000)-1)		; Timer value for 1 ms ticks
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1	; UART1 divisor
 .ifdecl BAUDRATE2

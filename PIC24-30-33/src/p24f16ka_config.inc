@@ -22,8 +22,6 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 0xc
 
-.equ FCY, (FREQ_OSC/2)
-
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
 
@@ -82,16 +80,15 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE
-.if FLASH_SIZE > 0xffff
-.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+.equ PEEPROM,        0x10000-EEPROM_SIZE
+.equ HI_TEMP,        PFLASH+EEPROM_SIZE+FLASH_SIZE
+.if HI_TEMP > 0xffff
+.equ FLASH_HI,       (PEEPROM-1)
 .else
-.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)
+.equ FLASH_HI,       (HI_TEMP-EEPROM_SIZE-1)
 .endif
 
-;;; Memory mapping prefix for EEPROM 
-.equ PEEPROM, 0x10000-EEPROM_SIZE
-
-;;; Meory control defines
+;;; Memory control defines
 .equ EEPROM_ERASE, 0x4058   ; Erase one word
 .equ EEPROM_WRITE, 0x4004	; Write one word
 .equ FLASH_ERASE,  0x4058	; Erase one row (64/96 bytes)
@@ -103,7 +100,7 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 .equ IBUFLEN2,     0x0001   ; Outer write loop
 .equ IBUFMASK,     0xffc0
 
-; Flash write delay
-.equ write_delay, 20
+.equ FCY, (FREQ_OSC/2)
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
-.equ MS_PR_VAL, (FCY/1000)			      ; Timer value for 1 ms ticks
+.equ MS_PR_VAL, (FCY/1000-1)		      ; Timer value for 1 ms ticks
+.equ write_delay, 20                      ; Flash write delay

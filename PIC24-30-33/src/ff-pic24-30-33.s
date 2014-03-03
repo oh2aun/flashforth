@@ -921,9 +921,9 @@ WARM_ABAUD2:
         rcall   DOEMIT
         .word   'O'          ; NOP when executed
 RQ_DIV0:
-        btsc    intcon1dbg, #DIV0ERR
+        btsc    intcon1dbg, #MATHERR
         rcall   DOEMIT
-        .word   'D'
+        .word   'M'
 RQ_ADDR:
         btsc    intcon1dbg, #ADDRERR
         rcall   DOEMIT
@@ -4395,7 +4395,7 @@ PAD:
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-;;;     .pword  paddr(PAD_L)+PFLASH
+        .pword  paddr(PAD_L)+PFLASH
 BASE_L:
         .byte   NFA|4
         .ascii  "base"
@@ -4406,7 +4406,7 @@ BASE:
 
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at higher adrs
-        .pword  paddr(PAD_L)+PFLASH
+        .pword  paddr(BASE_L)+PFLASH
 SOURCE_L:
         .byte   NFA|6
         .ascii  "source"

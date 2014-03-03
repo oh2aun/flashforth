@@ -266,7 +266,7 @@ allot      ( n -- )
 and        ( x1 x2 -- x3 )
            Bitwise and of x1 and x2
 
-base       ( a-addr )     User Variable
+base       ( -- a-addr )     User Variable
            Numeric conversion base
 
 begin      ( -- a-addr )                Compile Only
@@ -998,12 +998,12 @@ warm       ( -- )
            Reset Reasons displayed after start:
            S: Reset instruction
            E: External reset pin
-	   W: Watchdog reset
+           W: Watchdog reset
            U: Return stack underflow
-	   O: Return stack overflow
+           O: Return stack overflow
            B: Brown out reset
            P: Power on reset
-           D: Divide by zero Error
+           M: Math Error
            A: Address error
 
 while      (addr1 -- addr2 addr1 )       Compile Only

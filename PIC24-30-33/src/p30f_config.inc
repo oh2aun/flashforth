@@ -8,7 +8,7 @@
 .equ RAM_SIZE,       0x0800  ; Ram size in bytes
 .equ EEPROM_SIZE,    0x0400  ; Eeprom size
 
-config __FOSC, CSW_FSCM_OFF & FRC_PLL8
+config __FOSC, CSW_FSCM_OFF & FRC;_PLL8
 ;config __FOSC, HS;FRC; HS            ;Turn off clock switching and
                               ;fail-safe clock monitoring and
                               ;use the External HS Clock as the
@@ -24,7 +24,7 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 
 ;.equ FREQ_OSC, 16000000;           ; Max baudrate 19200 with this clock
-.equ FREQ_OSC, (7322000*8)			; Oscillator frequency
+.equ FREQ_OSC, (7322000)			; Oscillator frequency
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				; Serial baudrate UART1
@@ -98,31 +98,30 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
-;;; Memory mapping prefixes
-.equ PFLASH,         0x800+RAM_SIZE  
-.if FLASH_SIZE > 0xffff
-.equ FLASH_HI,       (0x10000-EEPROM_SIZE-1)
+;;; Memory mapping prefixes. Do not modify
+.equ PFLASH,         0x800+RAM_SIZE
+.equ PEEPROM,        0x10000-EEPROM_SIZE
+.equ HI_TEMP,        PFLASH+EEPROM_SIZE+FLASH_SIZE
+.if HI_TEMP > 0xffff
+.equ FLASH_HI,       (PEEPROM-1)
 .else
-.equ FLASH_HI,       (FLASH_SIZE-EEPROM_SIZE-1)  ;
+.equ FLASH_HI,       (HI_TEMP-EEPROM_SIZE-1)
 .endif
 
-;;; Memory mapping prefix for EEPROM
-.equ PEEPROM, 0x10000-EEPROM_SIZE
-
 ;;; Flash memory commands. Do not modify.
-.equ EEPROM_ERASE, 0x4044     
-.equ EEPROM_WRITE, 0x4004
-.equ FLASH_ERASE,  0x4041
-.equ FLASH_WRITE,  0x4001
-.equ PAIVT,        0x80
+.equ EEPROM_ERASE,   0x4044
+.equ EEPROM_WRITE,   0x4004
+.equ FLASH_ERASE,    0x4041
+.equ FLASH_WRITE,    0x4001
+.equ PAIVT,          0x80
 .equ IBUFSIZEL,      0x0040
 .equ IBUFSIZEH,      0x0020
 .equ IBUFLEN1,       0x0020
 .equ IBUFLEN2,       0x0001
 .equ IBUFMASK,       0xffc0
 
-.equ FCY, (FREQ_OSC/4)              ; CPU intruction frequency
-.equ MS_PR_VAL, (FCY/1000)	            ; Timer value for 1 ms ticks
+.equ FCY, (FREQ_OSC/4)                  ; CPU intruction frequency
+.equ MS_PR_VAL, ((FCY/1000)-1)          ; Timer value for 1 ms ticks
 .equ BAUD_DIV1, (FCY/16/BAUDRATE1)-1	; UART1 divisor
 .ifdecl BAUDRATE2
 .equ BAUD_DIV2, (FCY/16/BAUDRATE2)-1	; UART2 divisor

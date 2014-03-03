@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          02.03.2014                                        *
+;    Date:          03.03.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -384,6 +384,31 @@ irq_ms:
         subwfb  TMR3H, F, A
         bsf     T3CON, TMR3ON
         bcf     PIR2, TMR3IF, A
+#else
+#if MS_TMR == 4 ;******************************
+        btfss   PIR5, TMR4IF, A
+        bra     irq_ms_end
+        bcf     PIR5, TMR4IF, A
+#else
+#if MS_TMR == 5 ;******************************
+        btfss   PIR5, TMR5IF, A
+        bra     irq_ms_end
+        banksel T5CON
+        bcf     T5CON, TMR5ON, BANKED
+        movlw   low(tmr1ms_val)
+        subwf   TMR5L, F, BANKED
+        movlw   high(tmr1ms_val)
+        subwfb  TMR5H, F, BANKED
+        bsf     T5CON, TMR5ON, BANKED
+        bcf     PIR5, TMR5IF, A
+#else
+#if MS_TMR == 6 ;******************************
+        btfss   PIR5, TMR6IF, A
+        bra     irq_ms_end
+        bcf     PIR5, TMR6IF, A
+#endif
+#endif
+#endif
 #endif
 #endif
 #endif
@@ -1758,7 +1783,7 @@ RQ_DIVZERO:
         btfss   2, 0, A
         bra     RQ_STKFUL
         rcall   XSQUOTE
-        db      d'1',"D"
+        db      d'1',"M"
         rcall   TYPE
 RQ_STKFUL:
         btfss   0, STKFUL, A
@@ -2159,7 +2184,7 @@ WARM_ZERO_2:
 #endif
 #ifdef ANSELC
 #ifdef ANSC7
-        BANKSEL ANSELC
+        banksel ANSELC
         bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
 #endif
 #endif
@@ -2195,6 +2220,35 @@ WARM_ZERO_2:
         movwf   T3CON, A
         setf    TMR3H, A
         bsf     PIE2,TMR3IE, A
+#else
+#if MS_TMR == 4
+        ;; Timer 4 for 1 ms system tick
+        banksel T4CON
+        movlw   h'7d'      ; Prescale = 4, Postscale = 16
+        movwf   T4CON, BANKED
+        movlw   tmr2ms_val
+        movwf   PR4, BANKED
+        bsf     PIE5, TMR4IE, A
+#else
+#if MS_TMR == 5
+        ;; Timer 5 for 1 ms system tick
+        banksel T5CON
+        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T5CON, BANKED
+        setf    TMR5H, BANKED
+        bsf     PIE5,TMR5IE, A
+#else
+#if MS_TMR == 6
+        ;; Timer 6 for 1 ms system tick
+        banksel T6CON
+        movlw   h'7d'      ; Prescale = 4, Postscale = 16
+        movwf   T6CON, BANKED
+        movlw   tmr2ms_val
+        movwf   PR6, BANKED
+        bsf     PIE5, TMR6IE, A
+#endif
+#endif
+#endif
 #endif
 #endif
 #endif
@@ -3939,7 +3993,7 @@ PAD:
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-;;;     dw      L_PAD
+        dw      L_PAD
 L_BASE
         db      NFA|4,"base"
 BASE:
@@ -3948,7 +4002,7 @@ BASE:
 
 ; USER   n --        holds conversion radix
 ; 18 cycles
-        dw      L_PAD
+        dw      L_BASE
 L_USER:
         db      NFA|4,"user"
 USER:
