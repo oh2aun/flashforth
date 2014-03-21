@@ -6,29 +6,29 @@ Dictionary of FlashForth 5.0
 !p         ( addr -- )
            Store addr to p(ointer) register
 
-!p>r       ( addr -- )   Compile Only
+!p>r       ( addr -- )   COMPILE_ONLY
            Push contents of p to return stack and stor addr to p
 
-#          ( ud1 -- ud2 )  Compile Only
+#          ( ud1 -- ud2 )  COMPILE_ONLY
            Convert 1 digit to formatted numeric string
 
-#>         ( ud1 -- c-addr u )    Compile Only
+#>         ( ud1 -- c-addr u )  COMPILE_ONLY
            Leave address and count of formatted numeric string
 
-#s         ( ud1 -- ud2 )  Compile Only
+#s         ( ud1 -- ud2 )  COMPILE_ONLY
            Convert remaining digits to formatted numeric output
 
 '          ( -- xt )
            Parse word and find it in dictionary
 
 'emit      ( -- addr )  User Variable
-           EMIT vector. TX0, TX1 or TX2
+           EMIT vector. TX0, TX1, TX2 or TXU
 
 'key       ( -- addr )  User Variable
-           KEY vector.  TX0, TX1 or TX2
+           KEY vector.  RX0, RX1, TX2, or RXU
 
 'key?      ( -- addr )  User Variable
-           KEY? vector. TX0, TX1 or TX2
+           KEY? vector. RX0?, RX1?, TX2?, or RXU?
 
 'source    ( -- a-addr )     User Variable 
            Current input source
@@ -52,7 +52,7 @@ Dictionary of FlashForth 5.0
 +!         ( n addr -- )
            Add n to cell at addr.
 
-+loop      ( n -- )
++loop      ( n -- )  COMPILE_ONLY
            Add n to the loop index and terminate the loop if the limit has been reached.
 
 ,          ( x -- )
@@ -140,10 +140,10 @@ Dictionary of FlashForth 5.0
 :noname    ( -- addr )
            Define headerless forth code
 
-;          ( -- )        Compile Only
+;          ( -- )    COMPILE_ONLY
            End a colon definition
 
-;i         ( -- )        Compile Only
+;i         ( -- )    COMPILE_ONLY
            End a interrupt word
 
 <          ( n1 n2 -- flag )
@@ -181,11 +181,12 @@ Dictionary of FlashForth 5.0
            Convert a character to a graphic ASCII value.
            Non-graphic characters are converted to a dot.
 
->r         ( x -- ) ( R: -- x )  Compile Only
+>r         ( x -- ) ( R: -- x )  COMPILE_ONLY
            Push x from the parameter stack to the return stack
 
->xa        ( a-addr1 -- a-addr2 )  PIC24-30-33 Atmega
+>xa        ( a-addr1 -- a-addr2 )
            Convert a flash virtual address to real executable address.
+           PIC24-30-33 ATMEGA
 
 ?abort     ( flag c-addr u -- )
            Print message and abort if flag is false
@@ -193,7 +194,7 @@ Dictionary of FlashForth 5.0
 ?abort?    ( flag -- )
            If flag is false output ? and abort
 
-?do        ( limit index -- )
+?do        ( limit index -- )  COMPILE_ONLY
            Start a do loop which is not run if the arguemnts are equal
 
 ?dnegate   ( d n -- d )
@@ -217,14 +218,15 @@ Dictionary of FlashForth 5.0
 [          ( -- )
            Enter interpreter state
 
-[']        ( "name" -- )         Compile Only
+[']        ( "name" -- )   COMPILE_ONLY
            Compile xt of name as a literal
 
-[char]     ( "char" -- )         Compile Only
+[char]     ( "char" -- )   COMPILE_ONLY
            Compile inline ascii character
 
-[i         ( -- )                Compile Only
+[i         ( -- )   COMPILE_ONLY
            Enter Forth interrupt context
+           PIC18 PIC24-30-33
 
 \          ( -- )
            Skip rest of line
@@ -238,7 +240,7 @@ a>         ( -- x )
 abort      ( -- )
            Reset stack pointer and execute quit
 
-abort"     ( "string" -- )     Compile Only
+abort"     ( "string" -- )  COMPILE_ONLY
            Compile inline string and postpone ?abort
 
 abs        ( n -- n1 )
@@ -247,11 +249,12 @@ abs        ( n -- n1 )
 accept     ( c-addr +n -- +n' )
            Get line from terminal
 
-again      ( a-addr -- )                  Compile Only
+again      ( a-addr -- )  COMPILE_ONLY
            begin ... again
 
 aivt       ( -- )
            Activate the alternate interrupt vector table
+           PIC24
 
 align      ( -- )
            Align the current data section dictionary pointer
@@ -269,7 +272,7 @@ and        ( x1 x2 -- x3 )
 base       ( -- a-addr )     User Variable
            Numeric conversion base
 
-begin      ( -- a-addr )                Compile Only
+begin      ( -- a-addr )  COMPILE_ONLY
            begin ... again
            begin ... until
            begin ... while ... repeat
@@ -295,7 +298,7 @@ c@+        ( c-addr1 -- c-addr2 c )
 c,         ( c -- )
            Append c to the current data section
 
-case       ( n -- n )
+case       ( n -- n ) COMPILE_ONLY
 	   Start a case construct
 
 cell       ( -- n )
@@ -330,15 +333,19 @@ constant   ( x "name" -- )
 
 cq>        ( queue-addr -- c )
            Get a character from queue.
+           PIC24
 
 cq>?       ( queue-addr -- n )
            Get the amount of characters in the queue.
+           PIC24
 
 cq:        ( size "name" -- )
            Create a character queue
+           PIC24
 
 cq0        ( queue-addr -- )
            Initalise the queue.
+           PIC24
 
 cr         ( -- )
            Emit CR LF
@@ -349,6 +356,7 @@ create     ( "name" -- )
 
 cwd        ( -- )
            Clear the WatchDog counter.
+           PIC18 PIC24
            
 d+         ( d d -- d )
            Add double numbers
@@ -404,10 +412,10 @@ dinvert    ( ud -- ud )
 dnegate    ( d -- -d )
            Negate double number
 
-do         ( limit index --)
+do         ( limit index --) COMPILE_ONLY
            Start a do loop
            
-does>      ( -- )                   Compile Only
+does>      ( -- )  COMPILE_ONLY
            Define the runtime action of a created word.
 
 dp         ( -- addr )       Eeprom variable mirrored in ram
@@ -432,7 +440,7 @@ end        ( task-addr -- )
 eeprom     ( -- )
            Set data section context to eeprom
 
-else       ( addr1 -- addr2 )       Compile Only
+else       ( addr1 -- addr2 ) COMPILE_ONLY
            if ... else ... then
 
 emit       ( c -- )
@@ -442,14 +450,14 @@ emit       ( c -- )
 empty       ( -- )
            Reset all dictionary pointers.
 
-endcase    ( n -- )
+endcase    ( n -- ) COMPILE_ONLY
            End of case construct
 
-endit      ( -- )             COMPILE ONLY
+endit      ( -- ) COMPILE_ONLY
            Leave a for/next loop when next is encountered.
            Sets top of return stack to zero
 
-endof      ( -- )
+endof      ( -- ) COMPILE_ONLY
            of .. endof in case statement
          
 evaluate   ( c-addr n -- )
@@ -485,7 +493,7 @@ find       ( c-addr -- c-addr 0/1/-1 )
 fm/mod     (d n -- rem quot )
            Floored 32/16 -> 16-bit division
            
-for        ( u -- )              Compile Only
+for        ( u -- )   COMPILE_ONLY
            Loop u times. for ... next
            R@ gets the loop counter  u-1 ... 0
 
@@ -501,7 +509,7 @@ hex        ( -- )
 hi         ( -- u )
            High limit of the current data space memory.
 
-hold       ( c -- )      Compile Only
+hold       ( c -- )  COMPILE_ONLY
            Append char to formatted numeric string
 
 hp         ( -- a-addr )            User Variable
@@ -510,8 +518,9 @@ hp         ( -- a-addr )            User Variable
 i          ( -- n ) COMPILE_ONLY
            The loop index
 
-i]         ( -- )                   Compile Only
+i]         ( -- )   COMPILE_ONLY
            Exit Forth interrupt context
+           PIC18 PIC24
 
 i,         ( x -- )
            Append x to the flash data section.
@@ -522,7 +531,7 @@ ic,        ( c -- )
 idle       ( -- )
            Cpu idle mode is allowed
            
-if         ( -- a-addr )        Compile Only 
+if         ( -- a-addr )  COMPILE_ONLY 
            if ... else ... then
 
 iflush     ( -- )
@@ -549,7 +558,7 @@ int!       ( xt vector-no -- )
            PIC30: Alternate interrupt vector table in flash.
            PIC33: Alternate interrupt vector table in ram.
            PIC24: Alternate interrupt vector table in ram.
-           Atmega: Interrupt vector table in ram.
+           ATMEGA: Interrupt vector table in ram.
 
 interpret  ( c-addr u - )
            Interpret the buffer
@@ -562,6 +571,7 @@ is         ( x "name" -- )
 
 ivt        ( -- )
            Activate the normal interrupt vector table
+           PIC24
 
 j          ( -- n )  COMPILE ONLY
            The outer loop index
@@ -576,21 +586,23 @@ key?       ( -- flag )
 latest       ( -- a-addr )
            Variable holding the address of the latest defined word
 
-leave      ( -- )
-           Leave a do loop immediately
+leave      ( -- )  COMPILE_ONLY
+           Leave a DO LOOP immediately
 
 literal    ( x -- )
            Compile a literal into the dictionary
 
 load       ( -- n )
            Get the CPU load in percent.
-           The integration interval is 256 mS.
+           The integration interval is 256 milliseconds.
 
 load+      ( -- )
-           Enable on the load led. Atmega only.
+           Enable on the load led.
+           ATMEGA
 
 load-      ( -- )
-           Disable on the load led. Atmega only.
+           Disable on the load led.
+           ATMEGA
 
 loop       ( -- )
            Increment the loop index and terminate the loop if the limit has been reached.
@@ -638,7 +650,7 @@ n=         ( c-addr nfa u -- flag )
 negate     ( n -- -n )
            negate n
 
-next       ( bra-addr bc-addr -- )      Compile Only
+next       ( bra-addr bc-addr -- )   COMPILE_ONLY
            for ... next
 
 n>c        ( nfa -- cfa )
@@ -657,7 +669,7 @@ number?    ( c-addr -- n/d/c-addr flag )
            % is binary prefix
            Flag: 0=error, 1=double, 2=single
 
-of         ( n -- )
+of         ( n -- )   COMPILE_ONLY
            Branch for value n in case statement
 
 operator   ( -- addr )
@@ -706,7 +718,7 @@ pause      ( -- )
 place      ( addr1 u addr2 -- )
            Place string from addr1 to addr2 as a counted string
 
-postpone   ( "name" -- )           Compile Only
+postpone   ( "name" -- )          COMPILE_ONLY
            Postpone action of immediate word
 
 prompt     ( -- a-addr )           Eeprom defer
@@ -716,13 +728,13 @@ prompt     ( -- a-addr )           Eeprom defer
 quit       ( -- )
            Interpret from current input.
 
-r>         ( -- x ) ( R: x -- )   Compile Only
+r>         ( -- x ) ( R: x -- )   COMPILE_ONLY
            Pop x from the return stack to the parameter stack
 
-r>p        ( -- )                 Compile Only
+r>p        ( -- )                 COMPILE_ONLY
            Pop from return stack to p register
 
-r@         ( -- x ) ( R: x -- x ) Compile Only
+r@         ( -- x ) ( R: x -- x ) COMPILE_ONLY
            Copy x from the return stack to the parameter stack
 
 r0         ( -- a-addr )          User variable
@@ -731,10 +743,10 @@ r0         ( -- a-addr )          User variable
 ram        ( -- )
            Set data section context to ram
 
-rdrop      ( -- )             Compile Only
+rdrop      ( -- )              COMPILE_ONLY
            Remove top elemnt from return stack
 
-repeat     ( addr2 addr1 -- )    Compile Only
+repeat     ( addr2 addr1 -- )  COMPILE_ONLY
            begin ... while ... repeat
 
 rot        ( x1 x2 x3 -- x2 x3 x1 )
@@ -749,9 +761,11 @@ run        ( task-addr -- )
 
 rx0        ( -- c )
            Receive a character from UART0.
+           ATMEGA
 
 rx0?       ( -- f )
            Leave TRUE if the UART0 receive buffer is not empty.
+           ATMEGA
 
 rx1        ( -- c )
            Receive a character from UART1.
@@ -760,22 +774,28 @@ rx1?       ( -- f )
            Leave TRUE if UART1 receive buffer is not empty.
 
 rx1q       ( -- queue-addr )
-           Leave the address of the queue for UART1. PIC24-30-33
+           Leave the address of the queue for UART1. 
+           PIC24-30-33
 
 rx2        ( -- c )
            Receive a character from UART2.
+           PIC24-30-33
 
 rx2?       ( -- f )
            Leave TRUE if UART2 receive buffer is not empty.
+           PIC24-30-33
 
 rx2q       ( -- queue-addr )
-           Leave the address of the queue for UART2. PIC24-30-33
+           Leave the address of the queue for UART2.
+           PIC24-30-33
 
 rxu        ( -- c )
-           Receive a character from USB UART. PIC18 USB
+           Receive a character from USB UART.
+           PIC18 USB
 
 rxu?       ( -- f )
-           Leave TRUE if USB UART receive buffer is not empty. PIC18 USB
+           Leave TRUE if USB UART receive buffer is not empty. 
+           PIC18 USB
 
 s>d        ( n -- d )
            Sign extend single to double precision number
@@ -812,10 +832,10 @@ sp@        ( -- addr )
 sp!        ( addr -- )
            Set the parameter stack pointer to addr
 
-s"         ( "text" -- )           Compile Only
+s"         ( "text" -- )   COMPILE_ONLY
            Compile string into flash
 
-."         ( "text" -- )           Compile Only
+."         ( "text" -- )   COMPILE_ONLY
            Compile string to print into flash
 
 source     ( -- c-addr u )
@@ -828,7 +848,7 @@ spaces     ( n -- )
            Emit n space characters
 
 state      ( -- flag )         
-           Compilation state. Flag that can only be changed by [ ] 
+           Compilation state. State can only be changed by [ and ] 
 
 swap       ( x1 x2 -- x2 x1 )
            Swap two top stack items
@@ -839,14 +859,13 @@ task	   ( -- addr )
 task:      ( tibsize stacksize rstacksize addsize -- )
            Define a task
            HINT:
-           Use RAM xxx ALLOT to leave space for the PAD
-           of the prevously defined task. 
+           Use RAM xxx ALLOT to leave space for PAD if it is needed. 
            The OPERATOR task does not use PAD.  
 
 tinit      ( taskloop-addr task-addr -- )
            Initialise the user area and link it to a task loop
 
-then       ( addr -- )          Compile Only
+then       ( addr -- )   COMPILE_ONLY
            if ... else ... then
 
 tib        ( -- addr )     User variable
@@ -859,7 +878,7 @@ ti#        ( -- n )        Task constant
            Size of terminal input buffer
 
 ticks      ( -- u )
-           System ticks
+           System ticks. One tick per millisecond.
 
 to         ( x "name" -- )
            Store x into value "name".
@@ -869,29 +888,35 @@ true       ( -- -1 )
 tuck       ( x1 x2 -- x2 x1 x2 )
            Insert x2 below x1 in the stack
 
-turnkey    ( -- addr )           Eeprom value mirrored in ram
+turnkey    ( -- addr )
            Vector for user startup word
+           Eeprom value cached in ram
 
 type       ( c-addr u -- )
            Type line to terminal. u < 256
 
 tx0        ( c -- )
            Send a character to UART 0.
+           ATMEGA
 
 tx1        ( c -- )
            Send a character to UART 1.
 
 tx1q       ( -- queue-addr )
-           Leave the address of the queue for UART1. PIC24-30-33
+           Leave the address of the queue for UART1.
+           PIC24-30-33
 
 tx2        ( c -- )
            Send a character to UART 2.
+           PIC24-30-33
 
 tx2q       ( -- queue-addr )
-           Leave the address of the queue for UART2. PIC24-30-33
+           Leave the address of the queue for UART2.
+           PIC24-30-33
 
 txu        ( c -- )
-           Send a character to USB UART. PIC18 USB
+           Send a character to USB UART.
+           PIC18 USB
 
 u0-        ( -- )
            Disable flow control for UART0 serial interface
@@ -957,7 +982,7 @@ umax       ( u1 u2 -- u )
 umin       ( u1 u2 -- u )
            Leave the unsigned smaller of u1 and u2.
 
-until      ( flag -- )    Compile only
+until      ( flag -- )   COMPILE_ONLY
            begin..until
 
 up         ( -- a-addr )
@@ -968,15 +993,19 @@ user       ( +n "name" -- )
 
 uq*        ( ud ud -- uq )
            Multiply two double numbers to a quad result
+           PIC18
 
 uq/mod     ( qu du -- du-rem du-quot )
            Divide a 64 bit unsigned number with a 32 bit unsigned number
+           PIC18
 
 d>q        ( d -- q )
            Extend a double number to a quad number
+           PIC18
 
 qm+        ( q d -- q )
            Add a double number to quad number
+           PIC18
 
 ut*        ( ud u -- ut )
            Multiply single number with double number
@@ -1006,7 +1035,7 @@ warm       ( -- )
            M: Math Error
            A: Address error
 
-while      (addr1 -- addr2 addr1 )       Compile Only
+while      (addr1 -- addr2 addr1 )  COMPILE_ONLY
            begin ... while ... repeat
 
 within     ( x xl xh -- flag )
@@ -1016,15 +1045,17 @@ word       ( c -- c-addr )
            Parse a word in TIB and write the length into TIB
            Leave the address of the length byte on the stack.
 
-wmove      ( addr1 addr2 u -- ) PIC24
+wmove      ( addr1 addr2 u -- )
            Move u cells from addr1 to addr2
+           PIC24-30-33
 
 words      ( -- )
            List words
 
-xa>        ( a-addr1 -- a-addr2 ) PIC24-30-33 Atmega
+xa>        ( a-addr1 -- a-addr2 )
            Convert a real executable address to virtual flash address
- 
+           PIC24-30-33 ATMEGA
+
 xor        ( x1 x2 -- x3 )
            Xor bitwise x1 with x2.
 

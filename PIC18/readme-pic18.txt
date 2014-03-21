@@ -4,7 +4,7 @@ FlashForth PIC18 readme file
 FlashForth is licensed acording to the GNU General Public License
 
 Look in the user guide http://flashforth.sourceforge.net, 
-and in the word list words-all.txt for further information
+and in the word list wordsAll.txt for further information
 
 
 REVISION HISTORY
@@ -12,33 +12,32 @@ REVISION HISTORY
 
 FlashForth V5.0
 ----------------
-- DO ?DO LEAVE UNLOOP I J LOOP +LOOP
-- Old LEAVE used with FOR NEXT has chaned to ENDIT
-- CON changed to CONSTANT (Inline code)
-- CONSTANT changed to CO: (uses DOCREATE)
-- IRQ changed to INT!
-- The configuration file p18f-main.cfg syntax changed
-- HI prints the highest available address for each memory type
-- <> returns well formed flag
-- Quad and triple precision math words in qmath.txt
-- .FREE prints the available free memory of each type.
-- Default return stack save area increased to 31 cells.
-- ?ABORT logic inverted due to alignement with standard forth.
-- Error messages ALREADY DEFINED and COMPILE ONLY.
-- Write to unimplemented flash prevented. This prevents USB PICs from hanging.
-- Print out start reason when FF starts. Restart reasons are
+- ALL: DO ?DO LEAVE UNLOOP I J LOOP +LOOP
+- ALL: Old LEAVE used with FOR NEXT has changed to ENDIT
+- ALL: CON changed to CONSTANT (Inline code)
+- ALL: CONSTANT changed to CO: (uses DOCREATE)
+- PIC18: IRQ changed to INT!
+- PIC18: The configuration file p18f-main.cfg syntax changed
+- ALL: HI prints the highest available address for each memory type
+- ALL: <> returns well formed flag
+- PIC18:Quad and triple precision math words in qmath.txt
+- ALL: .FREE prints the available free memory of each type.
+- PIC18:Default return stack save area increased to 31 cells.
+- ALL: Error messages ALREADY DEFINED and COMPILE ONLY.
+- PIC18:Write to unimplemented flash prevented. This prevents USB PICs from hanging.
+- ALL: Print out restart reason when FF starts. Restart reasons are
   P = Power on  reset
   B = Brown out reset
   W = Watchdog timeout reset
   R = Reset Instruction
   F = HW stack full
   E = HW stack empty
-- Support for PIC18(L)F2X/4XK22 devices
-- MPLABX project files.
-- Smaller return stack usage in interrupts and um/mod
-- Remove flash write verification. Not needed in practice. Flash write has never failed.
-- Save PRODL:PRODH  during interrupts. Multiplications are now interrupt safe.
-- Load independent drift free TICKS from TIMER1 and TIMER3.
+- PIC18:Support for PIC18(L)F2X/4XK22 devices
+- PIC:MPLABX project files.
+- PIC18:Smaller return stack usage in interrupts and um/mod
+- PIC18:Save PRODL:PRODH  during interrupts. Multiplications are now interrupt safe.
+- PIC18:Load independent drift free TICKS from TIMER1, TIMER3 and TIMER5.
+- PIC18:System timer using TIMER4, TIMER5 or TIMER6 also supported.
 - New directory structure
 
 

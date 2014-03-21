@@ -3,7 +3,8 @@ FlashForth PIC24-30-33 readme file
 
 FlashForth is licensed acording to the GNU General Public License
 
-Look in the user guide at http://flashforth.sourceforge.net/ for further information.
+Look in the user guide http://flashforth.sourceforge.net, 
+and in the word list wordsAll.txt for further information.
 
 
 REVISION HISTORY

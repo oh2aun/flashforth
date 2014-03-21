@@ -3569,6 +3569,7 @@ ONE:
         mlit    #1
         return
 
+; ACCEPT  c-addr +n -- +n'  get line from terminal
         .pword  paddr(ONE_L)+PFLASH
 ACCEPT_L:
         .byte   NFA|6
@@ -4779,7 +4780,7 @@ SIGNQ:
         rcall   SLASHSTRING
         pop     [++W14]
 QSIGN1: return
-.if 1
+
 ; >NUMBER  0 0  adr u -- ud.l ud.h  adr' u'
 ;                       convert string to number
         .pword  paddr(SIGNQ_L)+PFLASH
@@ -4905,105 +4906,6 @@ QNUM1:                          ; single precision dumber
 QNUM3:  
         return
 
-.else
-
-; >NUMBER  n adr u -- n' adr' u'
-;                       convert string to number
-        .pword  paddr(SIGNQ_L)+PFLASH
-TONUMBER_L:
-        .byte   NFA|7
-        .ascii  ">number"
-        .align  2
-TONUMBER:
-TONUM1:
-        cp0     [W14]      ; n adr u
-        bra     z, TONUM3
-        rcall   OVER               ; n adr u adr 
-        rcall   CFETCH             ; n adr u c
-        rcall   DIGITQ             ; n adr u m f
-        cp0     [W14--]            ; n adr u m
-        bra     nz, TONUM2
-        sub     W14, #2, W14       ; n adr u
-        bra     TONUM3
-TONUM2:
-        push    [W14--]            ; n adr u 
-        rcall   ROT                ; adr u n 
-        rcall   BASE
-        rcall   FETCH              ; adr u n base  
-        rcall   STAR               ; adr u n''  
-        pop     [++W14]            ; adr u n'' m
-        rcall   PLUS               ; adr u n' 
-        rcall   ROT
-        rcall   ROT                ; n' adr u  
-        rcall   ONE
-        rcall   SLASHSTRING
-        bra     TONUM1
-TONUM3: 
-        return
-
-BASEQV:   
-        .word      handle(DECIMAL)+PFLASH
-        .word      handle(HEX)+PFLASH
-        .word      handle(BIN)+PFLASH
-; NUMBER?  c-addr -- n -1      string->number
-;                 -- c-addr 0  if convert error
-        .pword  paddr(TONUMBER_L)+PFLASH
-NUMBERQ_L:
-        .byte   NFA|7
-        .ascii  "number?"
-        .align  2
-NUMBERQ:
-        mov     [W14++], [W14]  ; a a
-        rcall   FALSE_          ; a a 0
-        rcall   SWOP            ; a 0 a
-        rcall   CFETCHPP        ; a 0 a' u
-        rcall   SIGNQ           ; a 0 a' u f
-        push    [W14--]         ; a 0 a' u
-        rcall   BASE
-        rcall   FETCH
-        push    [W14--]        ; a 0 a' u
-        rcall   OVER
-        rcall   CFETCH
-        mlit    '#'
-        rcall   MINUS
-        mov     [W14++], [W14]      ; dup
-        mlit    3
-        rcall   ULESS
-        cp0     [W14--]
-        bra     z, BASEQ1
-        sl      [W14], [W14]        ; CELLS
-        mlit    handle(BASEQV)+PFLASH
-        rcall   PLUS
-        rcall   FEXECUTE
-        rcall   ONE
-        rcall   SLASHSTRING
-        bra     BASEQ2
-BASEQ1:
-        sub     W14, #2, W14
-BASEQ2: 
-        rcall   TONUMBER        ; a n a' u
-        pop     [++W14]         ; a n a' u oldbase
-        rcall   BASE            ; a n a' u oldbase addr
-        rcall   STORE           ; a n a' u
-        cp0     [W14--]         ; a n a'
-        bra     z, QNUM1
-        pop     [++W14]         ; a n a' f
-        sub     W14, #6, W14        ; 3drop
-        rcall   FALSE_
-        bra     QNUM3
-QNUM1:
-        sub     W14, #2, W14    ; a n
-        mov     [W14--], [W14]  ; n
-        pop     [++W14]         ; n f
-        cp0     [W14--]
-        bra     z, QNUM2
-        neg     [W14], [W14]
-QNUM2:  
-        rcall   TRUE_
-QNUM3:  
-        return
-
-.endif
 ; TIBSIZE  -- n                      size of TIB
 ; CONSTANT
         .pword  paddr(NUMBERQ_L)+PFLASH
@@ -5084,8 +4986,7 @@ DBG1:
         rcall   EMIT
         goto    DOTS
 .endif
-; -------------------------------------------------------
-;nop
+; ------------------------------------------------------
 ;  INTERPRET  i*x c-addr u -- j*x   interpret given buffer
         .pword  paddr(INQ_L)+PFLASH
 INTERPRET_L:
@@ -5134,8 +5035,8 @@ INTER11:
         rcall   EQUAL
         cp0     [W14--]
         btsc    SRL, #Z
-        bclr    iflags, #tailcall  ; allow tailcall optimisation
-        bclr    iflags, #noclear ; dont clear flags in case of \
+        bclr    iflags, #tailcall   ; allow tailcall optimisation
+        bclr    iflags, #noclear    ; dont clear flags in case of \
         mov     [W14++], [W14]      ; dup
         mlit    handle(BSLASH)+PFLASH
         rcall   EQUAL

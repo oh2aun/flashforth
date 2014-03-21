@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      double.txt                                      *
-\    Date:          31.12.2013                                      *
+\    Filename:      2literal.txt                                    *
+\    Date:          21.03.2013                                      *
 \    FF Version:    5.0                                             *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
@@ -11,9 +11,3 @@
 
 : 2literal ( x x -- )
   swap postpone literal postpone literal postpone ; immediate
-
-: 2constant ( x x "name" -- )
-  swap constant postpone literal ;
-
-: 2variable ( "name" -- )
-  variable cell allot ;
