@@ -28,14 +28,14 @@ $0100 as1 movlb,        ( k -- )
     0    \ Access ram
   then
 ;
-\ Define a word that sets a bit in ram
+\ Define a word that clears a bit in ram
 \ Can be inlined
 ( port bit "name" -- )
 : bit0:
   (bit) bcf, $12 i, postpone [
 ;
 
-\ Define a word that clears a bit in ram
+\ Define a word that sets a bit in ram
 \ Can be inlined
 ( port bit "name" -- )
 : bit1:
