@@ -280,6 +280,17 @@ begin      ( -- a-addr )  COMPILE_ONLY
 bin        ( -- )
            Set base to binary
 
+bit0:      ( c-addr bitno "name" -- )
+           Define a word that clears a bit.
+           The defined word can be inlined.
+
+bit1:      ( c-addr bitno "name" -- )
+           Define a word that sets a bit
+           The defined word can be inlined.
+
+bit?:      ( c-addr bitno "name" -- flag )
+           Define a word that tests a bit.
+
 bl         ( -- c )
            Ascii space
 
@@ -512,7 +523,7 @@ hi         ( -- u )
 hold       ( c -- )  COMPILE_ONLY
            Append char to formatted numeric string
 
-hp         ( -- a-addr )            User Variable
+hp         ( -- a-addr )  USER
            Hold pointer for formatted numeric output
 
 i          ( -- n ) COMPILE_ONLY
@@ -520,7 +531,7 @@ i          ( -- n ) COMPILE_ONLY
 
 i]         ( -- )   COMPILE_ONLY
            Exit Forth interrupt context
-           PIC18 PIC24
+           PIC18 PIC24-30-33
 
 i,         ( x -- )
            Append x to the flash data section.
@@ -737,7 +748,7 @@ r>p        ( -- )                 COMPILE_ONLY
 r@         ( -- x ) ( R: x -- x ) COMPILE_ONLY
            Copy x from the return stack to the parameter stack
 
-r0         ( -- a-addr )          User variable
+r0         ( -- a-addr )          USER
            Bottom of return stack
 
 ram        ( -- )
@@ -868,10 +879,10 @@ tinit      ( taskloop-addr task-addr -- )
 then       ( addr -- )   COMPILE_ONLY
            if ... else ... then
 
-tib        ( -- addr )     User variable
+tib        ( -- addr )     USER
            Address of the terminal input buffer
 
-tiu        ( -- addr )     User variable
+tiu        ( -- addr )     USER
            Terminal input buffer pointer
 
 ti#        ( -- n )        Task constant
@@ -1315,8 +1326,8 @@ again,  ( back-addr -- )
 until,  ( back-addr cc -- )
 
 
-PIC24-30-33 assembler
-=====================
+PIC24-30-33 assembler (partial)
+===============================
 rcall,     ( rel-addr -- )
 bra,       ( cc rel-addr -- )
 return,    ( -- )
