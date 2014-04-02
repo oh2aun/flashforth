@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          02.03.2014                                        *
+;    Date:          02.04.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -3440,7 +3440,6 @@ WORDS_L:
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-        rcall   CR
         rcall   LATEST_
         rcall   FETCH_A
 WDS1:   rcall   DUP
@@ -4824,7 +4823,7 @@ RX0Q:
 ;endif
 IUPDATEBUF:
         mov     t0, iaddrh
-        cpi     t0, 0xe0       ; Dont allow kernel writes
+        cpi     t0, high(FLASH_HI+1)       ; Dont allow kernel writes
         brcc    ISTORERR
         mov     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)

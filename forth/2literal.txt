@@ -11,3 +11,4 @@
 
 : 2literal ( x x -- )
   swap postpone literal postpone literal postpone ; immediate
+
