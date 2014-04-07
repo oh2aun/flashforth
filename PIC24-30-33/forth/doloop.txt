@@ -12,7 +12,7 @@
 -doloop
 marker -doloop
 
-ram here constant ind inlined 2 allot
+ram variable ind inlined
 
 : compileonly $10 shb ; \ Make word compile only
 
