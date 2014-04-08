@@ -1,0 +1,61 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      bit.txt                                           *
+\    Date:          08.04.2014                                        *
+\    FF Version:    5.0                                               *
+\    MCU:           Atmega                                            *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ Words for manipulating bits in ram.
+\ The I/O adressing is not supported.
+\ Memory mapped addresses of I/O ports must be used.
+\ Bit has value 0..7
+
+-bit
+marker -bit
+
+\ Define a word that clears a bit in ram
+\ The defined word can be inlined
+( c-addr bit "name" -- )
+: bit0:
+  : 
+  $9100 i, over i,    \ lds r16 c-addr
+  $fe swap lshift $ff and
+  dup $4 lshift or $f0f and
+  $7000 or i,         \ andi r16, bitmask
+  $9300 i, i,         \ sts c-addr r16 
+  $9508 i,            \ return
+  postpone [
+;
+
+\ Define a word that sets a bit in ram
+\ The defined word can be inlined
+( c-addr bit "name" -- )
+: bit1:
+  : 
+  $9100 i, over i,    \ lds r16 c-addr
+  $1 swap lshift
+  dup $4 lshift or $f0f and
+  $6000 or i,         \ ori r16, ~bitmask
+  $9300 i, i,         \ sts c-addr r16 
+  $9508 i,            \ return
+  postpone [
+;
+
+\ Define a word that leaves a true flag if a bit in ram is one
+\ and a false flag if a bit is zero.
+\ Can NOT be inlined
+( c-addr bit "name" -- )
+: bit?:
+  :
+  postpone true 
+  $9100 i, swap i,    \ lds r16 c-addr
+  $ff00 or i,         \ sbrs r16, bit
+  postpone 1+
+  $9508 i,            \ return
+  postpone [
+;
+

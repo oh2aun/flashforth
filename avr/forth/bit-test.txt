@@ -1,0 +1,20 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      bit-test.txt                                      *
+\    Date:          08.04.2014                                        *
+\    FF Version:    5.0                                               *
+\    MCU:           Atmega                                            *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ Test words for manipulating bits in ram
+\ Needs bit.txt
+ram variable bits
+
+bits 3 bit0: bits3off
+bits 3 bit1: bits3on
+bits 3 bit?: bits3?
+
+

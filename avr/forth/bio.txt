@@ -1,0 +1,79 @@
+\ *********************************************************************
+\                                                                     *
+\    Filename:      bio.txt                                           *
+\    Date:          08.04.2014                                        *
+\    FF Version:    5.0                                               *
+\    MCU:           Atmega                                            *
+\    Copyright:     Mikael Nordman                                    *
+\    Author:        Mikael Nordman                                    *
+\ *********************************************************************
+\    FlashForth is licensed acording to the GNU General Public License*
+\ *********************************************************************
+\ Words for manipulating bits in I/O registers.
+\ The I/O adressing is not supported.
+\ I/O adress space (0..$3f) must be used.
+\ Bit has value 0..7
+
+-bio
+marker -bio
+
+\ Define a word that clears a bit in I/O register
+\ The defined word can be inlined
+( io-addr bit "name" -- )
+: bio0:
+  :
+  over $20 < if 
+    swap 3 lshift or $9800 or i, \  cbi io-addr, bit
+  else
+    over dup $5 lshift or $60f and
+    $b100 or i,         \ in  r16 io-addr
+    $fe swap lshift $ff and
+    dup $4 lshift or $f0f and
+    $7000 or i,         \ andi r16, bitmask
+    dup $5 lshift or $60f and
+    $b900 or i,         \ out io-addr r16 
+  then
+  $9508 i,            \ return
+  postpone [
+;
+
+
+\ Define a word that sets a bit in I/O register
+\ The defined word can be inlined
+( c-addr bit "name" -- )
+: bio1:
+  :
+  over $20 < if 
+    swap 3 lshift or $9a00 or i, \  sbi io-addr, bit
+  else
+    over dup $5 lshift or $60f and
+    $b100 or i,         \ in  r16 io-addr
+    $1 swap lshift
+    dup $4 lshift or $f0f and
+    $6000 or i,         \ ori r16, ~bitmask
+    dup $5 lshift or $60f and
+    $b900 or i,         \ out io-addr r16 
+  then
+  $9508 i,            \ return
+  postpone [
+;
+\ Define a word that leaves a true flag if a bit in I/O register is one
+\ and a false flag if a bit is zero.
+\ Can NOT be inlined
+( c-addr bit "name" -- )
+: bio?:
+  :
+  postpone true 
+  over $20 < if 
+    swap 3 lshift or $9b00 or i, \  sbis io-addr, bit
+  else
+    swap dup $5 lshift or $60f and
+    $b100 or i,         \ in  r16 io-addr
+    $ff00 or i,         \ sbrs r16, bit
+  then
+  postpone 1+
+  $9508 i,            \ return
+  postpone [
+;
+
+
