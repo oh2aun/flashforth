@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          01.03.2014                                        *
+;    Date:          13.04.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1043,15 +1043,14 @@ PAUSE2:
         mov     W13, [W0+upsave]    ; Save P pointer
         mov     [W0+ulink], W0      ; Set UP
 
+        disi    #7
         setm    SPLIM               ; Disable Return Stack overflow protection
-        disi    #4
         mov     W0, upcurr
         mov     [W0+upsave], W13    ; Restore P pointer
         mov     [W0+ursave], W15    ; Restore RP
-        mov     [W0+ussave], W14    ; Restore SP W14
-        
         mov     [W0+us0], W1        ; Set SPLIM
         mov     W1, SPLIM
+        mov     [W0+ussave], W14    ; Restore SP W14
         return
 
         .pword   paddr(PAUSE_L)+PFLASH
