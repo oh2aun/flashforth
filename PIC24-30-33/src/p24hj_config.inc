@@ -31,7 +31,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NON
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -78,11 +78,11 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS; POSCMD_NON
 .equ TURNKEY_DELAY, 2000  ; milliseconds
 
 ; UART buffer sizes
-.equ TX1_BUF_SIZE, 16
+.equ TX1_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 32
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 16
+.equ TX2_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 32
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 

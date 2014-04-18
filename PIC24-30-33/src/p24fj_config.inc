@@ -64,11 +64,11 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ TURNKEY_DELAY, 2000  ; milliseconds
 
 ; UART buffer sizes
-.equ TX1_BUF_SIZE, 16
+.equ TX1_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 32
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 16
+.equ TX2_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 32
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 

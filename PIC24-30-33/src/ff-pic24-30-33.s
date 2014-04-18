@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          13.04.2014                                        *
+;    Date:          18.04.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -136,12 +136,14 @@ ibufh:      .space IBUFSIZEH
 
 intcon1dbg:  .space 2
 
+.if TX1_BUF_SIZE > 0
 txqueue1:
 tbuf_len1:   .space 2
 tbuf_wr1:    .space 2
 tbuf_rd1:    .space 2
 tbuf_lv1:    .space 2
 tbuf1:       .space TX1_BUF_SIZE
+.endif
 
 rxqueue1:
 rbuf_len1:   .space 2
@@ -152,13 +154,14 @@ rbuf1:       .space RX1_BUF_SIZE
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
+.if TX2_BUF_SIZE > 0
 txqueue2:
 tbuf_len2:   .space 2
 tbuf_wr2:    .space 2
 tbuf_rd2:    .space 2
 tbuf_lv2:    .space 2
 tbuf2:       .space TX2_BUF_SIZE
-
+.endif
 rxqueue2:
 rbuf_len2:   .space 2
 rbuf_wr2:    .space 2
@@ -321,6 +324,8 @@ U1_SKIP_FC_1:
         bra     n, __U1RXInterrupt3
 .if FC1_TYPE == 1
 __U1RXInterrupt2:
+        btsc    iflags, #ixoff1
+        bra     U1_SKIP_FC_2
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
@@ -351,6 +356,7 @@ U1RX_ERR1:
         mov     W0, U1TXREG
         bra     __U1RXInterrupt3
 
+.if TX1_BUF_SIZE > 0
 __U1TXInterrupt:
         push.s
 .ifdef PEEPROM
@@ -368,6 +374,7 @@ __U1TXInterrupt0:
         mov     [W14--], W0
         mov     W0, U1TXREG
         bra     __U1RXTXIRQ_END
+.endif
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -409,6 +416,8 @@ U2_SKIP_FC_1:
         bra     n, __U2RXInterrupt3
 .if FC2_TYPE == 1
 __U2RXInterrupt2:
+        btsc    iflags, #ixoff2
+        bra     U2_SKIP_FC_2
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2
@@ -432,6 +441,7 @@ U2RX_ERR1:
         mov     W0, U2TXREG
         bra     __U2RXInterrupt3
 
+.if TX2_BUF_SIZE > 0
 __U2TXInterrupt:
         push.s
 .ifdef PEEPROM
@@ -449,6 +459,7 @@ __U2TXInterrupt0:
         mov     [W14--], W0
         mov     W0, U2TXREG
         bra     __U1RXTXIRQ_END
+.endif
 .endif
 .endif
 ;*******************************************************************
@@ -713,7 +724,7 @@ WARM:
         MOV     W0, [++W14]
 
         clr     W0              ; Fill operator return and parameter stacks with 0x00
-        mov     #txqueue1, W14  ; Dont overwrite INTCONDBG
+        mov     #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
         mov     #PFLASH, W1
 FILL_RAM:
         mov.w   W0, [W14++]
@@ -739,10 +750,11 @@ WARM_FILL_IVEC:
 .endif
 
 WARM_0:
-
 ; Init the serial TX buffer
+.if TX1_BUF_SIZE > 0
         rcall   U1TXQUEUE
         rcall   CQUEUEZ
+.endif
 ; Init the serial RX buffer
         rcall   U1RXQUEUE
         rcall   CQUEUEZ
@@ -750,8 +762,10 @@ WARM_0:
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
 ; Init the serial TX buffer
+.if TX2_BUF_SIZE > 0
         rcall   U2TXQUEUE
         rcall   CQUEUEZ
+.endif
 ; Init the serial RX buffer
         rcall   U2RXQUEUE
         rcall   CQUEUEZ
@@ -826,7 +840,7 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .ifdecl UTXISEL1
-        bset    U1STA, #UTXISEL0
+        bset    U1STA, #UTXISEL1
 .else
         bset    U1STA, #UTXISEL
 .endif
@@ -849,8 +863,9 @@ WARM_ABAUD1:
 .endif
 .endif
         bset    IEC0, #U1RXIE
+.if TX1_BUF_SIZE > 0
         bset    IEC0, #U1TXIE
-
+.endif
 ;;; Initialise UART2
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -865,8 +880,8 @@ WARM_ABAUD1:
         mov.b   WREG, RPOR0+U2TXPIN
 .endif
        bclr    PMD1, #U2MD
-.ifdecl UTXISEL0
-        bset    U2STA, #UTXISEL0
+.ifdecl UTXISEL1
+        bset    U2STA, #UTXISEL1
 .else
         bset    U2STA, #UTXISEL
 .endif
@@ -889,7 +904,9 @@ WARM_ABAUD2:
 .endif
 .endif
         bset    IEC1, #U2RXIE
+.if TX2_BUF_SIZE > 0
         bset    IEC1, #U2TXIE
+.endif
 .endif
 .endif
 
@@ -2195,6 +2212,7 @@ CQUEUE_DOES:
         return
 
         .pword  paddr(CQUEUE_L)+PFLASH
+.if TX1_BUF_SIZE > 0
 U1TXQUEUE_L:
         .byte   NFA|INLINE|5
         .ascii  "u1txq"
@@ -2207,6 +2225,7 @@ U1TXQUEUE_DATA:
         .word   TX1_BUF_SIZE-1
 
         .pword  paddr(U1TXQUEUE_L)+PFLASH
+.endif
 U1RXQUEUE_L:
         .byte   NFA|INLINE|5
         .ascii  "u1rxq"
@@ -2224,20 +2243,21 @@ TX1_L:
         .ascii  "tx1"
         .align  2
 TX1:
-.ifdef UTXISEL
         bset    iflags, #fBUSY
-.endif
         rcall   PAUSE
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
 TX1_1:
-.ifdef UTXISEL
         bclr    iflags, #fBUSY
-.endif
+.if TX1_BUF_SIZE > 0
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
         bset    IFS0, #U1TXIF       ; check if UART TX has space
+.else
+        mov     [W14--], W0
+        mov     W0, U1TXREG
+.endif
         return
 
         .pword  paddr(TX1_L)+PFLASH
@@ -2246,9 +2266,14 @@ TX1Q_L:
         .ascii  "tx1?"
         .align  2
 TX1Q:
+.if TX1_BUF_SIZE > 0
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         goto    CQUEUE_TOQ
-
+.else
+        btsc    U1STA, #TRMT
+        bra     TRUE_
+        goto    FALSE_
+.endif
         .pword  paddr(TX1Q_L)+PFLASH
 RX1_L:
         .byte   NFA|3
@@ -2296,6 +2321,7 @@ RX1Q1:
         .pword  paddr(RX1Q_L)+PFLASH
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
+.if TX2_BUF_SIZE > 0
 U2TXQUEUE_L:
         .byte   NFA|INLINE|5
         .ascii  "u2txq"
@@ -2308,6 +2334,7 @@ U2TXQUEUE_DATA:
         .word   TX2_BUF_SIZE-1
 
         .pword  paddr(U2TXQUEUE_L)+PFLASH
+.endif
 U2RXQUEUE_L:
         .byte   NFA|INLINE|5
         .ascii  "u2rxq"
@@ -2325,19 +2352,20 @@ TX2_L:
         .ascii  "tx2"
         .align  2
 TX2:    
-.ifdef UTXISEL
         bset    iflags, #fBUSY
-.endif
         rcall   PAUSE
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
-.ifdef UTXISEL
         bclr    iflags, #fBUSY
-.endif
+.if TX1_BUF_SIZE > 0
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
         bset    IFS1, #U2TXIF       ; check if UART TX has space
+.else
+        mov     [W14--], W0
+        mov     W0, U2TXREG
+.endif
 TX2_2:
         return
 
@@ -2347,9 +2375,14 @@ TX2Q_L:
         .ascii  "tx2?"
         .align  2
 TX2Q:
+.if TX1_BUF_SIZE > 0
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         goto    CQUEUE_TOQ
-
+.else
+        btsc    U2STA, #TRMT
+        bra     TRUE_
+        goto    FALSE_
+.endif
         .pword  paddr(TX2Q_L)+PFLASH
 RX2_L:
         .byte   NFA|3
