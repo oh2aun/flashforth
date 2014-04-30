@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          18.04.2014                                        *
+;    Date:          30.04.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -677,11 +677,11 @@ LOAD_:
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         .pword   paddr(LOAD_L)+PFLASH
-COLD_L:
+EMPTY_L:
         .byte   NFA|5
         .ascii  "empty"
         .align 2
-COLD:
+EMPTY:
 .ifdef PEEPROM
         mlit    handle(COLDLIT)+PFLASH
         mlit    dp_start
@@ -690,12 +690,10 @@ COLD:
         clr     intcon1dbg
 .else
         rcall   DP_COLD
-        rcall   DP_TO_RAM
 .endif
-        return
-;        bra     RESET_FF
+        goto   DP_TO_RAM
 
-        .pword   paddr(COLD_L)+PFLASH
+        .pword   paddr(EMPTY_L)+PFLASH
 WARM_L:
         .byte   NFA|4
         .ascii  "warm"
@@ -916,20 +914,20 @@ WARM_ABAUD2:
         mlit    warmlitsize
         rcall   WMOVE
 
-; Check if cold start is needed
+; Check if EEPROM INIT is needed
 .ifdef PEEPROM
         mlit    dp_start
 .else
         rcall   FTURNKEY_A
 .endif
         rcall   FETCH
-        mov     [W14--], W0
-        mov     #0xffff, W1
-        cp      W0, W1
-        bra     z, COLD
+        inc     [W14--], W0
+        bra     nz, WARM_WARM
+        rcall   EMPTY
+WARM_WARM:
         rcall   DP_TO_RAM
 
-				; Wait 10 ms for UARTs to reset 
+		; Wait 10 ms for UARTs to reset 
         mlit    10
         rcall   MS
 
@@ -5378,7 +5376,7 @@ QUIT:
 QUIT0:  
         rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
-        rcall   DP_TO_RAM 
+        rcall   DP_TO_RAM
 QUIT1: 
         rcall   check_sp
         rcall   CR
@@ -5393,7 +5391,7 @@ QUIT1:
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-        rcall   DP_TO_EEPROM   
+        rcall   DP_TO_EEPROM
         rcall   XSQUOTE
         .byte   3
         .ascii  " ok"
