@@ -692,7 +692,7 @@ number?    ( c-addr -- n/d/c-addr flag )
            # is decimal prefix
            $ is hexadecimal prefix
            % is binary prefix
-           Flag: 0=error, 1=double, 2=single
+           Flag: 0=error, 1=single, 2=double
 
 of         ( n -- )   COMPILE_ONLY
            Branch for value n in case statement
