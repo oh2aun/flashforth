@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          03.03.2014                                        *
+;    Date:          20.05.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2107,7 +2107,6 @@ EMPTY:
         dw      h'000c'
         call    CMOVE
         goto    DP_TO_RAM
-        return
 ;*******************************************************
         dw      L_EMPTY
 L_WARM:
@@ -4355,31 +4354,38 @@ TONUMBER:
 TONUM1:
         rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
-        rcall   TOR
+        rcall   TOR               ; ud.l ud.h adr
         rcall   DUP
-        rcall   TOR             ; ud.l ud.h adr
-        rcall   CFETCH_A
+        rcall   TOR               ; ud.l ud.h adr
+        rcall   CFETCH_A          ; ud.l ud.h c
+        movf    Sminus, W, A
+        movf    Splus, W, A
+        sublw   '.'
+	    bz      TONUM_SKIP
         rcall   DIGITQ          ; ud.l ud.h digit flag
         rcall   ZEROSENSE
         bnz     TONUM2
         rcall   DROP
-        rcall   RFROM
-        rcall   RFROM
+        rcall   RFROM           ; ud.l ud.h adr
+        rcall   RFROM           ; ud.l ud.h adr u
         bra     TONUM3
 TONUM2: 
-        rcall   TOR             ; ud.l ud.h digit
+        rcall   TOR             ; ud.l ud.h
         rcall   BASE
         rcall   FETCH_A
         rcall   UDSTAR
-        rcall   RFROM
-        rcall   MPLUS
-        rcall   RFROM
-        rcall   RFROM
-        
+        rcall   RFROM           ; ud.l ud.h digit
+        rcall   MPLUS           ; ud.l ud.h
+        bra     TONUM_CONT
+TONUM_SKIP:
+        rcall   DROP
+TONUM_CONT:
+        rcall   RFROM           ; ud.l ud.h adr
+        rcall   RFROM           ; ud.l ud.h adr u
         call    ONE
         rcall   SLASHSTRING
         bra     TONUM1
-TONUM3: 
+TONUM3:
         return
 
 BASEQV:   
@@ -4433,48 +4439,43 @@ BASEQ1:
         call    DROP
 BASEQ2:                         ; a 0 0 a' u
         rcall   TONUMBER        ; a ud.l ud.h  a' u
+
         rcall   RFROM           ; a ud.l ud.h  a' u oldbase
         rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
         rcall   STORE_A         ; a ud.l ud.h  a' u
-
-        rcall   DUP
-        rcall   TWOMINUS
-        rcall   ZEROLESS        ; a ud.l ud.h  a' u f
-        rcall   ZEROSENSE       ; a ud.l ud.h  a' u
-        bnz     QNUMD
+                                ; u > 0 -> error
+        rcall   ZEROSENSE       ; a ud.l ud.h  a'
+        bz      QNUMD           ; u = 0 -> single or double number
 QNUM_ERR:                       ; Not a number
-        rcall   RFROM           ; a ud.l ud.h a' u sign
-        call    DROP
+        rcall   RFROM           ; a ud.l ud.h a' sign
         call    TWODROP
-QNUM_ERR1:      
         call    TWODROP
         rcall   FALSE_          ; a 0           Not a number
         bra     QNUM3
-QNUMD:                          ; Double number
-                                ; a ud.l ud.h a' u
-        call    TWOSWAP         ; a a' u ud.l ud.h 
-        rcall   RFROM           ; a a' u ud.l ud.d sign
+QNUMD:                          ; Single or double Double number
+                                ; a ud.l ud.h a'
+        call    ONEMINUS
+        call    CFETCH          ; a ud.l ud.h c
+        call    TO_A            ; a ud.l ud.h 
+        rcall   RFROM           ; a ud.l ud.d sign
         rcall   ZEROSENSE
         bz      QNUMD1
         call    DNEGATE
 QNUMD1: 
-        call    TWOSWAP         ; a d.l d.h a' u
-        rcall   ZEROSENSE       ; a d.l d.h a'
-        bz      QNUM1
-        call    CFETCH
+        call    A_FROM          ; a ud.l ud.h c
         rcall   LIT_A
         dw      '.'
         rcall   MINUS
         rcall   ZEROSENSE       ; a d.l d.h
-        bnz     QNUM_ERR1
+        bnz     QNUM1
         call    ROT             ; d.l d.h a
         call    DROP            ; d.l d.h
         rcall   LIT_A           ; 
         dw      2               ; d.l ud.h 2    Double number
         bra     QNUM3
 QNUM1:                          ; single precision dumber
-                                ; a ud.l ud.h  a'
-        call    TWODROP         ; a n
+                                ; a ud.l ud.h
+        call    DROP            ; a n
         rcall   NIP             ; n
         call    ONE             ; n 1           Single number
 QNUM3:  
