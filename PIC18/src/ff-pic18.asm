@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          20.05.2014                                        *
+;    Date:          22.05.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -4351,6 +4351,8 @@ UDSLASHMOD:
 L_TONUMBER:
         db      NFA|7,">number"
 TONUMBER:
+        call    ONE
+        call    TO_A
 TONUM1:
         rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
@@ -4361,7 +4363,7 @@ TONUM1:
         movf    Sminus, W, A
         movf    Splus, W, A
         sublw   '.'
-	    bz      TONUM_SKIP
+        bz      TONUM_SKIP
         rcall   DIGITQ          ; ud.l ud.h digit flag
         rcall   ZEROSENSE
         bnz     TONUM2
@@ -4376,6 +4378,8 @@ TONUM2:
         rcall   UDSTAR
         rcall   RFROM           ; ud.l ud.h digit
         rcall   MPLUS           ; ud.l ud.h
+        rcall   FALSE_
+        call    TO_A
         bra     TONUM_CONT
 TONUM_SKIP:
         rcall   DROP
@@ -4386,6 +4390,8 @@ TONUM_CONT:
         rcall   SLASHSTRING
         bra     TONUM1
 TONUM3:
+        call    A_FROM
+        rcall   PLUS
         return
 
 BASEQV:   
@@ -4897,6 +4903,10 @@ PAREN:
         bsf     FLAGS1, noclear ; dont clear flags in case of (
         goto    TWODROP
 
+        db      NFA|3,"(c)"
+DOCREATE_A:
+        goto    DOCREATE
+
 ; IHERE    -- a-addr    return Code dictionary ptr
 ;   IDP @ ;
 ;;;         dw      link
@@ -4918,11 +4928,6 @@ BRACCHAR:
         db      NFA|3,"cf,"
 COMMAXT_A:
         goto    COMMAXT
-
-        db      NFA|3,"(c)"
-DOCREATE_A: 
-        goto    DOCREATE
-
 
 ; CR      --                      output newline
         dw      L_BRACCHAR
