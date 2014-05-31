@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          30.04.2014                                        *
+;    Date:          31.05.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -636,6 +636,7 @@ TO_A_L:
         .byte   NFA|INLINE|2
         .ascii  ">a"
         .align 2
+TO_A:
         mov     [W14--], W11
         return
 
@@ -644,6 +645,7 @@ A_FROM_L:
         .byte   NFA|INLINE|2
         .ascii  "a>"
         .align 2
+A_FROM:
         mov     W11, [++W14]
         return
 
@@ -4819,12 +4821,20 @@ TONUMBER_L:
         .ascii  ">number"
         .align  2
 TONUMBER:
+        rcall   ONE
+        rcall   TO_A
 TONUM1:
         cp0     [W14]           ; ud.l ud.h  adr u
         bra     z, TONUM3
         push    [W14--]
         push    [W14]
         rcall   CFETCH
+        mov     #'.', W0
+        cp      W0, [W14]
+        bra     nz, TONUM_CONT
+        rcall   DROP
+        bra     TONUM_SKIP
+TONUM_CONT:
         rcall   DIGITQ
         cp0     [W14--]
         bra     nz, TONUM2
@@ -4839,12 +4849,17 @@ TONUM2:
         rcall   UDSTAR
         pop     [++W14]
         rcall   MPLUS
+        rcall   FALSE_
+        rcall   TO_A
+TONUM_SKIP:
         pop     [++W14]
         pop     [++W14]  
         rcall   ONE
         rcall   SLASHSTRING
         bra     TONUM1
-TONUM3: 
+TONUM3:
+        rcall   A_FROM
+        rcall   PLUS
         return
 
 BASEQV:   
@@ -4894,46 +4909,38 @@ BASEQ2:
         rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
         rcall   STORE           ; a ud.l ud.h  a' u
         
-        mov     [W14++], [W14]
-        dec2    [W14], [W14]
-        rcall   ZEROLESS
         cp0     [W14--]         ; a ud.l ud.h  a' u
-        bra     nz, QNUMD
+        bra     z, QNUMD
         
 QNUM_ERR:                       ; Not a number
         pop     [++W14]         ; a ud.l ud.h a' u sign
-        sub     W14, #6, W14
-QNUM_ERR1:      
-        sub     W14, #4, W14
+        sub     W14, #8, W14    ; 2drop 2drop
         rcall   FALSE_          ; a 0           Not a number
         bra     QNUM3
 
-QNUMD:                          ; Double number
-                                ; a ud.l ud.h a' u
-        rcall   TWOSWAP         ; a a' u ud.l ud.h 
-        pop     [++W14]         ; a a' u ud.l ud.d sign
+QNUMD:                          ; Single or Double number
+                                ; a ud.l ud.h a'
+        rcall   ONEMINUS
+        rcall   CFETCH          ; a ud.l ud.h c
+        rcall   TO_A            ; a ud.l ud.h
+        pop     [++W14]         ; a ud.l ud.d sign
         cp0     [W14--]
         bra     z, QNUMD1
         rcall   DNEGATE
-QNUMD1: 
-        rcall   TWOSWAP         ; a d.l d.h a' u
-        cp0     [W14--]         ; a d.l d.h a'
-        bra     z, QNUM1
-        rcall   CFETCH
-        mlit    '.'
-        rcall   MINUS
-        cp0     [W14--]         ; a d.l d.h
-        bra     nz, QNUM_ERR1
+QNUMD1:
+        mov     #'.', W0        ; a ud.l ud.h c
+        cp      W0, W11         ; W11 is A register
+        bra     nz, QNUM1
         rcall   ROT             ; d.l d.h a
-        sub     W14, #2, W14    ; d.l d.h
+        dec2    W14,W14         ; d.l d.h
         mlit    2               ; d.l ud.h 2    Double number
         bra     QNUM3
 QNUM1:                          ; single precision dumber
-                                ; a ud.l ud.h  a'
-        rcall   TWODROP         ; a n
+                                ; a ud.l ud.h
+        dec2    W14,W14         ; a n
         rcall   NIP             ; n
         rcall   ONE             ; n 1           Single number
-QNUM3:  
+QNUM3:
         return
 
 ; TIBSIZE  -- n                      size of TIB
