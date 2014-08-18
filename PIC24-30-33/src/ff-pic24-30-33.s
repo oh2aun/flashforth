@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          31.05.2014                                        *
+;    Date:          18.08.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -69,6 +69,7 @@
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
+.equ fwritten,7   ; Set after the flash page has been written
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
@@ -181,6 +182,10 @@ load_acc:   .space 4
 
 ms_count:   .space 2
 
+.if WRITE_METHOD == 2
+itmo:          .space 2
+.endif
+        
 dpSTART:    .space 2
 .ifdef PEEPROM
 dpRAM:      .space 2
@@ -289,9 +294,7 @@ RETFIE_T1_0:
 
 __U1RXInterrupt:
         push.s
-.ifdef PEEPROM
         push    TBLPAG
-.endif
         inc2    W14, W14
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
@@ -326,6 +329,8 @@ U1_SKIP_FC_1:
 __U1RXInterrupt2:
         btsc    iflags, #ixoff1
         bra     U1_SKIP_FC_2
+        btsc    U1STA, #UTXBF
+        bra     __U1RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U1TXREG
         bset    iflags, #ixoff1
@@ -341,9 +346,7 @@ __U1RXInterrupt3:
         bra     __U1RXInterrupt0
 __U1RXTXIRQ_END:
         sub     W14, #2, W14
-.ifdef PEEPROM
         pop     TBLPAG
-.endif
 ALT_INT_EXIT:
         pop.s
         retfie
@@ -359,9 +362,7 @@ U1RX_ERR1:
 .if TX1_BUF_SIZE > 0
 __U1TXInterrupt:
         push.s
-.ifdef PEEPROM
         push    TBLPAG
-.endif
         add     W14, #2, W14
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
@@ -380,9 +381,7 @@ __U1TXInterrupt0:
 .ifdecl _U2RXREG
 __U2RXInterrupt:
         push.s
-.ifdef PEEPROM
         push    TBLPAG
-.endif
         inc2    W14, W14
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
@@ -444,9 +443,7 @@ U2RX_ERR1:
 .if TX2_BUF_SIZE > 0
 __U2TXInterrupt:
         push.s
-.ifdef PEEPROM
         push    TBLPAG
-.endif
         add     W14, #2, W14
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
@@ -465,8 +462,10 @@ __U2TXInterrupt0:
 ;*******************************************************************
 .ifdecl INTTREG
 __DefaultInterrupt:
+.ifdef ALTIVT
         btss    INTCON2, #ALTIVT
         bra     __AddressError
+.endif
         push.s                   ; Handle interrupt via lookup table
         mov     INTTREG, W0
         sl      W0, W1
@@ -517,12 +516,13 @@ fill_buffer_from_imem2:
         bra      nz, fill_buffer_from_imem2
         dec      W4, W4
         bra      nz, fill_buffer_from_imem1
+        bclr     iflags, #fwritten
         return
 
 wait_silence:
         rcall   LOCKED
 .if FC1_TYPE == 1
-        btsc    U1STA, #UTXBF
+        btss    U1STA, #TRMT
         bra     wait_silence
         mov     #XOFF, W2
         mov     W2, U1TXREG
@@ -537,8 +537,10 @@ wbtil:
         bclr    iflags, #istream
         ; The delay here should be 10 character times long
         ; times = Fcy/baud*40
-        mov     #(FCY/BAUDRATE1*10), W2     ;  This loop takes about 5 milliseconds @ 27 Mips
-wbtil2: 
+        mov     #(FCY/BAUDRATE1), W2     ;  This loop takes about 5 milliseconds @ 27 Mips
+wbtil2:
+        repeat  #100
+        nop
         btsc    iflags, #istream    ; Check for UART  activity.
         bra     wbtil               ; 5 cycles per round
         dec     W2, W2              ;
@@ -552,9 +554,7 @@ wbti_init:
         mov.w   #ibufh, W1 ; High byte buffer
         mov.w   ibase, W2
         mov.w   #IBUFLEN2, W4
-.ifdef PEEPROM
         clr     TBLPAG
-.endif
         tblwtl  W2, [W2]          ; Set page address
         return
 
@@ -569,11 +569,26 @@ write_buffer_to_imem:
 .endif
         mov.w   #FLASH_ERASE, W0  ; #30F 0x4041,  24F 0x4058
         rcall   wbti_init
+.ifdecl PIC2433E
+        clr     NVMADRU
+        mov     W2, NVMADR
+.endif
         rcall   EWENABLE0         ; Now the flash row has been erased.
 
         mov.w   #FLASH_WRITE, W0  ;  30F 0x4001,  24F 0x4004
         rcall   wbti_init
+.ifdecl PIC2433E
+        mov     #0xfa, W5
+        mov     W5, TBLPAG
+        bra     wbtil31
+.endif
 wbtil3:
+.ifdecl PIC2433E
+        inc2    NVMADR
+        inc2    NVMADR
+wbtil31:
+        clr     W2
+.endif
         mov.w   #IBUFLEN1, W3
 wbtil4:
         tblwth.b  [W1++], [W2]
@@ -600,7 +615,12 @@ wbtil6:
         dec       W4, W4
         bra       nz, wbtil5
         bclr      iflags, #idirty
+.if WRITE_METHOD == 1
         setm      ibase       ; Now the flash row has been verified
+.endif
+.if WRITE_METHOD == 2
+        bset      iflags, #fwritten ; Flash has been written
+.endif
         return
 
 verify_imem_2:
@@ -693,7 +713,8 @@ EMPTY:
 .else
         rcall   DP_COLD
 .endif
-        goto   DP_TO_RAM
+        rcall   DP_TO_RAM
+        return
 
         .pword   paddr(EMPTY_L)+PFLASH
 WARM_L:
@@ -818,7 +839,12 @@ PLL_NOT_IN_USE:
         bclr    U1RTSPORT, #U1RTSPIN
 .endif
 .ifdecl RPINR18
+.ifdef AD1PCFGL
         setm    AD1PCFGL
+.endif
+.ifdef ANSELB
+;        clr     ANSELB
+.endif
         mov     #OSCCONL, W0
         mov.b   #0x46, W1
         mov.b   #0x57, W2
@@ -828,10 +854,19 @@ PLL_NOT_IN_USE:
         
         mov     #RPINR18VAL, W0
         mov     W0, RPINR18
-        mov.b   #0x0003, W0         ; U1TX
+
+; PIC2433HJFJ
+.ifdecl U1TXPIN
+        mov     #0x0003, W0         ; U1TX
         mov.b   WREG, RPOR0+U1TXPIN
 .endif
+.ifdecl U1_RPO_REGISTER
+; PIC2433EP
+        mov     #U1_RPO_VALUE, W0         ; U1TX
+        mov     W0, RPOR4
+.endif
 
+.endif
         bclr    PMD1, #U1MD
 
 .ifdecl USE_ALTERNATE_UART_PINS
@@ -909,6 +944,10 @@ WARM_ABAUD2:
 .endif
 .endif
 .endif
+        bclr    TRISB, #15
+        bclr    TRISB, #14
+        bclr    TRISB, #13
+        bset    LATB, #15
 
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
@@ -919,16 +958,19 @@ WARM_ABAUD2:
 ; Check if EEPROM INIT is needed
 .ifdef PEEPROM
         mlit    dp_start
-.else
-        rcall   FTURNKEY_A
-.endif
         rcall   FETCH
+.else
+        rcall   EECHECK
+.endif
         inc     [W14--], W0
         bra     nz, WARM_WARM
         rcall   EMPTY
 WARM_WARM:
         rcall   DP_TO_RAM
 
+.if WRITE_METHOD == 2
+        rcall   DP_PUSH
+.endif
 		; Wait 10 ms for UARTs to reset 
         mlit    10
         rcall   MS
@@ -976,8 +1018,10 @@ WARM1:
         .ascii  " FlashForth PIC24 5.0\r\n"
         .align 2
         rcall   TYPE
+.if FC1_TYPE == 1
         mlit    XON
         rcall   EMIT
+.endif
 ; TURNKEY
         rcall   TURNKEY
         cp0     [W14--]
@@ -1014,7 +1058,7 @@ TURNKEY:
         rcall   VALUE_DOES
         .word   dpSTART
 
-; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
+; PAuSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
         .pword   paddr(TURNKEY_L)+PFLASH
 PAUSE_L:
         .byte   NFA|5
@@ -1022,6 +1066,23 @@ PAUSE_L:
         .align 2
 PAUSE:
         clrwdt
+.if WRITE_METHOD == 2
+        mov     #u0, W0
+        sub     upcurr, WREG
+        bra     nz, PAUSE2
+;        mov     state, W0
+;        bra     nz, PAUSE2
+        mov     ms_count, W0 ; itmo - ms_count
+        sub     itmo, WREG   ; itmo - w0 -> W0
+        bra     nn, PAUSE2
+        rcall   IFLUSH
+        btsc    iflags, #fwritten
+        setm    ibase       ; Now the flash row has been verified
+        bclr    iflags, #fwritten
+        btsc    iflags, #edirty
+        rcall   DP_TO_EEPROM
+PAUSE2:
+.endif
 .if IDLE_MODE == 1
         mov     #BUSYIDLE_MASK, W0
         and     iflags, WREG
@@ -1053,7 +1114,6 @@ PAUSE_BUSY:
 .endif
 .endif
 .endif
-PAUSE2:
         mov     upcurr, W0
         mov     W14, [W0+ussave]    ; Save SP W14
         mov     W15, [W0+ursave]    ; Save RP W15
@@ -1118,6 +1178,7 @@ INTERRUPT_STORE:
 
 ; IVT  ( -- )  Use the normal interrupt vector table
         .pword   paddr(INTERRUPT_STORE_L)+PFLASH
+.ifdef ALTIVT
 IVT_L:
         .byte   NFA|INLINE|3
         .ascii  "ivt"
@@ -1138,6 +1199,7 @@ AIVT:
 
 ; [i ( -- ) enter the interrupt context
         .pword   paddr(AIVT_L)+PFLASH
+.endif
 BRACKETI_L:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "[i"
@@ -1146,9 +1208,7 @@ BRACKETI:
 .ifndecl INTTREG
         push.s          ; W0...W3
 .endif
-.ifdef PEEPROM
         push    TBLPAG  ; Used by eeprom access
-.endif
         push    W13     ; Preg        
         push    RCOUNT  ; used by repeat
         add     W14, #2, W14
@@ -1164,9 +1224,7 @@ IBRACKET:
         sub     W14, #2, W14
         pop     RCOUNT  ; used by repeat
         pop     W13     ; Preg
-.ifdef PEEPROM
         pop     TBLPAG  ; Used by eeprom access
-.endif
 .ifndecl INTTREG
         pop.s           ; W0...W3
 .endif
@@ -1437,6 +1495,22 @@ IFLUSH:
         btsc    iflags, #idirty
         bra     write_buffer_to_imem
         return
+.if WRITE_METHOD == 2
+BFLUSH:
+        mov     [W14], W2
+        mov     #PFLASH, W0
+        sub     W2, W0, W2
+        mov     #IBUFMASK, W1
+        and     W2, W1, W0
+        cp      ibase   ; ibase - address
+        bra     z, IFLUSH  ; FLUSH if execute on the current flash page
+        mov     #IBUFSIZEL, W1
+        add     W0, W1, W0
+        cp      ibase   ; ibase - address
+        btss    iflags, #fwritten
+        bra     z, IFLUSH  ; FLUSH if execute on the previous flash page
+        return
+.endif
         
 ; data addr IC! Address is in W0
 ICSTORE:
@@ -1481,7 +1555,18 @@ ISTORE_SUB:
         add     W2, W1, W0
         mov     [W14--], W1
         bset    iflags, #idirty
+.if WRITE_METHOD == 2
+SET_FLASH_W_TMO:
+        mov     ms_count, W3
+        add     #WRITE_TIMEOUT, W3
+        mov     W3, itmo
+.endif
         return              ; !!!!!!!!!!!!!!!!!!
+.if WRITE_METHOD == 2
+SET_EEPROM_W_TMO:
+        bset    iflags, #edirty
+        bra     SET_FLASH_W_TMO
+.endif
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
         cp      W0, W1
@@ -1530,9 +1615,7 @@ IFETCH:
         return
         
 IFETCH_INIT:
-.ifdef PEEPROM
         clr      TBLPAG
-.endif
         mov      #PFLASH, W1
         sub      W0, W1, W0
         mov      ibase, W1
@@ -1543,7 +1626,12 @@ IFETCH_INIT:
 EWENABLE:
         mov     W1, NVMCON
 EWENABLE0:
-        disi    #5
+;        disi    #5
+        push    SR
+        push    W0
+        mov     #0x00e0, W0
+        ior     SR
+        pop     W0
         mov     #0x55, W3       ; W3 selected to avoid clash in flash write routine.
         mov     W3, NVMKEY
         mov     #0xaa, W3
@@ -1554,6 +1642,7 @@ EWENABLE0:
 EWENABLE1:
         btsc    NVMCON, #WR
         bra     EWENABLE1       ; Now the cell has been stored
+        pop     SR
         return
 
 .ifdef PEEPROM
@@ -1620,48 +1709,62 @@ ECFETCH:
 .else
 ;;; Only for TURNKEY, DP_FLASH, DP_RAM, LATEST !
 ;;;
-;;; Read the last non-FFhibyte word from one 1 Kbyte bank
+;;; Read the last non-FFFF word from one flash block
 ;;; No size check, just finds the last non-FF entry.
-; ( start-of-1k-blockaddr -- data )
+; ( blockaddr -- data )
 ;        dw      link
 ;link    set     $
 ;        db      NFA|3,"ee@"
 EEREAD:
         mov     [W14], W0
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
-        mov     #0x400, W1
+        mov     #IBUFSIZEL, W1
         add     W0, W1, W0      ; W0 = endof flash page.
-.ifdef PEEPROM
-        clr     TBLPAG
-.endif
+        mov     #DPS_PAGE, W1
+        mov     W1, TBLPAG
 EEREAD1:
         tblrdl  [--W0], W1
+.ifdef FLASH_WRITE_DOUBLE
+        tblrdl  [--W0], W1  ; The first double word is used
+.endif
         inc     W1, W1
         bra     z, EEREAD1
         dec     W1, W1
         mov     W1, [W14]
+        clr     TBLPAG
         return
-
+EECHECK:
+        mov     #handle(DPS_BASE), W0
+        mov     #DPS_PAGE, W1
+        mov     W1, TBLPAG
+        tblrdl  [W0], W1
+        mov     W1, [++W14]
+        clr     TBLPAG
+        return
 EEINIT:
         rcall   LOCKED
+;.ifndef FLASH_WRITE_DOUBLE
         rcall   EEERASE
+;.endif
         bra     EEWRITE
 
-;;; Write of word to first free (hibyte=FF) location in a 1 Kbyte bank
-;;; ( data start-of-1K-blockaddr -- )
+;;; Write of word to first free (lowword=FFFF) location in a flash block
+;;; ( data blockaddr -- )
 ;        dw      link
 ;link    set     $
 ;        db      NFA|3,"ee!"
 EEWRITE:
         rcall   wait_silence
-.ifdef PEEPROM
-        clr     TBLPAG
+        mov     #DPS_PAGE, W1
+        mov     W1, TBLPAG
+.ifdecl PIC2433E
+        mov     W1, NVMADRU
 .endif
         mov     [W14], W0
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
-        mov     #0x200, W2
+.ifdef FLASH_WRITE_DOUBLE
+        mov     #IBUFSIZEH/2, W2
+.else
+        mov     #IBUFSIZEH, W2
+.endif
 EEWRITE1:
         tblrdl  [W0++], W1
         inc     W1, W1
@@ -1670,6 +1773,9 @@ EEWRITE1:
         dec2    W14, W14
         bra     EEWRITE3
 EEWRITE2:
+.ifdef FLASH_WRITE_DOUBLE
+        tblrdl  [W0++], W1   ; discard second word
+.endif
         dec     W2, W2
         bra     nz, EEWRITE1
         rcall   EEERASE        ; ( blockstart -- blockstart)
@@ -1677,23 +1783,46 @@ EEWRITE2:
 EEWRITE3:
         mov     #FLASH_WRITE_SINGLE, W1
         mov     W1, NVMCON
-        tblwtl  [W14--], [W0]
+.ifdecl PIC2433E
+        mov     W0, NVMADR
+        mov     #0xfa, W1
+        mov     W1, TBLPAG
+        clr     W0
+.endif
+        mov     [W14--], W3
+        tblwtl  W3, [W0]
         rcall   EWENABLE0
+
+        btss    U1STA, #TRMT
+        bra     $-2
+        mov     #'W', W8
+        mov     W8, U1TXREG
+        clr     TBLPAG
         return
 
 ; block-addr -- block-addr
 EEERASE:
+        rcall   wait_silence
 .if DEBUG_FLASH == 1
         mov     #'R', W2
         mov     W2, U1TXREG
 .endif
         mov     #FLASH_ERASE, W0
         mov     W0, NVMCON
+.ifdecl PIC2433E
+        mov     #DPS_PAGE, W1
+        mov     W1, NVMADRU
+        mov     [W14], W1
+        mov     W1, NVMADR
+.else
+        mov     #DPS_PAGE, W1
+        mov     W1, TBLPAG
         mov     [W14], W0
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
         tblwtl  W0, [W0]
-        bra     EWENABLE0
+.endif
+        rcall   EWENABLE0
+        clr     TBLPAG
+        return
 .endif
 
         .pword   paddr(IFLUSH_L)+PFLASH
@@ -1921,6 +2050,24 @@ BTST__:
         return
 
         .pword  paddr(BTST__L)+PFLASH
+IFLAGS_L:
+        .byte   NFA|6
+        .ascii  "iflags"
+        .align  2
+        mov     iflags, W0
+        mov     W0, [++W14]
+        return
+
+        .pword  paddr(IFLAGS_L)+PFLASH
+IBASE_L:
+        .byte   NFA|5
+        .ascii  "ibase"
+        .align  2
+        mov     ibase, W0
+        mov     W0, [++W14]
+        return
+
+        .pword  paddr(IBASE_L)+PFLASH
 LSHIFT_L:
         .byte   NFA|6
         .ascii  "lshift"
@@ -2304,8 +2451,6 @@ RX1Q:
         btst    iflags, #ixoff1
         bra     z, RX1Q1
         bclr    iflags, #ixoff1
-;        mlit    '>'
-;        rcall   TX1
         mlit    XON
         rcall   TX1
 .else
@@ -2486,17 +2631,13 @@ DOCREATE_L:
         .align  2
 DOCREATE:
         mov.w   [W15-4], W0
-.ifdef PEEPROM
         clr     TBLPAG
-.endif
         tblrdl  [W0], [++W14]
         sub     #4, W15
         return
 DOEMIT:
         mov.w   [W15-4], W0
-.ifdef PEEPROM
         clr     TBLPAG
-.endif
         tblrdl  [W0++], [++W14]
         mov.w   W0, [W15-4]
         goto    EMIT
@@ -2511,9 +2652,7 @@ DODOES:
         pop     W0
         pop     W1
         pop     W1
-.ifdef PEEPROM
         clr     TBLPAG
-.endif
         tblrdl  [W1], [++W14]
         goto    W0
 
@@ -3137,9 +3276,7 @@ USER:
 DOUSER:
         pop     W0
         pop     W0
-.ifdef PEEPROM
         clr     TBLPAG
-.endif
         tblrdl  [W0], W0
         add     upcurr, WREG
         mov     W0, [++W14]
@@ -5012,7 +5149,7 @@ INQ:
         goto    AND
 
 ; DEBUG-------------------------------------------------
-.if 0
+.if 1
 DBG1:
         rcall   CR
         mov     [W15-4], W0
@@ -5080,6 +5217,9 @@ INTER11:
         cp0     [W14--]
         btsc    SRL, #Z
         bset    iflags, #noclear
+.if WRITE_METHOD == 2
+        rcall   BFLUSH
+.endif
         rcall   EXECUTE         ; Execute a word
         btss    iflags, #noclear
         bra     INTER1
@@ -5210,16 +5350,16 @@ DOTSTATUS:
 .ifndef PEEPROM
 FTURNKEY_A:
         rcall   DOCREATE
-        .word   PFLASH + CONFIG_DATA
+        .word   DPS_BASE
 FRAM_A:
         rcall   DOCREATE
-        .word   PFLASH + CONFIG_DATA + IBUFSIZEL
+        .word   DPS_BASE + IBUFSIZEL
 FLATEST_A:
         rcall   DOCREATE
-        .word   PFLASH + CONFIG_DATA + IBUFSIZEL*2
+        .word   DPS_BASE + IBUFSIZEL*2
 FFLASH_A:
         rcall   DOCREATE
-        .word   PFLASH + CONFIG_DATA + IBUFSIZEL*3
+        .word   DPS_BASE + IBUFSIZEL*3
 
 ; dp0 ( -- ) Initialize turnkey, DPs and latest in flash
 ;        dw      link
@@ -5230,18 +5370,22 @@ DP_COLD:
         mlit    handle(STARTV)+PFLASH
         rcall   FETCHPP
         rcall   FTURNKEY_A
+        rcall   DBG1
         rcall   EEINIT
-        
+
         rcall   FETCHPP
         rcall   FRAM_A
+        rcall   DBG1
         rcall   EEINIT
         
         rcall   FETCHPP
         rcall   FLATEST_A
+        rcall   DBG1
         rcall   EEINIT
-        
+
         rcall   FETCH
         rcall   FFLASH_A
+        rcall   DBG1
         bra     EEINIT
 .endif
 
@@ -5268,9 +5412,10 @@ DP_TO_RAM:
 DP_TO_RAM1:
         rcall   DUP
         rcall   EEREAD
+        rcall   DBG1
         rcall   PSTORE
         rcall   PPLUS2
-        rcall   PLUS0x400
+        rcall   PLUSPAGE
         dec     [--W15], [W15++] ; XNEXT
         bra     nz, DP_TO_RAM1
 DP_TO_RAM2:
@@ -5278,8 +5423,8 @@ DP_TO_RAM2:
         pop     W13
         goto    DROP
 
-PLUS0x400:
-        mlit    0x400
+PLUSPAGE:
+        mlit    IBUFSIZEL
         bra     PLUS
 .endif
 
@@ -5290,6 +5435,9 @@ DP_TO_EEPROM_L:
         .ascii  ">dp"
         .align  2
 DP_TO_EEPROM:
+.if WRITE_METHOD == 2
+        bclr    iflags, #edirty
+.endif
 .ifdef  PEEPROM
         mlit    dp_start
         push    W13
@@ -5344,7 +5492,7 @@ DP_TO_EEPROM_0:
         mov     W2, U1TXREG
 .endif
 DP_TO_EEPROM_1:
-        rcall   PLUS0x400
+        rcall   PLUSPAGE
         rcall   PPLUS2
         dec     [--W15], [W15++] ; XNEXT
         bra     nz, DP_TO_EEPROM_0
@@ -5370,7 +5518,21 @@ check_sp:
         .align  2
         rcall   QABORT
         return
-; QUIT     --    R: i*x --    interpret from kbd
+.if WRITE_METHOD == 2
+DP_PUSH:
+        mov     #dpSTART, W0
+        mov     #dpSAVE, W1
+        bra     DP_POP_LOOP
+DP_POP:
+        mov     #dpSTART, W1
+        mov     #dpSAVE, W0
+DP_POP_LOOP:
+        repeat  #MARKER_LENGTH-1
+        mov     [W0++], [W1++]
+        return
+.endif
+       
+        ; QUIT     --    R: i*x --    interpret from kbd
         .pword  paddr(DP_TO_EEPROM_L)+PFLASH
 QUIT_L:
         .byte   NFA|4
@@ -5380,10 +5542,15 @@ QUIT:
         rcall   RPEMPTY         ; Empty the return stack
         rcall   LEFTBRACKET
         rcall   RAM
-QUIT0:  
+QUIT0:
+.if WRITE_METHOD == 2
+        rcall   DP_PUSH
+.endif
+.if WRITE_METHOD == 1
         rcall   IFLUSH
-        ;; Copy INI and DP's from eeprom to ram
+;;;  Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
+.endif
 QUIT1: 
         rcall   check_sp
         rcall   CR
@@ -5398,7 +5565,10 @@ QUIT1:
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-        rcall   DP_TO_EEPROM
+.if WRITE_METHOD == 2
+        btss    iflags, #edirty
+.endif
+        rcall   DP_TO_EEPROM ; If dirty then write after timeout in PAUSE
         rcall   XSQUOTE
         .byte   3
         .ascii  " ok"
@@ -5427,6 +5597,11 @@ ABORT:
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE
+.if WRITE_METHOD == 2
+        rcall   IFLUSH
+        rcall   DP_POP
+        rcall   DP_TO_EEPROM        ; If dirty then write after timeout in PAUSE
+.endif
         goto    QUIT            ; QUIT never returns
 
 ; ?ABORT   f --       abort & print ?
@@ -5756,6 +5931,10 @@ SEMICOLONI:
         rcall   AGAINC
 .else
         rcall   RETFIE_
+.endif
+.if WRITE_METHOD == 2
+        rcall   IFLUSH
+        rcall   DP_TO_EEPROM
 .endif
         goto    LEFTBRACKET
 
@@ -6200,6 +6379,8 @@ MS_L:
         .ascii  "ms"
         .align  2
 MS:
+        sub     W14, #2, W14
+        return
         rcall   TICKS
         rcall   PLUS
 MS1:    
@@ -6273,6 +6454,7 @@ DOTS1:
         bra     DOTS1
 DOTS2:  
         sub     W14, #4, W14        ; 2drop
+        rcall   CR
         return
 
 ; IALLOT   n --    allocate n bytes in ROM
@@ -6282,6 +6464,9 @@ DOTS2:
         .ascii  "iallot"
         .align  2
 IALLOT:
+.if WRITE_METHOD == 2
+        rcall   SET_EEPROM_W_TMO
+.endif
         rcall   IDP
         goto    PLUSSTORE
 
@@ -6292,6 +6477,9 @@ ALLOT_L:
         .ascii  "allot"
         .align  2
 ALLOT:
+.if WRITE_METHOD == 2
+        rcall   SET_EEPROM_W_TMO
+.endif
         rcall   DP
         goto    PLUSSTORE
 
@@ -6469,10 +6657,14 @@ MARKER_DOES:
 
 .palign IBUFSIZEL
 .ifndef PEEPROM
+.if FLASH_SIZE < 0x10001
 CONFIG_DATA:
 ;.pspace IBUFSIZEL*4
 KERNEL_END1:
 .equ KERNEL_END, KERNEL_END1 + IBUFSIZEL*4
+.else
+KERNEL_END:
+.endif
 .else
 KERNEL_END:
 .endif

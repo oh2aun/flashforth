@@ -58,3 +58,8 @@
   .include "p30f_config.inc"
 .endif
 
+.ifdecl    __dsPIC33E
+  .include "p33Exxxx.inc"
+  .include "p33e_config.inc"
+.endif
+
