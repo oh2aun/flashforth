@@ -135,6 +135,7 @@
 ibufl:      .space IBUFSIZEL
 ibufh:      .space IBUFSIZEH
 
+resetreason: .space 2
 intcon1dbg:  .space 2
 
 .if TX1_BUF_SIZE > 0
@@ -462,6 +463,9 @@ __U2TXInterrupt0:
 ;*******************************************************************
 .ifdecl INTTREG
 __DefaultInterrupt:
+        mov     #0x1000, W0
+        mov     WREG, resetreason
+        bra     __AddressError
 .ifdef ALTIVT
         btss    INTCON2, #ALTIVT
         bra     __AddressError
@@ -563,10 +567,17 @@ write_buffer_to_imem:
 ;; from the UART.
 ;; The assumption is that the serial line is silent then.
         rcall   wait_silence
+        mov     #5, W2
+        mov     W2, temp
+
+write_buffer_to_imem_again:
 .if DEBUG_FLASH == 1
+        btss    U1STA, #TRMT
+        bra     $-2
         mov     #'F', W2
         mov     W2, U1TXREG
 .endif
+
         mov.w   #FLASH_ERASE, W0  ; #30F 0x4041,  24F 0x4058
         rcall   wbti_init
 .ifdecl PIC2433E
@@ -624,6 +635,12 @@ wbtil6:
         return
 
 verify_imem_2:
+        dec     temp
+        bra     nz, write_buffer_to_imem_again
+        mov     W2, W0
+        mov     #PFLASH, W2
+        add     W0, W2, W0
+        mov     WREG, resetreason
         reset
 
 ; LITERAL  x --           append numeric literal as inline code
@@ -728,6 +745,8 @@ RESET_FF:
         mlit    10
         rcall   MS
 RESET_FF_1:
+        mov     #0x3000, W0
+        mov     WREG, resetreason
         reset
 
 __reset:
@@ -944,10 +963,6 @@ WARM_ABAUD2:
 .endif
 .endif
 .endif
-        bclr    TRISB, #15
-        bclr    TRISB, #14
-        bclr    TRISB, #13
-        bset    LATB, #15
 
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
@@ -974,6 +989,9 @@ WARM_WARM:
 		; Wait 10 ms for UARTs to reset 
         mlit    10
         rcall   MS
+        mov     resetreason, W0
+        mov     W0, [++W14]
+        rcall   UDOT
 
 ; Display INTCON1 and RCON restart reason
         btsc    intcon1dbg, #STKERR
@@ -1639,6 +1657,10 @@ EWENABLE0:
         bset    NVMCON, #WR
         nop
         nop
+        nop
+        nop
+        nop
+        nop
 EWENABLE1:
         btsc    NVMCON, #WR
         bra     EWENABLE1       ; Now the cell has been stored
@@ -1804,6 +1826,8 @@ EEWRITE3:
 EEERASE:
         rcall   wait_silence
 .if DEBUG_FLASH == 1
+        btss    U1STA, #TRMT
+        bra     $-2
         mov     #'R', W2
         mov     W2, U1TXREG
 .endif
@@ -5149,7 +5173,7 @@ INQ:
         goto    AND
 
 ; DEBUG-------------------------------------------------
-.if 1
+.if 0
 DBG1:
         rcall   CR
         mov     [W15-4], W0
@@ -5370,22 +5394,18 @@ DP_COLD:
         mlit    handle(STARTV)+PFLASH
         rcall   FETCHPP
         rcall   FTURNKEY_A
-        rcall   DBG1
         rcall   EEINIT
 
         rcall   FETCHPP
         rcall   FRAM_A
-        rcall   DBG1
         rcall   EEINIT
         
         rcall   FETCHPP
         rcall   FLATEST_A
-        rcall   DBG1
         rcall   EEINIT
 
         rcall   FETCH
         rcall   FFLASH_A
-        rcall   DBG1
         bra     EEINIT
 .endif
 
@@ -5412,7 +5432,6 @@ DP_TO_RAM:
 DP_TO_RAM1:
         rcall   DUP
         rcall   EEREAD
-        rcall   DBG1
         rcall   PSTORE
         rcall   PPLUS2
         rcall   PLUSPAGE
@@ -5455,6 +5474,8 @@ DP_TO_EEPROM_0:
         bra     z, DP_TO_EEPROM_1
         rcall   PSTORE
 .if DEBUG_FLASH == 1
+        btss    U1STA, #TRMT
+        bra     $-2
         mov     #'E', W2
         mov     W2, U1TXREG
 .endif
@@ -5488,6 +5509,8 @@ DP_TO_EEPROM_0:
         rcall   OVER
         rcall   EEWRITE
 .if DEBUG_FLASH == 1
+        btss    U1STA, #TRMT
+        bra     $-2
         mov     #'E', W2
         mov     W2, U1TXREG
 .endif
@@ -6379,8 +6402,6 @@ MS_L:
         .ascii  "ms"
         .align  2
 MS:
-        sub     W14, #2, W14
-        return
         rcall   TICKS
         rcall   PLUS
 MS1:    
@@ -6454,7 +6475,6 @@ DOTS1:
         bra     DOTS1
 DOTS2:  
         sub     W14, #4, W14        ; 2drop
-        rcall   CR
         return
 
 ; IALLOT   n --    allocate n bytes in ROM

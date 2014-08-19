@@ -14,11 +14,11 @@
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
-config __FOSCSEL, IESO_ON & FNOSC_FRC
-;config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+;config __FOSCSEL, IESO_ON & FNOSC_FRC
+config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;config __FOSCSEL, IESO_ON & FNOSC_PRI
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
-config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
+;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 config FWDT, FWDTEN_OFF
 ;config FDS, GWRP_OFF & GCP_OFF
 ;config FPOR,
@@ -29,9 +29,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
 .equ FREQ_FIN, 7370000        ; PLL input frequency.
-;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
-.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
+;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
@@ -124,8 +124,8 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
-.equ WRITE_METHOD, 1
-.equ WRITE_TIMEOUT, 100
+.equ WRITE_METHOD, 2
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ SFR_SPACE,      0x1000

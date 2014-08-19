@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      see.txt                                         *
-\    Date:          21.01.2014                                      *
+\    Date:          19.08.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -13,6 +13,7 @@
 -see
 marker -see
 hex ram
+' chars to prompt
 : ct ( ew cw n -- ) \ compile a condition table
      ( m -- m )     \ execute aword corresponding to m.
                     \ m may consist of several stack cells
@@ -160,4 +161,5 @@ ram
   until
   drop
 ;
+' .st to prompt
 
