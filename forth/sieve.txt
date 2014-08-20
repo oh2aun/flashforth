@@ -40,3 +40,4 @@ ram align here size allot constant flags inlined
   . ." primes " cr ;
 
 : bench ticks sieve ticks swap - u. ." milliseconds" cr ;
+

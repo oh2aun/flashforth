@@ -78,9 +78,6 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
@@ -91,6 +88,12 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
+
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
+.equ WRITE_METHOD, 2
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE
@@ -118,4 +121,12 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor
 .endif
 .equ write_delay, 20                      ; Flash write delay
+
+.if FLASH_SIZE > 0x10000
+.equ DPS_BASE, 0
+.equ DPS_PAGE, 1
+.else
+.equ DPS_BASE, CONFIG_DATA
+.equ DPS_PAGE, 0
+.endif
 

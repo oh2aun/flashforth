@@ -37,10 +37,6 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ U2RTSTRIS, TRISB
 .equ U2RTSPIN, 0x3
 
-
-.equ BAUD_DIV1, (FREQ/16/BAUDRATE)-1		; UART divisor
-.equ MS_PR_VAL, (FREQ/4/1000)				; Timer value for 1 ms ticks
-
 ; Set to one to use the alternate UART pins
 .equ USE_ALTERNATE_UART_PINS, 0
 
@@ -96,6 +92,12 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
+.equ WRITE_METHOD, 2
+.equ WRITE_TIMEOUT, 300         ; milliseconds
+
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE
 .if FLASH_SIZE > 0xffff
@@ -125,4 +127,12 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor
 .endif
 .equ write_delay, 20                      ; Flash write delay
+
+.if FLASH_SIZE > 0x10000
+.equ DPS_BASE, 0
+.equ DPS_PAGE, 1
+.else
+.equ DPS_BASE, CONFIG_DATA
+.equ DPS_PAGE, 0
+.endif
 

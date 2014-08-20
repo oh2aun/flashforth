@@ -18,15 +18,15 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2                          ; Do not change
 .equ PLL_PRE, 2                           ; Do not change
-.equ FREQ_FIN, 7370000                    ; PLL input frequency.
+.equ FREQ_FIN, 7372800                    ; PLL input frequency.
 .equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL ouput frequency. Used with FRCPLL
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -38,10 +38,10 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 
 ; Map UART1 pins
 .ifdecl RPINR18
-;.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
-;.equ U1TXPIN, 0xe
-.equ RPINR18VAL, 0x000b    ; U1RXPIN RP11 pin22 microstick2
-.equ U1TXPIN, 0xa          ; RP10         pin21 microstick2
+.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
+.equ U1TXPIN, 0xe
+;.equ RPINR18VAL, 0x000b    ; U1RXPIN RP11 pin22 microstick2
+;.equ U1TXPIN, 0xa          ; RP10         pin21 microstick2
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12
@@ -72,8 +72,8 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ CPU_LOAD_LED, 1       ; set to 0 to disable
 .equ CPU_LOAD_TRIS, TRISB
 .equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 13
-.equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led
+.equ CPU_LOAD_BIT, 7
+.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led
 ;.equ CPU_LOAD_TRIS, TRISA
 ;.equ CPU_LOAD_PORT, PORTA
 ;.equ CPU_LOAD_BIT, 0
@@ -85,7 +85,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 ; UART buffer sizes
 .equ TX1_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 32
-.equ RX1_OFF_FILL, 4   ; Fill level for XOFF
+.equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
 .equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 32
@@ -101,13 +101,10 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for reset cause info
-.equ RESET_INFO, 1
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 1
+.equ DEBUG_FLASH, 0
 
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
@@ -115,8 +112,11 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
 .equ WRITE_METHOD, 2
-.equ WRITE_TIMEOUT, 100
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE

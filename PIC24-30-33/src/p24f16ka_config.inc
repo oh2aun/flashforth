@@ -64,9 +64,6 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
@@ -77,6 +74,12 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
+
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
+.equ WRITE_METHOD, 2
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE

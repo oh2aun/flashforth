@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          18.08.2014                                        *
+;    Date:          20.08.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -135,7 +135,7 @@
 ibufl:      .space IBUFSIZEL
 ibufh:      .space IBUFSIZEH
 
-resetreason: .space 2
+temp:        .space 2
 intcon1dbg:  .space 2
 
 .if TX1_BUF_SIZE > 0
@@ -173,7 +173,6 @@ rbuf2:       .space RX2_BUF_SIZE
 .endif
 .endif
 
-temp:       .space 2
 ibase:      .space 2
 iaddr:      .space 2
 iflags:     .space 2
@@ -463,9 +462,6 @@ __U2TXInterrupt0:
 ;*******************************************************************
 .ifdecl INTTREG
 __DefaultInterrupt:
-        mov     #0x1000, W0
-        mov     WREG, resetreason
-        bra     __AddressError
 .ifdef ALTIVT
         btss    INTCON2, #ALTIVT
         bra     __AddressError
@@ -637,10 +633,6 @@ wbtil6:
 verify_imem_2:
         dec     temp
         bra     nz, write_buffer_to_imem_again
-        mov     W2, W0
-        mov     #PFLASH, W2
-        add     W0, W2, W0
-        mov     WREG, resetreason
         reset
 
 ; LITERAL  x --           append numeric literal as inline code
@@ -745,8 +737,6 @@ RESET_FF:
         mlit    10
         rcall   MS
 RESET_FF_1:
-        mov     #0x3000, W0
-        mov     WREG, resetreason
         reset
 
 __reset:
@@ -788,7 +778,27 @@ WARM_FILL_IVEC:
 .ifdecl PMD3
         setm    PMD3
 .endif
-
+.ifdecl PMD4
+        setm    PMD4
+.endif
+.ifdecl PMD5
+        setm    PMD5
+.endif
+.ifdef AD1PCFGL
+        setm    AD1PCFGL
+.endif
+.ifdef ANSELA
+        clr      ANSELA
+.endif
+.ifdef ANSELB
+        clr      ANSELB
+.endif
+.ifdef ANSELC
+        clr      ANSELC
+.endif
+.ifdef ANSELE
+        clr      ANSELE
+.endif
 WARM_0:
 ; Init the serial TX buffer
 .if TX1_BUF_SIZE > 0
@@ -858,12 +868,6 @@ PLL_NOT_IN_USE:
         bclr    U1RTSPORT, #U1RTSPIN
 .endif
 .ifdecl RPINR18
-.ifdef AD1PCFGL
-        setm    AD1PCFGL
-.endif
-.ifdef ANSELB
-;        clr     ANSELB
-.endif
         mov     #OSCCONL, W0
         mov.b   #0x46, W1
         mov.b   #0x57, W2
@@ -882,7 +886,7 @@ PLL_NOT_IN_USE:
 .ifdecl U1_RPO_REGISTER
 ; PIC2433EP
         mov     #U1_RPO_VALUE, W0         ; U1TX
-        mov     W0, RPOR4
+        mov     W0, U1_RPO_REGISTER
 .endif
 
 .endif
@@ -930,8 +934,16 @@ WARM_ABAUD1:
 .ifdecl RPINR19
         mov     #RPINR19VAL, W0
         mov     W0, RPINR19
-        mov.b   #0x0005, W0         ; U2TX
-        mov.b   WREG, RPOR0+U2TXPIN
+; PIC2433HJFJ
+.ifdecl U1TXPIN
+        mov     #0x0003, W0         ; U1TX
+        mov.b   WREG, RPOR0+U1TXPIN
+.endif
+.ifdecl U1_RPO_REGISTER
+; PIC2433EP
+        mov     #U2_RPO_VALUE, W0         ; U1TX
+        mov     W0, U2_RPO_REGISTER
+.endif
 .endif
        bclr    PMD1, #U2MD
 .ifdecl UTXISEL1
@@ -970,6 +982,10 @@ WARM_ABAUD2:
         mlit    warmlitsize
         rcall   WMOVE
 
+		; Wait 10 ms for UARTs to reset
+        mlit    10
+        rcall   MS
+
 ; Check if EEPROM INIT is needed
 .ifdef PEEPROM
         mlit    dp_start
@@ -986,12 +1002,6 @@ WARM_WARM:
 .if WRITE_METHOD == 2
         rcall   DP_PUSH
 .endif
-		; Wait 10 ms for UARTs to reset 
-        mlit    10
-        rcall   MS
-        mov     resetreason, W0
-        mov     W0, [++W14]
-        rcall   UDOT
 
 ; Display INTCON1 and RCON restart reason
         btsc    intcon1dbg, #STKERR
@@ -1579,7 +1589,8 @@ SET_FLASH_W_TMO:
         add     #WRITE_TIMEOUT, W3
         mov     W3, itmo
 .endif
-        return              ; !!!!!!!!!!!!!!!!!!
+        return
+
 .if WRITE_METHOD == 2
 SET_EEPROM_W_TMO:
         bset    iflags, #edirty
@@ -1655,10 +1666,6 @@ EWENABLE0:
         mov     #0xaa, W3
         mov     W3, NVMKEY
         bset    NVMCON, #WR
-        nop
-        nop
-        nop
-        nop
         nop
         nop
 EWENABLE1:
@@ -1764,9 +1771,7 @@ EECHECK:
         return
 EEINIT:
         rcall   LOCKED
-;.ifndef FLASH_WRITE_DOUBLE
         rcall   EEERASE
-;.endif
         bra     EEWRITE
 
 ;;; Write of word to first free (lowword=FFFF) location in a flash block
@@ -1814,12 +1819,9 @@ EEWRITE3:
         mov     [W14--], W3
         tblwtl  W3, [W0]
         rcall   EWENABLE0
-
-        btss    U1STA, #TRMT
-        bra     $-2
-        mov     #'W', W8
-        mov     W8, U1TXREG
         clr     TBLPAG
+EEVERIFY:
+        ; TODO
         return
 
 ; block-addr -- block-addr
@@ -2074,24 +2076,6 @@ BTST__:
         return
 
         .pword  paddr(BTST__L)+PFLASH
-IFLAGS_L:
-        .byte   NFA|6
-        .ascii  "iflags"
-        .align  2
-        mov     iflags, W0
-        mov     W0, [++W14]
-        return
-
-        .pword  paddr(IFLAGS_L)+PFLASH
-IBASE_L:
-        .byte   NFA|5
-        .ascii  "ibase"
-        .align  2
-        mov     ibase, W0
-        mov     W0, [++W14]
-        return
-
-        .pword  paddr(IBASE_L)+PFLASH
 LSHIFT_L:
         .byte   NFA|6
         .ascii  "lshift"
@@ -2527,7 +2511,7 @@ TX2:
         cp0     [W14--]
         bra     z, TX2
         bclr    iflags, #fBUSY
-.if TX1_BUF_SIZE > 0
+.if TX2_BUF_SIZE > 0
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
         bset    IFS1, #U2TXIF       ; check if UART TX has space
@@ -2544,7 +2528,7 @@ TX2Q_L:
         .ascii  "tx2?"
         .align  2
 TX2Q:
-.if TX1_BUF_SIZE > 0
+.if TX2_BUF_SIZE > 0
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         goto    CQUEUE_TOQ
 .else
@@ -5173,7 +5157,7 @@ INQ:
         goto    AND
 
 ; DEBUG-------------------------------------------------
-.if 0
+.if 1
 DBG1:
         rcall   CR
         mov     [W15-4], W0
@@ -5570,8 +5554,6 @@ QUIT0:
         rcall   DP_PUSH
 .endif
 .if WRITE_METHOD == 1
-        rcall   IFLUSH
-;;;  Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 .endif
 QUIT1: 
@@ -5588,6 +5570,12 @@ QUIT1:
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
+.if 1
+.if WRITE_METHOD == 2
+        btss    iflags, #edirty
+.endif
+        rcall   IFLUSH
+.endif
 .if WRITE_METHOD == 2
         btss    iflags, #edirty
 .endif
@@ -5598,8 +5586,7 @@ QUIT1:
         .align  2
         rcall   TYPE
         rcall   PROMPT
-        bra     QUIT0
-        return
+        goto    QUIT0
 
         .pword  paddr(QUIT_L)+PFLASH
 PROMPT_L:
@@ -5620,8 +5607,8 @@ ABORT:
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE
-.if WRITE_METHOD == 2
         rcall   IFLUSH
+.if WRITE_METHOD == 2
         rcall   DP_POP
         rcall   DP_TO_EEPROM        ; If dirty then write after timeout in PAUSE
 .endif

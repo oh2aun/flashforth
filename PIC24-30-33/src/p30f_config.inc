@@ -24,7 +24,9 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 
 ;.equ FREQ_OSC, 16000000;           ; Max baudrate 19200 with this clock
-.equ FREQ_OSC, (7322000)			; Oscillator frequency
+.equ FREQ_OSC, (7372800)			; Oscillator frequency
+                                    ; NOTE: The baud calculation depends
+                                    ; on this exact value for the FRC oscillator
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				; Serial baudrate UART1
@@ -44,9 +46,6 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ USE_ALTERNATE_UART_PINS, 1
 
 ; Default number base
-.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
-
-; Default number base
 .equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
@@ -56,17 +55,17 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED, 0       ; set to 0 to disable
+.equ CPU_LOAD_LED, 1       ; set to 0 to disable
 .equ CPU_LOAD_TRIS, TRISB
 .equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 8
-.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+.equ CPU_LOAD_BIT, 4
+.equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led
 
 ; Define the startup delay for turnkey words. Milliseconds
 .equ TURNKEY_DELAY, 2000  ; milliseconds
 
 ; UART buffer sizes
-.equ TX1_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 32
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -84,9 +83,6 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
@@ -97,6 +93,12 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
+
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
+.equ WRITE_METHOD,  2
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes. Do not modify
 .equ PFLASH,         0x800+RAM_SIZE
@@ -122,7 +124,7 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 
 .equ FCY, (FREQ_OSC/4)                  ; CPU intruction frequency
 .equ MS_PR_VAL, ((FCY/1000)-1)          ; Timer value for 1 ms ticks
-.equ BAUD_DIV1, (FCY/16/BAUDRATE1)-1	; UART1 divisor
+.equ BAUD_DIV1, (FCY/16/BAUDRATE1)-1    ; UART1 divisor
 .ifdecl BAUDRATE2
 .equ BAUD_DIV2, (FCY/16/BAUDRATE2)-1	; UART2 divisor
 .endif

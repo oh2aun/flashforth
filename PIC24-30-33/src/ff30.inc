@@ -63,3 +63,9 @@
   .include "p33e_config.inc"
 .endif
 
+.ifdecl    __PIC24E
+  .include "p24Exxxx.inc"
+  .include "p24e_config.inc"
+.endif
+
+

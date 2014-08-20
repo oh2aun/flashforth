@@ -18,6 +18,7 @@
 
 \ MCU without eeprom
 : .free
+  decimal
   cr ." Flash:" flash hi here - u. ." bytes"
   cr ." Ram:" ram hi here - u. ." bytes"
 ;

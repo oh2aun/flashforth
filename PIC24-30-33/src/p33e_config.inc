@@ -1,14 +1,11 @@
 ;;; FlashForth device configuration for the dsPIC33E
 
-;;; Different flash write logic for E devices
-.equ PIC2433E, 1
-
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for dsPIC33E256GP502
-.equ FLASH_SIZE,     0x20000 ; Flash size in bytes without the high byte
+.equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x6000  ; Ram size in bytes
+.equ RAM_SIZE,       0x8000  ; Ram size in bytes
 
 .ifndecl IOL1WAY_OFF
 .equ IOL1WAY_OFF, 0xffff
@@ -19,7 +16,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;config __FOSCSEL, IESO_ON & FNOSC_PRI
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-config FWDT, FWDTEN_OFF
+;config FWDT, FWDTEN_OFF
 ;config FDS, GWRP_OFF & GCP_OFF
 ;config FPOR,
 config __FICD, JTAGEN_OFF & ICS_PGD3
@@ -28,10 +25,10 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
-.equ FREQ_FIN, 7370000        ; PLL input frequency.
+.equ FREQ_FIN, 7372800        ; PLL input frequency.
 .equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
-;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
+;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
@@ -41,7 +38,7 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -59,10 +56,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ; Map UART2 pins
 .ifdecl BAUDRATE2
 .ifdecl RPINR19
-.equ U2RXPIN, 0x1          ; 
 .equ RPINR19VAL, 0x0001    ; (U2RXPIN)
-.equ RPO_REGISTER, RPOR0   ; RP35
-.equ RPO_VALUE, 0x0200     ; UART2 TX on RP35 pin
+.equ U2_RPO_REGISTER, RPOR0   ; RP35
+.equ U2_RPO_VALUE, 0x0200     ; UART2 TX on RP35 pin
 .equ U2RTSPORT, LATB
 .equ U2RTSTRIS, TRISB
 .equ U2RTSPIN, 0x3
@@ -70,22 +66,19 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .endif
 
 ; Default number base
-;.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
-
-; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 0
+.equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 0
+.equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED, 0       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISB
-.equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 15
+.equ CPU_LOAD_LED, 1       ; set to 0 to disable
+.equ CPU_LOAD_TRIS, TRISA
+.equ CPU_LOAD_PORT, PORTA
+.equ CPU_LOAD_BIT, 0
 .equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led
 
 ; Define the startup delay for turnkey words. Milliseconds
@@ -116,7 +109,7 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 1
+.equ DEBUG_FLASH, 0
 
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
@@ -124,6 +117,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
+; Method 1 updates flash and eeprom after each ok prompt.
+; Method 2 updates flash and eeprom after no flash or eeprom
+; update requests have been made for a time of WRITE_TIMEOUT
 .equ WRITE_METHOD, 2
 .equ WRITE_TIMEOUT, 300         ; milliseconds
 
@@ -165,3 +161,7 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ DPS_BASE, CONFIG_DATA
 .equ DPS_PAGE, 0
 .endif
+
+;;; Different flash write logic for E devices
+.equ PIC2433E, 1
+
