@@ -1,0 +1,48 @@
+\ *******************************************************************
+\                                                                   *
+\    Filename:      task-test3.txt                                  *
+\    Date:          21.08.2014                                      *
+\    FF Version:    5.0                                             *
+\    MCU:           PIC 24 33                                       *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+single
+-t1
+marker -t1
+ram hex
+\ Registers for dsPIC33EP256GP502 on MicroStick2.
+$0e14 constant latb
+$0e12 constant portb
+$0e10 constant trisb
+ram variable delay
+: led14off  portb #14  bclr ;
+: led14on   portb #14  bset ;
+: led13off portb #13 bclr ;
+: led13on  portb #13 bset ;
+
+40 30 30 0 task: t1
+: tloop 
+  #100 delay !
+  trisb #14  bclr 
+  trisb #13 bclr
+  begin 
+    delay @ ms 
+    portb #14 btst
+    if
+      led14off
+      led13on
+    else 
+      led14on
+      led13off
+    then
+  again
+;
+
+: t1go ['] tloop t1 tinit t1 run ;
+
+' t1go is turnkey
+warm
+
