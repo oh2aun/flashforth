@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          20.08.2014                                        *
+;    Date:          21.08.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -173,6 +173,7 @@ rbuf2:       .space RX2_BUF_SIZE
 .endif
 .endif
 
+index:      .space 2
 ibase:      .space 2
 iaddr:      .space 2
 iflags:     .space 2
@@ -1266,9 +1267,13 @@ DI_L:
         .ascii  "di"
         .align  2
 DI:
+.ifdecl GIE
+        bclr    INTCON2, #GIE
+.else
         push    SR
         mov.b   #0xe0, W0
         ior.b   SRL
+.endif
         return
 
 ; ei ( -- ) enable interrupts
@@ -1278,7 +1283,11 @@ EI_L:
         .ascii  "ei"
         .align  2
 EI:
+.ifdecl GIE
+        bset    INTCON2, #GIE
+.else
         pop     SR
+.endif
         return
 
         .pword   paddr(EI_L)+PFLASH
@@ -1655,12 +1664,11 @@ IFETCH_INIT:
 EWENABLE:
         mov     W1, NVMCON
 EWENABLE0:
-;        disi    #5
-        push    SR
-        push    W0
-        mov     #0x00e0, W0
-        ior     SR
-        pop     W0
+.ifdecl PIC2433E
+        bclr    INTCON2, #GIE
+.else
+        disi    #7
+.endif
         mov     #0x55, W3       ; W3 selected to avoid clash in flash write routine.
         mov     W3, NVMKEY
         mov     #0xaa, W3
@@ -1671,7 +1679,9 @@ EWENABLE0:
 EWENABLE1:
         btsc    NVMCON, #WR
         bra     EWENABLE1       ; Now the cell has been stored
-        pop     SR
+.ifdecl PIC2433E
+        bset    INTCON2, #GIE
+.endif
         return
 
 .ifdef PEEPROM
@@ -2845,9 +2855,8 @@ MINUS_L:
         .ascii  "-"
         .align  2
 MINUS:
-        mov     [W14--], W0
-        mov     [W14], W1
-        sub     W1, W0, [W14]
+        mov     [W14-2], W0
+        sub     W0, [W14], [--W14]
         return
 
         .pword  paddr(MINUS_L)+PFLASH
@@ -2928,10 +2937,8 @@ DNEGATE_L:
         .ascii  "dnegate"
         .align  2
 DNEGATE:
-        rcall   SWOP        
-        com     [W14], [W14]
-        rcall   SWOP
-        com     [W14], [W14]
+        com     [--W14], [W14]
+        com     [++W14], [W14]
         rcall   ONE
         goto    MPLUS
         
@@ -6311,9 +6318,19 @@ BL:
         mlit    0x20
         return
 
+; IND      -- char                 an ASCII space
+        .pword  paddr(BL_L)+PFLASH
+IND_L:
+        .byte   NFA|INLINE|3
+        .ascii  "ind"
+        .align  2
+IND:
+        mlit    index
+        return
+
 ; STATE   -- a-addr             holds compiler state
 ; In RAM
-        .pword  paddr(BL_L)+PFLASH
+        .pword  paddr(IND_L)+PFLASH
 STATE_L:
         .byte   NFA|5
         .ascii  "state"

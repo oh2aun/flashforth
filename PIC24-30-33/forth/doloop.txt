@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      doloop.txt                                      *
-\    Date:          22.02.2014                                      *
+\    Date:          21.08.2014                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC30 PIC24 PIC33                               *
 \    Copyright:     Mikael Nordman                                  *
@@ -11,8 +11,6 @@
 \ *******************************************************************
 -doloop
 marker -doloop
-
-ram variable ind inlined
 
 : compileonly $10 shb ; \ Make word compile only
 
