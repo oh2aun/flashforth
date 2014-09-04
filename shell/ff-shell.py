@@ -19,6 +19,7 @@
 
 import os
 import sys
+import argparse
 import serial
 import readline
 import rlcompleter
@@ -28,31 +29,37 @@ import signal
 from thread import start_new_thread, allocate_lock
 from time import *
 
-# Threading stuff
+# Threading stuff, global flags
 running = True
 RECVR_STARTED = False
 THR_LOCK = allocate_lock()
 waitForOK = 0
 uploadMode = 0
 
-com_port  = '/dev/ttyACM0'
-baud_rate = '9600'
-try:
-  ser = serial.Serial(com_port, baud_rate, timeout=0.1, writeTimeout=1.0, rtscts=1)
-except serial.SerialException as e:
-  logging.debug("Could not open serial port '{}': {}".format(com_port, e))
-  raise e
- 
-def send_line(line):
+class Config(object):
+  def __init__(self):
+    self.serial_port  = '/dev/ttyACM0'
+    self.rate = '9600'
+    self.rtscts = False
+    self.xonxoff = False
+
+def serial_open(config):
+  print "Port:"+config.port+" Speed:"+config.rate+" rtscts:"+str(config.rtscts)+" xonxoff:"+str(config.xonxoff)
   try:
-    bytes = ser.write(line)
+    config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.rtscts, xonxoff=config.xonxoff)
+  except serial.SerialException as e:
+    print("Could not open serial port '{}': {}".format(com_port, e))
+    raise e
+  
+def send_line(config, line):
+  try:
+    bytes = config.ser.write(line)
   except serial.SerialTimeoutException as e:
     logging.error("Write timeout on serial port '{}': {}".format(com_port, e))
-  ser.flush()       # Send the output buffer
+  config.ser.flush()       # Send the output buffer
 
 # receive_thr() receives chars from FlashForth
-def receive_thr():
-  # Cause it's not atomic operation
+def receive_thr(config, *args):
   global RECVR_STARTED, running, waitForOK, uploadMode
   THR_LOCK.acquire()
   RECVR_STARTED = True
@@ -61,10 +68,10 @@ def receive_thr():
   OK1 = ' '
   OK2 = ' '
   while running==True:
-    while ser.inWaiting() > 0:
+    while config.ser.inWaiting() > 0:
       try:
         THR_LOCK.acquire()
-        char = ser.read()
+        char = config.ser.read()
         OK0 = OK1
         OK1 = OK2
         OK2 = char
@@ -79,7 +86,6 @@ def receive_thr():
             sys.stdout.flush()
             waitForOK = 1
           if OK1==' ' and OK2=='?':
-            #sys.stdout.write(OK0)
             sys.stdout.write(OK1)
             sys.stdout.write(OK2)
             sys.stdout.flush()
@@ -95,12 +101,31 @@ def receive_thr():
   RECVR_STARTED = False
   THR_LOCK.release()
 
+def parse_arg(config):
+  parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
+           epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename""")
+  parser.add_argument("--port", "-p", action="store",
+         type=str, default="/dev/ttyACM0", help="Serial port name")
+  parser.add_argument("--rtscts", action="store_true",
+         default=False, help="Serial port RTS/CTS enable")
+  parser.add_argument("--xonxoff", action="store_true",
+         default=False, help="Serial port XON/XOFF enable")
+  parser.add_argument("--speed", "-s", action="store",
+         type=int, default=38400, help="Serial port speed")
+  arg = parser.parse_args()
+  config.port = arg.port
+  config.rtscts = arg.rtscts
+  config.xonxoff = arg.xonxoff
+  config.speed = arg.speed
+
 #main loop for sending and receiving
 def main():
   global running, waitForOK, uploadMode
-  # Nice to see how python supports function pointer in such an easy way
-  start_new_thread(receive_thr, ())
-
+  
+  config = Config() 
+  parse_arg(config)
+  serial_open(config)
+  start_new_thread(receive_thr, (config, 1))
   # Wait for the thread to start
   while not RECVR_STARTED:
     pass
@@ -122,10 +147,7 @@ def main():
         pass
       if uploadMode == 0:
         line = raw_input()
-        sys.stdout.write('\r')
-        sys.stdout.write('\033')
-        sys.stdout.write('\133')
-        sys.stdout.write('\101')
+        sys.stdout.write('\r\033\133\101')
         sys.stdout.flush()
       else:
         line = file.readline()
@@ -146,7 +168,7 @@ def main():
         waitForOK = 2
 
       THR_LOCK.acquire()
-      send_line(line+"\n")
+      send_line(config, line+"\n")
       THR_LOCK.release()
 
     except KeyboardInterrupt:
@@ -155,8 +177,8 @@ def main():
 
   while RECVR_STARTED:
     pass
-  ser.close()
+  config.ser.close()
   print "Exiting ff-shell.py, goodbye..."
- 
+
 sys.exit(main())
 
