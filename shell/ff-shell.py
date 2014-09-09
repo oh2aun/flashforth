@@ -1,8 +1,9 @@
 #!/usr/bin/python
 #
 # Upload & interpreter shell for FlashForth.
+# Written for python 2.7
 #
-# Copyright 2014 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 9.9.2014 Mikael Nordman (oh2aun@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -90,7 +91,10 @@ def receive_thr(config, *args):
             sys.stdout.write(OK2)
             sys.stdout.flush()
             waitForOK = 1
-          if char=='\n':
+          if char == '\n':
+            if waitForOK == 2:
+              sys.stdout.write('\n')
+              sys.stdout.flush()
             waitForOK = 0
         THR_LOCK.release()
       except KeyboardInterrupt:
@@ -103,7 +107,7 @@ def receive_thr(config, *args):
 
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
-           epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename""")
+           epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename. Warm start with #warm.""")
   parser.add_argument("--port", "-p", action="store",
          type=str, default="/dev/ttyACM0", help="Serial port name")
   parser.add_argument("--rtscts", action="store_true",
@@ -157,7 +161,7 @@ def main():
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
-          sys.stdout.write(">>"+line)
+          sys.stdout.write("> "+line)
       if line[:6] == "#send ":
         pathfile = line[6:]
         print pathfile
@@ -166,7 +170,8 @@ def main():
         uploadMode = 1
       if uploadMode == 1:
         waitForOK = 2
-
+      if line[:5] == "#warm":
+        line = '\017'
       THR_LOCK.acquire()
       send_line(config, line+"\n")
       THR_LOCK.release()
