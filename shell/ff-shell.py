@@ -3,7 +3,7 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 9.9.2014 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 11.9.2014 Mikael Nordman (oh2aun@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -40,7 +40,7 @@ uploadMode = 0
 class Config(object):
   def __init__(self):
     self.serial_port  = '/dev/ttyACM0'
-    self.rate = '9600'
+    self.rate = '38400'
     self.rtscts = False
     self.xonxoff = False
 
@@ -115,12 +115,13 @@ def parse_arg(config):
   parser.add_argument("--xonxoff", action="store_true",
          default=False, help="Serial port XON/XOFF enable")
   parser.add_argument("--speed", "-s", action="store",
-         type=int, default=38400, help="Serial port speed")
+         type=str, default=38400, help="Serial port speed")
   arg = parser.parse_args()
   config.port = arg.port
   config.rtscts = arg.rtscts
   config.xonxoff = arg.xonxoff
-  config.speed = arg.speed
+  config.rate = arg.speed
+  print arg.speed
 
 #main loop for sending and receiving
 def main():
