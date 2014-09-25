@@ -107,6 +107,14 @@ flash lookup: mov.amode , , , , , , , ,
 :noname s" nz, " .bra ;
 :noname ( addr --  addr f ) hi@ 003a = ;
 
+\ bra nn
+:noname s" nn, " .bra ;
+:noname ( addr --  addr f ) hi@ 003b = ;
+
+\ bra n
+:noname s" n, " .bra ;
+:noname ( addr --  addr f ) hi@ 0033 = ;
+
 \ bra c
 :noname s" c, " .bra ;
 :noname ( addr -- addr f ) hi@ 0031 = ;
@@ -146,9 +154,9 @@ flash lookup: mov.amode , , , , , , , ,
 :noname ( addr -- addr f ) hi@ 07 = ;
 
 \ define a condition table 
-\ called (see) with 13 elements
+\ called (see) with 15 elements
 flash 
-#13 ct (see)
+#15 ct (see)
 ram
 
 : see 

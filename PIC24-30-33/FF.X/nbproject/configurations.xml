@@ -202,7 +202,7 @@
         <property key="memories.eeprom" value="true"/>
         <property key="memories.id" value="true"/>
         <property key="memories.programmemory" value="true"/>
-        <property key="memories.programmemory.end" value="0x157ff"/>
+        <property key="memories.programmemory.end" value="0x2afeb"/>
         <property key="memories.programmemory.start" value="0x0"/>
         <property key="poweroptions.powerenable" value="false"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>

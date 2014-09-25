@@ -418,6 +418,8 @@ U2_SKIP_FC_1:
 __U2RXInterrupt2:
         btsc    iflags, #ixoff2
         bra     U2_SKIP_FC_2
+        btsc    U2STA, #UTXBF
+        bra     __U2RXInterrupt2
         mov     #XOFF, W0
         mov     W0, U2TXREG
         bset    iflags, #ixoff2
@@ -492,7 +494,7 @@ iupdatebuf:
 ;   fillbuffer_from_imem
 ;   ibase = iaddr&0xffc0
 ;endif
-        mov     iaddr, W0
+;        mov     iaddr, W0  ; Done in caller
         mov     #IBUFMASK, W1
         and     W0, W1, W0
         cp      ibase
@@ -662,6 +664,27 @@ LITERAL:
         return
 
         .pword   paddr(LITERAL_L)+PFLASH
+TMR2_L:
+        .byte   NFA|INLINE|4
+        .ascii  "t2>r"
+        .align 2
+TMR2_:
+        mov     TMR2, W0
+        push    W0
+        return
+
+        .pword   paddr(TMR2_L)+PFLASH
+T2CON_L:
+        .byte   NFA|INLINE|5
+        .ascii  "t2con"
+        .align 2
+T2CON_:
+        bclr    PMD1, #T2MD
+        mov     #T2CON, W0
+        mov     W0, [++W14]
+        return
+
+        .pword   paddr(T2CON_L)+PFLASH
 TO_A_L:
         .byte   NFA|INLINE|2
         .ascii  ">a"
@@ -2948,9 +2971,8 @@ QDNEGATE_L:
         .ascii  "?dnegate"
         .align  2
 QDNEGATE:
-        rcall   ZEROLESS
         cp0     [W14--]
-        bra     z, QDNEGATE1
+        bra     nn, QDNEGATE1
         rcall   DNEGATE
 QDNEGATE1:
         return        
@@ -3633,8 +3655,7 @@ TWOSTORE_L:
         .ascii  "2!"
         .align  2
 TWOSTORE:
-        rcall   SWOP
-        rcall   OVER
+        rcall   TUCK
         inc2    [W14], [W14]
         rcall   STORE
         goto    STORE
@@ -3964,8 +3985,7 @@ PLUSSTORE_L:
         .ascii  "+!" 
         .align  2
 PLUSSTORE:
-        rcall   SWOP
-        rcall   OVER
+        rcall   TUCK
         rcall   FETCH
         rcall   PLUS
         rcall   SWOP
@@ -4227,9 +4247,8 @@ QNEGATE_L:
         .ascii  "?negate" 
         .align  2
 QNEGATE:
-        rcall   ZEROLESS
         cp0     [W14--]
-        bra     z, QNEGATE1
+        bra     nn, QNEGATE1
         neg     [W14], [W14]
 QNEGATE1:
         return
@@ -4373,9 +4392,8 @@ SIGN_L:
         .ascii  "sign"
         .align  2
 SIGN:   
-        rcall   ZEROLESS
-        cp0     [W14--]
-        bra     z, SIGN1
+        cp0     [W14--]    ; ZEROLESS
+        bra     nn, SIGN1
         mlit    #0x2D
         rcall   HOLD
 SIGN1:
@@ -4608,8 +4626,7 @@ SLASHSTRING_L:
         .ascii  "/string"
         .align  2
 SLASHSTRING:
-        rcall   SWOP
-        rcall   OVER
+        rcall   TUCK
         rcall   MINUS
         push    [W14--]
         rcall   PLUS
@@ -5418,8 +5435,8 @@ DP_TO_RAM:
         push    W13             ; P to return stack
         mov     #dpSTART, W13   ; dst to P
         rcall   FTURNKEY_A
-        mlit    4
-        push    [W14--]
+        mov     #4, W0
+        push    W0
 DP_TO_RAM1:
         rcall   DUP
         rcall   EEREAD
@@ -5453,8 +5470,8 @@ DP_TO_EEPROM:
         push    W13
         mov     [W14--], W13
         mlit    dpSTART
-        mlit    5
-        push    [W14--]
+        mov     #5, W0
+        push    W0
         bra     DP_TO_EEPROM_3
 DP_TO_EEPROM_0:
         rcall   FETCHPP
@@ -5487,8 +5504,8 @@ DP_TO_EEPROM_3:
         push    W13             ; P to return stack
         mov     [W14--], W13    ; src in ram
         rcall   FTURNKEY_A      ; dst in flash
-        mlit    4
-        push    [W14--]
+        mov     #4, W0
+        push    W0
 DP_TO_EEPROM_0:
         rcall   DUP
         rcall   EEREAD
@@ -5802,9 +5819,8 @@ POSTPONE:
         rcall   FIND
         mov     [W14++], [W14]      ; dup
         rcall   QABORTQ
-        rcall   ZEROLESS
-        cp0     [W14--]
-        bra     z, POSTPONE1
+        cp0     [W14--]             ; ZEROLESS
+        bra     nn, POSTPONE1
         rcall   DOCOMMAXT
         .word   handle(DOCOMMAXT)+PFLASH
         goto    ICOMMA
@@ -6525,8 +6541,8 @@ DUMP1:
         rcall   UDOTR
         mlit    0x3a
         rcall   EMIT
-        mlit    0x10
-        push    [W14--]
+        mov     #0x10, W0
+        push    W0
 DUMP2:
         rcall   CFETCHPP
         rcall   CELL
@@ -6537,8 +6553,8 @@ DUMP2:
 
         mlit    0x10
         rcall   MINUS
-        mlit    0x10
-        push    [W14--]
+        mov     #0x10, W0
+        push    W0
 DUMP4:  
         rcall   CFETCHPP
         rcall   TO_PR

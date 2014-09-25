@@ -41,4 +41,3 @@ ram variable flags3 inlined size3 8 / allot
 ;
 
 : bench3 ticks sieve3 ticks swap - u. ." milliseconds" cr ;
-
