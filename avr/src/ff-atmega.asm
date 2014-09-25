@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          02.04.2014                                        *
+;    Date:          25.09.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -353,7 +353,7 @@
 .equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0c00
+.equ KERNEL_SIZE=0x0c80
 .endif
 .endif
 .endif
