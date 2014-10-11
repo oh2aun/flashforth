@@ -87,12 +87,13 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ TURNKEY_DELAY, 2000  ; milliseconds
 
 ; UART buffer sizes
+; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
 .equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
-.equ RX1_BUF_SIZE, 32
+.equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
 .equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
-.equ RX2_BUF_SIZE, 32
+.equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task

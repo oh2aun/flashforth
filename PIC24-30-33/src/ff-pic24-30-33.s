@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          25.09.2014                                        *
+;    Date:          11.10.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -144,15 +144,16 @@ tbuf_len1:   .space 2
 tbuf_wr1:    .space 2
 tbuf_rd1:    .space 2
 tbuf_lv1:    .space 2
-tbuf1:       .space TX1_BUF_SIZE
+tbuf1:       .space TX1_BUF_SIZE+1
 .endif
 
 rxqueue1:
+rbuf_mask1:
 rbuf_len1:   .space 2
 rbuf_wr1:    .space 2
 rbuf_rd1:    .space 2
 rbuf_lv1:    .space 2
-rbuf1:       .space RX1_BUF_SIZE
+rbuf1:       .space RX1_BUF_SIZE+1
 
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
@@ -162,14 +163,14 @@ tbuf_len2:   .space 2
 tbuf_wr2:    .space 2
 tbuf_rd2:    .space 2
 tbuf_lv2:    .space 2
-tbuf2:       .space TX2_BUF_SIZE
+tbuf2:       .space TX2_BUF_SIZE+1
 .endif
 rxqueue2:
 rbuf_len2:   .space 2
 rbuf_wr2:    .space 2
 rbuf_rd2:    .space 2
 rbuf_lv2:    .space 2
-rbuf2:       .space RX2_BUF_SIZE
+rbuf2:       .space RX2_BUF_SIZE+1
 .endif
 .endif
 
@@ -251,8 +252,6 @@ WARMLIT:
         .word      0x0000
 ;;; *************************************************
 __OscillatorFail:
-;        clr     intcon1dbg
-;        reset
 __AddressError:
 __StackError:
 __MathError:
@@ -566,8 +565,6 @@ write_buffer_to_imem:
 ;; from the UART.
 ;; The assumption is that the serial line is silent then.
         rcall   wait_silence
-        mov     #5, W2
-        mov     W2, temp
 
 write_buffer_to_imem_again:
 .if DEBUG_FLASH == 1
@@ -634,8 +631,6 @@ wbtil6:
         return
 
 verify_imem_2:
-        dec     temp
-        bra     nz, write_buffer_to_imem_again
         reset
 
 ; LITERAL  x --           append numeric literal as inline code
@@ -2278,6 +2273,14 @@ UKEYQ:
         rcall   DOUSER
         .word   ukeyq
 
+;rxqueue1:
+;rbuf_mask1:
+;rbuf_len1:   .space 2
+;rbuf_wr1:    .space 2
+;rbuf_rd1:    .space 2
+;rbuf_lv1:    .space 2
+;rbuf1:       .space RX1_BUF_SIZE
+
 ; >CQ ( c addr -- ) Put to character queue
         .pword  paddr(UKEYQ_L)+PFLASH
 CQUEUE_TO_L:
@@ -2286,20 +2289,15 @@ CQUEUE_TO_L:
         .align  2
 CQUEUE_TO:
         rcall   FETCH
-        mov     [W14--], W0 ; W0 is the base pointer (length)
-        disi    #11
-        mov     [W0+2], W1      ; W1 is the write pointer
-        mov.b   [W14], [W1++]
-        sub     W14, #2, W14
-        add     W0, [W0], W2
-        add     W2, #8, W2      ; W2 is the end of buffer pointer
-        cp      W2, W1          ; end of buf - write pointer
-        bra     nn, CQUEUE_TO_1
-        add     W0, #8, W1
-CQUEUE_TO_1:        
-        mov     W1, [W0+2]
-        add     W0, #6, W0
-        inc     [W0], [W0]
+        mov     [W14--], W0 ; W0 is the base pointer (mask)
+        add     W0, #8, W2  ; W2 is the buffer start pointer
+        disi    #8
+        mov     [W0+2], W1      ; W1 is the write offset
+        mov.b   [W14], [W2+W1]
+        dec2    W14, W14
+        inc     W1, W1
+        and     W1, [W0++], [W0++] ; Store new writeoffset
+        inc     [++W0], [W0]      ; Increment level
         return
 
 ; >CQ? ( addr -- flag ) Space available ? false = queue is full
@@ -2310,10 +2308,11 @@ CQUEUE_TOQ_L:
         .align  2
 CQUEUE_TOQ:
         rcall   FETCH
-        mov     [W14], W0   ; W0 is the base pointer (length)
+        mov     [W14], W0       ; W0 is the base pointer (length)
+        dec     [W0], W2        ; W2 = length
         disi    #2
         mov     [W0+6], W1      ; W1 = FillLevel
-        sub     W1, [W0], W1    ; W1 = Fill - maxLength
+        sub     W1, W2, W1      ; W1 = Fill - maxLength
         asr     W1, #15, W1     ; Extend the sign bit to a flag
         mov     W1, [W14]
         return
@@ -2326,20 +2325,15 @@ CQUEUE_FROM_L:
         .align  2
 CQUEUE_FROM:
         rcall   FETCH
-        mov     [W14], W0       ; W0 is the base pointer (length)
+        mov     [W14], W0       ; W0 is the base pointer (mask)
         clr     [W14]           ; Zero the upper byte of the result
-        add     W0, [W0], W2    ; W2 = 
-        add     W2, #8, W2      ; W2 is the end of buffer pointer
-        disi    #9
-        mov     [W0+4], W1      ; W1 is the read pointer
-        mov.b   [W1++], [W14]   ; remember the unqueued character
-        cp      W2, W1          ; end of buf - read pointer
-        bra     nn, CQUEUE_FROM_1
-        add     W0, #8, W1      ; New read pointer
-CQUEUE_FROM_1:      
-        mov     W1, [W0+4]      ; Store the new read pointer
-        add     W0, #6, W0
-        dec     [W0], [W0]
+        add     W0, #8, W2      ; W2 is the buffer start pointer
+        mov     [W0+4], W1      ; W1 is the read offset
+        disi    #6
+        mov.b   [W2+W1], [W14]   ; remember the unqueued character
+        inc     W1, W1
+        and     W1, [W0++], [++W0] ; Store the new read offset
+        dec     [++W0], [W0]       ; Decrement level
         return
 
 ; CQ>? ( addr -- flag ) Character available ? false = no
@@ -2366,13 +2360,11 @@ CQUEUEZ:
         rcall   SWOP
         rcall   FETCH           ; baseaddr size
         mov     [W14--], W2     ; size
-        dec2    W2, W2          ; Leave two empty pos in the queue
         mov     [W14--], W1     ; W1 points to the base
-        disi    #5
+        disi    #6
         mov     W2, [W1]        ; Store the size
-        add     W1, #8, W0
-        mov     W0, [++W1]      ; Write pointer
-        mov     W0, [++W1]      ; Read pointer
+        clr     [++W1]          ; Write offset
+        clr     [++W1]          ; Read offset
         clr     [++W1]          ; Fill level
         return
     
@@ -2390,8 +2382,9 @@ CQUEUE:
         mov     [W14++], [W14]      ; dup
         dec     [W14], [W14]
         rcall   COMMA
-        mlit    8
+        mlit    9
         rcall   PLUS
+        rcall   ALIGNED
         rcall   RAM
         rcall   ALLOT
         rcall   XDOES
@@ -2410,7 +2403,7 @@ U1TXQUEUE:
         return
 U1TXQUEUE_DATA:
         .word   txqueue1
-        .word   TX1_BUF_SIZE-1
+        .word   TX1_BUF_SIZE
 
         .pword  paddr(U1TXQUEUE_L)+PFLASH
 .endif
@@ -2423,7 +2416,7 @@ U1RXQUEUE:
         return
 U1RXQUEUE_DATA:
         .word   rxqueue1
-        .word   RX1_BUF_SIZE-1
+        .word   RX1_BUF_SIZE
 
         .pword  paddr(U1RXQUEUE_L)+PFLASH
 TX1_L:
@@ -2517,7 +2510,7 @@ U2TXQUEUE:
         return
 U2TXQUEUE_DATA:
         .word   txqueue2
-        .word   TX2_BUF_SIZE-1
+        .word   TX2_BUF_SIZE
 
         .pword  paddr(U2TXQUEUE_L)+PFLASH
 .endif
@@ -2530,7 +2523,7 @@ U2RXQUEUE:
         return
 U2RXQUEUE_DATA:
         .word   rxqueue2
-        .word   RX2_BUF_SIZE-1
+        .word   RX2_BUF_SIZE
 
         .pword  paddr(U2RXQUEUE_L)+PFLASH
 TX2_L:

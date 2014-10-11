@@ -60,12 +60,13 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ TURNKEY_DELAY, 2000  ; milliseconds
 
 ; UART buffer sizes
-.equ TX1_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
-.equ RX1_BUF_SIZE, 32
+; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
+.equ TX1_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
+.equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 16  ; Use 0 for unbuffered TX.
-.equ RX2_BUF_SIZE, 32
+.equ TX2_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
+.equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
