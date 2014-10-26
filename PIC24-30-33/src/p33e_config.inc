@@ -166,3 +166,5 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ;;; Different flash write logic for E devices
 .equ PIC2433E, 1
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 126

@@ -137,3 +137,5 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ DPS_PAGE, 0
 .endif
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 118

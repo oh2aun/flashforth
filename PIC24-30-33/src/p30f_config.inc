@@ -130,4 +130,6 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .endif
 .equ write_delay, 20           ; Flash write delay
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 64
 

@@ -38,7 +38,7 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -78,9 +78,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 1       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISB
-.equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 15
+.equ CPU_LOAD_TRIS, TRISA
+.equ CPU_LOAD_PORT, PORTA
+.equ CPU_LOAD_BIT, 0
 .equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led
 
 ; Define the startup delay for turnkey words. Milliseconds
@@ -169,3 +169,5 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ;;; Different flash write logic for E devices than HJ or FJ devices
 .equ PIC2433E, 1
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 126

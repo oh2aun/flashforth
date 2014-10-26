@@ -131,3 +131,5 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ DPS_PAGE, 0
 .endif
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 118

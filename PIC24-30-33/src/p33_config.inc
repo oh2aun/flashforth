@@ -30,31 +30,29 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ; Map UART1 pins
 .ifdecl RPINR18
-.equ U1RXPIN, 0xf          ; 
-.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
-.equ U1TXPIN, 0xe
+.equ RPINR18VAL, 11    ; RP11 (U1RXPIN)
+.equ U1TXPIN, 10       ; RP10
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
-.equ U1RTSPIN, 0xc
+.equ U1RTSPIN, 12
 .endif
 
 ; Map UART2 pins
 .ifdecl BAUDRATE2
 .ifdecl RPINR19
-.equ U2RXPIN, 0x1          ; 
 .equ RPINR19VAL, 0x0001    ; (U2RXPIN)
 .equ U2TXPIN, 0x2
 .equ U2RTSPORT, LATB
@@ -70,13 +68,13 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ IDLE_MODE, 0
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
 .equ CPU_LOAD_TRIS, TRISB
 .equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 8
+.equ CPU_LOAD_BIT, 7
 .equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
@@ -156,3 +154,5 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 .equ DPS_PAGE, 0
 .endif
 
+; Amount of interrupt vectors
+.equ IVECSIZE, 126

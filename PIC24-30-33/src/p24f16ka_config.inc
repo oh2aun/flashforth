@@ -108,3 +108,6 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
 .equ MS_PR_VAL, (FCY/1000-1)		      ; Timer value for 1 ms ticks
 .equ write_delay, 20                      ; Flash write delay
+
+; Amount of interrupt vectors
+.equ IVECSIZE, 126

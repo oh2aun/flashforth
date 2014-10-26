@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          11.10.2014                                        *
+;    Date:          26.10.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -82,9 +82,6 @@
 ;;; For Flow Control
 .equ XON,   0x11
 .equ XOFF,  0x13
-
-
-.equ IVECSIZE, 64
 
 ;;; USER AREA sizes for the OPERATOR task
 
@@ -205,7 +202,7 @@ dpSAVE:     .space 8
 .endif
 
 .ifdecl INTTREG
-IVECTAB:    .space IVECSIZE*2 ; space for 64 interrupt vectors
+IVECTAB:    .space IVECSIZE*2 ; space for interrupt vectors
 .endif
 
 cse:        .space 2 ; Current data section 0=flash, 1=eeprom, 2=ram
@@ -2272,14 +2269,6 @@ UKEYQ_L:
 UKEYQ:
         rcall   DOUSER
         .word   ukeyq
-
-;rxqueue1:
-;rbuf_mask1:
-;rbuf_len1:   .space 2
-;rbuf_wr1:    .space 2
-;rbuf_rd1:    .space 2
-;rbuf_lv1:    .space 2
-;rbuf1:       .space RX1_BUF_SIZE
 
 ; >CQ ( c addr -- ) Put to character queue
         .pword  paddr(UKEYQ_L)+PFLASH

@@ -3,7 +3,7 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 11.9.2014 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 26.10.2014 Mikael Nordman (oh2aun@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -135,7 +135,7 @@ def main():
   while not RECVR_STARTED:
     pass
   # 
-  readline.parse_and_bind("tab: complete")
+  # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
   print histfn
   try:
@@ -165,10 +165,12 @@ def main():
           sys.stdout.write("> "+line)
       if line[:6] == "#send ":
         pathfile = line[6:]
-        print pathfile
-        file = open(pathfile, "r")
         line = ""
-        uploadMode = 1
+        try:
+          file = open(pathfile, "r")
+          uploadMode = 1
+        except IOError, e:
+          print "\nFile not found: "+pathfile
       if uploadMode == 1:
         waitForOK = 2
       if line[:5] == "#warm":

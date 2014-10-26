@@ -154,3 +154,6 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ DPS_BASE, CONFIG_DATA
 .equ DPS_PAGE, 0
 .endif
+
+; Amount of interrupt vectors
+.equ IVECSIZE, 118
