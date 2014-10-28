@@ -35,6 +35,17 @@
         mov     #\lval, w0
         mov     w0, [++w14]
 .endm
+.macro mreg flags, len, reg, name
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|\flags|\len
+        .ascii  "\name"
+        .align  2
+        mov     #\reg, W0
+        mov     W0, [++W14]
+        return
+.endm
+
 ;..............................................................................
 ;Global Declarations:
 ;..............................................................................
@@ -6507,7 +6518,7 @@ ALLOT:
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
         .pword  paddr(ALLOT_L)+PFLASH
-DUMP_L:
+9:
         .byte   NFA|4
         .ascii  "dump"
         .align  2
@@ -6553,8 +6564,8 @@ DUMP7:
 
 ;***************************************************************
 ; Fcy   ( -- ) The CPU clock ( Fcy in PIC datasheet ) 
-        .pword   paddr(DUMP_L)+PFLASH
-CPU_CLK_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "Fcy"
         .align  2
@@ -6564,7 +6575,7 @@ FCY_:
         return
 
 ; C4+ ( n1 -- n2) call C  function unsigned  short func(unsigned short n1);
-        .pword  paddr(CPU_CLK_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .if C_EXAMPLE == 1
 CFOURADD_L:
         .byte   NFA|3
@@ -6577,9 +6588,9 @@ CFOURADD_:
         mov     W0, [W14]
         return
 
-        .pword  paddr(CFOURADD_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .endif
-FALSE_L:
+9:
         .byte   NFA|INLINE|5
         .ascii  "false"
         .align  2
@@ -6587,15 +6598,19 @@ FALSE_:                     ; TOS is 0000 (FALSE)
         clr     [++W14]
         return
 
-        .pword  paddr(FALSE_L)+PFLASH
-TRUE_L:
-kernellink:
+        .pword  paddr(9b)+PFLASH
+9:
+;kernellink:
         .byte   NFA|INLINE|4
         .ascii  "true"
         .align  2
 TRUE_:                      ; TOS is ffff (TRUE)
         setm    [++W14]
         return
+
+.include "registers.inc"
+
+.equ kernellink, 9b
 
 ;        .pword  paddr(TRUE_L)+PFLASH
 DOTBASE_L:
