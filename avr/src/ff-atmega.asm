@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          25.09.2014                                        *
+;    Date:          10.11.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -3440,6 +3440,7 @@ WORDS_L:
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
+		rcall   CR
         rcall   LATEST_
         rcall   FETCH_A
 WDS1:   rcall   DUP
@@ -4526,6 +4527,10 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x64
             rcall FF_ISR
 .endif
+.if 0x66 < INT_VECTORS_SIZE
+.org BOOT_START + 0x66
+            rcall FF_ISR
+.endif
 .if 0x68 < INT_VECTORS_SIZE
 .org BOOT_START + 0x68
             rcall FF_ISR
@@ -4632,6 +4637,10 @@ FF_ISR:
         push    tosh
 
         subi    xl, 1
+.if low(ivec) == 0x80
+		ldi     xh, low(ivec)
+ 		add     xl, xh
+.endif
         ldi     xh, high(ivec)
         ld      zl, x+
         ld      zh, x+
@@ -5237,6 +5246,10 @@ IRQ_V:
         movw    zl, tosl
         sbiw    zl, 1
         lsl     zl
+.if low(ivec) == 0x80
+		ldi     zh, low(ivec)
+		add     zl,  zh
+.endif
         ldi     zh, high(ivec)
         poptos
         rcall   TO_XA

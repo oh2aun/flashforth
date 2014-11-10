@@ -1,20 +1,20 @@
 
-AVRASM ver. 2.1.42  E:\avr\src\ff-atmega.asm Wed Apr 02 20:41:21 2014
+AVRASM ver. 2.1.30  F:\avr\src\ff-atmega.asm Mon Nov 10 19:30:09 2014
 
-E:\avr\src\ff-atmega.asm(34): Including file 'E:\avr\src\config.inc'
-E:\avr\src\config.inc(5): Including file 'C:\Program Files\Atmel\AVR Tools\AvrAssembler2\Appnotes\m2560def.inc'
-E:\avr\src\ff-atmega.asm(72): warning: Register r26 already defined by the .DEF directive
-E:\avr\src\ff-atmega.asm(73): warning: Register r27 already defined by the .DEF directive
-E:\avr\src\ff-atmega.asm(74): warning: Register r30 already defined by the .DEF directive
-E:\avr\src\ff-atmega.asm(75): warning: Register r31 already defined by the .DEF directive
-E:\avr\src\ff-atmega.asm(238): warning: Use of undefined or forward referenced symbol 'TX0_' in .equ/.set
-E:\avr\src\ff-atmega.asm(239): warning: Use of undefined or forward referenced symbol 'RX0_' in .equ/.set
-E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced symbol 'RX0Q' in .equ/.set
+F:\avr\src\ff-atmega.asm(34): Including file 'F:\avr\src\config.inc'
+F:\avr\src\config.inc(5): Including file 'C:\Program Files\Atmel\AVR Tools\AvrAssembler2\Appnotes\m2560def.inc'
+F:\avr\src\ff-atmega.asm(72): warning: Register r26 already defined by the .DEF directive
+F:\avr\src\ff-atmega.asm(73): warning: Register r27 already defined by the .DEF directive
+F:\avr\src\ff-atmega.asm(74): warning: Register r30 already defined by the .DEF directive
+F:\avr\src\ff-atmega.asm(75): warning: Register r31 already defined by the .DEF directive
+F:\avr\src\ff-atmega.asm(238): warning: Use of undefined or forward referenced symbol 'TX0_' in .equ/.set
+F:\avr\src\ff-atmega.asm(239): warning: Use of undefined or forward referenced symbol 'RX0_' in .equ/.set
+F:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced symbol 'RX0Q' in .equ/.set
                  
                  
                  ;                                                                     *
                  ;    Filename:      FlashForth.asm                                    *
-                 ;    Date:          02.03.2014                                        *
+                 ;    Date:          10.11.2014                                        *
                  ;    File Version:  5.0                                               *
                  ;    MCU:           Atmega                                            *
                  ;    Copyright:     Mikael Nordman                                    *
@@ -51,15 +51,15 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ;.include "m2561def.inc"  ; 
                  .include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
                  
-                 ;***** Created: 2011-08-25 20:59 ******* Source: ATmega2560.xml **********
+                 ;***** Created: 2008-11-07 12:39 ******* Source: ATmega2560.xml **********
                  ;*************************************************************************
                  ;* A P P L I C A T I O N   N O T E   F O R   T H E   A V R   F A M I L Y
                  ;* 
                  ;* Number            : AVR000
                  ;* File Name         : "m2560def.inc"
                  ;* Title             : Register/Bit Definitions for the ATmega2560
-                 ;* Date              : 2011-08-25
-                 ;* Version           : 2.35
+                 ;* Date              : 2008-11-07
+                 ;* Version           : 2.31
                  ;* Support E-mail    : avr@atmel.com
                  ;* Target MCU        : ATmega2560
                  ;* 
@@ -368,8 +368,8 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  .equ	UBRR11	= 3	; USART Baud Rate Register bit 11
                  
                  ; UBRR0L - USART Baud Rate Register Low Byte
-                 .equ	_UBRR0	= 0	; USART Baud Rate Register bit 0
-                 .equ	_UBRR1	= 1	; USART Baud Rate Register bit 1
+                 .equ	UBRR0	= 0	; USART Baud Rate Register bit 0
+                 .equ	UBRR1	= 1	; USART Baud Rate Register bit 1
                  .equ	UBRR2	= 2	; USART Baud Rate Register bit 2
                  .equ	UBRR3	= 3	; USART Baud Rate Register bit 3
                  .equ	UBRR4	= 4	; USART Baud Rate Register bit 4
@@ -941,14 +941,14 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  .equ	TCNT0_7	= 7	; 
                  
                  ; OCR0A - Timer/Counter0 Output Compare Register
-                 .equ	OCR0A_0	= 0	; 
-                 .equ	OCR0A_1	= 1	; 
-                 .equ	OCR0A_2	= 2	; 
-                 .equ	OCR0A_3	= 3	; 
-                 .equ	OCR0A_4	= 4	; 
-                 .equ	OCR0A_5	= 5	; 
-                 .equ	OCR0A_6	= 6	; 
-                 .equ	OCR0A_7	= 7	; 
+                 .equ	OCROA_0	= 0	; 
+                 .equ	OCROA_1	= 1	; 
+                 .equ	OCROA_2	= 2	; 
+                 .equ	OCROA_3	= 3	; 
+                 .equ	OCROA_4	= 4	; 
+                 .equ	OCROA_5	= 5	; 
+                 .equ	OCROA_6	= 6	; 
+                 .equ	OCROA_7	= 7	; 
                  
                  ; OCR0B - Timer/Counter0 Output Compare Register
                  .equ	OCR0B_0	= 0	; 
@@ -1675,8 +1675,8 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ;.equ	UBRR11	= 3	; USART Baud Rate Register bit 11
                  
                  ; UBRR2L - USART Baud Rate Register Low Byte
-                 .equ	UBRR0	= 0	; USART Baud Rate Register bit 0
-                 .equ	UBRR1	= 1	; USART Baud Rate Register bit 1
+                 ;.equ	UBRR0	= 0	; USART Baud Rate Register bit 0
+                 ;.equ	UBRR1	= 1	; USART Baud Rate Register bit 1
                  ;.equ	UBRR2	= 2	; USART Baud Rate Register bit 2
                  ;.equ	UBRR3	= 3	; USART Baud Rate Register bit 3
                  ;.equ	UBRR4	= 4	; USART Baud Rate Register bit 4
@@ -1888,7 +1888,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ; ***** END OF FILE ******************************************************
                  ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
                  ;.include "m168pdef.inc"
-                 ;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+                 ;.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
                  ;.include "m32adef.inc"
                  ;.include "m644pdef.inc"
                  
@@ -1921,6 +1921,9 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ; Set to 1 for power save when CPU is idle
                  .equ IDLE_MODE = 1
                  
+                 ; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE = 1
+                 .equ CPU_LOAD = 1
+                 
                  ; CPU load indicator led definitions. Needs IDLE_MODE = 1
                  .equ CPU_LOAD_LED = 1            ; set to 1 to enable
                  .equ CPU_LOAD_DDR = ddrb
@@ -1949,9 +1952,6 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  
                  ; Select which timer to use for the system millisecond ticks 0, 1, 2
                  .equ MS_TIMER = 0
-                 
-                 ; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE = 1
-                 .equ CPU_LOAD = 1
                  
                  
                  
@@ -2533,7 +2533,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01ef7e d3a8              rcall   ZEROSENSE
 01ef7f f021              breq    NEQUAL3
 01ef80 d741              rcall   TRUE_
-01ef81 940f f9d5         call    LEAVE
+01ef81 940f f9d6         call    LEAVE
 01ef83 c004              rjmp    NEQUAL4
                  NEQUAL3:
 01ef84 d2a2              rcall   RFETCH
@@ -2541,7 +2541,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01ef86 f409              brne    NEQUAL4
 01ef87 d731              rcall   FALSE_
                  NEQUAL4:
-01ef88 940f f9c4         call    XNEXT
+01ef88 940f f9c5         call    XNEXT
 01ef8a f788              brcc    NEQUAL2
 01ef8b 911f              pop     t1
 01ef8c 910f              pop     t0
@@ -2597,14 +2597,14 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01efac c008              rjmp    SCAN3
                  SCAN1:
 01efad d50f              rcall   CFETCHPP
-01efae 940f fa9b         call    FETCH_P
+01efae 940f fa9c         call    FETCH_P
 01efb0 d304              rcall   EQUAL
 01efb1 d375              rcall   ZEROSENSE
 01efb2 f011              breq    SCAN3
 01efb3 d2c8              rcall   ONEMINUS
 01efb4 c003              rjmp    SCAN4
                  SCAN3:
-01efb5 940f f9c4         call    XNEXT
+01efb5 940f f9c5         call    XNEXT
 01efb7 f7a8              brcc    SCAN1
                  SCAN4:
 01efb8 d263              rcall   RFROM
@@ -3095,7 +3095,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  STORCOLON:
 01f111 d605              rcall   DOLIT
 01f112 fffa              .dw     0xfffa         ;  -6
-01f113 940d f8f4         jmp     IALLOT
+01f113 940d f8f5         jmp     IALLOT
                  
                  
                  ; 2@    a-addr -- x1 x2            fetch 2 cells
@@ -3321,7 +3321,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f1ae d30e              rcall   CFETCHPP
 01f1af de2d              rcall   EMIT
                  TYPE2:
-01f1b0 940f f9c4         call    XNEXT
+01f1b0 940f f9c5         call    XNEXT
 01f1b2 f7d8              brcc    TYPE1
 01f1b3 911f              pop     t1
 01f1b4 910f              pop     t0
@@ -3512,8 +3512,8 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f23f 6d82
 01f240 002b              .db     NFA|2, "m+",0
                  MPLUS:
-01f241 d7a8              rcall   STOD
-01f242 940d fa0c         jmp     DPLUS
+01f241 d7a9              rcall   STOD
+01f242 940d fa0d         jmp     DPLUS
                  
 01f244 e47e              fdw     MPLUS_L
                  MINUS_L:
@@ -4104,7 +4104,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  UDOTR1:
 01f3f1 dfc8              rcall   NUM
                  UDOTR2: 
-01f3f2 d5d1              rcall   XNEXT
+01f3f2 d5d2              rcall   XNEXT
 01f3f3 f7e8              brcc    UDOTR1
 01f3f4 911f              pop     t1
 01f3f5 910f              pop     t0
@@ -4230,7 +4230,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f448 d323              rcall   CREATE
 01f449 dc74              rcall   CELL
 01f44a de26              rcall	NEGATE
-01f44b d4a8              rcall   IALLOT
+01f44b d4a9              rcall   IALLOT
 01f44c 940f ff9d         call    ICOMMA
 01f44e d36d              rcall   XDOES
                  DOUSER:
@@ -4351,7 +4351,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f4a7 de58              rcall   PCSTORE
 01f4a8 de5f              rcall   PPLUS
                  CMOVE2:
-01f4a9 d51a              rcall   XNEXT
+01f4a9 d51b              rcall   XNEXT
 01f4aa f7d8              brcc    CMOVE1
 01f4ab 911f              pop     t1
 01f4ac 910f              pop     t0
@@ -4488,7 +4488,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f509 0064              .db     NFA|4,"find",0
                  FIND:   
 01f50a d20c              rcall   DOLIT
-01f50b f550              fdw     kernellink
+01f50b f552              fdw     kernellink
 01f50c dfd9              rcall   findi
 01f50d de1f              rcall   DUPZEROSENSE
 01f50e f421              brne    FIND1
@@ -4708,7 +4708,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f5b4 dc67              rcall   RFROM           ; a a' u ud.l ud.d sign
 01f5b5 dd71              rcall   ZEROSENSE
 01f5b6 f009              breq    QNUMD1
-01f5b7 d43a              rcall   DNEGATE
+01f5b7 d43b              rcall   DNEGATE
                  QNUMD1: 
 01f5b8 db80              rcall   TWOSWAP         ; a d.l d.h a' u
 01f5b9 dd6d              rcall   ZEROSENSE       ; a d.l d.h a'
@@ -4869,7 +4869,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ICOMPILE:
 01f62e fe95              sbrs    wflags, 5       ; Inline check
 01f62f c003              rjmp    ICOMMAXT
-01f630 940f f99b         call    INLINE0
+01f630 940f f99c         call    INLINE0
 01f632 cfc7              rjmp    IPARSEWORD
                  ICOMMAXT:
 01f633 d127              rcall   COMMAXT_A
@@ -4977,7 +4977,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f687 d08f              rcall   DOLIT
 01f688 003e              .dw     '>'
 01f689 d953              rcall   EMIT
-01f68a 940d f8b3         jmp     DOTS
+01f68a 940d f8b4         jmp     DOTS
                  
 01f68c 3e82
 01f68d 0072              .db     NFA|2,">r",0
@@ -5027,9 +5027,9 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  DP_TO_EEPROM_1:
 01f6ac db44              rcall   DROP
                  DP_TO_EEPROM_2:
-01f6ad d3fc              rcall   PTWOPLUS
+01f6ad d3fd              rcall   PTWOPLUS
                  DP_TO_EEPROM_3:
-01f6ae d315              rcall   XNEXT
+01f6ae d316              rcall   XNEXT
 01f6af f7a0              brcc    DP_TO_EEPROM_0
 01f6b0 911f              pop     t1
 01f6b1 910f              pop     t0
@@ -5350,7 +5350,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f791 deca              rcall   SHB
 01f792 dae4              rcall   ONEPLUS
 01f793 d93d              rcall   ALIGNED
-01f794 d15f              rcall   IALLOT          ; The header has now been created
+01f794 d160              rcall   IALLOT          ; The header has now been created
 01f795 df81              rcall   DOLIT             
 01f796 e062              fdw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
 01f797 d962              rcall   STORECFF1       ; Append an exeution token, CALL !
@@ -5516,7 +5516,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f80c da2c              rcall   PLUS
 01f80d df09              rcall   DOLIT
 01f80e fffe              .dw     -2
-01f80f d0e4              rcall   IALLOT
+01f80f d0e5              rcall   IALLOT
 01f810 df06              rcall   DOLIT
                  .ifdef EIND
 01f811 940d              .dw     0x940d
@@ -5684,7 +5684,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f87c d00a              rcall   TO_PRINTABLE
 01f87d dee7              rcall   EMIT_A
                  DOTID3:
-01f87e d145              rcall   XNEXT
+01f87e d146              rcall   XNEXT
 01f87f f7d8              brcc    DOTID1  
 01f880 911f              pop     t1
 01f881 910f              pop     t0
@@ -5714,221 +5714,222 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01f891 de27              rcall   FALSE_
 01f892 decd              rcall   CR
 01f893 de83              rcall   DOLIT
-01f894 f550              fdw     kernellink
-01f895 d004              rcall   WDS1
+01f894 f552              fdw     kernellink
+01f895 d005              rcall   WDS1
 01f896 de22              rcall   FALSE_
 01f897 dec8              rcall   CR
-01f898 dfad              rcall   LATEST_
-01f899 ddbd              rcall   FETCH_A
-01f89a de86      WDS1:   rcall   DUP
-01f89b dfd9              rcall   DOTID
-01f89c dd31              rcall   SWOP_A
-01f89d d9d9              rcall   ONEPLUS
-01f89e de82              rcall   DUP
-01f89f de77              rcall   DOLIT
-01f8a0 0007              .dw     7
-01f8a1 d9ad              rcall   AND_
-01f8a2 da84              rcall   ZEROSENSE
-01f8a3 f021              breq    WDS2
-01f8a4 de72              rcall   DOLIT
-01f8a5 0009              .dw     9
-01f8a6 debe              rcall   EMIT_A
-01f8a7 c001              rjmp    WDS3
+01f898 dec7      		rcall   CR
+01f899 dfac              rcall   LATEST_
+01f89a ddbc              rcall   FETCH_A
+01f89b de85      WDS1:   rcall   DUP
+01f89c dfd8              rcall   DOTID
+01f89d dd30              rcall   SWOP_A
+01f89e d9d8              rcall   ONEPLUS
+01f89f de81              rcall   DUP
+01f8a0 de76              rcall   DOLIT
+01f8a1 0007              .dw     7
+01f8a2 d9ac              rcall   AND_
+01f8a3 da83              rcall   ZEROSENSE
+01f8a4 f021              breq    WDS2
+01f8a5 de71              rcall   DOLIT
+01f8a6 0009              .dw     9
+01f8a7 debd              rcall   EMIT_A
+01f8a8 c001              rjmp    WDS3
                  WDS2:   
-01f8a8 deb7              rcall   CR
+01f8a9 deb6              rcall   CR
                  WDS3:
-01f8a9 dd24              rcall   SWOP_A
+01f8aa dd23              rcall   SWOP_A
                  
-01f8aa df83              rcall   TWOMINUS
-01f8ab ddab              rcall   FETCH_A
-01f8ac da80              rcall   DUPZEROSENSE
-01f8ad f761              brne    WDS1
-01f8ae 940d f12b         jmp     TWODROP
+01f8ab df82              rcall   TWOMINUS
+01f8ac ddaa              rcall   FETCH_A
+01f8ad da7f              rcall   DUPZEROSENSE
+01f8ae f761              brne    WDS1
+01f8af 940d f12b         jmp     TWODROP
                  
                  ; .S      --           print stack contents
                  ; : .s space sp@ s0 @ 2- begin 2dup < while -@ u. repeat 2drop ;
-01f8b0 f11c              fdw     WORDS_L
+01f8b1 f11c              fdw     WORDS_L
                  DOTS_L:
-01f8b1 2e82
-01f8b2 0073              .db     NFA|2,".s",0
+01f8b2 2e82
+01f8b3 0073              .db     NFA|2,".s",0
                  DOTS:
-01f8b3 d88e              rcall   SPACE_
-01f8b4 de6c              rcall   DUP          ; push tosl:tosh to memory
-01f8b5 940f f05a         call    SPFETCH
-01f8b7 df94              rcall   S0
-01f8b8 dd9e              rcall   FETCH_A
-01f8b9 df74              rcall   TWOMINUS
+01f8b4 d88d              rcall   SPACE_
+01f8b5 de6b              rcall   DUP          ; push tosl:tosh to memory
+01f8b6 940f f05a         call    SPFETCH
+01f8b8 df93              rcall   S0
+01f8b9 dd9d              rcall   FETCH_A
+01f8ba df73              rcall   TWOMINUS
                  DOTS1:
-01f8ba d877              rcall   TWODUP
-01f8bb d9fe              rcall   LESS
-01f8bc da6a              rcall   ZEROSENSE
-01f8bd f019              breq    DOTS2
-01f8be df62              rcall   MINUS_FETCH
-01f8bf db22              rcall   UDOT
-01f8c0 cff9              rjmp    DOTS1
+01f8bb d876              rcall   TWODUP
+01f8bc d9fd              rcall   LESS
+01f8bd da69              rcall   ZEROSENSE
+01f8be f019              breq    DOTS2
+01f8bf df61              rcall   MINUS_FETCH
+01f8c0 db21              rcall   UDOT
+01f8c1 cff9              rjmp    DOTS1
                  DOTS2:  
-01f8c1 d92f              rcall   DROP
-01f8c2 940d f12b         jmp     TWODROP
+01f8c2 d92e              rcall   DROP
+01f8c3 940d f12b         jmp     TWODROP
                  
                  ;   DUMP  ADDR U --       DISPLAY MEMORY
-01f8c4 f162              fdw     DOTS_L
+01f8c5 f164              fdw     DOTS_L
                  DUMP_L:
-01f8c5 6484
-01f8c6 6d75
-01f8c7 0070              .db     NFA|4,"dump",0
+01f8c6 6484
+01f8c7 6d75
+01f8c8 0070              .db     NFA|4,"dump",0
                  DUMP:
-01f8c8 de4e              rcall   DOLIT
-01f8c9 0010              .dw     16
-01f8ca da80              rcall   USLASH
-01f8cb d945              rcall   TOR
-01f8cc c020              rjmp    DUMP7
+01f8c9 de4d              rcall   DOLIT
+01f8ca 0010              .dw     16
+01f8cb da7f              rcall   USLASH
+01f8cc d944              rcall   TOR
+01f8cd c020              rjmp    DUMP7
                  DUMP1:  
-01f8cd de92              rcall   CR
-01f8ce de52              rcall   DUP
-01f8cf de47              rcall   DOLIT
-01f8d0 0004              .dw     4
-01f8d1 db1a              rcall   UDOTR
-01f8d2 de44              rcall   DOLIT
-01f8d3 003a              .dw     ':'
-01f8d4 de90              rcall   EMIT_A
-01f8d5 de41              rcall   DOLIT
-01f8d6 000f              .dw     15
-01f8d7 d939              rcall   TOR
+01f8ce de91              rcall   CR
+01f8cf de51              rcall   DUP
+01f8d0 de46              rcall   DOLIT
+01f8d1 0004              .dw     4
+01f8d2 db19              rcall   UDOTR
+01f8d3 de43              rcall   DOLIT
+01f8d4 003a              .dw     ':'
+01f8d5 de8f              rcall   EMIT_A
+01f8d6 de40              rcall   DOLIT
+01f8d7 000f              .dw     15
+01f8d8 d938              rcall   TOR
                  DUMP2:
-01f8d8 dbe4              rcall   CFETCHPP
-01f8d9 de3d              rcall   DOLIT
-01f8da 0002              .dw     2
-01f8db db10              rcall   UDOTR
-01f8dc d0e7              rcall   XNEXT
-01f8dd f7d0              brcc    DUMP2
-01f8de 911f              pop     t1
-01f8df 910f              pop     t0
+01f8d9 dbe3              rcall   CFETCHPP
+01f8da de3c              rcall   DOLIT
+01f8db 0002              .dw     2
+01f8dc db0f              rcall   UDOTR
+01f8dd d0e7              rcall   XNEXT
+01f8de f7d0              brcc    DUMP2
+01f8df 911f              pop     t1
+01f8e0 910f              pop     t0
                  
-01f8e0 de36              rcall   DOLIT
-01f8e1 0010              .dw     16
-01f8e2 d963              rcall   MINUS
-01f8e3 de33              rcall   DOLIT
-01f8e4 000f              .dw     15
-01f8e5 d92b              rcall   TOR
+01f8e1 de35              rcall   DOLIT
+01f8e2 0010              .dw     16
+01f8e3 d962              rcall   MINUS
+01f8e4 de32              rcall   DOLIT
+01f8e5 000f              .dw     15
+01f8e6 d92a              rcall   TOR
                  DUMP4:  
-01f8e6 dbd6              rcall   CFETCHPP
-01f8e7 df9f              rcall   TO_PRINTABLE
-01f8e8 de7c              rcall   EMIT_A
-01f8e9 d0da              rcall   XNEXT
-01f8ea f7d8              brcc    DUMP4
-01f8eb 911f              pop     t1
-01f8ec 910f              pop     t0
+01f8e7 dbd5              rcall   CFETCHPP
+01f8e8 df9e              rcall   TO_PRINTABLE
+01f8e9 de7b              rcall   EMIT_A
+01f8ea d0da              rcall   XNEXT
+01f8eb f7d8              brcc    DUMP4
+01f8ec 911f              pop     t1
+01f8ed 910f              pop     t0
                  DUMP7:
-01f8ed d0d6              rcall   XNEXT
-01f8ee f6f0              brcc    DUMP1
-01f8ef 911f              pop     t1
-01f8f0 910f              pop     t0
-01f8f1 940d f1f1         jmp     DROP
+01f8ee d0d6              rcall   XNEXT
+01f8ef f6f0              brcc    DUMP1
+01f8f0 911f              pop     t1
+01f8f1 910f              pop     t0
+01f8f2 940d f1f1         jmp     DROP
                  
                  ; IALLOT   n --    allocate n bytes in ROM
                  ;       .dw     link
                  ;link   set     $
-01f8f3 2081              .db     NFA|1," "
+01f8f4 2081              .db     NFA|1," "
                  IALLOT:
-01f8f4 dec1              rcall   IDP
-01f8f5 940d f298         jmp     PLUSSTORE
+01f8f5 dec0              rcall   IDP
+01f8f6 940d f298         jmp     PLUSSTORE
                      
                  
                  ;***************************************************************
                  ;  Store the execcution vector addr to the return stack
                  ; leave the updated return stack pointer on the data stack
                  ; x>r ( addr rsp -- rsp' )
-01f8f7 f18a              fdw     DUMP_L
+01f8f8 f18c              fdw     DUMP_L
                  X_TO_R_L:
-01f8f8 7883
-01f8f9 723e              .db     NFA|3,"x>r"
+01f8f9 7883
+01f8fa 723e              .db     NFA|3,"x>r"
                  X_TO_R:
-01f8fa 01fc              movw    zl, tosl
-01f8fb 9189
-01f8fc 9199              poptos
-01f8fd d00a              rcall   TO_XA
-01f8fe 9631              adiw    zl, 1
-01f8ff 9382              st      -z, tosl
-01f900 9392              st      -z, tosh
+01f8fb 01fc              movw    zl, tosl
+01f8fc 9189
+01f8fd 9199              poptos
+01f8fe d00a              rcall   TO_XA
+01f8ff 9631              adiw    zl, 1
+01f900 9382              st      -z, tosl
+01f901 9392              st      -z, tosh
                  .ifdef EIND
-01f901 9262              st      -z, r_one
+01f902 9262              st      -z, r_one
                  .endif
-01f902 9252              st      -z, zero
-01f903 01cf              movw    tosl, zl
-01f904 9508              ret
+01f903 9252              st      -z, zero
+01f904 01cf              movw    tosl, zl
+01f905 9508              ret
                  ;***************************************************************
-01f905 f1f0              fdw     X_TO_R_L
+01f906 f1f2              fdw     X_TO_R_L
                  TO_XA_L:
-01f906 3e83
-01f907 6178              .db NFA|3,">xa"
+01f907 3e83
+01f908 6178              .db NFA|3,">xa"
                  TO_XA:
                           sub_pflash_tos
-01f908 9408               rampv_to_c
-01f909 9597               ror tosh
-01f90a 9587               ror tosl
-01f90b 9508               ret
+01f909 9408               rampv_to_c
+01f90a 9597               ror tosh
+01f90b 9587               ror tosl
+01f90c 9508               ret
                  
-01f90c f20c               fdw     TO_XA_L
+01f90d f20e               fdw     TO_XA_L
                  XA_FROM_L:
-01f90d 7883
-01f90e 3e61              .db NFA|3,"xa>"
+01f90e 7883
+01f90f 3e61              .db NFA|3,"xa>"
                  XA_FROM:
-01f90f 0f88               lsl     tosl
-01f910 1f99               rol     tosh
+01f910 0f88               lsl     tosl
+01f911 1f99               rol     tosh
                           add_pflash_tos
-01f911 9508               ret
+01f912 9508               ret
                  ;***************************************************************
-01f912 f21a               fdw    XA_FROM_L
+01f913 f21c               fdw    XA_FROM_L
                  PFL_L:
-01f913 7083
-01f914 6c66              .db     NFA|3,"pfl"
+01f914 7083
+01f915 6c66              .db     NFA|3,"pfl"
                  PFL:
-01f915 940f f031          call   DOCREATE
-01f917 0000              .dw     PFLASH
+01f916 940f f031          call   DOCREATE
+01f918 0000              .dw     PFLASH
                  ;***************************************************************
-01f918 f226              fdw    PFL_L
+01f919 f228              fdw    PFL_L
                  ZFL_L:
-01f919 7a83
-01f91a 6c66              .db     NFA|3, "zfl"
+01f91a 7a83
+01f91b 6c66              .db     NFA|3, "zfl"
                  ZFL:
-01f91b 940f f031          call   DOCREATE
-01f91d 0003              .dw     RAMPZV
+01f91c 940f f031          call   DOCREATE
+01f91e 0003              .dw     RAMPZV
                  ;***************************************************************
                  ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
-01f91e 2c84
-01f91f 303f
-01f920 003d              .db     NFA|4, ",?0=",0    ; Just for see to work !
+01f91f 2c84
+01f920 303f
+01f921 003d              .db     NFA|4, ",?0=",0    ; Just for see to work !
                  COMMAZEROSENSE:
-01f921 fd65              sbrc    FLAGS1, idup
-01f922 c003              rjmp    COMMAZEROSENSE1
-01f923 ddf3              rcall   DOLIT
-01f924 e64e              fdw     ZEROSENSE
-01f925 c003              rjmp    COMMAZEROSENSE2
+01f922 fd65              sbrc    FLAGS1, idup
+01f923 c003              rjmp    COMMAZEROSENSE1
+01f924 ddf2              rcall   DOLIT
+01f925 e64e              fdw     ZEROSENSE
+01f926 c003              rjmp    COMMAZEROSENSE2
                  COMMAZEROSENSE1:
-01f926 d004              rcall   IDPMINUS
-01f927 ddef              rcall   DOLIT
-01f928 e65a              fdw     DUPZEROSENSE
+01f927 d004              rcall   IDPMINUS
+01f928 ddee              rcall   DOLIT
+01f929 e65a              fdw     DUPZEROSENSE
                  COMMAZEROSENSE2:
-01f929 7d6f              cbr     FLAGS1, (1<<idup)
-01f92a c070              rjmp    INLINE0
+01f92a 7d6f              cbr     FLAGS1, (1<<idup)
+01f92b c070              rjmp    INLINE0
                  
                  IDPMINUS:
-01f92b ddeb              rcall   DOLIT
-01f92c fffc              .dw     -4
-01f92d cfc6              rjmp    IALLOT
+01f92c ddea              rcall   DOLIT
+01f92d fffc              .dw     -4
+01f92e cfc6              rjmp    IALLOT
                  
                  ;       rjmp, ( rel-addr -- )
                  RJMPC:
-01f92e d963              rcall   TWOSLASH
-01f92f 709f              andi    tosh, 0x0f
-01f930 6c90              ori     tosh, 0xc0
-01f931 940d ff9d         jmp     ICOMMA
+01f92f d962              rcall   TWOSLASH
+01f930 709f              andi    tosh, 0x0f
+01f931 6c90              ori     tosh, 0xc0
+01f932 940d ff9d         jmp     ICOMMA
                  
                  
                  BRCCC:
-01f933 dde3              rcall   DOLIT
-01f934 f008              .dw     0xf008      ; brcc pc+2
-01f935 940d ff9d         jmp     ICOMMA
+01f934 dde2              rcall   DOLIT
+01f935 f008              .dw     0xf008      ; brcc pc+2
+01f936 940d ff9d         jmp     ICOMMA
                  ;BREQC:
                  ;        rcall   DOLIT
                  ;        .dw     0xf009      ; breq pc+2
@@ -5936,762 +5937,762 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  ;        ori     tosh, 4     ; brne pc+2
                  ;        jmp     ICOMMA
                  BRNEC:
-01f937 dddf              rcall   DOLIT
-01f938 f409              .dw     0xf409      ; brne pc+2
-01f939 fd64              sbrc    FLAGS1, izeroeq
-01f93a 7f9b              andi    tosh, ~4
-01f93b 940d ff9d         jmp     ICOMMA
+01f938 ddde              rcall   DOLIT
+01f939 f409              .dw     0xf409      ; brne pc+2
+01f93a fd64              sbrc    FLAGS1, izeroeq
+01f93b 7f9b              andi    tosh, ~4
+01f93c 940d ff9d         jmp     ICOMMA
                  
                  ; IF       -- adrs   conditional forward branch
                  ; Leaves address of branch instruction 
                  ; and compiles the condition byte
-01f93d f232              fdw     ZFL_L
+01f93e f234              fdw     ZFL_L
                  IF_L:
-01f93e 69d2
-01f93f 0066              .db     NFA|IMMED|COMPILE|2,"if",0
+01f93f 69d2
+01f940 0066              .db     NFA|IMMED|COMPILE|2,"if",0
                  IF_:
-01f940 fd64              sbrc    FLAGS1, izeroeq
-01f941 dfe9              rcall   IDPMINUS
-01f942 dfde              rcall   COMMAZEROSENSE
-01f943 dff3              rcall   BRNEC
-01f944 7e6f              cbr     FLAGS1, (1<<izeroeq)
-01f945 de09              rcall   IHERE
-01f946 dd72              rcall   FALSE_
-01f947 940d f92e         jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
+01f941 fd64              sbrc    FLAGS1, izeroeq
+01f942 dfe9              rcall   IDPMINUS
+01f943 dfde              rcall   COMMAZEROSENSE
+01f944 dff3              rcall   BRNEC
+01f945 7e6f              cbr     FLAGS1, (1<<izeroeq)
+01f946 de08              rcall   IHERE
+01f947 dd71              rcall   FALSE_
+01f948 940d f92f         jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
                  
                  ; ELSE     adrs1 -- adrs2    branch for IF..ELSE
                  ; Leave adrs2 of bra instruction and store bz in adrs1
                  ; Leave adress of branch instruction and FALSE flag on stack
-01f949 f27c              fdw     IF_L
+01f94a f27e              fdw     IF_L
                  ELSE_L:
-01f94a 65d4
-01f94b 736c
-01f94c 0065              .db     NFA|IMMED|COMPILE|4,"else",0
+01f94b 65d4
+01f94c 736c
+01f94d 0065              .db     NFA|IMMED|COMPILE|4,"else",0
                  ELSE_:
-01f94d de01              rcall   IHERE
-01f94e dd6a              rcall   FALSE_
-01f94f dfde              rcall   RJMPC
-01f950 dc7d              rcall   SWOP_A      ; else-addr  if-addr 
-01f951 940d f957         jmp     THEN_
+01f94e de00              rcall   IHERE
+01f94f dd69              rcall   FALSE_
+01f950 dfde              rcall   RJMPC
+01f951 dc7c              rcall   SWOP_A      ; else-addr  if-addr 
+01f952 940d f958         jmp     THEN_
                  
                  ; THEN     adrs  --        resolve forward branch
-01f953 f294              fdw     ELSE_L
+01f954 f296              fdw     ELSE_L
                  THEN_L:
-01f954 74d4
-01f955 6568
-01f956 006e              .db     NFA|IMMED|COMPILE|4,"then",0
+01f955 74d4
+01f956 6568
+01f957 006e              .db     NFA|IMMED|COMPILE|4,"then",0
                  THEN_:
-01f957 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
-01f958 ddf6              rcall   IHERE
-01f959 d8a8              rcall   OVER
-01f95a d8eb              rcall   MINUS
-01f95b ded2              rcall   TWOMINUS
-01f95c d935              rcall   TWOSLASH
-01f95d ddb9              rcall   DOLIT
-01f95e c000              .dw     0xc000      ;  back-addr mask 
-01f95f d8f7              rcall   OR_
-01f960 dc6d              rcall   SWOP_A
-01f961 940d fe76         jmp     STORE
+01f958 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+01f959 ddf5              rcall   IHERE
+01f95a d8a7              rcall   OVER
+01f95b d8ea              rcall   MINUS
+01f95c ded1              rcall   TWOMINUS
+01f95d d934              rcall   TWOSLASH
+01f95e ddb8              rcall   DOLIT
+01f95f c000              .dw     0xc000      ;  back-addr mask 
+01f960 d8f6              rcall   OR_
+01f961 dc6c              rcall   SWOP_A
+01f962 940d fe76         jmp     STORE
                  
                  ; BEGIN    -- adrs        target for bwd. branch
-01f963 f2a8              fdw     THEN_L
+01f964 f2aa              fdw     THEN_L
                  BEGIN_L:
-01f964 62d5
-01f965 6765
-01f966 6e69              .db     NFA|IMMED|COMPILE|5,"begin"
+01f965 62d5
+01f966 6765
+01f967 6e69              .db     NFA|IMMED|COMPILE|5,"begin"
                  BEGIN:
-01f967 940d f74f         jmp     IHERE
+01f968 940d f74f         jmp     IHERE
                  
                  ; UNTIL    adrs --   Branch bakwards if true
-01f969 f2c8              fdw     BEGIN_L
+01f96a f2ca              fdw     BEGIN_L
                  UNTIL_L:
-01f96a 75d5
-01f96b 746e
-01f96c 6c69              .db     NFA|IMMED|COMPILE|5,"until"
+01f96b 75d5
+01f96c 746e
+01f96d 6c69              .db     NFA|IMMED|COMPILE|5,"until"
                  UNTIL:
-01f96d 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
-01f96e fd64              sbrc    FLAGS1, izeroeq
-01f96f dfbb              rcall   IDPMINUS
-01f970 dfb0              rcall   COMMAZEROSENSE
-01f971 dfc5              rcall   BRNEC
-01f972 7e6f              cbr     FLAGS1, (1<<izeroeq)
-01f973 940d f979 	    jmp     AGAIN_
+01f96e 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+01f96f fd64              sbrc    FLAGS1, izeroeq
+01f970 dfbb              rcall   IDPMINUS
+01f971 dfb0              rcall   COMMAZEROSENSE
+01f972 dfc5              rcall   BRNEC
+01f973 7e6f              cbr     FLAGS1, (1<<izeroeq)
+01f974 940d f97a 	    jmp     AGAIN_
                  
                  				; AGAIN    adrs --      uncond'l backward branch
                  ;   unconditional backward branch
-01f975 f2d4              fdw     UNTIL_L
+01f976 f2d6              fdw     UNTIL_L
                  AGAIN_L:
-01f976 61d5
-01f977 6167
-01f978 6e69              .db     NFA|IMMED|COMPILE|5,"again"
+01f977 61d5
+01f978 6167
+01f979 6e69              .db     NFA|IMMED|COMPILE|5,"again"
                  AGAIN_:
-01f979 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
-01f97a ddd4              rcall   IHERE
-01f97b d8ca              rcall   MINUS
-01f97c deb1              rcall   TWOMINUS
-01f97d 940d f92e         jmp     RJMPC
+01f97a 6062              sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+01f97b ddd3              rcall   IHERE
+01f97c d8c9              rcall   MINUS
+01f97d deb0              rcall   TWOMINUS
+01f97e 940d f92f         jmp     RJMPC
                  
                  ; WHILE    addr1 -- addr2 addr1         branch for WHILE loop
                  ; addr1 : address of BEGIN
                  ; addr2 : address where to store bz instruction
-01f97f f2ec              fdw     AGAIN_L
+01f980 f2ee              fdw     AGAIN_L
                  WHILE_L:
-01f980 77d5
-01f981 6968
-01f982 656c              .db     NFA|IMMED|COMPILE|5,"while"
+01f981 77d5
+01f982 6968
+01f983 656c              .db     NFA|IMMED|COMPILE|5,"while"
                  WHILE_:
-01f983 dfbc              rcall   IF_
-01f984 940d f1f8         jmp     SWOP
+01f984 dfbc              rcall   IF_
+01f985 940d f1f8         jmp     SWOP
                  
                  ; REPEAT   addr2 addr1 --     resolve WHILE loop
-01f986 f300              fdw     WHILE_L
+01f987 f302              fdw     WHILE_L
                  REPEAT_L:
-01f987 72d6
-01f988 7065
-01f989 6165
-01f98a 0074              .db     NFA|IMMED|COMPILE|6,"repeat",0
+01f988 72d6
+01f989 7065
+01f98a 6165
+01f98b 0074              .db     NFA|IMMED|COMPILE|6,"repeat",0
                  REPEAT_:
-01f98b dfed              rcall   AGAIN_
-01f98c 940d f957         jmp     THEN_
+01f98c dfed              rcall   AGAIN_
+01f98d 940d f958         jmp     THEN_
                  
-01f98e f30e              fdw     REPEAT_L
+01f98f f310              fdw     REPEAT_L
                  INLINE_L:
-01f98f 69d6
-01f990 6c6e
-01f991 6e69
-01f992 0065              .db      NFA|IMMED|COMPILE|6,"inline",0
-01f993 7e6f              cbr      FLAGS1, (1<<izeroeq)
-01f994 7d6f              cbr      FLAGS1, (1<<idup)
-01f995 dda0              rcall    TICK
-01f996 940d f99b         jmp      INLINE0
+01f990 69d6
+01f991 6c6e
+01f992 6e69
+01f993 0065              .db      NFA|IMMED|COMPILE|6,"inline",0
+01f994 7e6f              cbr      FLAGS1, (1<<izeroeq)
+01f995 7d6f              cbr      FLAGS1, (1<<idup)
+01f996 dd9f              rcall    TICK
+01f997 940d f99c         jmp      INLINE0
                  ; in, ( addr -- ) begin @+ dup $9508 <> while i, repeat 2drop ;
-01f998 f31e              fdw      INLINE_L
+01f999 f320              fdw      INLINE_L
                  INLINEC_L:
-01f999 6983
-01f99a 2c6e              .db      NFA|3,"in,"
+01f99a 6983
+01f99b 2c6e              .db      NFA|3,"in,"
                  INLINE0:        
-01f99b db29              rcall   FETCHPP
-01f99c dd84              rcall   DUP
-01f99d dd79              rcall   DOLIT
-01f99e 9508              .dw     0x9508
-01f99f d90e              rcall   NOTEQUAL
-01f9a0 d986              rcall   ZEROSENSE
-01f9a1 f011              breq    INLINE1
-01f9a2 d5fa              rcall   ICOMMA
-01f9a3 cff7              rjmp    INLINE0
+01f99c db28              rcall   FETCHPP
+01f99d dd83              rcall   DUP
+01f99e dd78              rcall   DOLIT
+01f99f 9508              .dw     0x9508
+01f9a0 d90d              rcall   NOTEQUAL
+01f9a1 d985              rcall   ZEROSENSE
+01f9a2 f011              breq    INLINE1
+01f9a3 d5f9              rcall   ICOMMA
+01f9a4 cff7              rjmp    INLINE0
                  INLINE1:
-01f9a4 940d f12b         jmp     TWODROP
+01f9a5 940d f12b         jmp     TWODROP
                  
                  ; FOR   -- bc-addr bra-addr
-01f9a6 f332              fdw     INLINEC_L
+01f9a7 f334              fdw     INLINEC_L
                  FOR_L:
-01f9a7 66d3
-01f9a8 726f              .db     NFA|IMMED|COMPILE|3,"for"
+01f9a8 66d3
+01f9a9 726f              .db     NFA|IMMED|COMPILE|3,"for"
                  FOR:
-01f9a9 940f f04d         call    DOCOMMAXT
-01f9ab e422              fdw     TOR
-01f9ac dda2              rcall   IHERE
-01f9ad dd0b              rcall   FALSE_
-01f9ae df7f              rcall   RJMPC
-01f9af dd9f              rcall   IHERE
-01f9b0 940d f1f8         jmp     SWOP
+01f9aa 940f f04d         call    DOCOMMAXT
+01f9ac e422              fdw     TOR
+01f9ad dda1              rcall   IHERE
+01f9ae dd0a              rcall   FALSE_
+01f9af df7f              rcall   RJMPC
+01f9b0 dd9e              rcall   IHERE
+01f9b1 940d f1f8         jmp     SWOP
                  
                  ; NEXT bra-addr bc-addr --
-01f9b2 f34e              fdw     FOR_L
+01f9b3 f350              fdw     FOR_L
                  NEXT_L:
-01f9b3 6ed4
-01f9b4 7865
-01f9b5 0074              .db     NFA|IMMED|COMPILE|4,"next", 0
+01f9b4 6ed4
+01f9b5 7865
+01f9b6 0074              .db     NFA|IMMED|COMPILE|4,"next", 0
                  NEXT:
-01f9b6 dfa0              rcall   THEN_
-01f9b7 940f f04d         call    DOCOMMAXT
-01f9b9 f388              fdw     XNEXT
-01f9ba df78              rcall   BRCCC
+01f9b7 dfa0              rcall   THEN_
+01f9b8 940f f04d         call    DOCOMMAXT
+01f9ba f38a              fdw     XNEXT
+01f9bb df78              rcall   BRCCC
                  
-01f9bb dfbd              rcall   AGAIN_
+01f9bc dfbd              rcall   AGAIN_
                  
-01f9bc dd5a              rcall   DOLIT
-01f9bd f39c              fdw     XNEXT1
-01f9be 940d f99b         jmp     INLINE0
+01f9bd dd59              rcall   DOLIT
+01f9be f39e              fdw     XNEXT1
+01f9bf 940d f99c         jmp     INLINE0
                  ; (next) decrement top of return stack
-01f9c0 2887
-01f9c1 656e
-01f9c2 7478
-01f9c3 2029              .db     NFA|7,"(next) "
+01f9c1 2887
+01f9c2 656e
+01f9c3 7478
+01f9c4 2029              .db     NFA|7,"(next) "
                  XNEXT:  
-01f9c4 91ff              m_pop_zh
-01f9c5 91ff              pop     zh
-01f9c6 91ef              pop     zl
-01f9c7 91bf              pop     xh
-01f9c8 91af              pop     xl
-01f9c9 9711              sbiw    xl, 1
-01f9ca 93af              push    xl
-01f9cb 93bf              push    xh
-01f9cc 9419              mijmp
-01f9cd 9508              ret
+01f9c5 91ff              m_pop_zh
+01f9c6 91ff              pop     zh
+01f9c7 91ef              pop     zl
+01f9c8 91bf              pop     xh
+01f9c9 91af              pop     xl
+01f9ca 9711              sbiw    xl, 1
+01f9cb 93af              push    xl
+01f9cc 93bf              push    xh
+01f9cd 9419              mijmp
+01f9ce 9508              ret
                  XNEXT1:
-01f9ce 911f              pop     t1
-01f9cf 910f              pop     t0
-01f9d0 9508              ret
+01f9cf 911f              pop     t1
+01f9d0 910f              pop     t0
+01f9d1 9508              ret
                  
                  ; leave clear top of return stack
-01f9d1 f366              fdw     NEXT_L
+01f9d2 f368              fdw     NEXT_L
                  LEAVE_L:
-01f9d2 6595
-01f9d3 646e
-01f9d4 7469              .db     NFA|COMPILE|5,"endit"
+01f9d3 6595
+01f9d4 646e
+01f9d5 7469              .db     NFA|COMPILE|5,"endit"
                  LEAVE:
-01f9d5 91ff              m_pop_zh
-01f9d6 91ff              pop     zh
-01f9d7 91ef              pop     zl
-01f9d8 911f              pop     t1
-01f9d9 910f              pop     t0
-01f9da 2700              clr     t0
-01f9db 2711              clr     t1
-01f9dc 930f              push    t0
-01f9dd 931f              push    t1
-01f9de 9419              mijmp
+01f9d6 91ff              m_pop_zh
+01f9d7 91ff              pop     zh
+01f9d8 91ef              pop     zl
+01f9d9 911f              pop     t1
+01f9da 910f              pop     t0
+01f9db 2700              clr     t0
+01f9dc 2711              clr     t1
+01f9dd 930f              push    t0
+01f9de 931f              push    t1
+01f9df 9419              mijmp
                  ;***************************************************
                  ; RDROP compile a pop
-01f9df f3a4              fdw      LEAVE_L
+01f9e0 f3a6              fdw      LEAVE_L
                  RDROP_L:
-01f9e0 72d5
-01f9e1 7264
-01f9e2 706f              .db      NFA|IMMED|COMPILE|5,"rdrop"
+01f9e1 72d5
+01f9e2 7264
+01f9e3 706f              .db      NFA|IMMED|COMPILE|5,"rdrop"
                  RDROP:
-01f9e3 dd33              rcall   DOLIT
-01f9e4 f39c              fdw     XNEXT1
-01f9e5 940d f99b         jmp     INLINE0
+01f9e4 dd32              rcall   DOLIT
+01f9e5 f39e              fdw     XNEXT1
+01f9e6 940d f99c         jmp     INLINE0
                  ;***************************************************
-01f9e7 f3c0              fdw     RDROP_L
+01f9e8 f3c2              fdw     RDROP_L
                  STOD_L:
-01f9e8 7383
-01f9e9 643e              .db     NFA|3,"s>d"
+01f9e9 7383
+01f9ea 643e              .db     NFA|3,"s>d"
                  STOD:
-01f9ea ff97              sbrs    tosh, 7
-01f9eb cccd              rjmp    FALSE_
-01f9ec ccd5              rjmp    TRUE_
+01f9eb ff97              sbrs    tosh, 7
+01f9ec cccc              rjmp    FALSE_
+01f9ed ccd4              rjmp    TRUE_
                  ;***************************************************
-01f9ed f3d0              fdw     STOD_L
+01f9ee f3d2              fdw     STOD_L
                  DNEGATE_L:
-01f9ee 6487
-01f9ef 656e
-01f9f0 6167
-01f9f1 6574              .db     NFA|7,"dnegate"
+01f9ef 6487
+01f9f0 656e
+01f9f1 6167
+01f9f2 6574              .db     NFA|7,"dnegate"
                  DNEGATE:
-01f9f2 d049              rcall   DINVERT
-01f9f3 940f f165         call    ONE
-01f9f5 940d f241         jmp     MPLUS
+01f9f3 d049              rcall   DINVERT
+01f9f4 940f f165         call    ONE
+01f9f6 940d f241         jmp     MPLUS
                  ;***************************************************
-01f9f7 f3dc              fdw     DNEGATE_L
+01f9f8 f3de              fdw     DNEGATE_L
                  QDNEGATE_L:
-01f9f8 3f88
-01f9f9 6e64
-01f9fa 6765
-01f9fb 7461
-01f9fc 0065              .db     NFA|8,"?dnegate",0
+01f9f9 3f88
+01f9fa 6e64
+01f9fb 6765
+01f9fc 7461
+01f9fd 0065              .db     NFA|8,"?dnegate",0
                  QDNEGATE:
-01f9fd dd31              rcall   ZEROLESS
-01f9fe d928              rcall   ZEROSENSE
-01f9ff f009              breq    QDNEGATE1
-01fa00 dff1              rcall   DNEGATE
+01f9fe dd30              rcall   ZEROLESS
+01f9ff d927              rcall   ZEROSENSE
+01fa00 f009              breq    QDNEGATE1
+01fa01 dff1              rcall   DNEGATE
                  QDNEGATE1:
-01fa01 9508              ret
+01fa02 9508              ret
                  
                  ;***************************************************
-01fa02 f3f0              fdw     QDNEGATE_L
+01fa03 f3f2              fdw     QDNEGATE_L
                  DABS_L:
-01fa03 6484
-01fa04 6261
-01fa05 0073              .db     NFA|4,"dabs",0
+01fa04 6484
+01fa05 6261
+01fa06 0073              .db     NFA|4,"dabs",0
                  DABS:
-01fa06 dd1a              rcall   DUP
-01fa07 940d f9fd         jmp     QDNEGATE
+01fa07 dd19              rcall   DUP
+01fa08 940d f9fe         jmp     QDNEGATE
                  ;***************************************************
-01fa09 f406              fdw     DABS_L
+01fa0a f408              fdw     DABS_L
                  DPLUS_L:
-01fa0a 6482
-01fa0b 002b              .db     NFA|2,"d+",0
+01fa0b 6482
+01fa0c 002b              .db     NFA|2,"d+",0
                  DPLUS:
-01fa0c 91a9              ld      xl, Y+
-01fa0d 91b9              ld      xh, Y+
-01fa0e 9009              ld      t2, Y+
-01fa0f 9019              ld      t3, Y+
-01fa10 9109              ld      t0, Y+
-01fa11 9119              ld      t1, Y+
-01fa12 0fa0              add     xl, t0
-01fa13 1fb1              adc     xh, t1
-01fa14 1d80              adc     tosl, t2
-01fa15 1d91              adc     tosh, t3
-01fa16 93ba              st      -Y, xh
-01fa17 93aa              st      -Y, xl
-01fa18 9508              ret
+01fa0d 91a9              ld      xl, Y+
+01fa0e 91b9              ld      xh, Y+
+01fa0f 9009              ld      t2, Y+
+01fa10 9019              ld      t3, Y+
+01fa11 9109              ld      t0, Y+
+01fa12 9119              ld      t1, Y+
+01fa13 0fa0              add     xl, t0
+01fa14 1fb1              adc     xh, t1
+01fa15 1d80              adc     tosl, t2
+01fa16 1d91              adc     tosh, t3
+01fa17 93ba              st      -Y, xh
+01fa18 93aa              st      -Y, xl
+01fa19 9508              ret
                  
                  ;***************************************************
-01fa19 f414              fdw     DPLUS_L
+01fa1a f416              fdw     DPLUS_L
                  DMINUS_L:
-01fa1a 6482
-01fa1b 002d              .db     NFA|2,"d-",0
+01fa1b 6482
+01fa1c 002d              .db     NFA|2,"d-",0
                  DMINUS:
-01fa1c dfd5              rcall   DNEGATE
-01fa1d 940d fa0c         jmp     DPLUS
+01fa1d dfd5              rcall   DNEGATE
+01fa1e 940d fa0d         jmp     DPLUS
                  ;***************************************************
-01fa1f f434              fdw     DMINUS_L
+01fa20 f436              fdw     DMINUS_L
                  DTWOSLASH_L:
-01fa20 6483
-01fa21 2f32              .db     NFA|3,"d2/"
-01fa22 9109              ld      t0, y+
-01fa23 9119              ld      t1, y+
-01fa24 9595              asr     tosh
-01fa25 9587              ror     tosl
-01fa26 9517              ror     t1
-01fa27 9507              ror     t0
-01fa28 931a              st      -y, t1
-01fa29 930a              st      -y, t0
-01fa2a 9508              ret
+01fa21 6483
+01fa22 2f32              .db     NFA|3,"d2/"
+01fa23 9109              ld      t0, y+
+01fa24 9119              ld      t1, y+
+01fa25 9595              asr     tosh
+01fa26 9587              ror     tosl
+01fa27 9517              ror     t1
+01fa28 9507              ror     t0
+01fa29 931a              st      -y, t1
+01fa2a 930a              st      -y, t0
+01fa2b 9508              ret
                  ;***************************************************
-01fa2b f440              fdw     DTWOSLASH_L
+01fa2c f442              fdw     DTWOSLASH_L
                  DTWOSTAR_L:
-01fa2c 6483
-01fa2d 2a32              .db     NFA|3,"d2*"
-01fa2e 9109              ld      t0, y+
-01fa2f 9119              ld      t1, y+
-01fa30 0f00              lsl     t0
-01fa31 1f11              rol     t1
-01fa32 1f88              rol     tosl
-01fa33 1f99              rol     tosh
-01fa34 931a              st      -y, t1
-01fa35 930a              st      -y, t0
-01fa36 9508              ret
+01fa2d 6483
+01fa2e 2a32              .db     NFA|3,"d2*"
+01fa2f 9109              ld      t0, y+
+01fa30 9119              ld      t1, y+
+01fa31 0f00              lsl     t0
+01fa32 1f11              rol     t1
+01fa33 1f88              rol     tosl
+01fa34 1f99              rol     tosh
+01fa35 931a              st      -y, t1
+01fa36 930a              st      -y, t0
+01fa37 9508              ret
                  ;***************************************************
-01fa37 f458              fdw     DTWOSTAR_L
+01fa38 f45a              fdw     DTWOSTAR_L
                  DINVERT_L:
-01fa38 6487
-01fa39 6e69
-01fa3a 6576
-01fa3b 7472              .db     NFA|7,"dinvert"
+01fa39 6487
+01fa3a 6e69
+01fa3b 6576
+01fa3c 7472              .db     NFA|7,"dinvert"
                  DINVERT:
-01fa3c 91a9              ld      xl, y+
-01fa3d 91b9              ld      xh, y+
-01fa3e 95a0              com     xl
-01fa3f 95b0              com     xh
-01fa40 9580              com     tosl
-01fa41 9590              com     tosh
-01fa42 93ba              st      -y, xh
-01fa43 93aa              st      -y, xl
-01fa44 9508              ret
+01fa3d 91a9              ld      xl, y+
+01fa3e 91b9              ld      xh, y+
+01fa3f 95a0              com     xl
+01fa40 95b0              com     xh
+01fa41 9580              com     tosl
+01fa42 9590              com     tosh
+01fa43 93ba              st      -y, xh
+01fa44 93aa              st      -y, xl
+01fa45 9508              ret
                  ;***************************************************
-01fa45 f470              fdw     DINVERT_L
+01fa46 f472              fdw     DINVERT_L
                  DZEROEQUAL_L:
-01fa46 6483
-01fa47 3d30              .db     NFA|3,"d0="
+01fa47 6483
+01fa48 3d30              .db     NFA|3,"d0="
                  DZEROEQUAL:
-01fa48 91a9              ld      xl, y+
-01fa49 91b9              ld      xh, y+
-01fa4a 2b89              or      tosl, tosh
-01fa4b 2b8a              or      tosl, xl
-01fa4c 2b8b              or      tosl, xh
-01fa4d f451              brne    DZEROLESS_FALSE
+01fa49 91a9              ld      xl, y+
+01fa4a 91b9              ld      xh, y+
+01fa4b 2b89              or      tosl, tosh
+01fa4c 2b8a              or      tosl, xl
+01fa4d 2b8b              or      tosl, xh
+01fa4e f451              brne    DZEROLESS_FALSE
                  DZEROEQUAL_TRUE:
-01fa4e ef8f              ser     tosl
-01fa4f ef9f              ser     tosh
-01fa50 9508              ret
+01fa4f ef8f              ser     tosl
+01fa50 ef9f              ser     tosh
+01fa51 9508              ret
                  
                  ;***************************************************
-01fa51 f48c              fdw     DZEROEQUAL_L
+01fa52 f48e              fdw     DZEROEQUAL_L
                  DZEROLESS_L:
-01fa52 6483
-01fa53 3c30              .db     NFA|3,"d0<"
+01fa53 6483
+01fa54 3c30              .db     NFA|3,"d0<"
                  DZEROLESS:
-01fa54 91a9              ld      xl, y+
-01fa55 91b9              ld      xh, y+
-01fa56 3090              cpi     tosh, 0
-01fa57 f3b2              brmi    DZEROEQUAL_TRUE
+01fa55 91a9              ld      xl, y+
+01fa56 91b9              ld      xh, y+
+01fa57 3090              cpi     tosh, 0
+01fa58 f3b2              brmi    DZEROEQUAL_TRUE
                  DZEROLESS_FALSE:
-01fa58 2788              clr     tosl
-01fa59 2799              clr     tosh
-01fa5a 9508              ret
+01fa59 2788              clr     tosl
+01fa5a 2799              clr     tosh
+01fa5b 9508              ret
                  ;***************************************************
-01fa5b f4a4              fdw     DZEROLESS_L
+01fa5c f4a6              fdw     DZEROLESS_L
                  DEQUAL_L:
-01fa5c 6482
-01fa5d 003d              .db     NFA|2,"d=",0
-01fa5e dfbd              rcall   DMINUS
-01fa5f 940d fa48         jmp     DZEROEQUAL
+01fa5d 6482
+01fa5e 003d              .db     NFA|2,"d=",0
+01fa5f dfbd              rcall   DMINUS
+01fa60 940d fa49         jmp     DZEROEQUAL
                  ;***************************************************
-01fa61 f4b8              fdw     DEQUAL_L
+01fa62 f4ba              fdw     DEQUAL_L
                  DLESS_L:
-01fa62 6482
-01fa63 003c              .db     NFA|2,"d<",0
+01fa63 6482
+01fa64 003c              .db     NFA|2,"d<",0
                  DLESS:
-01fa64 dfb7              rcall   DMINUS
-01fa65 940d fa54         jmp     DZEROLESS
+01fa65 dfb7              rcall   DMINUS
+01fa66 940d fa55         jmp     DZEROLESS
                  ;***************************************************
-01fa67 f4c4              fdw     DLESS_L
+01fa68 f4c6              fdw     DLESS_L
                  DGREATER_L:
-01fa68 6482
-01fa69 003e              .db     NFA|2,"d>",0
+01fa69 6482
+01fa6a 003e              .db     NFA|2,"d>",0
                  DGREATER:
-01fa6a 940f f139         call    TWOSWAP
-01fa6c 940d fa64         jmp     DLESS
+01fa6b 940f f139         call    TWOSWAP
+01fa6d 940d fa65         jmp     DLESS
                  ;***************************************************
-01fa6e f4d0              fdw     DGREATER_L
+01fa6f f4d2              fdw     DGREATER_L
                  UDDOT_L:
-01fa6f 7583
-01fa70 2e64              .db     NFA|3,"ud."
-01fa71 d931              rcall   LESSNUM
-01fa72 d951              rcall   NUMS
-01fa73 d959              rcall   NUMGREATER
-01fa74 940f f1ac         call    TYPE
-01fa76 940d f142         jmp     SPACE_
+01fa70 7583
+01fa71 2e64              .db     NFA|3,"ud."
+01fa72 d930              rcall   LESSNUM
+01fa73 d950              rcall   NUMS
+01fa74 d958              rcall   NUMGREATER
+01fa75 940f f1ac         call    TYPE
+01fa77 940d f142         jmp     SPACE_
                  ;***************************************************
-01fa78 f4de              fdw     UDDOT_L
+01fa79 f4e0              fdw     UDDOT_L
                  DDOT_L:
-01fa79 6482
-01fa7a 002e              .db     NFA|2,"d.",0
-01fa7b d927              rcall   LESSNUM
-01fa7c 940f f721         call    DUP
-01fa7e 940f f211         call    TOR
-01fa80 df85              rcall   DABS
-01fa81 d942              rcall   NUMS
-01fa82 940f f21c         call    RFROM
-01fa84 d953              rcall   SIGN
-01fa85 d947              rcall   NUMGREATER
-01fa86 940f f1ac         call    TYPE
-01fa88 940d f142         jmp     SPACE_
+01fa7a 6482
+01fa7b 002e              .db     NFA|2,"d.",0
+01fa7c d926              rcall   LESSNUM
+01fa7d 940f f721         call    DUP
+01fa7f 940f f211         call    TOR
+01fa81 df85              rcall   DABS
+01fa82 d941              rcall   NUMS
+01fa83 940f f21c         call    RFROM
+01fa85 d952              rcall   SIGN
+01fa86 d946              rcall   NUMGREATER
+01fa87 940f f1ac         call    TYPE
+01fa89 940d f142         jmp     SPACE_
                  ;****************************************************
-01fa8a f4f2              fdw      DDOT_L
+01fa8b f4f4              fdw      DDOT_L
                  MEMHI_L:
-01fa8b 6882
-01fa8c 0069              .db     NFA|2,"hi",0
+01fa8c 6882
+01fa8d 0069              .db     NFA|2,"hi",0
                  MEMHI:
-01fa8d dc89              rcall   DOLIT
-01fa8e f52a              fdw     FLASHHI
-01fa8f 940f f09e         call    CSE_
-01fa91 940f f239         call    PLUS
-01fa93 940d febf         jmp     FETCH
+01fa8e dc88              rcall   DOLIT
+01fa8f f52c              fdw     FLASHHI
+01fa90 940f f09e         call    CSE_
+01fa92 940f f239         call    PLUS
+01fa94 940d febf         jmp     FETCH
                  FLASHHI:
-01fa95 ddff              .dw      FLASH_HI
-01fa96 31ff              .dw      EEPROM_HI
-01fa97 21ff              .dw      RAM_HI
+01fa96 ddff              .dw      FLASH_HI
+01fa97 31ff              .dw      EEPROM_HI
+01fa98 21ff              .dw      RAM_HI
                  ;***************************************************
                  
-01fa98 f516              fdw      MEMHI_L
+01fa99 f518              fdw      MEMHI_L
                  L_FETCH_P:
-01fa99 40a2
-01fa9a 0070              .db      NFA|INLINE|2,"@p", 0
+01fa9a 40a2
+01fa9b 0070              .db      NFA|INLINE|2,"@p", 0
                  FETCH_P:
-01fa9b 939a
-01fa9c 938a              pushtos
-01fa9d 01ca              movw    tosl, pl
-01fa9e 9508              ret
+01fa9c 939a
+01fa9d 938a              pushtos
+01fa9e 01ca              movw    tosl, pl
+01fa9f 9508              ret
                  ;***************************************************
-01fa9f f532              fdw     L_FETCH_P
+01faa0 f534              fdw     L_FETCH_P
                  L_PCFETCH:
-01faa0 7083
-01faa1 4063              .db     NFA|3,"pc@" ; ( -- c ) Fetch char from pointer
+01faa1 7083
+01faa2 4063              .db     NFA|3,"pc@" ; ( -- c ) Fetch char from pointer
                  PCFETCH:
-01faa2 939a
-01faa3 938a              pushtos
-01faa4 01ca              movw    tosl, pl
-01faa5 940d feea         jmp     CFETCH
+01faa3 939a
+01faa4 938a              pushtos
+01faa5 01ca              movw    tosl, pl
+01faa6 940d feea         jmp     CFETCH
                  ;***************************************************
-01faa7 f540              fdw      L_PCFETCH
+01faa8 f542              fdw      L_PCFETCH
                  L_PTWOPLUS:
                  kernellink:
-01faa8 70a3
-01faa9 2b32              .db     NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
+01faa9 70a3
+01faaa 2b32              .db     NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
                  PTWOPLUS:
-01faaa 0d47              add     pl, r_two
-01faab 1d55              adc     ph, zero
-01faac 9508              ret
+01faab 0d47              add     pl, r_two
+01faac 1d55              adc     ph, zero
+01faad 9508              ret
                  
                  ;***************************************************
                  ; marker --- name
-01faad 0000              .dw     0
+01faae 0000              .dw     0
                  L_MARKER:
                  lastword:
-01faae 6d86
-01faaf 7261
-01fab0 656b
-01fab1 0072              .db     NFA|6,"marker",0
+01faaf 6d86
+01fab0 7261
+01fab1 656b
+01fab2 0072              .db     NFA|6,"marker",0
                  MARKER:
-01fab2 940f f083         call    ROM_
-01fab4 dcb7              rcall   CREATE
-01fab5 dc61              rcall   DOLIT
-01fab6 2200              .dw     dp_start
-01fab7 940f f0a8         call    HERE
-01fab9 dbd7              rcall   TEN
-01faba d9e7              rcall   CMOVE
-01fabb dbd5              rcall   TEN
-01fabc 940f f1ea         call    ALLOT
-01fabe 940f f091         call    FRAM
-01fac0 dcfb              rcall   XDOES
-01fac1 940f f03b         call    DODOES
-01fac3 dd91              rcall   INI
-01fac4 dbcc              rcall   TEN
-01fac5 940d f4a2         jmp     CMOVE
+01fab3 940f f083         call    ROM_
+01fab5 dcb6              rcall   CREATE
+01fab6 dc60              rcall   DOLIT
+01fab7 2200              .dw     dp_start
+01fab8 940f f0a8         call    HERE
+01faba dbd6              rcall   TEN
+01fabb d9e6              rcall   CMOVE
+01fabc dbd4              rcall   TEN
+01fabd 940f f1ea         call    ALLOT
+01fabf 940f f091         call    FRAM
+01fac1 dcfa              rcall   XDOES
+01fac2 940f f03b         call    DODOES
+01fac4 dd90              rcall   INI
+01fac5 dbcb              rcall   TEN
+01fac6 940d f4a2         jmp     CMOVE
                  
                  
                  .ifdef UCSR1A
                  ;***************************************************
                  ; TX1   c --    output character to UART 1
-01fac7 fa3e              fdw     RX0Q_L
+01fac8 fa3e              fdw     RX0Q_L
                  TX1_L:
-01fac8 7483
-01fac9 3178              .db     NFA|3,"tx1"
+01fac9 7483
+01faca 3178              .db     NFA|3,"tx1"
                  TX1_:
-01faca 3181              cpi     tosl, XON
-01facb f071              breq    XXON_TX1_TOS
-01facc 3183              cpi     tosl, XOFF
-01facd f0a1              breq    XXOFF_TX1_TOS
+01facb 3181              cpi     tosl, XON
+01facc f071              breq    XXON_TX1_TOS
+01facd 3183              cpi     tosl, XOFF
+01face f0a1              breq    XXOFF_TX1_TOS
                  TX1_LOOP:
-01face 6870              sbr     FLAGS2, (1<<fBUSY)
-01facf d4a1              rcall   PAUSE
-01fad0 9100 00c8         in_     t0, UCSR1A
-01fad2 ff05              sbrs    t0, UDRE1
-01fad3 cffa              rjmp    TX1_LOOP
-01fad4 9380 00ce         out_    UDR1, tosl
-01fad6 9189
-01fad7 9199              poptos
-01fad8 777f              cbr     FLAGS2, (1<<fBUSY)
-01fad9 9508              ret
+01facf 6870              sbr     FLAGS2, (1<<fBUSY)
+01fad0 d4a0              rcall   PAUSE
+01fad1 9100 00c8         in_     t0, UCSR1A
+01fad3 ff05              sbrs    t0, UDRE1
+01fad4 cffa              rjmp    TX1_LOOP
+01fad5 9380 00ce         out_    UDR1, tosl
+01fad7 9189
+01fad8 9199              poptos
+01fad9 777f              cbr     FLAGS2, (1<<fBUSY)
+01fada 9508              ret
                  
                  XXON_TX1_TOS:
-01fada 9189
-01fadb 9199              poptos
-01fadc c002              rjmp    XXON_TX1_1
+01fadb 9189
+01fadc 9199              poptos
+01fadd c002              rjmp    XXON_TX1_1
                  XXON_TX1:
-01fadd ff71              sbrs    FLAGS2, ixoff_tx1
-01fade 9508              ret
+01fade ff71              sbrs    FLAGS2, ixoff_tx1
+01fadf 9508              ret
                  XXON_TX1_1:
-01fadf 7f7d              cbr     FLAGS2, (1<<ixoff_tx1)
-01fae0 e1f1              ldi     zh, XON
-01fae1 c007              rjmp    TX1_SEND
+01fae0 7f7d              cbr     FLAGS2, (1<<ixoff_tx1)
+01fae1 e1f1              ldi     zh, XON
+01fae2 c007              rjmp    TX1_SEND
                  
                  XXOFF_TX1_TOS:
-01fae2 9189
-01fae3 9199              poptos
-01fae4 c002              rjmp    XXOFF_TX1_1
+01fae3 9189
+01fae4 9199              poptos
+01fae5 c002              rjmp    XXOFF_TX1_1
                  XXOFF_TX1:
-01fae5 fd71              sbrc    FLAGS2, ixoff_tx1
-01fae6 9508              ret     
+01fae6 fd71              sbrc    FLAGS2, ixoff_tx1
+01fae7 9508              ret     
                  XXOFF_TX1_1:
-01fae7 6072              sbr     FLAGS2, (1<<ixoff_tx1)
-01fae8 e1f3              ldi     zh, XOFF
+01fae8 6072              sbr     FLAGS2, (1<<ixoff_tx1)
+01fae9 e1f3              ldi     zh, XOFF
                  TX1_SEND:
-01fae9 91e0 00c8         in_     zl, UCSR1A
-01faeb ffe5              sbrs    zl, UDRE1
-01faec cffc              rjmp    TX1_SEND
-01faed 93f0 00ce         out_    UDR1, zh
-01faef 9508              ret
+01faea 91e0 00c8         in_     zl, UCSR1A
+01faec ffe5              sbrs    zl, UDRE1
+01faed cffc              rjmp    TX1_SEND
+01faee 93f0 00ce         out_    UDR1, zh
+01faf0 9508              ret
                  ;***************************************************
                  ; RX1    -- c    get character from the serial line
-01faf0 f590              fdw     TX1_L
+01faf1 f592              fdw     TX1_L
                  RX1_L:
-01faf1 7283
-01faf2 3178              .db     NFA|3,"rx1"
+01faf2 7283
+01faf3 3178              .db     NFA|3,"rx1"
                  RX1_:
-01faf3 d47d              rcall   PAUSE
-01faf4 d01e              rcall   RX1Q
-01faf5 940f f327         call    ZEROSENSE
-01faf7 f3d9              breq    RX1_
-01faf8 939a
-01faf9 938a              pushtos
-01fafa e9e8              ldi     zl, low(rbuf1)
-01fafb e0f3              ldi     zh, high(rbuf1)
-01fafc 91a0 0396         lds     xl, rbuf1_rd
-01fafe 0fea              add     zl, xl
-01faff 1df5              adc     zh, zero
-01fb00 8180              ld      tosl, z
-01fb01 2799              clr     tosh
-01fb02 b60f              in_     t2, SREG
-01fb03 94f8              cli
-01fb04 95a3              inc     xl
-01fb05 71af              andi    xl, (RX1_BUF_SIZE-1)
-01fb06 93a0 0396         sts     rbuf1_rd, xl
-01fb08 91a0 0397         lds     xl, rbuf1_lv
-01fb0a 95aa              dec     xl
-01fb0b 93a0 0397         sts     rbuf1_lv, xl
-01fb0d be0f              out_    SREG, t2
-01fb0e 9508              ret
+01faf4 d47c              rcall   PAUSE
+01faf5 d01e              rcall   RX1Q
+01faf6 940f f327         call    ZEROSENSE
+01faf8 f3d9              breq    RX1_
+01faf9 939a
+01fafa 938a              pushtos
+01fafb e9e8              ldi     zl, low(rbuf1)
+01fafc e0f3              ldi     zh, high(rbuf1)
+01fafd 91a0 0396         lds     xl, rbuf1_rd
+01faff 0fea              add     zl, xl
+01fb00 1df5              adc     zh, zero
+01fb01 8180              ld      tosl, z
+01fb02 2799              clr     tosh
+01fb03 b60f              in_     t2, SREG
+01fb04 94f8              cli
+01fb05 95a3              inc     xl
+01fb06 71af              andi    xl, (RX1_BUF_SIZE-1)
+01fb07 93a0 0396         sts     rbuf1_rd, xl
+01fb09 91a0 0397         lds     xl, rbuf1_lv
+01fb0b 95aa              dec     xl
+01fb0c 93a0 0397         sts     rbuf1_lv, xl
+01fb0e be0f              out_    SREG, t2
+01fb0f 9508              ret
                  ;***************************************************
                  ; RX1?  -- n    return the number of characters in queue
-01fb0f f5e2              fdw     RX1_L
+01fb10 f5e4              fdw     RX1_L
                  RX1Q_L:
-01fb10 7284
-01fb11 3178
-01fb12 003f              .db     NFA|4,"rx1?",0
+01fb11 7284
+01fb12 3178
+01fb13 003f              .db     NFA|4,"rx1?",0
                  RX1Q:
-01fb13 91a0 0397         lds     xl, rbuf1_lv
-01fb15 11a5              cpse    xl, zero
-01fb16 940d f6c2         jmp     TRUE_
+01fb14 91a0 0397         lds     xl, rbuf1_lv
+01fb16 11a5              cpse    xl, zero
+01fb17 940d f6c2         jmp     TRUE_
                  .if U1FC_TYPE == 1
-01fb18 dfc4              rcall   XXON_TX1
+01fb19 dfc4              rcall   XXON_TX1
                  .endif
                  .if U1FC_TYPE == 2
                  .endif
-01fb19 940d f6b9         jmp     FALSE_
+01fb1a 940d f6b9         jmp     FALSE_
                  
                  ;****************************************************
                  RX1_ISRR:
-01fb1b e9e8              ldi     zl, low(rbuf1)
-01fb1c e0f3              ldi     zh, high(rbuf1)
-01fb1d 91a0 0395         lds     xl, rbuf1_wr
-01fb1f 0fea              add     zl, xl
-01fb20 1df5              adc     zh, zero
-01fb21 91b0 00ce         in_     xh, UDR1
+01fb1c e9e8              ldi     zl, low(rbuf1)
+01fb1d e0f3              ldi     zh, high(rbuf1)
+01fb1e 91a0 0395         lds     xl, rbuf1_wr
+01fb20 0fea              add     zl, xl
+01fb21 1df5              adc     zh, zero
+01fb22 91b0 00ce         in_     xh, UDR1
                  .if OPERATOR_UART == 1
                  .endif
-01fb23 83b0              st      z, xh
-01fb24 95a3              inc     xl
-01fb25 71af              andi    xl, (RX1_BUF_SIZE-1)
-01fb26 93a0 0395         sts     rbuf1_wr, xl
-01fb28 91a0 0397         lds     xl, rbuf1_lv
-01fb2a 95a3              inc     xl
-01fb2b 93a0 0397         sts     rbuf1_lv, xl
-01fb2d 31ae              cpi     xl, RX1_BUF_SIZE-2
-01fb2e f409              brne    PC+2
-01fb2f d004              rcall   RX1_OVF
-01fb30 30a4              cpi     xl, RX0_OFF_FILL
-01fb31 f00a              brmi    RX1_ISR_SKIP_XOFF
+01fb24 83b0              st      z, xh
+01fb25 95a3              inc     xl
+01fb26 71af              andi    xl, (RX1_BUF_SIZE-1)
+01fb27 93a0 0395         sts     rbuf1_wr, xl
+01fb29 91a0 0397         lds     xl, rbuf1_lv
+01fb2b 95a3              inc     xl
+01fb2c 93a0 0397         sts     rbuf1_lv, xl
+01fb2e 31ae              cpi     xl, RX1_BUF_SIZE-2
+01fb2f f409              brne    PC+2
+01fb30 d004              rcall   RX1_OVF
+01fb31 30a4              cpi     xl, RX0_OFF_FILL
+01fb32 f00a              brmi    RX1_ISR_SKIP_XOFF
                  .if U1FC_TYPE == 1
-01fb32 dfb4              rcall   XXOFF_TX1_1
+01fb33 dfb4              rcall   XXOFF_TX1_1
                  .endif
                  .if U1FC_TYPE == 2
                  .endif
                  RX1_ISR_SKIP_XOFF:
-01fb33 c147              rjmp    FF_ISR_EXIT2
+01fb34 c146              rjmp    FF_ISR_EXIT2
                  RX1_OVF:
-01fb34 e7fc              ldi     zh, '|'
-01fb35 cfb3              rjmp    TX1_SEND
+01fb35 e7fc              ldi     zh, '|'
+01fb36 cfb3              rjmp    TX1_SEND
                  TX1_ISR:
                  .endif
                  ;***************************************************
                  RQ_EMIT:
-01fb36 fe00              sbrs    t2, PORF
-01fb37 c003              rjmp    RQ_EXTR
-01fb38 dbde              rcall   DOLIT
-01fb39 0050              .dw     'P'
-01fb3a dc2a              rcall   EMIT_A
+01fb37 fe00              sbrs    t2, PORF
+01fb38 c003              rjmp    RQ_EXTR
+01fb39 dbdd              rcall   DOLIT
+01fb3a 0050              .dw     'P'
+01fb3b dc29              rcall   EMIT_A
                  RQ_EXTR:
-01fb3b fe01              sbrs    t2, EXTRF
-01fb3c c003              rjmp    RQ_BORF
-01fb3d dbd9              rcall   DOLIT
-01fb3e 0045              .dw     'E'
-01fb3f dc25              rcall   EMIT_A
+01fb3c fe01              sbrs    t2, EXTRF
+01fb3d c003              rjmp    RQ_BORF
+01fb3e dbd8              rcall   DOLIT
+01fb3f 0045              .dw     'E'
+01fb40 dc24              rcall   EMIT_A
                  RQ_BORF:
-01fb40 fe02              sbrs    t2, BORF
-01fb41 c003              rjmp    RQ_WDRF
-01fb42 dbd4              rcall   DOLIT
-01fb43 0042              .dw     'B'
-01fb44 dc20              rcall   EMIT_A
+01fb41 fe02              sbrs    t2, BORF
+01fb42 c003              rjmp    RQ_WDRF
+01fb43 dbd3              rcall   DOLIT
+01fb44 0042              .dw     'B'
+01fb45 dc1f              rcall   EMIT_A
                  RQ_WDRF:
-01fb45 fe03              sbrs    t2, WDRF
-01fb46 c003              rjmp    RQ_DIVZERO
-01fb47 dbcf              rcall   DOLIT
-01fb48 0057              .dw     'W'
-01fb49 dc1b              rcall   EMIT_A
+01fb46 fe03              sbrs    t2, WDRF
+01fb47 c003              rjmp    RQ_DIVZERO
+01fb48 dbce              rcall   DOLIT
+01fb49 0057              .dw     'W'
+01fb4a dc1a              rcall   EMIT_A
                  RQ_DIVZERO:
-01fb4a fe16              sbrs    t3, 6 ; T bit MATH error
-01fb4b c003              rjmp    RQ_END
-01fb4c dbca              rcall   DOLIT
-01fb4d 004d              .dw     'M'
-01fb4e dc16              rcall   EMIT_A
+01fb4b fe16              sbrs    t3, 6 ; T bit MATH error
+01fb4c c003              rjmp    RQ_END
+01fb4d dbc9              rcall   DOLIT
+01fb4e 004d              .dw     'M'
+01fb4f dc15              rcall   EMIT_A
                  RQ_END: 
-01fb4f 940d f142         jmp    SPACE_
+01fb50 940d f142         jmp    SPACE_
                  
                  ;*****************************************************
                  .if IDLE_MODE == 1
                  IDLE_LOAD:
                  .if CPU_LOAD == 1	
-01fb51 ff75              sbrs    FLAGS2, fLOAD
-01fb52 c01f              rjmp    CPU_LOAD_END
-01fb53 939a
-01fb54 938a              pushtos
-01fb55 b60f              in_     t2, SREG
-01fb56 94f8              cli
-01fb57 7d7f              cbr     FLAGS2, (1<<fLOAD)
-01fb58 9180 03c4         lds     tosl, load_acc
-01fb5a 9190 03c5         lds     tosh, load_acc+1
-01fb5c 939a
-01fb5d 938a              pushtos
-01fb5e 9180 03c6         lds     tosl, load_acc+2
-01fb60 9250 03c4         sts     load_acc, zero
-01fb62 9250 03c5         sts     load_acc+1, zero
-01fb64 9250 03c6         sts     load_acc+2, zero
-01fb66 be0f              out_    SREG, t2
-01fb67 2799              clr     tosh
-01fb68 939a
-01fb69 938a              pushtos
-01fb6a e080              ldi     tosl, low(CPU_LOAD_VAL)
-01fb6b ea90              ldi     tosh, high(CPU_LOAD_VAL)
-01fb6c 940f f339         call    UMSLASHMOD
-01fb6e 9380 03c7         sts     load, tosl
-01fb70 940f f12b         call    TWODROP 
+01fb52 ff75              sbrs    FLAGS2, fLOAD
+01fb53 c01f              rjmp    CPU_LOAD_END
+01fb54 939a
+01fb55 938a              pushtos
+01fb56 b60f              in_     t2, SREG
+01fb57 94f8              cli
+01fb58 7d7f              cbr     FLAGS2, (1<<fLOAD)
+01fb59 9180 03c4         lds     tosl, load_acc
+01fb5b 9190 03c5         lds     tosh, load_acc+1
+01fb5d 939a
+01fb5e 938a              pushtos
+01fb5f 9180 03c6         lds     tosl, load_acc+2
+01fb61 9250 03c4         sts     load_acc, zero
+01fb63 9250 03c5         sts     load_acc+1, zero
+01fb65 9250 03c6         sts     load_acc+2, zero
+01fb67 be0f              out_    SREG, t2
+01fb68 2799              clr     tosh
+01fb69 939a
+01fb6a 938a              pushtos
+01fb6b e080              ldi     tosl, low(CPU_LOAD_VAL)
+01fb6c ea90              ldi     tosh, high(CPU_LOAD_VAL)
+01fb6d 940f f339         call    UMSLASHMOD
+01fb6f 9380 03c7         sts     load, tosl
+01fb71 940f f12b         call    TWODROP 
                  CPU_LOAD_END:
                  .endif
                  .if CPU_LOAD_LED == 1
-01fb72 ff74              sbrs    FLAGS2, fLOADled
-01fb73 c002              rjmp    LOAD_LED_END
-01fb74 9a27              sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
+01fb73 ff74              sbrs    FLAGS2, fLOADled
+01fb74 c002              rjmp    LOAD_LED_END
+01fb75 9a27              sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
                  .if CPU_LOAD_LED_POLARITY == 1
-01fb75 982f              cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+01fb76 982f              cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
                  .else
                  .endif
                  LOAD_LED_END:
                  .endif
-01fb76 fd76              sbrc    FLAGS2, fIDLE
-01fb77 c00b              rjmp    IDLE_LOAD1
-01fb78 fd77              sbrc    FLAGS2, fBUSY
-01fb79 c009              rjmp    IDLE_LOAD1
-01fb7a ee06              ldi	    t0, low(up0)
-01fb7b 1620              cp      upl, t0
-01fb7c f431              brne    IDLE_LOAD1
+01fb77 fd76              sbrc    FLAGS2, fIDLE
+01fb78 c00b              rjmp    IDLE_LOAD1
+01fb79 fd77              sbrc    FLAGS2, fBUSY
+01fb7a c009              rjmp    IDLE_LOAD1
+01fb7b ee06              ldi	    t0, low(up0)
+01fb7c 1620              cp      upl, t0
+01fb7d f431              brne    IDLE_LOAD1
                  .ifdef SMCR
-01fb7d e001              ldi     t0, (1<<SE)
-01fb7e bf03              out_    SMCR, t0
+01fb7e e001              ldi     t0, (1<<SE)
+01fb7f bf03              out_    SMCR, t0
                  .else
                  .endif
                  .if CPU_LOAD == 1
-01fb7f 9250 0081         out_    TCCR1B, zero	; Stop load counter
+01fb80 9250 0081         out_    TCCR1B, zero	; Stop load counter
                  .endif
-01fb81 9588              sleep               ; IDLE mode
+01fb82 9588              sleep               ; IDLE mode
                  .ifdef SMCR
-01fb82 be53              out_    SMCR, zero
+01fb83 be53              out_    SMCR, zero
                  .else
                  .endif
                  IDLE_LOAD1:
                  .if CPU_LOAD_LED == 1
-01fb83 fd74              sbrc    FLAGS2, fLOADled
+01fb84 fd74              sbrc    FLAGS2, fLOADled
                  .if CPU_LOAD_LED_POLARITY == 1
-01fb84 9a2f              sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+01fb85 9a2f              sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
                  .else
                  .endif
                  .endif
-01fb85 9508              ret
+01fb86 9508              ret
                  .endif
                  
                  .if CPU_LOAD == 1	
                  LOAD_ADD:
-01fb86 91e0 03c4         lds     zl, load_acc
-01fb88 91f0 03c5         lds     zh, load_acc+1
-01fb8a 9100 03c6         lds     t0, load_acc+2
-01fb8c 91b0 0084         in_     xh, TCNT1L
-01fb8e 0feb              add     zl, xh
-01fb8f 91b0 0085         in_     xh, TCNT1H
-01fb91 1ffb              adc     zh, xh
-01fb92 1d05              adc     t0, zero
-01fb93 9250 0085         out_    TCNT1H, zero
-01fb95 9250 0084         out_    TCNT1L, zero
-01fb97 93e0 03c4         sts     load_acc, zl
-01fb99 93f0 03c5         sts     load_acc+1, zh
-01fb9b 9300 03c6         sts     load_acc+2, t0
-01fb9d 20ee              tst     ms_count
-01fb9e f409              brne    LOAD_ADD_END
-01fb9f 6270              sbr     FLAGS2, (1<<fLOAD)
+01fb87 91e0 03c4         lds     zl, load_acc
+01fb89 91f0 03c5         lds     zh, load_acc+1
+01fb8b 9100 03c6         lds     t0, load_acc+2
+01fb8d 91b0 0084         in_     xh, TCNT1L
+01fb8f 0feb              add     zl, xh
+01fb90 91b0 0085         in_     xh, TCNT1H
+01fb92 1ffb              adc     zh, xh
+01fb93 1d05              adc     t0, zero
+01fb94 9250 0085         out_    TCNT1H, zero
+01fb96 9250 0084         out_    TCNT1L, zero
+01fb98 93e0 03c4         sts     load_acc, zl
+01fb9a 93f0 03c5         sts     load_acc+1, zh
+01fb9c 9300 03c6         sts     load_acc+2, t0
+01fb9e 20ee              tst     ms_count
+01fb9f f409              brne    LOAD_ADD_END
+01fba0 6270              sbr     FLAGS2, (1<<fLOAD)
                  LOAD_ADD_END:
-01fba0 c0da              rjmp    FF_ISR_EXIT2
+01fba1 c0d9              rjmp    FF_ISR_EXIT2
                  .endif
                  
                  end_of_dict:
@@ -6876,6 +6877,10 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  .org BOOT_START + 0x64
 01fc64 d01e                  rcall FF_ISR
                  .endif
+                 .if 0x66 < INT_VECTORS_SIZE
+                 .org BOOT_START + 0x66
+01fc66 d01c                  rcall FF_ISR
+                 .endif
                  .if 0x68 < INT_VECTORS_SIZE
                  .org BOOT_START + 0x68
 01fc68 d01a                  rcall FF_ISR
@@ -6910,7 +6915,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01fc78 0ce6              add     ms_count,  r_one
 01fc79 1cf5              adc     ms_count1, zero
                  .if CPU_LOAD == 1
-01fc7a cf0b              rjmp    LOAD_ADD	
+01fc7a cf0c              rjmp    LOAD_ADD	
                  .endif
                  FF_ISR_EXIT2:
 01fc7b 910f              pop     t0
@@ -6975,6 +6980,8 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01fc99 939f              push    tosh
                  
 01fc9a 50a1              subi    xl, 1
+                 .if low(ivec) == 0x80
+                 .endif
 01fc9b e0b3              ldi     xh, high(ivec)
 01fc9c 91ed              ld      zl, x+
 01fc9d 91fd              ld      zh, x+
@@ -7018,7 +7025,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  TX0_ISR:
                  
                  .ifdef UCSR1A
-01fcbd ce5d      RX1_ISR: rjmp   RX1_ISRR
+01fcbd ce5e      RX1_ISR: rjmp   RX1_ISRR
                  .endif
                  ;;; Enable load led
 01fcbe de5e              fdw     BUSY_L
@@ -7161,7 +7168,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  
                  ;*************************************************************
                   ISTORERR:
-01fd2a db88              rcall   DOTS
+01fd2a db89              rcall   DOTS
 01fd2b 940f f1b9         call    XSQUOTE
 01fd2d 4103
 01fd2e 3f44              .db     3,"AD?"
@@ -7320,7 +7327,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  
                  ;***************************************************
                  .ifdef UCSR1A
-01fd8b f620              fdw     RX1Q_L
+01fd8b f622              fdw     RX1Q_L
                  .else
                  .endif
                  EMPTY_L:
@@ -7480,7 +7487,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01fdec d8a8              rcall   DP_TO_RAM
 01fded 9478              sei
                  
-01fdee dd47              rcall   RQ_EMIT
+01fdee dd48              rcall   RQ_EMIT
 01fdef d023              rcall   VER
                  ; Turnkey ?
 01fdf0 d179              rcall   TURNKEY
@@ -7573,10 +7580,12 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01fe3c 01fc              movw    zl, tosl
 01fe3d 9731              sbiw    zl, 1
 01fe3e 0fee              lsl     zl
+                 .if low(ivec) == 0x80
+                 .endif
 01fe3f e0f3              ldi     zh, high(ivec)
 01fe40 9189
 01fe41 9199              poptos
-01fe42 dac5              rcall   TO_XA
+01fe42 dac6              rcall   TO_XA
 01fe43 940d fe7b         jmp     STORE_RAM_2
                  
                  ; DOLITERAL  x --           compile DOLITeral x as native code
@@ -7589,7 +7598,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  LITERAL:
 01fe4a d8cc              rcall   DOLIT
 01fe4b ee42              fdw     DUP
-01fe4c db4e              rcall   INLINE0
+01fe4c db4f              rcall   INLINE0
 01fe4d 940f f721         call    DUP
 01fe4f 2f98              mov     tosh, tosl
 01fe50 9592              swap    tosh
@@ -7686,7 +7695,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
                  LOCKEDQ:
 01fe98 ff62              sbrs    FLAGS1, fLOCK
 01fe99 9508              ret
-01fe9a da18              rcall   DOTS
+01fe9a da19              rcall   DOTS
 01fe9b 940f f1b9         call    XSQUOTE
 01fe9d 4103
 01fe9e 3f44              .db     3,"AD?"
@@ -7956,7 +7965,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01ff70 6573              .db     NFA|5,"pause"
                  PAUSE:
                  .if IDLE_MODE == 1
-01ff71 dbdf              rcall   IDLE_LOAD
+01ff71 dbe0              rcall   IDLE_LOAD
                  .endif
 01ff72 b60f              in_     t2, SREG
 01ff73 94f8              cli
@@ -8011,7 +8020,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01ff9d 940f f74f         call    IHERE
 01ff9f ded6              rcall   STORE
 01ffa0 940f f0be         call    CELL
-01ffa2 940d f8f4         jmp     IALLOT
+01ffa2 940d f8f5         jmp     IALLOT
                  
                  
                  ;   IHERE ! 1 CHARS IALLOT ;
@@ -8023,7 +8032,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01ffa7 940f f74f         call    IHERE
 01ffa9 df63              rcall   CSTORE
 01ffaa 940f f165         call    ONE
-01ffac 940d f8f4         jmp     IALLOT
+01ffac 940d f8f5         jmp     IALLOT
                  
                  L_DOTBASE:
 01ffae 2081              .db      NFA|1," "
@@ -8119,7 +8128,7 @@ E:\avr\src\ff-atmega.asm(240): warning: Use of undefined or forward referenced s
 01fff8 3200      DPC:    .dw      OFLASH
 01fff9 220c      DPE:    .dw      ehere
 01fffa 04dc      DPD:    .dw      dpdata
-01fffb f55c      LW:     fdw      lastword
+01fffb f55e      LW:     fdw      lastword
 01fffc ecf6      STAT:   fdw      DOTSTATUS
                  
                  ;*******************************************************************
@@ -8164,7 +8173,7 @@ eor   :   2 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 ijmp  :   0
 in    :  19 inc   :   9 jmp   : 165 ld    : 130 ldd   :   2 ldi   :  79 
 lds   :  28 lpm   :   0 lsl   :  11 lsr   :   2 mov   :  20 movw  :  40 
 mul   :   4 muls  :   0 mulsu :   0 neg   :   0 nop   :   0 or    :   7 
-ori   :   7 out   :  37 pop   :  99 push  :  27 rcall :1005 ret   : 131 
+ori   :   7 out   :  37 pop   :  99 push  :  27 rcall :1007 ret   : 131 
 reti  :   1 rjmp  : 103 rol   :  15 ror   :  18 sbc   :   2 sbci  :   3 
 sbi   :  11 sbic  :   5 sbis  :   0 sbiw  :   8 sbr   :  21 sbrc  :  15 
 sbrs  :  19 sec   :   0 seh   :   0 sei   :   3 sen   :   0 ser   :   6 
@@ -8176,7 +8185,7 @@ Instructions used: 71 out of 116 (61.2%)
 ATmega2560 memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x03de00 0x03fffa   5900   2494   8394  262144   3.2%
+[.cseg] 0x03de00 0x03fffa   5904   2494   8398  262144   3.2%
 [.dseg] 0x000200 0x0004de      0    734    734    8192   9.0%
 [.eseg] 0x000000 0x000002      0      2      2    4096   0.0%
 
