@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          10.11.2014                                        *
+;    Date:          12.11.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -33,6 +33,9 @@
 ; Include the FlashForth configuration file
 .include "config.inc"
 
+; Define the FF version date string
+#define DATE "12.11.2014"
+
 
 ; Register definitions
   .def upl = r2         ; not in interrupt 
@@ -43,10 +46,15 @@
   .def t8 = r8          ; Not in interrupt
   .def wflags  = r9     ; not in interrupt
 
+  .def loadreg0 = r4    ;
+  .def loadreg1 = r12
+  .def loadreg2 = r13
+
+
   .def ibasel=r10       ; Not in interrupt
   .def ibaseh=r11       ; Not in interrupt
-  .def iaddrl=r12       ; Not in interrupt
-  .def iaddrh=r13       ; Not in interrupt
+  ;.def iaddrl=r12       ; Not in interrupt
+  ;.def iaddrh=r13       ; Not in interrupt
   .def ms_count  = r14       ; Not in interrupt
   .def ms_count1 = r15       ; Not in interrupt
   .def t0 = r16
@@ -428,8 +436,11 @@ dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
 areg:       .byte 2 ; A register data
+iaddrl:     .byte 1
+iaddrh:     .byte 1
 load_acc:   .byte 3 ; Load measurement accumulator
-load:       .byte 1 ; Cpu load in percent
+load_res:   .byte 3 ; Load result
+; load:       .byte 1 ; Cpu load in percent
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
 uvars:      .byte   (-us0)
@@ -4082,6 +4093,43 @@ MARKER:
         jmp     CMOVE
 
 
+;;; Enable load led
+        fdw     BUSY_L
+LOADON_L:
+        .db     NFA|5,"load+"
+        sbr     FLAGS2, (1<<fLOADled)
+        ret
+
+;;; Disable load led
+        fdw     LOADON_L
+LOADOFF_L:
+        .db     NFA|5,"load-"
+        cbr     FLAGS2, (1<<fLOADled)
+.if CPU_LOAD_LED == 1
+        cbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
+.if CPU_LOAD_LED_POLARITY == 1
+        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.else
+        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
+.endif
+.endif
+        ret
+;;; Enable load led
+        fdw     LOADOFF_L
+LOAD_L:
+        .db     NFA|4,"load",0
+        pushtos
+        lds     tosl, load_res
+        lds     tosh, load_res+1
+        pushtos
+        lds     tosl, load_res+2
+        clr     tosh
+        pushtos
+        ldi     tosl, low(CPU_LOAD_VAL)
+        ldi     tosh, high(CPU_LOAD_VAL)
+        call    UMSLASHMOD
+        jmp     NIP 
+
 .ifdef UCSR1A
 ;***************************************************
 ; TX1   c --    output character to UART 1
@@ -4184,9 +4232,11 @@ RX1_ISRR:
         adc     zh, zero
         in_     xh, UDR1
 .if OPERATOR_UART == 1
+.if CTRL_O_WARM_RESET == 1
         cpi     xh, 0xf
         brne    pc+2
         rjmp    RESET_
+.endif
 .endif
         st      z, xh
         inc     xl
@@ -4207,7 +4257,7 @@ RX1_ISRR:
         sbi_    U1RTS_PORT, U1RTS_BIT
 .endif
 RX1_ISR_SKIP_XOFF:
-        rjmp    FF_ISR_EXIT2
+        rjmp    FF_ISR_EXIT_UART
 RX1_OVF:
         ldi     zh, '|'
         rjmp    TX1_SEND
@@ -4253,25 +4303,16 @@ IDLE_LOAD:
 .if CPU_LOAD == 1	
         sbrs    FLAGS2, fLOAD
         rjmp    CPU_LOAD_END
-        pushtos
         in_     t2, SREG
         cli
         cbr     FLAGS2, (1<<fLOAD)
-        lds     tosl, load_acc
-        lds     tosh, load_acc+1
-        pushtos
-        lds     tosl, load_acc+2
-        sts     load_acc, zero
-        sts     load_acc+1, zero
-        sts     load_acc+2, zero
+        sts     load_res, loadreg0
+        sts     load_res+1,loadreg1
+        sts     load_res+2, loadreg2
+        clr     loadreg0
+        clr     loadreg1
+        clr     loadreg2
         out_    SREG, t2
-        clr     tosh
-        pushtos
-        ldi     tosl, low(CPU_LOAD_VAL)
-        ldi     tosh, high(CPU_LOAD_VAL)
-        call    UMSLASHMOD
-        sts     load, tosl
-        call    TWODROP 
 CPU_LOAD_END:
 .endif
 .if CPU_LOAD_LED == 1
@@ -4289,7 +4330,7 @@ LOAD_LED_END:
         rjmp    IDLE_LOAD1
         sbrc    FLAGS2, fBUSY
         rjmp    IDLE_LOAD1
-        ldi	    t0, low(up0)
+        ldi	t0, low(up0)
         cp      upl, t0
         brne    IDLE_LOAD1
 .ifdef SMCR
@@ -4322,29 +4363,6 @@ IDLE_LOAD1:
 .endif
         ret
 .endif
-
-.if CPU_LOAD == 1	
-LOAD_ADD:
-        lds     zl, load_acc
-        lds     zh, load_acc+1
-        lds     t0, load_acc+2
-        in_     xh, TCNT1L
-        add     zl, xh
-        in_     xh, TCNT1H
-        adc     zh, xh
-        adc     t0, zero
-        out_    TCNT1H, zero
-        out_    TCNT1L, zero
-        sts     load_acc, zl
-        sts     load_acc+1, zh
-        sts     load_acc+2, t0
-        tst     ms_count
-        brne    LOAD_ADD_END
-        sbr     FLAGS2, (1<<fLOAD)
-LOAD_ADD_END:
-        rjmp    FF_ISR_EXIT2
-.endif
-
 end_of_dict:
 
 ;FF_DP code:
@@ -4552,26 +4570,38 @@ RESET_:     jmp  WARM_
             rcall FF_ISR
 .endif
 
-.org BOOT_START + INT_VECTORS_SIZE
+.org BOOT_START + INT_VECTORS_SIZE - 1
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
         pop     t3
         pop     t2
-
         pop     t1
+        pop     t0
+FF_ISR_EXIT_UART:
+        pop     zh
+        pop     zl
         rjmp    FF_ISR_EXIT2
 MS_TIMER_ISR:
         add     ms_count,  r_one
         adc     ms_count1, zero
 .if CPU_LOAD == 1
-        rjmp    LOAD_ADD	
+LOAD_ADD:
+        in_     xl, TCNT1L
+        in_     xh, TCNT1H
+        out_    TCNT1H, zero
+        out_    TCNT1L, r_two
+
+        add     loadreg0, xl
+        adc     loadreg1, xh
+        adc     loadreg2, zero
+
+        tst     ms_count
+        brne    LOAD_ADD_END
+        sbr     FLAGS2, (1<<fLOAD)
+LOAD_ADD_END:
 .endif
 FF_ISR_EXIT2:
-        pop     t0
-        pop     zh
-        pop     zl
-FF_ISR_EXIT3:
         ld      xl, y+
         ld      xh, y+
         out_    SREG, xh
@@ -4591,9 +4621,6 @@ FF_ISR:
         m_pop_xh
         pop     xh
         pop     xl
-        push    zl
-        push    zh
-        push    t0
 
 .if MS_TIMER == 0
 .ifdef OC0Aaddr
@@ -4602,11 +4629,9 @@ FF_ISR:
 .ifdef OC0addr
         cpi     xl, low(OC0addr+1)
 .endif
-        breq    MS_TIMER_ISR
 .endif
 .if MS_TIMER == 1
         cpi     xl, low(OC1Aaddr+1)
-        breq    MS_TIMER_ISR
 .endif
 .if MS_TIMER == 2
 .ifdef OC2Aaddr
@@ -4615,9 +4640,11 @@ FF_ISR:
 .ifdef OC2addr
         cpi     xl, low(OC2addr+1)
 .endif
-        breq    MS_TIMER_ISR
 .endif
+        breq    MS_TIMER_ISR
 
+        push    zl
+        push    zh
 
 .ifdef URXC0addr
         cpi     xl, low(URXC0addr+1)
@@ -4630,16 +4657,18 @@ FF_ISR:
         breq    RX1_ISR
 .endif
 
+        push    t0
         push    t1
         push    t2
         push    t3
         push    tosl
         push    tosh
 
-        subi    xl, 1
 .if low(ivec) == 0x80
-		ldi     xh, low(ivec)
+		ldi     xh, low(ivec-1)
  		add     xl, xh
+.else
+        subi    xl, 1
 .endif
         ldi     xh, high(ivec)
         ld      zl, x+
@@ -4655,9 +4684,11 @@ RX0_ISR:
         adc     zh, zero
         in_     xh, UDR0_
 .if OPERATOR_UART == 0
+.if CTRL_O_WARM_RESET == 1
         cpi     xh, 0xf
         brne    pc+2
         rjmp    RESET_
+.endif
 .endif
         st      z, xh
         inc     xl
@@ -4678,7 +4709,7 @@ RX0_ISR:
         sbi_    U0RTS_PORT, U0RTS_BIT
 .endif
 RX0_ISR_SKIP_XOFF:
-        rjmp    FF_ISR_EXIT2
+        rjmp    FF_ISR_EXIT_UART
 RX0_OVF:
         ldi     zh, '|'
         rjmp    TX0_SEND
@@ -4687,35 +4718,6 @@ TX0_ISR:
 .ifdef UCSR1A
 RX1_ISR: rjmp   RX1_ISRR
 .endif
-;;; Enable load led
-        fdw     BUSY_L
-LOADON_L:
-        .db     NFA|5,"load+"
-        sbr     FLAGS2, (1<<fLOADled)
-        ret
-
-;;; Disable load led
-        fdw     LOADON_L
-LOADOFF_L:
-        .db     NFA|5,"load-"
-        cbr     FLAGS2, (1<<fLOADled)
-.if CPU_LOAD_LED == 1
-        cbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
-.if CPU_LOAD_LED_POLARITY == 1
-        cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.else
-        sbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
-.endif
-.endif
-        ret
-;;; Enable load led
-        fdw     LOADOFF_L
-LOAD_L:
-        .db     NFA|4,"load",0
-        pushtos
-        clr     tosh
-        lds     tosl, load
-        ret
 ;***************************************************
 ; TX0   c --    output character to UART 0
         fdw(LOAD_L)
@@ -4831,23 +4833,25 @@ RX0Q:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
-        mov     t0, iaddrh
-        cpi     t0, high(FLASH_HI+1)       ; Dont allow kernel writes
+        sts     iaddrl, tosl
+        sts     iaddrh, tosh
+        cpi     tosh, high(FLASH_HI+1)       ; Dont allow kernel writes
         brcc    ISTORERR
-        mov     t0, iaddrl
+        lds     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
         rjmp    IFILL_BUFFER
-        cpse    iaddrh, ibaseh
+		lds     t0, iaddrh
+        cpse    t0, ibaseh
         rjmp    IFILL_BUFFER
         ret
 
 IFILL_BUFFER:
         rcall   IFLUSH
-        mov     t0, iaddrl
+        lds     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         mov     ibasel, t0
-        mov     ibaseh, iaddrh
+        lds     ibaseh, iaddrh
 IFILL_BUFFER_1:
         ldi     t0, PAGESIZEB&0xff ; 0x100 max PAGESIZEB
         movw    zl, ibasel
@@ -5197,13 +5201,17 @@ STARTQ1:
 STARTQ2:
         jmp     ABORT
 
+.equ partlen = strlen(partstring)
+.equ datelen = strlen(DATE)
+
         fdw     WARM_L
 VER_L:
         .db     NFA|3,"ver"
 VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
-        .db 23,"FlashForth Atmega 5.0",0xd,0xa
+        ;.db 34,"FlashForth Atmega 5.0 ",DATE,0xd,0xa,0
+		.db     partlen+datelen+14,"FlashForth ",partstring," ", DATE,0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -5290,12 +5298,11 @@ LITERALruntime:
 ;*****************************************************************
 ISTORE:
         rcall   LOCKEDQ
-        movw    iaddrl, tosl
         rcall   IUPDATEBUF
         poptos
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
-        mov     t0, iaddrl
+        lds     t0, iaddrl
         andi    t0, (PAGESIZEB-1)
         add     xl, t0
         st      x+, tosl
@@ -5479,12 +5486,11 @@ ECFETCH:
 
 ICSTORE:
         rcall   LOCKEDQ
-        movw    iaddrl, tosl
         rcall   IUPDATEBUF
         poptos
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
-        mov     t0, iaddrl
+        lds     t0, iaddrl
         andi    t0, (PAGESIZEB-1)
         add     xl, t0
         st      x+, tosl

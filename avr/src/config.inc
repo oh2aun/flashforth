@@ -2,10 +2,11 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"  ; 
-.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
-;.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
 
@@ -33,7 +34,7 @@
 .equ U1RTS_BIT = 4
 
 ; Default number base
-.equ BASE_DEFAULT = 10      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE = 1
@@ -45,7 +46,7 @@
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrb
 .equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduinomega:portb arduinouno:portb
-.equ CPU_LOAD_BIT = 7            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
+.equ CPU_LOAD_BIT = 5            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
 .equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
                                  ; arduino : 1 = high on port turns on led 
 
@@ -70,5 +71,19 @@
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
 .equ MS_TIMER = 0
 
-
+#if defined(__ATmega2560__)
+#define partstring "ATmega2560"
+#elif defined(__ATmega328P__)
+#define partstring "ATmega328P"
+#elif defined(__ATmega328__)
+#define partstring "ATmega328"
+#elif defined(__ATmega128__)
+#define partstring "ATmega128"
+#elif defined(__ATmega2561__)
+#define partstring "ATmega2561"
+#elif defined(__ATmega644__)
+#define partstring "ATmega644"
+#else
+#define partstring "ATmega"
+#endif
 
