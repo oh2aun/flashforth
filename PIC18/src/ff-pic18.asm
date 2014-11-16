@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          22.05.2014                                        *
+;    Date:          16.11.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -229,6 +229,7 @@ SPIE1       res 1       ; Save PIE1 before disabling interrupts
 SPIE2       res 1       ; Save PIE2 before disabling interrupts
 #endif
 
+load_res    res 3       ; 256 ms load result
 ;;; Interrupt high priority save variables
 #ifdef USB_CDC
 ihpclath    res 1
@@ -245,8 +246,8 @@ ihprodh     res 1
 ihap        res 1
 ihabank     res 1
 
-iaddr_lo res 1       ; Instruction Memory access address
-iaddr_hi res 1       ; Instruction Memory access address
+iaddr_lo    res 1       ; Instruction Memory access address
+iaddr_hi    res 1       ; Instruction Memory access address
 areg        res 2
 
 #ifdef USB_CDC
@@ -639,9 +640,14 @@ BUSY:
 L_LOAD:
         db      NFA|4,"load"
 LOAD:
-        movff   load, plusS
-        clrf    plusS
-        return
+        movff   load_res, plusS
+        movff   load_res+1, plusS
+        movff   load_res+2, plusS
+        clrf    plusS, A
+        call    LIT
+        dw      CPU_LOAD_VAL
+        call    UMSLASHMOD
+        goto    NIP
         
 ; a, ( -- 0 ) Force Access bank
         dw      L_LOAD
@@ -1539,20 +1545,13 @@ PAUSE0:
         bra     PAUSE_IDLE0
         bcf     FLAGS2, fLOAD, A
         bcf     INTCON, GIE, A
-        movff   load_acc, plusS
-        movff   load_acc+1, plusS
-        movff   load_acc+2, plusS
+        movff   load_acc, load_res
+        movff   load_acc+1, load_res+1
+        movff   load_acc+2, load_res+2
         clrf    load_acc, A
         clrf    load_acc+1, A
         clrf    load_acc+2, A
         bsf     INTCON, GIE, A
-        clrf    plusS, A
-        rcall   LIT
-        dw      CPU_LOAD_VAL
-        call    UMSLASHMOD
-        movf    Sminus, W, A
-        movff   Sminus, load
-        call    DROP
 PAUSE_IDLE0:
 #endif
         movf    status, W, A   ; Sleep only if all tasks ar idle
@@ -2325,13 +2324,8 @@ L_VER:
                 db              NFA|3,"ver"
 VER:
         rcall   XSQUOTE
-#ifdef USB_CDC
-         ;        1234567890123456789012345678901234567890
-        db d'27'," FlashForth 5.0 PIC18 USB\r\n"
-#else
-         ;        1234567890123456789012345678901234567890
-        db d'23'," FlashForth 5.0 PIC18\r\n"
-#endif 
+         ;        123456789012 +   11  + 012345678901234567890
+        db d'35'," FlashForth ",PICTYPE," 16.11.2014\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
