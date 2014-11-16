@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          26.10.2014                                        *
+;    Date:          16.11.2014                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -35,17 +35,6 @@
         mov     #\lval, w0
         mov     w0, [++w14]
 .endm
-.macro mreg flags, len, reg, name
-        .pword   paddr(9b)+PFLASH
-9:
-        .byte   NFA|\flags|\len
-        .ascii  "\name"
-        .align  2
-        mov     #\reg, W0
-        mov     W0, [++W14]
-        return
-.endm
-
 ;..............................................................................
 ;Global Declarations:
 ;..............................................................................
@@ -187,8 +176,8 @@ ibase:      .space 2
 iaddr:      .space 2
 iflags:     .space 2
 status:     .space 2        ; 0 = allow CPU idle 
-load:       .space 2
 load_acc:   .space 4
+load_res:   .space 4
 
 ms_count:   .space 2
 
@@ -274,7 +263,7 @@ __T1Interrupt:
         inc     ms_count
 
 .if IDLE_MODE == 1
-.if CPU_LOAD == 1        
+.if CPU_LOAD == 1
         push.s
         mov     TMR3, W0
         clr     TMR3
@@ -285,15 +274,12 @@ __T1Interrupt:
         
         cp0.b   ms_count
         bra     nz, RETFIE_T1_0
-        
-        mov     #FCY/3126, W2
-        mov     load_acc+2, W1
         mov     load_acc, W0
+        mov     W0, load_res
+        mov     load_acc+2, W0
+        mov     W0, load_res+2
         clr     load_acc
         clr     load_acc+2
-        repeat  #17
-        div.ud  W0, W2
-        mov     W0, load
 RETFIE_T1_0:
         pop.s
 .endif
@@ -729,7 +715,11 @@ LOAD_L:
         .ascii  "load"
         .align 2
 LOAD_:
-        mov     load, WREG
+        mov     #FCY/3126, W2
+        mov     load_res+2, W1
+        mov     load_res, W0
+        repeat  #17
+        div.ud  W0, W2
         mov     W0, [++W14]
         return
         
@@ -1069,8 +1059,9 @@ RQ_END:
 
 WARM1:
         rcall   XSQUOTE
-        .byte   23
-        .ascii  " FlashForth PIC24 5.0\r\n"
+        .byte   30
+;                1234567890123456789012345678901234567890
+        .ascii  " FlashForth PIC24 16.11.2014\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
