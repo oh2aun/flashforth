@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          12.11.2014                                        *
+;    Date:          29.12.2014                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2013  Mikael Nordman
+; Copyright (C) 2014  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "12.11.2014"
+#define DATE "29.12.2014"
 
 
 ; Register definitions
@@ -53,10 +53,8 @@
 
   .def ibasel=r10       ; Not in interrupt
   .def ibaseh=r11       ; Not in interrupt
-  ;.def iaddrl=r12       ; Not in interrupt
-  ;.def iaddrh=r13       ; Not in interrupt
-  .def ms_count  = r14       ; Not in interrupt
-  .def ms_count1 = r15       ; Not in interrupt
+  .def ms_count  = r14  ; Not in interrupt
+  .def ms_count1 = r15  ; Not in interrupt
   .def t0 = r16
   .def t1 = r17
   .def t2 = r0          ; Not in interrupt
@@ -329,6 +327,7 @@
 .equ CR_=0x0d
 .equ LF_=0x0a
 .equ BS_=0x08
+.equ TAB_=0x09
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
@@ -375,7 +374,7 @@
 .equ FLASH_HI = 0xffff - (BOOT_SIZE*2) - (KERNEL_SIZE*2)
 .equ EEPROM_HI =PEEPROM + EEPROMEND
 .equ RAM_HI = RAMEND
-	
+        
 ;;; USER AREA for the OPERATOR task
 ;.equ uaddsize=     0          ; No additional user variables 
 .equ ursize=       RETURN_STACK_SIZE
@@ -472,6 +471,8 @@ umslashmod0:
         set  ; Set T flag
         jmp  WARM_
 umslashmodstart:
+        push t2
+        push t3
         movw t4, tosl
 
         ld t3, Y+
@@ -515,7 +516,8 @@ umslashmod3:
         ; put remainder on stack
         st -Y,t6
         st -Y,t3
-
+        pop t3
+        pop t2
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
         ret
 ; *******************************************************************
@@ -669,19 +671,30 @@ SKIP_L:
 SKIP:
 
         rcall   TOR
-SKIP1:
-        rcall   DUP
-        rcall   ZEROSENSE
+SKIP0:
+        rcall   DUPZEROSENSE
         breq    SKIP2
+
         rcall   OVER
         rcall   CFETCH_A
+
+        rcall   DUP
+        rcall   DOLIT
+        .dw     TAB_
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        brne    SKIP05    
         rcall   RFETCH
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    SKIP2
+                rjmp    SKIP1
+SKIP05:
+        rcall   DROP
+SKIP1:
         rcall   ONE
         rcall   SLASHSTRING
-        rjmp    SKIP1
+        rjmp    SKIP0
 SKIP2:
         pop     t0
         pop     t0
@@ -701,10 +714,20 @@ SCAN:
         rjmp    SCAN3
 SCAN1:
         rcall   CFETCHPP
+        rcall   DUP
+        rcall   DOLIT
+        .dw     TAB_
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        breq    SCAN2
+        rcall   DROP
+        rjmp    SCAN25
+SCAN2:
         call    FETCH_P
         rcall   EQUAL
         rcall   ZEROSENSE
         breq    SCAN3
+SCAN25:
         rcall   ONEMINUS
         rjmp    SCAN4
 SCAN3:
@@ -806,7 +829,7 @@ VARIABLE_:
         rcall   HERE
         rcall   CELL
         rcall   ALLOT
-	jmp	CONSTANT_
+        jmp     CONSTANT_
 
         fdw     VARIABLE_L
 TWOVARIABLE_L:
@@ -816,7 +839,7 @@ TWOVARIABLE_:
         rcall   DOLIT
         .dw     0x4
         rcall   ALLOT
-	jmp	CONSTANT_
+        jmp     CONSTANT_
 
         fdw     TWOVARIABLE_L
 CONSTANT_L:
@@ -877,7 +900,7 @@ DOCOMMAXT:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-	ror     zh
+        ror     zh
         ror     zl
         push    zl
         push    zh
@@ -1622,11 +1645,11 @@ WITHIN:
 NOTEQUAL_L:
         .db     NFA|2,"<>",0
 NOTEQUAL:
-        rcall	MINUS        	; MINUS leaves a valid zero flag
-        brne	NOTEQUAL1
-        rjmp	FALSE_F
+        rcall   MINUS           ; MINUS leaves a valid zero flag
+        brne    NOTEQUAL1
+        rjmp    FALSE_F
 NOTEQUAL1:
-        jmp	TRUE_F
+        jmp     TRUE_F
 
         fdw     ZEROLESS_L
 EQUAL_L:
@@ -2113,7 +2136,7 @@ USER_L:
 USER:
         rcall   CREATE
         rcall   CELL
-        rcall	NEGATE
+        rcall   NEGATE
         rcall   IALLOT
         call    ICOMMA
         rcall   XDOES
@@ -3373,11 +3396,11 @@ TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:
         pushtos
-        in_     t2, SREG
+        in_     t0, SREG
         cli
         mov     tosl, ms_count
         mov     tosh, ms_count1
-        out_    SREG, t2
+        out_    SREG, t0
         ret
 
         
@@ -3451,7 +3474,7 @@ WORDS_L:
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
-		rcall   CR
+                rcall   CR
         rcall   LATEST_
         rcall   FETCH_A
 WDS1:   rcall   DUP
@@ -3729,9 +3752,9 @@ UNTIL:
         rcall   COMMAZEROSENSE
         rcall   BRNEC
         cbr     FLAGS1, (1<<izeroeq)
-	    jmp     AGAIN_
+            jmp     AGAIN_
 
-				; AGAIN    adrs --      uncond'l backward branch
+                                ; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
         fdw     UNTIL_L
 AGAIN_L:
@@ -3897,14 +3920,14 @@ DPLUS_L:
 DPLUS:
         ld      xl, Y+
         ld      xh, Y+
-        ld      t2, Y+
-        ld      t3, Y+
+        ld      t6, Y+
+        ld      t7, Y+
         ld      t0, Y+
         ld      t1, Y+
         add     xl, t0
         adc     xh, t1
-        adc     tosl, t2
-        adc     tosh, t3
+        adc     tosl, t6
+        adc     tosh, t7
         st      -Y, xh
         st      -Y, xl
         ret
@@ -4130,6 +4153,25 @@ LOAD_L:
         call    UMSLASHMOD
         jmp     NIP 
 
+;;; *************************************************
+;;; WARM user area data
+.equ warmlitsize= 28
+WARMLIT:
+        .dw      0x0200                ; cse, state
+        .dw      utibbuf-4             ; S0
+        .dw      usbuf-1               ; R0
+        fdw      OP_TX_
+        fdw      OP_RX_
+        fdw      OP_RXQ
+        .dw      BASE_DEFAULT          ; BASE
+        .dw      utibbuf               ; TIB
+        fdw      OPERATOR_AREA         ; TASK
+        .dw      0                     ; ustatus & uflg
+        .dw      0                     ; source
+        .dw      0                     ; source
+        .dw      0                     ; TOIN
+        .dw      up0                   ; Task link
+
 .ifdef UCSR1A
 ;***************************************************
 ; TX1   c --    output character to UART 1
@@ -4196,7 +4238,7 @@ RX1_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
-        in_     t2, SREG
+        in_     t0, SREG
         cli
         inc     xl
         andi    xl, (RX1_BUF_SIZE-1)
@@ -4204,7 +4246,7 @@ RX1_:
         lds     xl, rbuf1_lv
         dec     xl
         sts     rbuf1_lv, xl
-        out_    SREG, t2
+        out_    SREG, t0
         ret
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -4257,7 +4299,7 @@ RX1_ISRR:
         sbi_    U1RTS_PORT, U1RTS_BIT
 .endif
 RX1_ISR_SKIP_XOFF:
-        rjmp    FF_ISR_EXIT_UART
+        rjmp    FF_ISR_EXIT
 RX1_OVF:
         ldi     zh, '|'
         rjmp    TX1_SEND
@@ -4300,10 +4342,10 @@ RQ_END:
 ;*****************************************************
 .if IDLE_MODE == 1
 IDLE_LOAD:
-.if CPU_LOAD == 1	
+.if CPU_LOAD == 1       
         sbrs    FLAGS2, fLOAD
         rjmp    CPU_LOAD_END
-        in_     t2, SREG
+        in_     t0, SREG
         cli
         cbr     FLAGS2, (1<<fLOAD)
         sts     load_res, loadreg0
@@ -4312,7 +4354,7 @@ IDLE_LOAD:
         clr     loadreg0
         clr     loadreg1
         clr     loadreg2
-        out_    SREG, t2
+        out_    SREG, t0
 CPU_LOAD_END:
 .endif
 .if CPU_LOAD_LED == 1
@@ -4330,7 +4372,7 @@ LOAD_LED_END:
         rjmp    IDLE_LOAD1
         sbrc    FLAGS2, fBUSY
         rjmp    IDLE_LOAD1
-        ldi	t0, low(up0)
+        ldi     t0, low(up0)
         cp      upl, t0
         brne    IDLE_LOAD1
 .ifdef SMCR
@@ -4342,7 +4384,7 @@ LOAD_LED_END:
         out_    MCUCR, t0
 .endif
 .if CPU_LOAD == 1
-        out_    TCCR1B, zero	; Stop load counter
+        out_    TCCR1B, zero    ; Stop load counter
 .endif
         sleep               ; IDLE mode
 .ifdef SMCR
@@ -4574,14 +4616,47 @@ RESET_:     jmp  WARM_
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
-        pop     t3
-        pop     t2
         pop     t1
         pop     t0
-FF_ISR_EXIT_UART:
         pop     zh
         pop     zl
-        rjmp    FF_ISR_EXIT2
+        ld      xl, y+
+        ld      xh, y+
+        out_    SREG, xh
+        ld      xh, y+
+        reti
+        
+FF_ISR:
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1
+        out_    TCCR1B, r_one   ; Start load counter
+.endif
+.endif
+        st      -y, xh
+        in_     xh, SREG
+        st      -y, xh
+        st      -y, xl
+        m_pop_xh
+        pop     xh
+        pop     xl
+        push    zl
+        push    zh
+        push    t0
+        push    t1
+        push    tosl
+        push    tosh
+.if low(ivec) == 0x80
+        ldi     xh, low(ivec-1)
+        add     xl, xh
+.else
+        subi    xl, 1
+.endif
+        ldi     xh, high(ivec)
+        ld      zl, x+
+        ld      zh, x+
+        mijmp   ;(z)
+
+;;; *************************************************
 MS_TIMER_ISR:
         add     ms_count,  r_one
         adc     ms_count1, zero
@@ -4601,81 +4676,8 @@ LOAD_ADD:
         sbr     FLAGS2, (1<<fLOAD)
 LOAD_ADD_END:
 .endif
-FF_ISR_EXIT2:
-        ld      xl, y+
-        ld      xh, y+
-        out_    SREG, xh
-        ld      xh, y+
-        reti
-        
-FF_ISR:
-.if IDLE_MODE == 1
-.if CPU_LOAD == 1
-        out_    TCCR1B, r_one	; Start load counter
-.endif
-.endif
-        st      -y, xh
-        in_     xh, SREG
-        st      -y, xh
-        st      -y, xl
-        m_pop_xh
-        pop     xh
-        pop     xl
-
-.if MS_TIMER == 0
-.ifdef OC0Aaddr
-        cpi     xl, low(OC0Aaddr+1)
-.endif
-.ifdef OC0addr
-        cpi     xl, low(OC0addr+1)
-.endif
-.endif
-.if MS_TIMER == 1
-        cpi     xl, low(OC1Aaddr+1)
-.endif
-.if MS_TIMER == 2
-.ifdef OC2Aaddr
-        cpi     xl, low(OC2Aaddr+1)
-.endif
-.ifdef OC2addr
-        cpi     xl, low(OC2addr+1)
-.endif
-.endif
-        breq    MS_TIMER_ISR
-
-        push    zl
-        push    zh
-
-.ifdef URXC0addr
-        cpi     xl, low(URXC0addr+1)
-.else
-        cpi     xl, low(URXCaddr+1)
-.endif
-        breq    RX0_ISR
-.ifdef URXC1addr
-        cpi     xl, low(URXC1addr+1)
-        breq    RX1_ISR
-.endif
-
-        push    t0
-        push    t1
-        push    t2
-        push    t3
-        push    tosl
-        push    tosh
-
-.if low(ivec) == 0x80
-		ldi     xh, low(ivec-1)
- 		add     xl, xh
-.else
-        subi    xl, 1
-.endif
-        ldi     xh, high(ivec)
-        ld      zl, x+
-        ld      zh, x+
-        mijmp    ;(z)
-
-;;; *************************************************
+        rjmp    FF_ISR_EXIT
+;;; ***************************************************
 RX0_ISR:
         ldi     zl, low(rbuf0)
         ldi     zh, high(rbuf0)
@@ -4709,7 +4711,7 @@ RX0_ISR:
         sbi_    U0RTS_PORT, U0RTS_BIT
 .endif
 RX0_ISR_SKIP_XOFF:
-        rjmp    FF_ISR_EXIT_UART
+        rjmp    FF_ISR_EXIT
 RX0_OVF:
         ldi     zh, '|'
         rjmp    TX0_SEND
@@ -4787,7 +4789,7 @@ RX0_:
         adc     zh, zero
         ld      tosl, z
         clr     tosh
-        in_     t2, SREG
+        in_     t0, SREG
         cli
         inc     xl
         andi    xl, (RX0_BUF_SIZE-1)
@@ -4795,7 +4797,7 @@ RX0_:
         lds     xl, rbuf0_lv
         dec     xl
         sts     rbuf0_lv, xl
-        out_    SREG, t2
+        out_    SREG, t0
         ret
 ;***************************************************
 ; RX0?  -- n    return the number of characters in queue
@@ -4841,7 +4843,7 @@ IUPDATEBUF:
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
         rjmp    IFILL_BUFFER
-		lds     t0, iaddrh
+                lds     t0, iaddrh
         cpse    t0, ibaseh
         rjmp    IFILL_BUFFER
         ret
@@ -5080,6 +5082,15 @@ WARM_3:
 
 .if MS_TIMER == 0
 ; Init ms timer
+                rcall   DOLIT
+                .dw     MS_TIMER_ISR
+                rcall   DOLIT
+.ifdef OC0Aaddr
+                .dw     OC0Aaddr+ivec
+.else
+                .dw             OC0addr+ivec
+.endif
+                rcall   STORE
 .ifdef TIMSK0
         out_    TCCR0A, r_two  ; CTC
         ldi     t0, ms_pre_tmr0
@@ -5098,6 +5109,11 @@ WARM_3:
 .endif
 .endif
 .if MS_TIMER == 1
+        rcall   DOLIT
+        .dw     MS_TIMER_ISR
+        rcall   DOLIT
+        .dw     OC1Aaddr+ivec
+        rcall   STORE
 ; Init ms timer
         ldi     t0, 9      ; CTC, clk/1
         out_    TCCR1B, t0
@@ -5114,6 +5130,11 @@ WARM_3:
 .endif
 .endif
 .if MS_TIMER == 2
+       rcall   DOLIT
+       .dw     MS_TIMER_ISR
+       rcall   DOLIT
+       .dw     OC2Aaddr+ivec
+       rcall   STORE
 ; Init ms timer
 .ifdef TIMSK2
         out_    TCCR2A, r_two   ; CTC
@@ -5135,7 +5156,16 @@ WARM_3:
 
 ; Init UART 0
 .ifdef UBRR0L
-        ; Set baud rate
+        rcall   DOLIT
+        .dw     RX0_ISR
+        rcall   DOLIT
+.ifdef URXC0addr
+        .dw     URXC0addr+ivec
+.else
+        .dw     URXCaddr+ivec
+.endif
+        rcall   STORE
+;;;     Set baud rate
 ;        out_    UBRR0H, zero
         ldi     t0, ubrr0val
         out_    UBRR0L, t0
@@ -5154,6 +5184,11 @@ WARM_3:
 .endif
 ; Init UART 1
 .ifdef UBRR1L
+        rcall   DOLIT
+        .dw     RX1_ISR
+        rcall   DOLIT
+        .dw     URXC1addr+ivec
+        rcall   STORE
         ; Set baud rate
 ;        out_    UBRR1H, zero
         ldi     t0, ubrr1val
@@ -5211,7 +5246,7 @@ VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
         ;.db 34,"FlashForth Atmega 5.0 ",DATE,0xd,0xa,0
-		.db     partlen+datelen+14,"FlashForth ",partstring," ", DATE,0xd,0xa
+                .db     partlen+datelen+14,"FlashForth ",partstring," ", DATE,0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -5255,8 +5290,8 @@ IRQ_V:
         sbiw    zl, 1
         lsl     zl
 .if low(ivec) == 0x80
-		ldi     zh, low(ivec)
-		add     zl,  zh
+                ldi     zh, low(ivec)
+                add     zl,  zh
 .endif
         ldi     zh, high(ivec)
         poptos
@@ -5611,7 +5646,7 @@ PAUSE:
 .if IDLE_MODE == 1
         rcall   IDLE_LOAD
 .endif
-        in_     t2, SREG
+        in_     t1, SREG
         cli
         push    yh        ; SP
         push    yl
@@ -5637,7 +5672,7 @@ PAUSE:
         pop     tosh
         pop     yl
         pop     yh
-        out_    SREG, t2
+        out_    SREG, t1
         ret
 
 
@@ -5717,6 +5752,8 @@ MEMQ:
 
 ;*******************************************************
 umstar0:
+        push t2
+        push t3
         ld  t0, Y+
         ld  t1, Y+
         mul tosl,t0
@@ -5737,26 +5774,10 @@ umstar0:
         st -Y, t5
         st -Y, t4
         movw tosl, t6
+        pop t3
+        pop t2
         ret
 
-;;; *************************************************
-;;; WARM user area data
-.equ warmlitsize= 28
-WARMLIT:
-        .dw      0x0200                ; cse, state
-        .dw      utibbuf-4             ; S0
-        .dw      usbuf-1               ; R0
-        fdw      OP_TX_
-        fdw      OP_RX_
-        fdw      OP_RXQ
-        .dw      BASE_DEFAULT          ; BASE
-        .dw      utibbuf               ; TIB
-        fdw      OPERATOR_AREA         ; TASK
-        .dw      0                     ; ustatus & uflg
-        .dw      0                     ; source
-        .dw      0                     ; source
-        .dw      0                     ; TOIN
-        .dw      up0                   ; Task link
 ;;; *************************************
 ;;; EMPTY dictionary data
 .equ coldlitsize=12
@@ -5768,7 +5789,6 @@ DPE:    .dw      ehere
 DPD:    .dw      dpdata
 LW:     fdw      lastword
 STAT:   fdw      DOTSTATUS
-
 ;*******************************************************************
 ; BOOT sector END **************************************************
 
