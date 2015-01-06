@@ -280,20 +280,6 @@ begin      ( -- a-addr )  COMPILE_ONLY
 bin        ( -- )
            Set base to binary
 
-bio0:      ( io-addr bitno "name" -- )
-           Define a word that clears a bit.
-           The defined word can be inlined.
-           ATMEGA
-
-bio1:      ( io-addr bitno "name" -- )
-           Define a word that sets a bit
-           The defined word can be inlined.
-           ATMEGA
-
-bio?:      ( io-addr bitno "name" -- flag )
-           Define a word that tests a bit.
-           ATMEGA
-
 bit0:      ( c-addr bitno "name" -- )
            Define a word that clears a bit.
            The defined word can be inlined.
