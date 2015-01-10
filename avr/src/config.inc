@@ -63,7 +63,7 @@
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE = 96          ; 48 cells return stack
 .equ PARAMETER_STACK_SIZE = 64       ; 32 cells parameter stack
-.equ TIB_SIZE = 84                   ; 74 chars tib size +  10 chars hold area
+.equ TIB_SIZE = 96                   ; 86 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART
 .equ CTRL_O_WARM_RESET = 1
@@ -86,4 +86,28 @@
 #else
 #define partstring "ATmega"
 #endif
+
+.if MS_TIMER == 0
+.ifdef OC0Aaddr
+.equ MS_TIMER_ADDR = OC0Aaddr
+.else
+.equ MS_TIMER_ADDR = OC0addr
+.endif
+.endif
+
+.if MS_TIMER == 1
+.ifdef OC1Aaddr
+.equ MS_TIMER_ADDR = OC1Aaddr
+.else
+.equ MS_TIMER_ADDR = OC1addr
+.endif
+.endif
+
+.if MS_TIMER == 2
+.ifdef OC2Aaddr
+.equ MS_TIMER_ADDR = OC2Aaddr
+.else
+.equ MS_TIMER_ADDR = OC2addr
+.endif
+.endif
 

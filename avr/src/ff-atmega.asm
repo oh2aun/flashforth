@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          29.12.2014                                        *
+;    Date:          10.01.2015                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "29.12.2014"
+#define DATE "10.01.2015"
 
 
 ; Register definitions
@@ -1858,10 +1858,11 @@ SLASH:
 
         fdw     SLASH_L
 NIP_L:
-        .db     NFA|3,"nip"
+        .db     NFA|INLINE|3,"nip"
 NIP:
-        rcall   SWOP
-        jmp     DROP
+        ld      t0, y+
+        ld      t0, y+
+        ret
     
         fdw     NIP_L
 TUCK_L:
@@ -3752,7 +3753,7 @@ UNTIL:
         rcall   COMMAZEROSENSE
         rcall   BRNEC
         cbr     FLAGS1, (1<<izeroeq)
-            jmp     AGAIN_
+        jmp     AGAIN_
 
                                 ; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
@@ -4430,33 +4431,77 @@ RESET_:     jmp  WARM_
 .org BOOT_START + 0x06
             rcall FF_ISR
 .org BOOT_START + 0x08
+.if MS_TIMER_ADDR == 0x08
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x0a
             rcall FF_ISR
 .org BOOT_START + 0x0c
             rcall FF_ISR
 .org BOOT_START + 0x0e
+.if MS_TIMER_ADDR == 0x0e
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x10
             rcall FF_ISR
 .org BOOT_START + 0x12
+.if MS_TIMER_ADDR == 0x12
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x14
+.if MS_TIMER_ADDR == 0x14
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x16
+.if MS_TIMER_ADDR == 0x16
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x18
+.if MS_TIMER_ADDR == 0x18
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x1a
+.if MS_TIMER_ADDR == 0x1a
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x1c
+.if MS_TIMER_ADDR == 0x1c
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x1e
+.if MS_TIMER_ADDR == 0x1e
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x20
+.if MS_TIMER_ADDR == 0x20
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x22
+.if MS_TIMER_ADDR == 0x22
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .org BOOT_START + 0x24
             rcall FF_ISR
 .if 0x26 < INT_VECTORS_SIZE
@@ -4469,7 +4514,11 @@ RESET_:     jmp  WARM_
 .endif
 .if 0x2a < INT_VECTORS_SIZE
 .org BOOT_START + 0x2a
+.if MS_TIMER_ADDR == 0x2a
+            rjmp  MS_TIMER_ISR
+.else
             rcall FF_ISR
+.endif
 .endif
 .if 0x2c < INT_VECTORS_SIZE
 .org BOOT_START + 0x2c
@@ -4620,6 +4669,7 @@ FF_ISR_EXIT:
         pop     t0
         pop     zh
         pop     zl
+MS_TIMER_ISR_EXIT:
         ld      xl, y+
         ld      xh, y+
         out_    SREG, xh
@@ -4658,6 +4708,15 @@ FF_ISR:
 
 ;;; *************************************************
 MS_TIMER_ISR:
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1
+        out_    TCCR1B, r_one   ; Start load counter
+.endif
+.endif
+        st      -y, xh
+        in_     xh, SREG
+        st      -y, xh
+        st      -y, xl
         add     ms_count,  r_one
         adc     ms_count1, zero
 .if CPU_LOAD == 1
@@ -4676,7 +4735,7 @@ LOAD_ADD:
         sbr     FLAGS2, (1<<fLOAD)
 LOAD_ADD_END:
 .endif
-        rjmp    FF_ISR_EXIT
+        rjmp    MS_TIMER_ISR_EXIT
 ;;; ***************************************************
 RX0_ISR:
         ldi     zl, low(rbuf0)
@@ -5081,16 +5140,6 @@ WARM_3:
 
 
 .if MS_TIMER == 0
-; Init ms timer
-                rcall   DOLIT
-                .dw     MS_TIMER_ISR
-                rcall   DOLIT
-.ifdef OC0Aaddr
-                .dw     OC0Aaddr+ivec
-.else
-                .dw             OC0addr+ivec
-.endif
-                rcall   STORE
 .ifdef TIMSK0
         out_    TCCR0A, r_two  ; CTC
         ldi     t0, ms_pre_tmr0
@@ -5109,11 +5158,6 @@ WARM_3:
 .endif
 .endif
 .if MS_TIMER == 1
-        rcall   DOLIT
-        .dw     MS_TIMER_ISR
-        rcall   DOLIT
-        .dw     OC1Aaddr+ivec
-        rcall   STORE
 ; Init ms timer
         ldi     t0, 9      ; CTC, clk/1
         out_    TCCR1B, t0
@@ -5130,11 +5174,6 @@ WARM_3:
 .endif
 .endif
 .if MS_TIMER == 2
-       rcall   DOLIT
-       .dw     MS_TIMER_ISR
-       rcall   DOLIT
-       .dw     OC2Aaddr+ivec
-       rcall   STORE
 ; Init ms timer
 .ifdef TIMSK2
         out_    TCCR2A, r_two   ; CTC
