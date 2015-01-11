@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          16.11.2014                                        *
+;    Date:          11.01.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -477,15 +477,6 @@ __DefaultInterrupt:
         bra     __AddressError
 .endif
 
-;__DAC1RInterrupt:
-__DAC1LInterrupt:
-        push.s
-        bclr    IFS4, #DAC1LIF
-        mov     ibufl, W0
-        mov     W0, DAC1LDAT
-        inc     ibufl+2
-        pop.s
-        retfie
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00 or 0xf800
 ; ibuflen  = 0x0040 or 0x0400 or 0x0800
@@ -1089,7 +1080,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 16.11.2014\r\n"
+        .ascii  " FlashForth PIC24 11.01.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
