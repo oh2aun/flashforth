@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          16.11.2014                                        *
+;    Date:          19.01.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -788,6 +788,9 @@ RX1_:
 L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
+        btfsc   RCSTA, OERR, A
+        bcf     RCSTA, CREN, A ; Restart RX on case of RX overrun
+        bsf     RCSTA, CREN, A
         rcall   PAUSE
         movf    RXcnt, W, A
         movwf   plusS
@@ -2177,7 +2180,7 @@ WARM_ZERO_2:
 ; RX enable
 #ifdef ANSELH
 #ifdef ANS11
-                bcf             ANSELH, ANS11, A ; Enable digital RB5 for RX  
+        bcf     ANSELH, ANS11, A ; Enable digital RB5 for RX  
 #endif
 #endif
 #ifdef ANSELC
@@ -2185,6 +2188,10 @@ WARM_ZERO_2:
         banksel ANSELC
         bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
 #endif
+#endif
+#ifdef USB_CDC
+        movlw   b'00000000'     ; Reset the UART since
+        movwf   RCSTA, A        ; USB warm start does not reset the chip
 #endif
         movlw   b'10010000'
         movwf   RCSTA, A
@@ -2325,7 +2332,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        123456789012 +   11  + 012345678901234567890
-        db d'35'," FlashForth ",PICTYPE," 16.11.2014\r\n"
+        db d'35'," FlashForth ",PICTYPE," 19.01.2015\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
