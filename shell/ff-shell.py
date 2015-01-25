@@ -3,7 +3,7 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 26.10.2014 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 25.01.2015 Mikael Nordman (oh2aun@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -34,7 +34,7 @@ from time import *
 running = True
 RECVR_STARTED = False
 THR_LOCK = allocate_lock()
-waitForOK = 0
+waitForNL = 0
 uploadMode = 0
 
 class Config(object):
@@ -52,58 +52,36 @@ def serial_open(config):
     print("Could not open serial port '{}': {}".format(com_port, e))
     raise e
   
-def send_line(config, line):
-  try:
-    bytes = config.ser.write(line)
-  except serial.SerialTimeoutException as e:
-    logging.error("Write timeout on serial port '{}': {}".format(com_port, e))
-  config.ser.flush()       # Send the output buffer
 
 # receive_thr() receives chars from FlashForth
 def receive_thr(config, *args):
-  global RECVR_STARTED, running, waitForOK, uploadMode
-  THR_LOCK.acquire()
+  global RECVR_STARTED, running, waitForNL, uploadMode
   RECVR_STARTED = True
-  THR_LOCK.release()
-  OK0 = ' '
-  OK1 = ' '
-  OK2 = ' '
   while running==True:
-    while config.ser.inWaiting() > 0:
-      try:
-        THR_LOCK.acquire()
-        char = config.ser.read()
-        OK0 = OK1
-        OK1 = OK2
-        OK2 = char
-        if waitForOK < 2:
+    try:
+      while config.ser.inWaiting() > 0:
+        try:
+          THR_LOCK.acquire()
+          char = config.ser.read()
           sys.stdout.write(char)
           sys.stdout.flush()
-        if uploadMode > 0:
-          if OK0==' ' and OK1=='o' and OK2=='k':
-            sys.stdout.write(OK0)
-            sys.stdout.write(OK1)
-            sys.stdout.write(OK2)
-            sys.stdout.flush()
-            waitForOK = 1
-          if OK1==' ' and OK2=='?':
-            sys.stdout.write(OK1)
-            sys.stdout.write(OK2)
-            sys.stdout.flush()
-            waitForOK = 1
           if char == '\n':
-            if waitForOK == 2:
-              sys.stdout.write('\n')
-              sys.stdout.flush()
-            waitForOK = 0
-        THR_LOCK.release()
-      except KeyboardInterrupt:
-        running = False
-        #print "Receive thread exception"     
-  #print "End of receive thread"
-  THR_LOCK.acquire()
+            waitForNL = 0
+          THR_LOCK.release()
+        except Exception as e:
+          THR_LOCK.release()
+          running = True
+          # print "Receive thread exception {0}".format(e)
+
+    except Exception as e:
+      print "Serial exception {0}".format(e)
+      RECVR_STARTED = False
+      running = False
+      os.kill(os.getpid(), signal.SIGINT)      
+
+  print "End of receive thread"
   RECVR_STARTED = False
-  THR_LOCK.release()
+  running = False
 
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
@@ -125,7 +103,7 @@ def parse_arg(config):
 
 #main loop for sending and receiving
 def main():
-  global running, waitForOK, uploadMode
+  global running, waitForNL, uploadMode
   
   config = Config() 
   parse_arg(config)
@@ -144,25 +122,30 @@ def main():
     pass
   atexit.register(readline.write_history_file, histfn)
   running = True
-  waitForOK = 0
+  waitForNL = 0
   uploadMode = 0
   while running:
     try:
-      while waitForOK > 0:
-        pass
       if uploadMode == 0:
-        line = raw_input()
+        try:
+          line = raw_input()
+        except KeyboardInterrupt:
+          raise Exception
         sys.stdout.write('\r\033\133\101')
         sys.stdout.flush()
       else:
+        while waitForNL > 0:
+          pass
         line = file.readline()
         if line == "":
           file.close()
           uploadMode = 0
+          waitForNL = 0
+          pass
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
-          sys.stdout.write("> "+line)
+          sys.stdout.write("> ") 
       if line[:6] == "#send ":
         pathfile = line[6:]
         line = ""
@@ -171,22 +154,29 @@ def main():
           uploadMode = 1
         except IOError, e:
           print "\nFile not found: "+pathfile
-      if uploadMode == 1:
-        waitForOK = 2
       if line[:5] == "#warm":
-        line = '\017'
+        line = '\017'           # CTRL-O
       THR_LOCK.acquire()
-      send_line(config, line+"\n")
+      try:
+        waitForNL = 1
+        bytes = config.ser.write(line+'\n')
+        config.ser.flush()       # Send the output buffer
+      except Exception as e:
+        THR_LOCK.release()
+        print("Write error on serial port {0}, {1}".format(com_port, e))
+        running = False
       THR_LOCK.release()
 
-    except KeyboardInterrupt:
+    except Exception as e:
+      print "Transmission thread exception {0}".format(e) 
       running = False
-      # print "Transmission thread exception"     
 
   while RECVR_STARTED:
     pass
   config.ser.close()
   print "Exiting ff-shell.py, goodbye..."
 
-sys.exit(main())
-
+try:
+  sys.exit(main())
+except Exception as e:
+  print "sys.exit {0}".format(e)

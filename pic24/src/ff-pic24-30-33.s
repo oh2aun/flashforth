@@ -4910,7 +4910,7 @@ IMMEDQ_L:
         .align  2
 IMMEDQ: 
         rcall   CFETCH
-        mlit    handle(IMMED)+PFLASH
+        mlit    IMMED
         goto    AND
 
 ; FIND   c-addr -- c-addr 0   if not found

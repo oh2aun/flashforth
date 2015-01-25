@@ -12,9 +12,9 @@
 .endif
 
 ;config __FOSCSEL, IESO_ON & FNOSC_FRC
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
-;config __FOSCSEL, IESO_ON & FNOSC_PRI
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
+;config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+config __FOSCSEL, IESO_ON & FNOSC_PRI
+config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
 ;config FWDT,
 ;config FPOR,
@@ -25,14 +25,14 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
 .equ FREQ_FIN, 7372800        ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -44,10 +44,10 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 
 ; Map UART1 pins
 .ifdecl RPINR18
-;.equ RPINR18VAL, 6     ; RP6 (U1RXPIN)
-;.equ U1TXPIN, 5        ; RP5
-.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstick2
-.equ U1TXPIN, 10        ; PB10 pin21 microstick2
+.equ RPINR18VAL, 6     ; RP6 (U1RXPIN)
+.equ U1TXPIN, 5        ; RP5
+;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstick2
+;.equ U1TXPIN, 10        ; PB10 pin21 microstick2
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12       ; Solder to MCP2200 CTS pin13 on microstickplus if HW flow control
@@ -65,7 +65,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
@@ -96,7 +96,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 96           ; 48 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
-.equ TIB_SIZE, 74                    ; 74 chars tib size
+.equ TIB_SIZE, 84                    ; 84 chars tib size
 .equ HOLD_SIZE, 10                   ; 10 chars hold area
 
 ;;; Storage space for OPERATOR uservariables 2 and upwards
