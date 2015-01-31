@@ -1019,8 +1019,8 @@ WARM_ABAUD2:
         rcall   WMOVE
 
 		; Wait 10 ms for UARTs to reset
-        mlit    10
-        rcall   MS
+;        mlit    10
+;        rcall   MS
 
 ; Check if EEPROM INIT is needed
 .ifdef PEEPROM
@@ -1655,7 +1655,6 @@ PCFETCH1:
 
 ICFETCH:
         rcall   IFETCH_INIT
-        cp      W1, W2
         bra     NZ, PCFETCH1
         mov     #IBUFSIZEL-1, W1
         and     W1, W0, W0
@@ -1672,7 +1671,6 @@ PFETCH1:
 
 IFETCH:
         rcall    IFETCH_INIT
-        cp       W1, W2
         bra      NZ, PFETCH1
         mov      #IBUFSIZEL-1, W1
         and      W1, W0, W0
@@ -1690,11 +1688,10 @@ IFETCH:
         
 IFETCH_INIT:
         clr      TBLPAG
-        mov      #PFLASH, W1
-        sub      W0, W1, W0
         mov      ibase, W1
         mov      #IBUFMASK, W2
         and      W2, W0, W2
+        cp       W1, W2
         return
 
 EWENABLE:
@@ -2001,19 +1998,23 @@ FETCH_L:
         .ascii  "@"
         .align  2
 FETCH:
-        mov.w   [W14], W0
+        mov.w   [W14], W2
         mov.w   #PFLASH, W1
-        cp      W0, W1
+        sub     W2, W1, W0  ; address - pfl
+.ifdef PEEPROM
         bra     GEU, FETCH1
-        mov.w   [W0], [W14]
+.else
+        bra     GEU, IFETCH
+.endif
+        mov.w   [W2], [W14]
         return
 FETCH1:
 .ifdef PEEPROM
         mov.w   #PEEPROM, W1
-        cp      W0, W1
+        sub     W2, W1, W0
         bra     GEU, EFETCH
-.endif
         bra     IFETCH
+.endif
 
        .pword   paddr(FETCH_L)+PFLASH
 CFETCH_L:
@@ -2021,20 +2022,24 @@ CFETCH_L:
         .ascii  "c@"
         .align  2
 CFETCH:
-        mov.w   [W14], W0
-        clr     [W14]
+        mov.w   [W14], W2
+        clr.w   [W14]
         mov.w   #PFLASH, W1
-        cp      W0, W1
+        sub     W2, W1, W0  ; W0=address - pfl (W0=physical address)
+.ifdef PEEPROM
         bra     GEU, CFETCH1
-        mov.b   [W0], [W14]
+.else
+        bra     GEU, ICFETCH
+.endif
+        mov.b   [W2], [W14]
         return
 CFETCH1:
 .ifdef PEEPROM
         mov.w   #PEEPROM, W1
-        cp      W0, W1
+        sub     W2, W1, W0
         bra     GEU, ECFETCH
-.endif
         bra     ICFETCH
+.endif
 
         .pword  paddr(CFETCH_L)+PFLASH
 MSET_L:
@@ -5281,6 +5286,8 @@ INTER3:
         bra     INTERXT
 INTERDUPCLR:
         bclr    iflags, #idup    ; Clear DUP encountered in compilation
+
+
 INTERXT:
         mov     [W14++], [W14]      ; dup
         rcall   CFATONFA
@@ -5298,6 +5305,8 @@ INUMBER:                           ; Convert to number
         bclr    iflags, #tailcall  ; allow tailcall optimisation
         bclr    iflags, #izeroeq   ; Clear 0= encountered in compilation
         bclr    iflags, #idup      ; Clear DUP encountered in compilation
+
+;;;;;;  number ?
         sub     W14, #2, W14
         rcall   NUMBERQ
         cp0     [W14]
@@ -5316,6 +5325,8 @@ ISINGLE:
 INUMBER1:
         sub     W14, #2, W14
         bra     INTER1
+IRECOGNIZER:
+;        rcall   RECOGNIZER
 IUNKNOWN:                        ; ?????
         dec2    W14, W14
         rcall   CFETCHPP
