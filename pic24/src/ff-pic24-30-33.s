@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          11.01.2015                                        *
+;    Date:          31.01.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1080,7 +1080,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 11.01.2015\r\n"
+        .ascii  " FlashForth PIC24 31.01.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1960,7 +1960,12 @@ STORE:
         mov.w   [W14--], W0
         mov.w   #PFLASH, W1
         cp      W0, W1
+.ifdef PEEPROM
         bra     GEU, STORE1
+.else
+        bra     GEU, ISTORE
+.endif
+
         mov.w   [W14--], [W0]
         return
 STORE1:
@@ -1968,8 +1973,8 @@ STORE1:
         mov.w   #PEEPROM, W1
         cp      W0, W1
         bra     GEU, ESTORE
-.endif
         bra     ISTORE
+.endif
 
         .pword   paddr(STORE_L)+PFLASH
 CSTORE_L:
@@ -1980,7 +1985,11 @@ CSTORE:
         mov.w   [W14--], W0
         mov.w   #PFLASH, W1
         cp      W0, W1
+.ifdef PEEPROM
         bra     GEU, CSTORE1
+.else
+        bra     GEU, ICSTORE
+.endif
         mov.b   [W14], [W0]
         mov.w   [W14--], W0
         return
@@ -1989,8 +1998,8 @@ CSTORE1:
         mov.w   #PEEPROM, W1
         cp      W0, W1
         bra     GEU, ECSTORE
-.endif
         bra     ICSTORE
+.endif
 
         .pword   paddr(CSTORE_L)+PFLASH
 FETCH_L:
