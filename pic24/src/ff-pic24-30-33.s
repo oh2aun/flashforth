@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          31.01.2015                                        *
+;    Date:          15.02.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -66,12 +66,13 @@
 .equ BUSYIDLE_MASK, 0xc000
 .equ fBUSY,   15  ; 0=IDLE, 1=BUSY
 .equ fIDLE,   14  ; 0=IDLE, 1=BUSY
+.equ fwritten,13
 .equ edirty,  12  ; eeprom status dirty
 .equ fFC2,    11  ; Flow control for UART2
 .equ ixoff2,  10  ; XON/XOFF flag for UART2
 .equ fLOCK,   9   ; Disable writes to flash and eeprom
 .equ tailcall,8   ; Disable tailcall optimisation
-.equ fwritten,7   ; Set after the flash page has been written
+.equ WTMO,    7   ; Write timeout active
 .equ noclear, 6   ; dont clear optimisation flags 
 .equ idup,    5   ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4   ; Use bnz instead of bz if zeroequal
@@ -617,12 +618,12 @@ wbtil6:
         dec       W4, W4
         bra       nz, wbtil5
         bclr      iflags, #idirty
-.if WRITE_METHOD == 1
+;.if WRITE_METHOD == 1
         setm      ibase       ; Now the flash row has been verified
-.endif
-.if WRITE_METHOD == 2
-        bset      iflags, #fwritten ; Flash has been written
-.endif
+;.endif
+;.if WRITE_METHOD == 2
+;        bset      iflags, #fwritten ; Flash has been written
+;.endif
         return
 
 verify_imem_2:
@@ -1080,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 31.01.2015\r\n"
+        .ascii  " FlashForth PIC24 15.02.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1123,7 +1124,7 @@ TURNKEY:
         rcall   VALUE_DOES
         .word   dpSTART
 
-; PAuSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
+; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
         .pword   paddr(TURNKEY_L)+PFLASH
 PAUSE_L:
         .byte   NFA|5
@@ -1132,18 +1133,13 @@ PAUSE_L:
 PAUSE:
         clrwdt
 .if WRITE_METHOD == 2
-        mov     #u0, W0
-        sub     upcurr, WREG
-        bra     nz, PAUSE2
-;        mov     state, W0
-;        bra     nz, PAUSE2
+        btss    iflags, #WTMO
+        bra     PAUSE2
         mov     ms_count, W0 ; itmo - ms_count
         sub     itmo, WREG   ; itmo - w0 -> W0
         bra     nn, PAUSE2
+        bclr    iflags, #WTMO
         rcall   IFLUSH
-        btsc    iflags, #fwritten
-        setm    ibase       ; Now the flash row has been verified
-        bclr    iflags, #fwritten
         btsc    iflags, #edirty
         rcall   DP_TO_EEPROM
 PAUSE2:
@@ -1152,12 +1148,6 @@ PAUSE2:
         mov     #BUSYIDLE_MASK, W0
         and     iflags, WREG
         bra     nz, PAUSE_BUSY
-.if 0
-        btsc    iflags, #fIDLE
-        bra     PAUSE_BUSY
-        btsc    iflags, #fBUSY
-        bra     PAUSE_BUSY
-.endif
         mov     #u0, W0        ; IDLE only in operator task.
         cp      upcurr
         bra     nz, PAUSE_BUSY
@@ -1494,7 +1484,7 @@ CF_FETCH:
         rcall   FETCH
         mov     W3, [++W14]
         return
-
+	
 ; as, ( datal datah -- )
         .pword   paddr(CF_FETCH_L)+PFLASH
 AS_COMMA_L:
@@ -1630,6 +1620,7 @@ ISTORE_SUB:
         bset    iflags, #idirty
 .if WRITE_METHOD == 2
 SET_FLASH_W_TMO:
+        bset    iflags, #WTMO
         mov     ms_count, W3
         add     #WRITE_TIMEOUT, W3
         mov     W3, itmo
@@ -2084,7 +2075,7 @@ MTST:
         mov     W0, [++W14] 
         return
 
-; bset ( base-addr bit-index -- )
+; bset ( addr bit-index -- )
         .pword  paddr(MTST_L)+PFLASH
 BSET__L:
         .byte   NFA|4
@@ -2093,15 +2084,12 @@ BSET__L:
 BSET__:
         mov.w   [W14--], W0
         mov.w   [W14--], W1
-        lsr     W0, #3, W2
-        add     W2, W1, W1
-        bclr    W1, #0
         bset    SR, #C
         bsw.c   [W1], W0
         return
 
 
-; bclr ( base-addr bit-index -- )
+; bclr ( addr bit-index -- )
         .pword  paddr(BSET__L)+PFLASH
 BCLR__L:
         .byte   NFA|4
@@ -2110,14 +2098,11 @@ BCLR__L:
 BCLR__:
         mov.w   [W14--], W0
         mov.w   [W14--], W1
-        lsr     W0, #3, W2
-        add     W2, W1, W1
-        bclr    W1, #0
         bclr    SR, #C
         bsw.c   [W1], W0
         return
 
-; btst ( base-addr bit-index -- f )
+; btst ( addr bit-index -- f )
         .pword  paddr(BCLR__L)+PFLASH
 BTST__L:
         .byte   NFA|4
@@ -2126,9 +2111,6 @@ BTST__L:
 BTST__:
         mov.w   [W14--], W0
         mov.w   [W14--], W1
-        lsr     W0, #3, W2
-        add     W2, W1, W1
-        bclr    W1, #0
         btst.c  [W1], W0
         rrc     W1, W1
         asr     W1, #15, W0
@@ -2499,8 +2481,10 @@ RX1Q_L:
         .ascii  "rx1?"
         .align  2
 RX1Q:
-        mlit    handle(U1RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_FROMQ
+;        mlit    handle(U1RXQUEUE_DATA)+PFLASH
+;        rcall   CQUEUE_FROMQ
+        mov     rbuf_lv1, W0
+        mov     W0, [++W14]
         cp0     [W14]
         bra     nz, RX1Q1
         btsc    iflags, #fFC1
@@ -2606,8 +2590,10 @@ RX2Q_L:
         .ascii  "rx2?"
         .align  2
 RX2Q:
-        mlit    handle(U2RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_FROMQ
+;        mlit    handle(U2RXQUEUE_DATA)+PFLASH
+;        rcall   CQUEUE_FROMQ
+        mov     rbuf_lv2, W0
+        mov     W0, [++W14]
         cp0     [W14]
         bra     nz, RX2Q1
         btss    iflags, #fFC2
@@ -2977,10 +2963,11 @@ DNEGATE_L:
         .ascii  "dnegate"
         .align  2
 DNEGATE:
-        com     [--W14], [W14]
-        com     [++W14], [W14]
-        rcall   ONE
-        goto    MPLUS
+        com     [W14--], W1
+        com     [W14], W0
+        add     W0, #1, [W14++]
+        addc    W1, #0, [W14]
+        return
         
         .pword  paddr(DNEGATE_L)+PFLASH
 QDNEGATE_L:
@@ -2990,7 +2977,7 @@ QDNEGATE_L:
 QDNEGATE:
         cp0     [W14--]
         bra     nn, QDNEGATE1
-        rcall   DNEGATE
+        bra     DNEGATE
 QDNEGATE1:
         return        
         
@@ -3660,10 +3647,9 @@ TWOFETCH_L:
         .ascii  "2@"
         .align  2
 TWOFETCH:
-        mov     [W14++], [W14]      ; dup
+        mov     [W14], [W15++]
         rcall   FETCH
-        rcall   SWOP
-        inc2    [W14], [W14]
+        inc2    [--W15], [++W14]
         goto    FETCH
 
         .pword  paddr(TWOFETCH_L)+PFLASH
@@ -3672,9 +3658,10 @@ TWOSTORE_L:
         .ascii  "2!"
         .align  2
 TWOSTORE:
-        rcall   TUCK
+        mov     [W14], [W15++]
         inc2    [W14], [W14]
         rcall   STORE
+        mov    [--W15], [++W14]
         goto    STORE
 
         .pword  paddr(TWOSTORE_L)+PFLASH
@@ -3707,7 +3694,7 @@ TWOSWAP:
         pop     [++W14]
         return
 
-        .pword  paddr(TWODUP_L)+PFLASH
+        .pword  paddr(TWOSWAP_L)+PFLASH
 CR_L:
         .byte   NFA|2
         .ascii  "cr"
@@ -4002,10 +3989,11 @@ PLUSSTORE_L:
         .ascii  "+!" 
         .align  2
 PLUSSTORE:
-        rcall   TUCK
+        mov     [W14], [W15++]
         rcall   FETCH
-        rcall   PLUS
-        rcall   SWOP
+        mov     [W14--], W0
+        add     W0, [W14], [W14]
+        mov     [--W15], [++W14]
         goto    STORE
 
 ;   WITHIN      ( u ul uh -- t )
@@ -4253,8 +4241,12 @@ TUCK_L:
         .ascii  "tuck" 
         .align  2
 TUCK:
-        rcall   SWOP
-        goto    OVER
+        mov     [W14--], W0
+        mov     [W14--], W1
+        mov     W0, [++W14]
+        mov     W1, [++W14]
+        mov     W0, [++W14]
+        return
 
 ; ?NEGATE  n1 n2 -- n3  negate n1 if n2 negative
 ;   0< IF NEGATE THEN ;
@@ -4643,11 +4635,10 @@ SLASHSTRING_L:
         .ascii  "/string"
         .align  2
 SLASHSTRING:
-        rcall   TUCK
-        rcall   MINUS
-        push    [W14--]
-        rcall   PLUS
-        pop     [++W14]
+        mov     [W14--], W0
+        mov     [W14], W1
+        sub     W1, W0, [W14--]
+        add     W0, [W14], [W14++]
         return
 
 ; \     Skip the rest of the line
@@ -4825,9 +4816,7 @@ CFETCHPP_L:
 CFETCHPP:
         mov     [W14++], [W14]      ; dup
         rcall   CFETCH
-        mov     [W14-0x2], W0
-        inc     W0, W0
-        mov     W0, [W14-0x2]
+        inc     [--W14], [W14++]
         return
 
 ; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
@@ -4839,9 +4828,7 @@ FETCHPP_L:
 FETCHPP:
         mov     [W14++], [W14]      ; dup
         rcall   FETCH
-        mov     [W14-0x2], W0
-        inc2    W0, W0
-        mov     W0, [W14-0x2]      
+        inc2     [--W14], [W14++]
         return
 
 ; NFA>CFA   nfa -- cfa    name adr -> code field
@@ -4897,7 +4884,7 @@ FIND_1:
         sub     W14, #2, W14
         rcall   TWOMINUS
         rcall   FETCH
-        bclr    [W14], #0           ; Compensate for bug in ASM30 súite
+;        bclr    [W14], #0           ; Compensate for bug in ASM30 s?ite
         mov     [W14++], [W14]      ; dup
 findi2:
         cp0     [W14--]
@@ -5334,8 +5321,6 @@ ISINGLE:
 INUMBER1:
         sub     W14, #2, W14
         bra     INTER1
-IRECOGNIZER:
-;        rcall   RECOGNIZER
 IUNKNOWN:                        ; ?????
         dec2    W14, W14
         rcall   CFETCHPP
@@ -5617,12 +5602,10 @@ QUIT1:
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-.if 1
 .if WRITE_METHOD == 2
         btss    iflags, #edirty
 .endif
         rcall   IFLUSH
-.endif
 .if WRITE_METHOD == 2
         btss    iflags, #edirty
 .endif
@@ -6490,7 +6473,7 @@ WDS3:
 
         rcall   TWOMINUS
         rcall   FETCH
-        bclr    [W14], #0           ; Compensate for bug in ASM30 súite
+;        bclr    [W14], #0           ; Compensate for bug in ASM30 s?ite
         cp0     [W14]
         bra     nz, WDS1
         sub     W14, #4, W14        ; 2drop

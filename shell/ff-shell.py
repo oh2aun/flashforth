@@ -130,6 +130,7 @@ def main():
         try:
           line = raw_input()
         except KeyboardInterrupt:
+          print "KeyboardInterrupt"
           raise Exception
         sys.stdout.write('\r\033\133\101')
         sys.stdout.flush()
