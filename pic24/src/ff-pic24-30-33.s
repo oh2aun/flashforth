@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          15.02.2015                                        *
+;    Date:          26.04.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 15.02.2015\r\n"
+        .ascii  " FlashForth PIC24 26.04.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1377,8 +1377,8 @@ BRA_L:
 BRA_:
         asr     [W14], [W14]        ; 2/
         rcall   SWOP
-        mlit    #0x30
-        rcall   OR
+        mov     #0x30, W0
+        ior     W0, [W14],[W14]
         rcall   AS_COMMA
         return
 
@@ -1396,8 +1396,8 @@ AS0:
         rcall   USLASH
         rcall   PLUS
         mov     [--W15], [++W14]
-        mlit    0x7
-        rcall   AND
+        mov     #0x7, W0
+        and     W0, [W14], [W14]
         mlit    13
         rcall   LSHIFT
         rcall   OR
@@ -2388,8 +2388,8 @@ CQUEUE:
         mov     [W14++], [W14]      ; dup
         dec     [W14], [W14]
         rcall   COMMA
-        mlit    9
-        rcall   PLUS
+        mov     #9, W0
+        add     W0, [W14], [W14]
         rcall   ALIGNED
         rcall   RAM
         rcall   ALLOT
@@ -2481,8 +2481,6 @@ RX1Q_L:
         .ascii  "rx1?"
         .align  2
 RX1Q:
-;        mlit    handle(U1RXQUEUE_DATA)+PFLASH
-;        rcall   CQUEUE_FROMQ
         mov     rbuf_lv1, W0
         mov     W0, [++W14]
         cp0     [W14]
@@ -2590,8 +2588,6 @@ RX2Q_L:
         .ascii  "rx2?"
         .align  2
 RX2Q:
-;        mlit    handle(U2RXQUEUE_DATA)+PFLASH
-;        rcall   CQUEUE_FROMQ
         mov     rbuf_lv2, W0
         mov     W0, [++W14]
         cp0     [W14]
@@ -3599,8 +3595,9 @@ ALIGNED_L:
         .align  2
 ALIGNED:
         inc     [W14], [W14]
-        mlit    #0xfffe
-        goto    AND
+        mov     #0xfffe, W0
+        and     W0, [W14], [W14]
+        return
 
         .pword  paddr(ALIGNED_L)+PFLASH
 CELLPLUS_L:
@@ -3864,9 +3861,8 @@ DOTID_L:
         .align  2
 DOTID:
         rcall   CFETCHPP
-        mlit    NFL              ; nfu
-        rcall   AND
-        push    [W14--]
+        mov     #NFL, W0              ; nfu
+        and     W0, [W14--], [W15++]
         bra     DOTID3
 DOTID1:
         rcall   CFETCHPP
@@ -3893,7 +3889,7 @@ TO_PR:
         rcall   WITHIN
         cp0     [W14--]
         bra     nz, TO_PR1
-        mov    #'.', W0
+        mov     #'.', W0
         mov     W0, [W14]
 TO_PR1:
         return
@@ -4120,9 +4116,10 @@ STAR_L:
         .byte   NFA|1
         .ascii  "*" 
         .align  2
-STAR: 
-        rcall   UMSTAR
-        sub     W14, #2, W14
+STAR:
+        mov     [W14--], W2
+        mul.ss  W2, [W14], W0
+        mov     W0, [W14]
         return
 
 ; U/      u1 u2 -- u3      16/16-> divide
@@ -4132,8 +4129,11 @@ USLASH_L:
         .ascii  "u/" 
         .align  2
 USLASH:
-        rcall   USLASHMOD
-        mov     [W14--], [W14]  ; NIP
+        mov     [W14--], W2
+        mov     [W14--], W0
+        repeat  #17
+        div.u   W0, W2
+        mov     W0, [++W14]
         return
 
 ; U*/MOD  u1 u2 u3 -- u4 u5    u1*u2/u3, rem&quot
@@ -4143,10 +4143,15 @@ USSMOD_L:
         .ascii  "u*/mod" 
         .align  2
 USSMOD:
-        push    [W14--]
-        rcall   UMSTAR
-        pop     [++W14]
-        goto    UMSLASHMOD
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mul.uu  W2, [W14], W0
+        repeat  #17
+        div.ud  W0, W3
+        mov     W1, [W14]
+        mov     W0, [++W14]
+        return
+
 
 ; */MOD  n1 n2 n3 -- n4 n5    n1*n2/n3, rem&quot
         .pword  paddr(USSMOD_L)+PFLASH
@@ -4155,10 +4160,14 @@ SSMOD_L:
         .ascii  "*/mod" 
         .align  2
 SSMOD:
-        push    [W14--]
-        rcall   MSTAR
-        pop     [++W14]
-        goto    SMSLASHREM
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mul.ss  W2, [W14], W0
+        repeat  #17
+        div.sd  W0, W3
+        mov     W1, [W14]
+        mov     W0, [++W14]
+        return
 
 ; */  n1 n2 n3 -- n4    n1*n2/n3, quot
         .pword  paddr(SSMOD_L)+PFLASH
@@ -4167,11 +4176,12 @@ SS_L:
         .ascii  "*/" 
         .align  2
 SS:
-        push    [W14--]
-        rcall   MSTAR
-        pop     [++W14]
-        rcall   SMSLASHREM
-        mov     [W14--], [W14]   ; NIP
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mul.ss  W2, [W14], W0
+        repeat  #17
+        div.sd  W0, W3
+        mov     W0, [W14]
         return
 
 ; / n1 n2 -- n3  signed 16/16->16 divide
@@ -4195,15 +4205,16 @@ L_UDSTAR:
         .ascii  "ud*"
         .align  2
 UDSTAR:
-        rcall   DUP
-        push    [W14--]
-        rcall   UMSTAR
-        rcall   DROP
-        rcall   SWOP
-        pop     [++W14]
-        rcall   UMSTAR
-        rcall   ROT
-        goto    PLUS
+        push    [W14]
+        mov     [W14--], W0
+        mul.uu  W0, [W14--], W2
+        mov     W2, W1
+        pop     W0
+        mul.uu  W0, [W14], W2
+        mov     W2, [W14++]
+        mov     W3, [W14]
+        add     W1, [W14], [W14]
+        return
         
 ; UD/MOD  ud u --u(rem) ud(quot)
         .pword  paddr(L_UDSTAR)+PFLASH
@@ -4212,17 +4223,19 @@ L_UDSLASHMOD:
         .ascii  "ud/mod"
         .align  2
 UDSLASHMOD:
-        push    [W14--]
-        rcall   FALSE_
-        mov     [W15-2], W0
+        mov     [W14--], W2
+        clr     W1
+        mov     [W14--], W0
+        repeat  #17
+        div.ud  W0, W2
+        mov     W0, W3         ; save quot.h
+        mov     [W14--], W0
+        repeat  #17
+        div.ud  W0, W2
+        mov     W1, [++W14]
         mov     W0, [++W14]
-        rcall   UMSLASHMOD
-        rcall   ROT
-        rcall   ROT
-        pop     [++W14]
-        rcall   UMSLASHMOD
-        goto    ROT
-        
+        mov     W3, [++W14]
+        return
 
 ;   NIP x1 x2 -- x2         NIP
         .pword  paddr(L_UDSLASHMOD)+PFLASH
@@ -4342,11 +4355,12 @@ TODIGIT:
         mov     [W14++], [W14]      ; dup
         mlit    #9
         rcall   GREATER
-        mlit    #0x27
-        rcall   AND
-        rcall   PLUS
-        mlit    #0x30
-        goto    PLUS
+        mov     #0x27, W0
+        and     W0, [W14--], W0
+        add     W0, [W14], W1
+        mov     #0x30, W0
+        add     W0, W1, [W14]
+        return
 
 ; #     ud1 -- ud2     convert 1 digit of output
 ;   BASE @ Ud/MOD rot >digit HOLD ;
@@ -4502,9 +4516,9 @@ MEMHI_L:
         .ascii  "hi"
         .align  2
 MEMHI:
-        mlit    handle(FLASHHI)+PFLASH
-        call    CSE
-        call    PLUS
+        mov     #handle(FLASHHI)+PFLASH, W1
+        mov     cse, W0
+        add     W0, W1, [++W14]
         goto    FETCH
 FLASHHI:
         .word   PFLASH-1
@@ -4613,8 +4627,12 @@ BASE_L:
         .ascii  "base"
         .align  2
 BASE:
-        rcall   DOUSER
-        .word   ubase
+        mov     upcurr, W1
+        mov     #ubase, W0
+        add     W1, W0, [++W14]
+        return
+;        rcall   DOUSER
+;        .word   ubase
 
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at higher adrs
@@ -4839,12 +4857,13 @@ NFATOCFA_L:
         .align  2
 NFATOCFA:
         rcall   CFETCHPP
-        mlit    #NFL        ; nfu
-        rcall   AND
-        rcall   PLUS
+        mov     #NFL, W0        ; nfu
+        and     W0, [W14--], W1
+        add     W1, [W14], [W14]
         inc     [W14], [W14]
-        mlit    #0xfffe
-        goto    AND
+        mov     #0xfffe, W0
+        and     W0, [W14], [W14]
+        return
 
 ; CFA>NFA   cfa -- nfa    code field addr -> name field addr
         .pword  paddr(NFATOCFA_L)+PFLASH
@@ -4884,7 +4903,6 @@ FIND_1:
         sub     W14, #2, W14
         rcall   TWOMINUS
         rcall   FETCH
-;        bclr    [W14], #0           ; Compensate for bug in ASM30 s?ite
         mov     [W14++], [W14]      ; dup
 findi2:
         cp0     [W14--]
@@ -4911,8 +4929,9 @@ IMMEDQ_L:
         .align  2
 IMMEDQ: 
         rcall   CFETCH
-        mlit    IMMED
-        goto    AND
+        mov     #IMMED, W0
+        and     W0, [W14], [W14]
+        return
 
 ; FIND   c-addr -- c-addr 0   if not found
 ;                  xt  1      if immediate
@@ -4941,25 +4960,18 @@ DIGITQ_L:
         .ascii  "digit?"
         .align  2
 DIGITQ:
-                                ; 1 = 31    A = 41
-        mov     [W14++], [W14]  ; c c       c c
-        mlit    0x39            ; c c 39    c c 39
-        rcall   GREATER         ; c 0       c ffff
-        cp0     [W14--]
-        bra     z, DIGITQ1
-        mlit    0x27
-        rcall   MINUS
+        mov     [W14], W0
+        sub     #0x3a, W0
+        bra     n, DIGITQ1
+        sub     #0x27, W0
 DIGITQ1:
-        mlit    0x30            ; c 30
-        rcall   MINUS           ; 1
-        mov     [W14++], [W14]  ; 1 1
-        rcall   BASE            ; 1 1 base
-        rcall   FETCH           ; 1 1 10
-        rcall   LESS            ; 1 ffff
-        rcall   OVER            ; 1 ffff 1
-        rcall   ZEROLESS        ; 1 ffff 0
-        com     [W14], [W14]
-        goto    AND
+        add     W0, #0xa, [W14]
+        bra     n, FALSE_       ; digit smaller than 0
+        mov     upcurr, W1
+        mov     [W1+ubase], W1
+        cp      W1, [W14]       ; base - digit
+        bra     gtu, TRUE_      ; digit smaller than base
+        goto    FALSE_
 
 ; SIGN?   adr n -- adr' n' f   get optional sign
         .pword  paddr(DIGITQ_L)+PFLASH
@@ -5126,8 +5138,8 @@ TIBSIZE_L:
 TIBSIZE:
         rcall   TASK
         rcall   FETCH
-        mlit    0x5
-        rcall   PLUS
+        mov     #0x5, W0
+        add     W0, [W14], [W14]
         goto    CFETCH
 
 ; TIU     -- a-addr        Terminal Input Buffer Pointer
@@ -5474,9 +5486,8 @@ DP_TO_EEPROM:
         bclr    iflags, #edirty
 .endif
 .ifdef  PEEPROM
-        mlit    dp_start
         push    W13
-        mov     [W14--], W13
+        mov     #dp_start, W13
         mlit    dpSTART
         mov     #5, W0
         push    W0
@@ -5508,9 +5519,8 @@ DP_TO_EEPROM_3:
         sub     W14, #2, W14
         return
 .else
-        mlit    dpSTART
         push    W13             ; P to return stack
-        mov     [W14--], W13    ; src in ram
+        mov     #dpSTART, W13   ; src in ram
         rcall   FTURNKEY_A      ; dst in flash
         mov     #4, W0
         push    W0
@@ -6473,7 +6483,6 @@ WDS3:
 
         rcall   TWOMINUS
         rcall   FETCH
-;        bclr    [W14], #0           ; Compensate for bug in ASM30 s?ite
         cp0     [W14]
         bra     nz, WDS1
         sub     W14, #4, W14        ; 2drop
@@ -6557,10 +6566,9 @@ DUMP2:
         bra     nz, DUMP2
         pop     W0
 
-        mlit    0x10
-        rcall   MINUS
-        mov     #0x10, W0
-        push    W0
+        mov     #-0x10, W0         ; 0x10
+        add     W0, [W14], [W14]   ; -
+        neg     W0, [W15++]        ; 0x10 >r
 DUMP4:  
         rcall   CFETCHPP
         rcall   TO_PR
