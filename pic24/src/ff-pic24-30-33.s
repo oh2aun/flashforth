@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          26.04.2015                                        *
+;    Date:          03.05.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -292,7 +292,7 @@ RETFIE_T1_0:
 __U1RXInterrupt:
         push.s
         push    TBLPAG
-        inc2    W14, W14
+        add     #4, W14
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -342,7 +342,7 @@ __U1RXInterrupt3:
         btsc    U1STA, #URXDA
         bra     __U1RXInterrupt0
 __U1RXTXIRQ_END:
-        sub     W14, #2, W14
+        sub     #4, W14
         pop     TBLPAG
 ALT_INT_EXIT:
         pop.s
@@ -360,7 +360,7 @@ U1RX_ERR1:
 __U1TXInterrupt:
         push.s
         push    TBLPAG
-        add     W14, #2, W14
+        add     #4, W14
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
         btsc    U1STA, #UTXBF
@@ -379,7 +379,7 @@ __U1TXInterrupt0:
 __U2RXInterrupt:
         push.s
         push    TBLPAG
-        inc2    W14, W14
+        add     #4, W14
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -443,7 +443,7 @@ U2RX_ERR1:
 __U2TXInterrupt:
         push.s
         push    TBLPAG
-        add     W14, #2, W14
+        add     #4, W14
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
         btsc    U2STA, #UTXBF
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 26.04.2015\r\n"
+        .ascii  " FlashForth PIC24 03.05.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1266,7 +1266,7 @@ BRACKETI:
         push    TBLPAG  ; Used by eeprom access
         push    W13     ; Preg        
         push    RCOUNT  ; used by repeat
-        add     W14, #2, W14
+        add     #4, W14
         return
 
 ; i] ( -- ) exit the interrupt context
@@ -1276,7 +1276,7 @@ IBRACKET_L:
         .ascii  "i]"
         .align  2
 IBRACKET:
-        sub     W14, #2, W14
+        sub     #4, W14
         pop     RCOUNT  ; used by repeat
         pop     W13     ; Preg
         pop     TBLPAG  ; Used by eeprom access
@@ -4118,8 +4118,8 @@ STAR_L:
         .align  2
 STAR:
         mov     [W14--], W2
-        mul.ss  W2, [W14], W0
-        mov     W0, [W14]
+        mul.ss  W2, [W14--], W0
+        mov     W0, [++W14]
         return
 
 ; U/      u1 u2 -- u3      16/16-> divide
@@ -4178,10 +4178,10 @@ SS_L:
 SS:
         mov     [W14--], W3
         mov     [W14--], W2
-        mul.ss  W2, [W14], W0
+        mul.ss  W2, [W14--], W0
         repeat  #17
         div.sd  W0, W3
-        mov     W0, [W14]
+        mov     W0, [++W14]
         return
 
 ; / n1 n2 -- n3  signed 16/16->16 divide
@@ -4386,9 +4386,8 @@ NUMS_L:
         .align  2
 NUMS:
         rcall   NUM
-        rcall   TWODUP
-        rcall   OR
-        cp0     [W14--]
+        mov     [--W14], W0
+        ior     W0, [++W14], W1
         bra     nz, NUMS
         return
 
