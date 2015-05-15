@@ -624,10 +624,10 @@ decimal
   \ get exponent -- this is the number that follows e
   [char] e extract 0=
   if 2drop false rdrop exit then     ( adr length exp R: isneg )
-  rot !p>r                           ( length exp, R: isneg, P:adr )
-  swap >r 0. r>                      ( exp d-0 length, R: isneg P:adr )
-  >r false nfswap r>       ( exp after_decimal d-0 length, R: isneg, P:adr )
-  for ( exp bool-after_decimal d-0 )
+  rot !p>r                           ( length exp, R:isneg P, P:adr )
+  swap >r 0. r>                      ( exp d-0 length, R:isneg P, P:adr )
+  >r false nfswap r>       ( exp after_decimal d-0 length, R: isneg P, P:adr )
+  for ( exp after_decimal d-0 R:isneg P count P:adr)
     \ get next character
     pc@  ( exp after_decimal d-sum char )
     [char] . = if
@@ -635,7 +635,7 @@ decimal
     else
       2dup #214748364. d> if \ d-sum can't hold any more
         fnover if \ there's nothing left to do if we're after the decimal place
-          ." overflow" 2drop r>p r>p false exit
+          ." overflow" 2drop rdrop r>p rdrop false exit
         else \ we're before the decimal place, so add one to the exponent
           >r >r >r 1+ r> r> r>
         then
@@ -646,7 +646,7 @@ decimal
             >r >r >r 1- r> r> r> \ decrement the exponent by one
           then
         else \ it's not a digit, abort
-          ." not digit" 2swap 2drop r>p r>p false exit
+          ." not digit" 2swap 2drop rdrop r>p rdrop false exit
         then
       then
     then p+
@@ -660,6 +660,6 @@ decimal
 \ Parse a floating point number
 : f# ( "word" -- float )
   bl word c@+
-  string>float abort" float?"
+  string>float .s abort" float?"
   state if postpone fliteral then
  ; immediate
