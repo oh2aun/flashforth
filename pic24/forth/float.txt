@@ -477,10 +477,10 @@ decimal
 \ (EVENTUALLY) if it's set to zero, then the word will
 \ choose how many digits to print
 \ using the dragon2 algorithm, for now, FSD. does that
-6 constant precision
+7 constant precision
 
 \ : set-precision ( u -- )
-\   abs [ ' precision 1+ ] literal !i ;
+\   abs precision ! ;
 
 \ returns f such that the PRECISIONth digit has been rounded
 : round2prc ( f -- f )
@@ -660,6 +660,6 @@ decimal
 \ Parse a floating point number
 : f# ( "word" -- float )
   bl word c@+
-  string>float .s abort" float?"
+  string>float abort" float?"
   state if postpone fliteral then
  ; immediate
