@@ -65,7 +65,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
@@ -111,6 +111,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
 
+; Include the 32-bit float number support
+.equ FLOATS, 1
+
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
@@ -118,7 +121,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ; Method 2 updates flash and eeprom after no flash or eeprom
 ; update requests have been made for a time of WRITE_TIMEOUT
 .equ WRITE_METHOD, 2
-.equ WRITE_TIMEOUT, 300         ; milliseconds
+.equ WRITE_TIMEOUT, 1022         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE

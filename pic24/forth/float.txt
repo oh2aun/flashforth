@@ -2,7 +2,7 @@
 \ This code is adapted from the FP code made by Leon Maurer for AMFORTH
 \ Adaptations to Flashforth.
 \ Igor Mokos 07/2014
-\ Mikael Nordman 14.15.2015
+\ Mikael Nordman 15.05.2015
 
 \  This program is free software; you can redistribute it and/or
 \  modify it under the terms of the GNU General Public License
@@ -620,14 +620,13 @@ decimal
 \ string of form 'integer'.'fractioal'e'exp'
 
 : string>float ( c-addr u-length -- float flag )
-  \ get exponent first -- this is the number that follows e
+  sign? >r                           ( adr length R: isneg)
+  \ get exponent -- this is the number that follows e
   [char] e extract 0=
-  if 2drop false exit then  >r       ( adr length, R: exp )
-  sign?                              ( adr length isneg R: exp)
-  r> swap !p>r                       ( adr length, exp, P: isneg )
+  if 2drop false rdrop exit then     ( adr length exp R: isneg )
   rot !p>r                           ( length exp, R: isneg, P:adr )
   swap >r 0. r>                      ( exp d-0 length, R: isneg P:adr )
-  >r false nfswap r> ( exp bool-after_decimal d-0 length, R: isneg, P:adr )
+  >r false nfswap r>       ( exp after_decimal d-0 length, R: isneg, P:adr )
   for ( exp bool-after_decimal d-0 )
     \ get next character
     pc@  ( exp after_decimal d-sum char )
@@ -652,11 +651,11 @@ decimal
       then
     then p+
   next ( exp after_decimal d-sum, R: isneg P:adr )
-  r>p  ( exp after_decimal d-sum, P: isneg )
-  >r >r drop r> r> ( exp d-sum, P: isneg )
-  d>f fnswap       ( f-sum exp, P: isneg )
+  r>p  ( exp after_decimal d-sum, R: isneg )
+  >r >r drop r> r> ( exp d-sum, R: isneg )
+  d>f fnswap       ( f-sum exp, R: isneg )
   f10^n f*         \ take care of the exponent ( f, R: isneg )
-  @p r>p negateiftrue true ;  \ take care of negative sign
+  r> negateiftrue true ;  \ take care of negative sign
 
 \ Parse a floating point number
 : f# ( "word" -- float )
@@ -664,4 +663,3 @@ decimal
   string>float abort" float?"
   state if postpone fliteral then
  ; immediate
-

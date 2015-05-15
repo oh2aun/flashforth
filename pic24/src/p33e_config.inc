@@ -115,6 +115,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
 
+; Include the 32-bit float number support
+.equ FLOATS, 1
+
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1
 
