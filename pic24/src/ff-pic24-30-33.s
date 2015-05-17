@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          15.05.2015                                        *
+;    Date:          17.05.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -181,7 +181,7 @@ iflags:     .space 2
 status:     .space 2        ; 0 = allow CPU idle 
 load_acc:   .space 4
 load_res:   .space 4
-
+tofloat:    .space 2
 ms_count:   .space 2
 
 .if WRITE_METHOD == 2
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 15.05.2015\r\n"
+        .ascii  " FlashForth PIC24 17.05.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -5210,7 +5210,7 @@ DBG1:
 ; ------------------------------------------------------
 ;  INTERPRET  i*x c-addr u -- j*x   interpret given buffer
         .pword  paddr(INQ_L)+PFLASH
-INTERPRET_L:
+9:
         .byte   NFA|9
         .ascii  "interpret"
         .align  2
@@ -5314,10 +5314,10 @@ INUMBER:                           ; Convert to number
         bclr    iflags, #idup      ; Clear DUP encountered in compilation
 
 ;;;;;;  number ?
-        sub     W14, #2, W14
-        rcall   NUMBERQ
+        sub     W14, #2, W14       ; DROP the FIND result code
+        rcall   NUMBERQ            ; a f
         cp0     [W14]
-        bra     z, IUNKNOWN
+        bra     z, IFLOAT
         rcall   STATE
         cp0     [W14--]
         bra     z, INUMBER1
@@ -5331,8 +5331,28 @@ ISINGLE:
         bra     INTER1
 INUMBER1:
         sub     W14, #2, W14
-        bra     INTER1
-IUNKNOWN:                        ; ?????
+        bra     INTER1              ; n/d
+IFLOAT:
+        rcall   DROP
+        rcall   DUP                 ; a
+        rcall   CFETCHPP            ; a a n
+        rcall   FLOATQ              ; a a n xt
+        cp0     [W14]
+        bra     z, NOT_FLOAT1
+        rcall   EXECUTE             ; a d f
+        cp0     [W14--]             ; a d
+        bra     z, NOT_FLOAT2
+        rcall   ROT
+        rcall   DROP
+        rcall   STATE               ; d f
+        cp0     [W14--]
+        bra     z, INTER1           ; d
+        bra     IDOUBLE             ; d
+NOT_FLOAT1:                         ;  a a n xt
+        dec2    W14, W14
+NOT_FLOAT2:                         ;  a dl dh
+        dec2    W14, W14
+IUNKNOWN:                           ;  a f
         dec2    W14, W14
         rcall   CFETCHPP
         rcall   TYPE
@@ -5342,9 +5362,19 @@ IUNKNOWN:                        ; ?????
 INTER6: 
         sub     W14, #2, W14
         return
-;nop
-        .pword  paddr(INTERPRET_L)+PFLASH
-SHB_L:
+
+; a n -- float flag
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|6
+        .ascii  "float?"
+        .align  2
+FLOATQ:
+        rcall   VALUE_DOES
+        .word   tofloat
+
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "shb"     ; Set header bit
         .align  2
@@ -5358,7 +5388,7 @@ SHB:
         rcall   SWOP
         goto    CSTORE
 
-        .pword  paddr(SHB_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 IMMEDIATE_L:
         .byte   NFA|9
         .ascii  "immediate" ; 
@@ -6609,7 +6639,7 @@ CFOURADD_:
         mov     [W14], W0
         .extern C4add
         call    _C4add
-        mov     W0, [W14]
+        mov     W0, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH

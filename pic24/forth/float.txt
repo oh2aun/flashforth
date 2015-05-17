@@ -595,7 +595,7 @@ decimal
     1 /string dup if
       0. 2swap sign? >r
       >number if
-        ." exponent?" rdrop drop false
+        rdrop drop false
       else
        drop r> if dnegate then drop true
       then
@@ -635,7 +635,7 @@ decimal
     else
       2dup #214748364. d> if \ d-sum can't hold any more
         fnover if \ there's nothing left to do if we're after the decimal place
-          ." overflow" 2drop rdrop r>p rdrop false exit
+          2drop rdrop r>p rdrop false exit
         else \ we're before the decimal place, so add one to the exponent
           >r >r >r 1+ r> r> r>
         then
@@ -646,7 +646,7 @@ decimal
             >r >r >r 1- r> r> r> \ decrement the exponent by one
           then
         else \ it's not a digit, abort
-          ." not digit" 2swap 2drop rdrop r>p rdrop false exit
+          2swap 2drop rdrop r>p rdrop false exit
         then
       then
     then p+
@@ -657,9 +657,7 @@ decimal
   f10^n f*         \ take care of the exponent ( f, R: isneg )
   r> negateiftrue true ;  \ take care of negative sign
 
-\ Parse a floating point number
-: f# ( "word" -- float )
-  bl word c@+
-  string>float abort" float?"
-  state if postpone fliteral then
- ; immediate
+\ Add float parsing capability to INTERPRET
+: finit ['] string>float to float? ;
+' finit is turnkey
+finit
