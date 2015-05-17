@@ -477,7 +477,7 @@ decimal
 \ (EVENTUALLY) if it's set to zero, then the word will
 \ choose how many digits to print
 \ using the dragon2 algorithm, for now, FSD. does that
-7 constant precision
+6 constant precision
 
 \ : set-precision ( u -- )
 \   abs precision ! ;
@@ -565,7 +565,7 @@ decimal
     tkcofsign round2prc
     fdup 3 nfswap smlrpow10 ( f n-steps f-10^n-steps )
     fnswap >r f/ f.no-space \ normalize the number and print it
-    69 emit r> . \ print the exponent
+    [char] e emit r> . \ print the exponent
   then
 ;
 
@@ -579,7 +579,7 @@ decimal
     tkcofsign round2prc
     fdup 1 nfswap smlrpow10 ( f n-steps f-10^n-steps )
     fnswap >r f/ f.no-space \ normalize the number and print it
-    69 emit r> . \ print the exponent
+    [char] e emit r> . \ print the exponent
   then
 ;
 
