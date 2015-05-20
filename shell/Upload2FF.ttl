@@ -1,0 +1,92 @@
+
+	; TeraTerm Macro Script for FlashForth
+	; Serial set within TT session
+	; Opens a file, reads each line, and sends the line to FF
+	; while waiting on "\n" from FF to handshake
+	; and when receiving "??" from FF it asks what to do next
+	; IgorM c 5/2015, No warranties of any kind
+	; v.0.4
+	
+	
+	; 1. save your TT settings with your transmit delays into 'teraterm.ini'
+	; 2. save your TT settings with zero transmit delays into 'teraterm_ztrd.ini'
+	; 3. when working in TT window directly it uses your delays so you can copy/paste your source code into it
+	; 4. when using below macro it sets delays to zero, after the upload it restores delays back to yours
+	;
+	; It asks whether you want to remove blank lines and comments
+	; When comes to an error from FF indicated by '??' a window pops-up and you may choose what to do
+	; Mind you may get an error when uploading a new word as the initial sequence
+	;   -myword
+	;   marker -myword
+	; throws an error, because there is no such word in dictionary to be erased. A Catch22 situation :)
+
+
+	:Main
+		Yes = 1 ; for YesNoBox result
+		No = 0 ; for YesNoBox result
+		BlankLine = 0		
+		call OpenFile
+		restoresetup 'teraterm_ztrd.ini'
+		call ReadFile
+		call CloseFile
+		restoresetup 'teraterm.ini'
+	END
+
+	:OpenFile
+		FileNameBox 'Choose a file to upload'
+		FileChosen = result
+		if FileChosen = Yes then
+			FileOpen fhandle inputstr 0
+		else
+			end
+		endif
+	RETURN
+	
+	:ReadFile
+		YesNoBox 'Do you want to skip blank lines and comments?' 'Skip?'
+		SkipBlanks = result
+
+		while 1
+		
+			; Read a line from the file..
+			
+			filereadln fhandle line
+			EndOfFile = result
+
+			if EndOfFile = Yes break
+			
+			StrLen line
+			LineLen = result
+
+			if SkipBlanks = Yes then
+				if LineLen = BlankLine continue
+				strscan line '\'
+				if result = 1 continue
+				if result > 1 then
+					strremove line result LineLen-result+1
+				endif
+			endif
+			
+			sendln line
+			
+			timeout = 1					; 1 sec
+			wait #13 "??"				; wait on OK(\n) or an Error
+			
+			if result = 0 break			; timeout
+			
+			;if result = 1 goto _ok		; OK detected
+			
+			if result = 2 then			; exit if ?? from FF
+				YesNoBox 'Error - Do you want proceed w/ Upload?' 'Continue?'
+				if result = No break
+			endif
+				
+			; Repeat until the end of the file..
+			
+		endwhile
+	RETURN
+	
+	:CloseFile
+		FileClose fhandle
+	RETURN
+	;-----------------------------------------------------------
