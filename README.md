@@ -1,7 +1,11 @@
-FlashForth
-==========
+A fork of FlashForth with some addons.
 
-FlashForth is a standalone Forth system for the Microchip PIC 18, 24, 30, 33 and the Atmel Atmega series of microcontrollers.
-A Forth system with interpreter, compiler, assembler and multitasker is provided.
+Includes addtional floating point math functions.
 
-See http://flashforth.sourceforge.net
+Includes examples mostly for floating point math.
+
+Includes TeraTerm macro for a fast upload to FF.
+
+And more soon :)
+
+IgorM 5/2015

@@ -1,0 +1,26 @@
+\ TRIGONOMETRIC FUNCTIONS PRECISION TEST
+\ Based on "9 DEGREE" calculator forensic test
+\ asin(acos(atan(tan(cos(sin(9.0)))))) == 9.0
+\ the other results you may find at:
+\ http://www.rskey.org/~mwsebastian/miscprj/results.htm
+\ IgorM 5/2015
+\ No warrantis of any kind
+
+-trig9
+marker -trig9
+: Pi $0fdb $4049 ;   \ Most precise Pi
+: d2r Pi 180.0e f/ ;
+: r2d 180.0e Pi f/ ;
+: TRIG9
+		d2r f* fsin
+		d2r f* fcos
+		d2r f* ftan
+		fatan r2d f*
+		facos r2d f*
+		fasin r2d f*
+;
+\   9.0 TRIG9 must return 9.000 degree
+\   not with single precision, however :)
+\
+
+9.0e TRIG9 fs.

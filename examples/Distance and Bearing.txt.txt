@@ -1,0 +1,53 @@
+\ Distance and Bearing
+\ Example for FlashForth with floating point installed
+\ Calculates distance and initial bearing based on
+\ latidute and longitude of two points on Earth in degrees.
+\ Uses the Haversine formula
+\ IgorM 5/2015
+\ No warranties of any kind
+
+-distbear
+marker -distbear
+
+$0fdb $4049 fconstant PI
+6.371e6 fconstant R_E
+
+fvariable lat1
+fvariable lon1
+
+fvariable lat2
+fvariable lon2
+
+: torad PI 180.0e f/ f* ;
+: todeg 180.0e PI f/ f* ;
+
+\ PHI1,2
+: PHI1 lat1 f@ torad ;
+: PHI2 lat2 f@ torad ;
+
+: DPHI lat2 f@ lat1 f@ f- torad ;
+: DLAMBDA lon2 f@ lon1 f@ f- torad ;
+
+: A_ DPHI 2e f/ fsin fdup f* 
+  PHI1 fcos PHI2 fcos DLAMBDA 2e f/ fsin fdup
+  f* f* f* f+ ;
+  
+: C_ A_ fsqrt 1e A_ f- fsqrt fatan2 2e f* ;
+
+: distance lon2 f! lat2 f! lon1 f! lat1 f! R_E C_ f* ;
+
+: inibearing \ lon2 f! lat2 f! lon1 f! lat1 f!
+  DLAMBDA fsin PHI2 fcos f* 
+  PHI1 fcos PHI2 fsin f* 
+  PHI1 fsin PHI2 fcos DLAMBDA fcos f* f* 
+  f- fatan2 todeg ;
+
+\ lat1  lon1   lat2     lon2 (degree)
+\ 50.0e 15.0e 50.0001e 15.0001.0e distance fs. inibearing fe. (13.22m, 32 43 56 = 32.73222)
+\ 50.0e 15.0e 60.0e    80.0e      distance fs. inibearing fe. (4108km, 48 56 13 = 48.93694)
+\ 50.0e 15.0e -60.0e   -170.0e    distance fs. inibearing fe. (18860km, 166 01 30 = 166.025)
+
+
+
+
+

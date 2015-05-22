@@ -1,5 +1,6 @@
 ; Calling directly the math library assembly entry points
 ; Mikael Nordman 14.5.2015
+; IgorM - added math functions, 21.5.2015
 
         .pword  paddr(9b)+PFLASH
 ; float add
@@ -182,7 +183,7 @@ CFLOG_:
         .byte   NFA|6
         .ascii  "flog10"
         .align  2
-CFLoG10_:
+CFLOG10_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _log10f
@@ -236,5 +237,69 @@ CFACOS_:
         mov     W0, [W14++]
         mov     W1, [W14]
         return
+		
+		
+; Additional math words, IgorM
+		
+		.pword  paddr(9b)+PFLASH
+; float atan2
+9:
+        .byte   NFA|6
+        .ascii  "fatan2"
+        .align  2
+CFATAN2_:
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _atan2f
+        rcall    _atan2f
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
 
+        .pword  paddr(9b)+PFLASH
+; float cosh
+9:
+        .byte   NFA|5
+        .ascii  "fcosh"
+        .align  2
+CFCOSH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _coshf
+        rcall    _coshf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+; float sinh
+9:
+        .byte   NFA|5
+        .ascii  "fsinh"
+        .align  2
+CFSINH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _sinhf
+        rcall    _sinhf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
+
+       .pword  paddr(9b)+PFLASH
+; float tanh
+9:
+        .byte   NFA|5
+        .ascii  "ftanh"
+        .align  2
+CFTANH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _tanhf
+        rcall    _tanhf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
 

@@ -1,0 +1,65 @@
+\ Example - SIN COS TAN with Taylor series
+\ for FlashForth 5.x
+\ IgorM 25-9-2010 and 5/2015
+\ v 3.0.
+\ based on 4tH library by J.L. Bezemer
+\ No warranties of any kind
+
+-fsincostan
+marker -fsincostan
+
+\ the original Bezemer's taylor does not work here
+\ as it needs a separate floating point stack!!
+
+: >taylor fdup f* fover ;        \ setup for Taylor series
+: _taylor fover f* frot fover ;
+: +taylor f/ f+ frot frot ;      \ add Taylor iteration
+: -taylor f/ f- frot frot ;      \ subtract Taylor iteration
+
+\ put x in RADIANS within 2pi range
+: >range                              
+$0fdb $4049 fdup f+                  ( x pi2 )
+fover fover f/                       ( x pi2 x/pi2 )
+floor fover f*                      ( x pi2 mod )
+frot fswap f-                        ( pi2 mod )
+$0fdb $4049 fover                    ( pi2 mod pi mod )
+f< if fswap f- else fnip then ;
+
+: _fsin 
+fdup >taylor                            ( x x2 x )
+_taylor $0000 $40c0 -taylor                 ( x-3 x2 x3 )
+_taylor $0000 $42f0 +taylor                 ( x+5 x2 x5 )
+_taylor $8000 $459d -taylor                 ( x-7 x2 x7 )
+_taylor $3000 $48b1 +taylor                 ( x+9 x2 x9 )
+_taylor $4540 $4c18 -taylor                 ( x-11 x2 x11 )
+_taylor $9466 $4fb9 +taylor                 ( x+13 x2 x13 )
+_taylor $3bbc $5398 -taylor                 ( x-15 x2 x15 )
+_taylor $bf77 $57a1 +taylor                 ( x+17 x2 x17 )
+_taylor $15ca $5bd8 -taylor                 ( x-19 x2 x19 )
+fdrop fdrop ;                                   ( x-19 ) 
+
+\ calculate fsin
+: fsinf  ( RAD -- sinus )
+fdup f0< >r  fabs
+>range 
+fdup $0fdb $4049 f> if $0fdb $4049 f- 1 >r else 0 >r then 
+fdup  $0fdb $3fc9 f> if $0fdb $4049 fswap f- then  
+_fsin 
+r> if fnegate then 
+r> if fnegate then ;
+
+\ calculate fcos        
+: fcosf   ( RAD -- cosinus )        
+$0fdb $3fc9 f+ fsinf ;
+
+\ calculate ftan
+: ftanf ( RAD -- tangens )  
+fdup fsinf fswap fcosf 
+fdup f0= if abort else f/  then ;   
+
+\ 0.5e fsin fs. 4.79426E-1  ok<#,ram>
+\ 0.5e fsinf fs. 4.79426E-1  ok<#,ram>
+\ 0.5e fcos fs. 8.77583E-1  ok<#,ram>
+\ 0.5e fcosf fs. 8.77583E-1  ok<#,ram>
+\ 0.5e ftan fs. 5.46303E-1  ok<#,ram>
+\ 0.5e ftanf fs. 5.46303E-1  ok<#,ram>
