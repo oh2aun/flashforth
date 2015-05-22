@@ -3,7 +3,7 @@
 \ asin(acos(atan(tan(cos(sin(9.0)))))) == 9.0
 \ the other results you may find at:
 \ http://www.rskey.org/~mwsebastian/miscprj/results.htm
-\ IgorM 5/2015
+\ IgorM 5/2015, GNU GPL v3
 \ No warrantis of any kind
 
 -trig9

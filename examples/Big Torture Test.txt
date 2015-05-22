@@ -7,7 +7,7 @@
 \ Also remove tests where the math functions are not 
 \ available in the library
 \
-\ IgorM c 2010-2015
+\ IgorM c 2010-2015, GNU GPL v3
 \ No warranties of any kind
 
 -bigtorture

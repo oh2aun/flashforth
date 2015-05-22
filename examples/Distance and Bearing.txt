@@ -3,7 +3,7 @@
 \ Calculates distance and initial bearing based on
 \ latidute and longitude of two points on Earth in degrees.
 \ Uses the Haversine formula
-\ IgorM 5/2015
+\ IgorM 5/2015, GNU GPL v3
 \ No warranties of any kind
 
 -distbear

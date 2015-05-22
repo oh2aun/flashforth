@@ -1,5 +1,5 @@
 \ FLOATS PARSING TEST
-\ IgorM c 2011 - 2015
+\ IgorM c 2011 - 2015, GNU GPL v3
 
 \ TEST START
 
