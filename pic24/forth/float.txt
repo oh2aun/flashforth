@@ -340,17 +340,6 @@ decimal
   if fswap then
   fdrop ;
 
-: fprep4div ( f -- d n )
-  f>sigexp
-
-  \ get d so that it has a one in the 25th place
-  begin
-    >r dup 4096 < r> swap
-	\ only need to look at upper part of d
-  while
-    flshift
-  repeat ;
-
 \ from the standard:
 \ If f3 is positive, flag is |f1-f2| < f3
 \ If f3 is zero, this is the same as f1 f2 f=
