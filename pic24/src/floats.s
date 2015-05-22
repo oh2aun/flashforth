@@ -1,6 +1,8 @@
 ; Calling directly the math library assembly entry points
 ; Mikael Nordman 14.5.2015
+; IgorM 7/2014 Cfloats.s
 ; IgorM - added math functions, 21.5.2015
+; GNU GPL v3
 
         .pword  paddr(9b)+PFLASH
 ; float add
