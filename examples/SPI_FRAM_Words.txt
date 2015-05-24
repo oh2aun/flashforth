@@ -11,6 +11,8 @@
 \   fram2_Q o-------SDI1 RB14 i
 \   fram5_D i-------SDO1 RB12 o
 \   fram6_CLK i-----SCK1 RB13 o
+\
+\ tested with dspic33fj128gp802
 
 -spifram
 marker -spifram
