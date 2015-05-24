@@ -1,15 +1,16 @@
-\ SPI FRAM LIBRARY - WRITE READ WORD
+\ SPI FRAM LIBRARY - WRITE READ BYTES
 \ FOR FLASHFORTH
 \ c IgorM 5/2015
 \ GNU GPL v3
+\ No warranties of any kind
 \ 
 \ FRAM 256kBytes FM25H20
 \ peripheral pins SPI mapping:
 \ SPI1 to FRAM pins:
-\   fram1_S/i------CS1 RB15 o
-\   fram2_Qo-------SDI1 RB14 i
-\   fram5_Di-------SDO1 RB12 o
-\   fram6_CLKi-----SCK1 RB13 o
+\   fram1_S/ i------CS1 RB15 o
+\   fram2_Q o-------SDI1 RB14 i
+\   fram5_D i-------SDO1 RB12 o
+\   fram6_CLK i-----SCK1 RB13 o
 
 -spifram
 marker -spifram
@@ -74,7 +75,7 @@ $0770 constant PMD1
 	SPI1BUF @
 	;
 	
-\ read procedure for reading 1 cell (16bit) from fram
+\ read procedure for reading 1 byte from fram
 : rdfram ( addrh addr -- x )
 	dup
 	rot
@@ -84,13 +85,11 @@ $0770 constant PMD1
 	#8 rshift 
 	spi!								\ addr_h
 	spi!								\ addr_l
-	spi@								\ xl in
-	spi@								\ xh in
-	#8 lshift or
+	spi@								\ x in
 	FRAM_CS_H
 	;
 
-\ write procedure for writing 1 cell (16bit) to	fram
+\ write procedure for writing 1 byte to	fram
 : wrfram ( x addrh addr -- )
 	dup
 	rot
@@ -103,29 +102,25 @@ $0770 constant PMD1
 	#8 rshift 							
 	spi!								\ addr_h
 	spi!								\ addr_l
-	dup
-	spi!								\ xl out
-	#8 rshift
-	spi!								\ xh out
+	spi!								\ x out
 	FRAM_CS_H
 	;
 
 \ variable data 
-\ $5678 data !	
+\ 181 data !	
 \ variable block
 \ 2 block !
 \ variable count
 
 \ spiini
 
-\ : wfmt2 0 count ! ticks 20000 for count @ block @ r@ 2* wrfram count @ 1+ count ! next ticks swap - . ; 
+\ : rfm 0 count ! cr 20000 for block @ r@ rdfram u. count @ dup u. cr  1 + count ! next ;
+\ : wfmt ticks 20000 for data @ block @ r@ wrfram next ticks swap - . ; 
+\ : rfm 20000 for block @ r@ rdfram . cr next ;
+\ : rfmt ticks 20000 for block @ r@ rdfram drop next ticks swap - . ;
 
-\ : rfm2 0 count ! cr 20000 for block @ r@ 2* rdfram u. count @ dup u. 1+ count ! cr next cr ;
-
-\ : rfmt2 0 count ! ticks 20000 for block @ r@ 2* rdfram drop count @ 1+ count ! next ticks swap - . ;
-
-\ wfmt2 577msecs at 27.648MHz :(
-\ rfmt2 469msecs at 27.648MHz :(
+\ wfmt 480msecs at 27.648MHz :(
+\ rfmt 373msecs at 27.648MHz :(
 
 	
 	

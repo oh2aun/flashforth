@@ -1,15 +1,16 @@
-\ SPI FRAM LIBRARY - WRITE READ DOUBLE
+\ SPI FRAM LIBRARY - WRITE READ DOUBLES
 \ FOR FLASHFORTH
 \ c IgorM 5/2015
 \ GNU GPL v3
+\ No warranties of any kind
 \ 
 \ FRAM 256kBytes FM25H20
 \ peripheral pins SPI mapping:
 \ SPI1 to FRAM pins:
-\   fram1_S/i------CS1 RB15 o
-\   fram2_Qo-------SDI1 RB14 i
-\   fram5_Di-------SDO1 RB12 o
-\   fram6_CLKi-----SCK1 RB13 o
+\   fram1_S/ i------CS1 RB15 o
+\   fram2_Q o-------SDI1 RB14 i
+\   fram5_D i-------SDO1 RB12 o
+\   fram6_CLK i-----SCK1 RB13 o
 
 -spifram
 marker -spifram

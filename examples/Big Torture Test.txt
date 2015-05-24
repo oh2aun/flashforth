@@ -2,7 +2,7 @@
 \
 \ Note:
 \ The "shall be" results are more precise than could
-\ be calculated with single precision - for info only
+\ be calculated with single precision -> for info only
 \
 \ Also remove tests where the math functions are not 
 \ available in the library

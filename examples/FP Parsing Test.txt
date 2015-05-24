@@ -1,6 +1,7 @@
 \ FLOATS PARSING TEST
 \ IgorM c 2011 - 2015
 \ GNU GPL v3
+\ No warranties of any kind
 
 \ TEST START
 
@@ -202,10 +203,10 @@
  +9.999999e30 fs.
  -9999999e30 fs.
  
- $ffff $7fff fs. / "NaN" in xc16
+ $ffff $7fff fs.  \ "NaN" in xc16
  
- $ffff $ff7f fs. / -3.4028235e+38  max negative in single precision
- $ffff $7f7f fs.  / 3.4028235e+38  max positive in single precision
+ $ffff $ff7f fs.  \ -3.4028235e+38  max negative in single precision
+ $ffff $7f7f fs.  \ 3.4028235e+38  max positive in single precision
  
  -3.4028235e+38 fs.
  3.4028235e+38 fs.
