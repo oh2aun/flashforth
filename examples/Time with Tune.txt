@@ -1,0 +1,100 @@
+\ *******************************************************************
+\    Simple RTC for FlashForth PIC24 PIC33                          *
+\    Filename:      irq_pic24-33.txt                                *
+\    Date:          05.01.2014                                      *
+\    FlashForth:    FF5.0                                           *
+\    MCU:           PIC 24 33                                       *
+\    Copyright:     Mikael Nordman                                  *
+\    Author:        Mikael Nordman                                  *
+\ *******************************************************************
+\ FlashForth is licensed according to the GNU General Public License*
+\ *******************************************************************
+
+\
+\ IgorM 5/2015 - added settime, gettime, osctune (for FRC)
+\
+
+\ Disable the alternate interrupts and switch back to IVT.
+
+\ iec0 t2ie bclr ivt    \ does it work ?? IgorM
+
+-rtc
+marker -rtc
+hex ram
+
+$010c constant pr2
+$0106 constant tmr2
+$0110 constant t2con
+$0770 constant pmd1  $c constant t2md
+
+$0084 constant ifs0 $0007 constant t2if
+$0094 constant iec0 $0007 constant t2ie
+
+$0748 constant osctune  \ tuning for FRC internal oscillator 7.37MHz
+
+ram
+variable hsec
+variable sec
+variable mins
+variable hour
+
+\ Interrupt routine
+: T2RtcIrq
+  [i
+     1 hsec +! hsec @ #4 u>
+     if 
+       0 hsec ! 1 sec +! sec @ #59 u> 
+       if
+         0 sec ! 1 mins +! mins @ #59 u>
+         if
+           0 mins ! 1 hour +! hour @ #23 u>
+           if
+             0 hour !
+           then
+         then
+       then
+     then
+     ifs0 t2if bclr
+  i]
+;i
+
+
+: T2RtcInit ( -- )
+  \ Store the interrupt word address in the
+  \ Alternate Interrupt Vector Table in ram
+  ['] T2RtcIrq #15 int!
+  pmd1 t2md bclr
+  \ Calculate one second counter value
+  [ Fcy #200 #256 u*/mod nip literal ] pr2 !   
+  %1000000000110000 t2con ! \ / 256 prescaler
+  aivt
+  iec0 t2ie bset
+;
+
+\ Display the current time
+: time ( -- )
+  decimal hour @ u. mins @ u. sec  @ u. ;
+
+\ im: settime gettime osctune
+\ 
+: settime decimal sec ! mins ! hour ! ;
+: gettime decimal hour @ mins @ sec @ ; 
+
+\ 8 51 0 settime   ok<#,ram>
+\ time 8 51 4  ok<#,ram>
+\ gettime  ok<#,ram> 8 54 5
+
+\ -2 osctune !
+\ +1..+10 increases FRC freq
+\ 0 no change
+\ -10..-1 decreases FRC freq
+
+-1 osctune !
+
+\ Initialise the RTC
+T2RtcInit
+\ ' T2RtcInit is turnkey
+
+\ warm
+
+

@@ -1,9 +1,10 @@
 \ Distance and Bearing
 \ Example for FlashForth with floating point installed
-\ Calculates distance and initial bearing based on
-\ latidute and longitude of two points on Earth in degrees.
+\ Calculates distance in meters and initial bearing degrees based on
+\ latidute and longitude of two points on Earth.
 \ Uses the Haversine formula
-\ IgorM 5/2015, GNU GPL v3
+\ c IgorM 5/2015
+\ GNU GPL v3
 \ No warranties of any kind
 
 -distbear

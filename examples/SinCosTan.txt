@@ -1,6 +1,7 @@
 \ Example - SIN COS TAN with Taylor series
 \ for FlashForth 5.x
-\ IgorM 25-9-2010 and 5/2015, GNU GPL v3
+\ IgorM c 25-9-2010 and 5/2015
+\ GNU GPL v3
 \ v 3.0.
 \ based on 4tH library by J.L. Bezemer
 \ No warranties of any kind
