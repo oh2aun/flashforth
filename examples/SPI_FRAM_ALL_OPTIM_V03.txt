@@ -197,7 +197,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 quad (64bit) to fram
-: wrfram8 ( d addr. -- )
+: wrfram8 ( q addr. -- )
 	$8000 SPI1STAT mclr					\ disable SPI, SPI1EN=0
 	$007e SPI1CON1 !					\ 8bit SPI mode
 	$8000 SPI1STAT mset					\ enable SPI, SPI1EN=1
@@ -266,10 +266,10 @@ spiini
 
 \ Write and Read 40kB of data
 \
-\ : wfmt10 0 count ! ticks 5000 for count @ 12345 m* 2dup r@ 2* 2* 2* s>d wrfram8 count @ 1+ count ! next ticks swap - . ; 
-\ : rfmt9 0 count ! ticks 5000 for r@ 2* 2* 2* s>d rdfram8 2drop 2drop count @ 1+ count ! next ticks swap - . ;
-\ wfmt4 213msecs at Fcy=27.648MHz :)
-\ rfmt4 164msecs at Fcy=27.648MHz :) 
+\ : wfmt8 0 count ! ticks 5000 for count @ 12345 m* 2dup r@ 2* 2* 2* s>d wrfram8 count @ 1+ count ! next ticks swap - . ; 
+\ : rfmt8 0 count ! ticks 5000 for r@ 2* 2* 2* s>d rdfram8 2drop 2drop count @ 1+ count ! next ticks swap - . ;
+\ wfmt8 213msecs at Fcy=27.648MHz :)
+\ rfmt8 164msecs at Fcy=27.648MHz :) 
 \ 212kB/sec ave.
 
 
