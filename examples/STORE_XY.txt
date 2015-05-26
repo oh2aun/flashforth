@@ -1,0 +1,43 @@
+\ STOREXY DEMO - WRITES SIN*COS INTO A 200x200 LARGE TABLE
+\ 160kB of FRAM USED
+\ FLOATING POINT VALUES ARE STORED INTO A MATRIX
+\ T[X,Y] = sin(X)*COS(Y), X 0..199, Y 0..199
+\ PRINTS X Y FRAM_ADDRESS Txy_written Txy_read
+\ AN EXAMPLE ONLY
+\ NEEDS FLOATING POINT LIB AND SPI FRAM DRIVER
+\ IgorM c 5/2015
+\ No warranties of any kind
+\ Provided as-is
+\
+
+
+-sctable
+marker -sctable
+decimal
+
+variable x
+variable y
+
+: storex 200 for 
+	r@ dup y ! s>f fcos 
+	x @ s>f fsin 
+	f* 
+	x @ 800 um*
+	y @ 4 um*
+	d+ 
+	wrfram4 next ;
+	
+: storexy 200 for r@ x ! storex next ;
+
+: readx 200 for 
+	r@ dup y ! dup . 4 um*
+	x @ dup . 800 um*
+	d+ 2dup ud. rdfram4 fs. 
+	x @ s>f fsin y @ s>f fcos f* fs. 
+	cr next ;
+	
+: readxy 200 for r@ x ! readx next ;
+
+storexy
+readxy
+
