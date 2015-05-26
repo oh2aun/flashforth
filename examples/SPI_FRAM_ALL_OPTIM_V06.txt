@@ -5,12 +5,15 @@
 \ USES DOUBLE AS THE ADDRESS
 \ ADDRESS RANGE $000000 .. $FFFFFF (16,777,215)
 \
-\ DISCOVERED WREN COULD BE WRITTEN WITH 16BIT !!
-\ (DATASHEET SAYS AFTER 8th BIT CS\ SHALL GO HIGH)
+\ Nope, the 16bit transfer with WREN DOES NOT WORK :(
+\ But with switching in 8bit mode and 8bit transfer
+\ during the WREN write its even a little bit faster :)
 \
 \ v.0.5 ASSEMBLER WORDS INTRODUCED
 \ v.0.6 More optimization - switching SPI MODES in asm
 \ inlining constants
+\ WREN must be written in 8bit mode according to the datasheet
+\ spinit (was spiini)
 \
 \ FOR FLASHFORTH AND OTHERS
 \
@@ -66,7 +69,7 @@ $0770 constant PMD1
 	[ #15 latb bclr, ]
 	;
 
-: spiini
+: spiinit
 	$ffff adpcfg !						\ all RBx digital pins
 	$4fff trisb !						\ RB14 input, RB12,13,15 output, 1-input 0-output
 	FRAM_CS_H						\ deselect FRAM
@@ -152,9 +155,15 @@ $0770 constant PMD1
 
 \ write procedure for writing 1 word (16bit) to fram
 : wrfram2 ( x addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_CS_L
 	FRAM_WREN spi!
 	FRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_WRITE #8 lshift or					\ addr FWaddrh
 	FRAM_CS_L
 	spi!							\ FWaddrh
@@ -177,9 +186,15 @@ $0770 constant PMD1
 
 \ write procedure for writing 1 double (32bit) to fram
 : wrfram4 ( d addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_CS_L
 	FRAM_WREN spi!
 	FRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_WRITE #8 lshift or					\ addr FWaddrh
 	FRAM_CS_L
 	spi!							\ FWaddrh
@@ -208,9 +223,15 @@ $0770 constant PMD1
 
 \ write procedure for writing 1 quad (64bit) to fram
 : wrfram8 ( q addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_CS_L
 	FRAM_WREN spi!
 	FRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
 	FRAM_WRITE #8 lshift or					\ addr FWaddrh
 	FRAM_CS_L
 	spi!							\ FWaddrh
@@ -222,6 +243,7 @@ $0770 constant PMD1
 	FRAM_CS_H
 	;
 	
+	
 \ TESTING:
 
 2variable data 
@@ -230,16 +252,16 @@ variable block
 2 block !
 variable count
 
-spiini
+spiinit
 
 \ data 2@
 
 hex
 
-$88 $17777. wrfram1 $17777. rdfram1
-$1234 $12345. wrfram2 $12345. rdfram2
-$4321 $8765 $23456. wrfram4 $23456. rdfram4 
-$abcd $ef89 $1234 $5678 $20405. wrfram8 $20405. rdfram8
+$88 $17444. wrfram1 $17444. rdfram1
+$1234 $12999. wrfram2 $12999. rdfram2
+$4321 $8765 $20221. wrfram4 $20221. rdfram4 
+$abcd $ef89 $1234 $5678 $3366. wrfram8 $3366. rdfram8
 
 decimal
 
@@ -251,7 +273,6 @@ decimal
 : rfmt1 ticks 40000 for r@ s>d rdfram1 drop next ticks swap - . ;
 \ wfmt1 696msecs at Fcy=27.648MHz :(
 \ rfmt1 544msecs at Fcy=27.648MHz :(
-\ 65kB/sec aver.
 wfmt1
 rfmt1
 
@@ -260,9 +281,8 @@ rfmt1
 : wfmt2 0 count ! ticks 20000 for count @ r@ 2* s>d wrfram2 count @ 1+ count ! next ticks swap - . ; 
 \ : rfm2 0 count ! cr 20000 for r@ 2* s>d rdfram2 u. count @ dup u. 1+ count ! cr next cr ;
 : rfmt2 0 count ! ticks 20000 for r@ 2* s>d rdfram2 drop count @ 1+ count ! next ticks swap - . ;
-\ wfmt2 367msecs at Fcy=27.648MHz :(
+\ wfmt2 349msecs at Fcy=27.648MHz :(
 \ rfmt2 270msecs at Fcy=27.648MHz :)
-\ 125kB/sec aver.
 wfmt2
 rfmt2
 
@@ -271,8 +291,8 @@ rfmt2
 : wfmt4 0 count ! ticks 10000 for count @ 12345 m* r@ 2* 2* s>d wrfram4 count @ 1+ count ! next ticks swap - . ; 
 \ : rfm4 0 count ! cr 10000 for r@ 2* 2* s>d rdfram4 ud. count @ dup 12345 m* ud. 1+ count ! cr next cr ;
 : rfmt4 0 count ! ticks 10000 for r@ 2* 2* s>d rdfram4 2drop count @ 1+ count ! next ticks swap - . ;
-\ wfmt4 223msecs at Fcy=27.648MHz :)
-\ rfmt4 172msecs at Fcy=27.648MHz :)
+\ wfmt4 214msecs at Fcy=27.648MHz :)
+\ rfmt4 171msecs at Fcy=27.648MHz :)
 \ 203kB/sec aver.
 wfmt4
 rfmt4
@@ -281,7 +301,7 @@ rfmt4
 \
 : wfmt8 0 count ! ticks 5000 for count @ 12345 m* 2dup r@ 2* 2* 2* s>d wrfram8 count @ 1+ count ! next ticks swap - . ; 
 : rfmt8 0 count ! ticks 5000 for r@ 2* 2* 2* s>d rdfram8 2drop 2drop count @ 1+ count ! next ticks swap - . ;
-\ wfmt8 149msecs at Fcy=27.648MHz :)
+\ wfmt8 144msecs at Fcy=27.648MHz :)
 \ rfmt8 123msecs at Fcy=27.648MHz :) 
 \ 294kB/sec aver.
 wfmt8
