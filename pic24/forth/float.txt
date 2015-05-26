@@ -619,7 +619,7 @@ decimal
 \ finally, we restore the sign
 \ string of form 'integer'.'fractioal'e'exp'
 
-: string>float ( c-addr u-length -- float flag )
+: >float ( c-addr u-length -- float flag )
   sign? >r                           ( adr length R: isneg)
   \ get exponent -- this is the number that follows e
   [char] e extract 0=
@@ -658,6 +658,6 @@ decimal
   r> negateiftrue true ;  \ take care of negative sign
 
 \ Add float parsing capability to INTERPRET
-: finit ['] string>float to float? ;
+: finit ['] >float to float? ;
 ' finit is turnkey
 finit

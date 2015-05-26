@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          17.05.2015                                        *
+;    Date:          26.05.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 17.05.2015\r\n"
+        .ascii  " FlashForth PIC24 26.05.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -5691,8 +5691,8 @@ QABORTQ_L:
         .align  2
 QABORTQ:
         rcall   XSQUOTE
-        .byte   1
-        .ascii  "?"
+        .byte   3
+        .byte   '\?',7,7
         .align  2
         bra     QABORT
 
@@ -6310,11 +6310,21 @@ REPEAT_:
 
 ; FOR   -- bc-addr bra-addr
         .pword  paddr(REPEAT_L)+PFLASH
-FOR_L:
+9:
+        .byte   NFA|IMMED|COMPILE|4
+        .ascii  "for2"
+        .align  2
+        mlit    handle(TOR)+PFLASH
+        rcall   INLINE_0
+        rcall   IHERE
+        goto    FALSE_
+
+; ?FOR   -- bc-addr bra-addr
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|COMPILE|3
         .ascii  "for"
         .align  2
-FOR:
         mlit    handle(TOR)+PFLASH
         rcall   INLINE_0
         rcall   IHERE
@@ -6324,21 +6334,25 @@ FOR:
         rcall   IHERE
         goto    SWOP
 
-; NEXT bc-addr bra-addr --
+; NEXT bc-addr bra-addr cond --
 
-        .pword  paddr(FOR_L)+PFLASH
-NEXT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|COMPILE|4
         .ascii  "next"
         .align  2
 NEXT:
+        cp0     [W14--]
+        bra     z, NEXT2
+        inc2    W14, W14
         rcall   THENC
+NEXT2:
         mlit    handle(XNEXT)+PFLASH
         rcall   INLINE_0
         rcall   NC
         rcall   UNTILC
         mlit    handle(RDROP)+PFLASH
-        goto    INLINE_0  
+        goto    INLINE_0
 
 ; (next) decrement top of return stack
 ; Works only if inlined.
@@ -6347,7 +6361,7 @@ XNEXT:
         return
 
 ; leave clear top of return stack
-        .pword  paddr(NEXT_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 LEAVE_L:
         .byte   NFA|INLINE|COMPILE|5
         .ascii  "endit"
