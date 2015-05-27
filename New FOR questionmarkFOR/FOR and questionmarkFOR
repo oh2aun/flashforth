@@ -1,0 +1,42 @@
+\ FOR and ?FOR NEXT loops- the DESIGN 
+\ (copyright) Igor Mokos, 27.5.2015
+
+-fortest
+marker -fortest
+
+2variable count
+: _for 0. count 2! for count 2@ 1. d+ count 2! r@ u. next cr count 2@ ud. ; 
+: _?for 0. count 2! ?for count 2@ 1. d+ count 2! r@ u. next cr count 2@ ud. ; 
+
+standard FOR:
+-----------------------------
+
+65535 _for 65534 65533 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65535  ok<#,ram>
+
+25 _for 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+25  ok<#,ram>
+
+1 _for 0
+1  ok<#,ram>
+
+0 _for 65535 65534 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65536 ok<#,ram>
+
+and the new ?FOR:
+-----------------------------
+
+65535 _?for 65534 65533 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65535  ok<#,ram>
+
+25 _?for 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+25  ok<#,ram>
+
+1 _?for 0
+1  ok<#,ram>
+
+0 _?for
+0  ok<#,ram>
