@@ -1,14 +1,14 @@
-\ FOR-NEXT and ?FOR-NEXT loops- the DESIGN 
-\ DESIGN for 16bit cell size, unsigned integer number range 0..65535
+\ FOR-NEXT and ?FOR-NEXT loops - the DESIGN 
+\ GENERIC DESIGN FOR ANY ARCHITECTURE
+\ An Example for 16bit cell size, unsigned integer number range 0..65535
 \ (copyright) Igor Mokos, 27.5.2015
 \ GNU GPL V3
 
 \ The design of FOR-NEXT and ?FOR-NEXT loops shall be as follows:
 \
-\ FOR:
-\ Let N is an integer within an range of 0..(M-1)
-\ where number of integers in the range is M = 2^K, 
-\ where K is any integer multiply of 8
+\ Let N is an integer within an range of 0..(M-1),
+\ 	where the number of integers in the range is M = 2^K, 
+\ 	where the K is any integer multiply of 8
 \ M does represent the unsigned integer scope implemented on the architecture
 \ of choice, representing its basic type (a single cell in forth)
 \
