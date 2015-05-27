@@ -1,0 +1,100 @@
+\ FOR-NEXT and ?FOR-NEXT loops - the DESIGN 
+\ GENERIC DESIGN FOR ANY ARCHITECTURE
+\ An Example for 16bit cell size, unsigned integer number range 0..65535
+\ (copyright) Igor Mokos, 27.5.2015
+\ GNU GPL V3
+
+\ The design of FOR-NEXT and ?FOR-NEXT loops shall be as follows:
+\
+\ Let N is an integer within an range of 0..(M-1),
+\ 	where the number of integers in the range is M = 2^K, 
+\ 	where the K is any integer multiply of 8
+\ M does represent the unsigned integer scope implemented on the architecture
+\ of choice, representing its basic type (a single cell in forth)
+\
+\ Let <i> is an loop index when available
+\ Let <body> is the code to be executed by the loop
+\
+\ FOR-NEXT:
+\
+\ N FOR <body> <i> NEXT
+\ shall run the <body> (N) times,
+\ where i contains (N-1) (N-2) (N-3) .. (0) during the loop execution
+\
+\ 0 FOR <body> <i> NEXT
+\ shall run the <body> (M) times,
+\ where i contains (M-1) (M-2) (M-3) .. (0) during the loop execution
+\
+\ ?FOR-NEXT:
+\
+\ N ?FOR <body> <i> NEXT
+\ shall run the <body> (N) times,
+\ where i contains (N-1) (N-2) (N-3) .. (0) during the loop execution
+\
+\ 0 ?FOR <body> <i> NEXT
+\ shall run the <body> (0) times, it means the <body> shall not be executed
+\
+\
+\ An example for 16 bit cell size:
+\ =====================================
+\ M = 2^16 = 65536
+\ N is from 0..65535
+\
+\ FOR-NEXT:
+\
+\ 3 FOR <body> <i> NEXT
+\ shall run the <body> (3) times,
+\ where i contains (2) (1) (0) during the loop execution
+\
+\ 0 FOR <body> <i> NEXT
+\ shall run the <body> (65536) times,
+\ where i contains (65535) (65534) (65533) .. (0) during the loop execution
+\
+\ ?FOR-NEXT:
+\
+\ 3 ?FOR <body> <i> NEXT
+\ shall run the <body> (3) times,
+\ where i contains (2) (1) (0) during the loop execution
+\
+\ 0 ?FOR <body> <i> NEXT
+\ shall run the <body> (0) times, it means the <body> shall not be executed
+
+-fortest
+marker -fortest
+
+2variable count
+: _for 0. count 2! for count 2@ 1. d+ count 2! r@ u. next cr count 2@ ud. ; 
+: _?for 0. count 2! ?for count 2@ 1. d+ count 2! r@ u. next cr count 2@ ud. ; 
+
+standard FOR:
+-----------------------------
+
+65535 _for 65534 65533 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65535  ok<#,ram>
+
+25 _for 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+25  ok<#,ram>
+
+1 _for 0
+1  ok<#,ram>
+
+0 _for 65535 65534 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65536 ok<#,ram>
+
+and the new ?FOR:
+-----------------------------
+
+65535 _?for 65534 65533 ..
+.. 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+65535  ok<#,ram>
+
+25 _?for 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+25  ok<#,ram>
+
+1 _?for 0
+1  ok<#,ram>
+
+0 _?for
+0  ok<#,ram>
