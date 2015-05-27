@@ -14,6 +14,7 @@
 \ inlining constants
 \ WREN must be written in 8bit mode according to the datasheet
 \ spinit (was spiini)
+\ clrfram
 \
 \ FOR FLASHFORTH AND OTHERS
 \
@@ -242,6 +243,14 @@ $0770 constant PMD1
 	spi!							\ x
 	FRAM_CS_H
 	;
+
+\ clears the entire FRAM (256kB)
+: clrfram ( -- )
+	#32768 for 						\ 262144 / 8
+	$0 $0 $0 $0 
+	r@ s>d d2* d2* d2* 					\ calculate double address
+	wrfram8 						\ write quad
+	next ;
 	
 	
 \ TESTING:
