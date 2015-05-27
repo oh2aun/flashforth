@@ -3,6 +3,62 @@
 \ (copyright) Igor Mokos, 27.5.2015
 \ GNU GPL V3
 
+\ The design of FOR-NEXT and ?FOR-NEXT loops shall be as follows:
+\
+\ FOR:
+\ Let N is an integer within an range of 0..(M-1)
+\ where number of integers in the range is M = 2^K, 
+\ where K is any integer multiply of 8
+\ M does represent the unsigned integer scope implemented on the architecture
+\ of choice, representing its basic type (a single cell in forth)
+\
+\ Let <i> is an loop index when available
+\ Let <body> is the code to be executed by the loop
+\
+\ FOR-NEXT:
+\
+\ N FOR <body> <i> NEXT
+\ shall run the <body> (N) times,
+\ where i contains (N-1) (N-2) (N-3) .. (0) during the loop execution
+\
+\ 0 FOR <body> <i> NEXT
+\ shall run the <body> (M) times,
+\ where i contains (M-1) (M-2) (M-3) .. (0) during the loop execution
+\
+\ ?FOR-NEXT:
+\
+\ N ?FOR <body> <i> NEXT
+\ shall run the <body> (N) times,
+\ where i contains (N-1) (N-2) (N-3) .. (0) during the loop execution
+\
+\ 0 ?FOR <body> <i> NEXT
+\ shall run the <body> (0) times, it means the <body> shall not be executed
+\
+\
+\ An example for 16 bit cell size:
+\ =====================================
+\ M = 2^16 = 65536
+\ N is from 0..65535
+\
+\ FOR-NEXT:
+\
+\ 3 FOR <body> <i> NEXT
+\ shall run the <body> (3) times,
+\ where i contains (2) (1) (0) during the loop execution
+\
+\ 0 FOR <body> <i> NEXT
+\ shall run the <body> (65536) times,
+\ where i contains (65535) (65534) (65533) .. (0) during the loop execution
+\
+\ ?FOR-NEXT:
+\
+\ 3 ?FOR <body> <i> NEXT
+\ shall run the <body> (3) times,
+\ where i contains (2) (1) (0) during the loop execution
+\
+\ 0 ?FOR <body> <i> NEXT
+\ shall run the <body> (0) times, it means the <body> shall not be executed
+
 -fortest
 marker -fortest
 
