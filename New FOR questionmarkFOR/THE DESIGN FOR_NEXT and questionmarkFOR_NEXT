@@ -1,4 +1,5 @@
-\ FOR and ?FOR NEXT loops- the DESIGN 
+\ FOR-NEXT and ?FOR-NEXT loops- the DESIGN 
+\ DESIGN for 16bit cell size, unsigned integer number range 0..65535
 \ (copyright) Igor Mokos, 27.5.2015
 \ GNU GPL V3
 
