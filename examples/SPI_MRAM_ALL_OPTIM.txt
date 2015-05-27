@@ -1,0 +1,249 @@
+\ SPI MRAM LIBRARY - BYTE WORD DOUBLE QUAD
+\ v 0.1.
+\
+\ USES 16bit SPI TRANSFERS WHERE APPLICABLE
+\
+\ USES DOUBLE AS THE ADDRESS
+\ MAX ADDRESS RANGE $000000 .. $FFFFFF (16,777,215)
+\
+\ 
+\ MRAM MEMORY Everspin MR25H40 8PIN 512kBytes
+\
+\ To be Tested with dspic33fj128gp802
+\ 
+\	MRAM to PIC wiring (excl. +3.3V VCC and GND):
+\
+\	MRAM				dsPIC33
+\	==================================================
+\	mram1_/CS	i		CS1 RB15	o
+\	mram2_SO	o		SDI1 RB14	i
+\	mram5_SI	i		SDO1 RB12	o
+\	mram6_SCK	i		SCK1 RB13	o
+\	==================================================
+\
+\ FOR FLASHFORTH AND OTHERS
+\
+\ Igor Mokos (copyright), 27.5.2015
+\ ALL UNDER GNU GPL v3
+\ No warranties of any kind
+\ Provided as-is
+
+
+-spimram
+marker -spimram
+
+decimal
+
+\ MRAM opcodes
+$06 constant MRAM_WREN 
+$02 constant MRAM_WRITE 
+$03 constant MRAM_READ 
+
+$02c8 constant trisb
+$02ca constant portb
+$02cc constant latb inlined
+$032c constant adpcfg
+
+$0248 constant SPI1BUF inlined
+$0242 constant SPI1CON1 inlined
+$0240 constant SPI1STAT inlined
+$0742 constant OSCCON
+$0770 constant PMD1
+
+\ : SPI1RBF? $0001 SPI1STAT mtst ;				\ wait till SPI1RBF is 1
+
+\ : MRAM_CS_H $8000 latb mset ;					\ PIN_B15 high
+\ : MRAM_CS_L $8000 latb mclr ;					\ PIN_B15 low
+
+: MRAM_CS_H 
+	[ #15 latb bset, ]
+	;
+
+: MRAM_CS_L
+	[ #15 latb bclr, ]
+	;
+
+: spiinit
+	$ffff adpcfg !						\ all RBx digital pins
+	$4fff trisb !						\ RB14 input, RB12,13,15 output, 1-input 0-output
+	MRAM_CS_H						\ deselect MRAM
+	
+	$0008 PMD1 mclr						\ enable clock to SPI1 !!!
+	
+	\ unlock PPS - done in FF already
+	
+	$ff00 #14 or $06a8 !					\ RPINR20 $06a8 RP14=#14 SDI1
+	#8 #8 lshift						\ RPOR6 $06cc	SCKO1	B13 #8
+	#7 or $06cc !						\ RPOR6 $06cc	SDO1	B12 #7
+	
+	$047e SPI1CON1 !					\ set SPI 16bit mode $047e, 8it mode $007e
+	$8000 SPI1STAT mset					\ enable SPI, SPI1EN=1
+	;
+
+: spi!  ( x --  )
+	SPI1BUF !
+	[ 	begin,                  ]			\ wait till SPI1RBF is 1
+	[	#0 SPI1STAT btss, 	]
+	[	again,                  ]
+	SPI1BUF @ drop						\ must be read !!
+	;
+
+: spi@  (  -- x )
+	#0 SPI1BUF !
+	[ 	begin,                  ]			\ wait till SPI1RBF is 1
+	[	#0 SPI1STAT btss, 	]
+	[	again,                  ]
+	SPI1BUF @
+	;
+	
+\ read procedure for reading 1 byte from MRAM
+: rdmram1 ( addr. -- c )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_CS_L
+	MRAM_READ spi!
+	spi!	 						\ addrh
+	dup							\ addr addr
+	#8 rshift 
+	spi!							\ addr_h
+	spi!							\ addr_l
+	spi@							\ x in
+	MRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	;
+
+\ write procedure for writing 1 byte to MRAM
+: wrmram1 ( c addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_CS_L
+	MRAM_WREN spi!
+	MRAM_CS_H
+	MRAM_CS_L
+	MRAM_WRITE spi!
+	spi!							\ addrh
+	dup
+	#8 rshift							
+	spi!							\ addr_h
+	spi!							\ addr_l
+	spi!							\ x out
+	MRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	;
+
+\ read procedure for reading 1 word (16bit) from MRAM
+: rdmram2 ( addr. -- x )
+	MRAM_READ #8 lshift or					\ addr FRaddrh
+	MRAM_CS_L
+	spi!							\ send FRaddrh
+	spi!	 						\ send addr
+	spi@							\ x
+	MRAM_CS_H
+	;
+
+\ write procedure for writing 1 word (16bit) to MRAM
+: wrmram2 ( x addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_CS_L
+	MRAM_WREN spi!
+	MRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_WRITE #8 lshift or					\ addr FWaddrh
+	MRAM_CS_L
+	spi!							\ FWaddrh
+	spi!							\ addr
+	spi!							\ x
+	MRAM_CS_H
+	;
+	
+\ read procedure for reading 1 double (32bit) from MRAM
+: rdmram4 ( addr. -- d )
+	MRAM_READ #8 lshift or					\ addr FRaddrh
+	MRAM_CS_L
+	spi!							\ send FRaddrh
+	spi!							\ send addr
+	spi@							\ x
+	spi@							\ x
+	swap
+	MRAM_CS_H
+	;
+
+\ write procedure for writing 1 double (32bit) to MRAM
+: wrmram4 ( d addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_CS_L
+	MRAM_WREN spi!
+	MRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_WRITE #8 lshift or					\ addr FWaddrh
+	MRAM_CS_L
+	spi!							\ FWaddrh
+	spi!							\ addr
+	spi!							\ x
+	spi!							\ x
+	MRAM_CS_H
+	;
+
+\ read procedure for reading 1 quad (64bit) from MRAM
+: rdmram8 ( addr. -- q )
+	MRAM_READ #8 lshift or					\ addr FRaddrh
+	MRAM_CS_L
+	spi!							\ send FRaddrh
+	spi!							\ send addr
+	spi@							\ 
+	>r							\ r:d
+	spi@							\ c 
+	spi@							\ 
+	spi@							\ c b a
+	swap							\ c a b
+	rot							\ a b c
+	r>							\ a b c d
+	MRAM_CS_H
+	;
+
+\ write procedure for writing 1 quad (64bit) to MRAM
+: wrmram8 ( q addr. -- )
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_CS_L
+	MRAM_WREN spi!
+	MRAM_CS_H
+	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
+	[ #10 SPI1CON1 bset, ]					\ 16bit SPI mode
+	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
+	MRAM_WRITE #8 lshift or					\ addr FWaddrh
+	MRAM_CS_L
+	spi!							\ FWaddrh
+	spi!							\ addr
+	spi!							\ x
+	spi!							\ x
+	spi!							\ x
+	spi!							\ x
+	MRAM_CS_H
+	;
+
+\ clears the entire MRAM (512kB)
+: clrmram ( -- )
+	#65535 for 						\ 524288 / 8
+	$0 $0 $0 $0 
+	r@ s>d d2* d2* d2* 					\ calculate double address
+	wrMRAM8 						\ write quad
+	next ;
+\ NOTE: ISSUE WITH FOR-NEXT loop - it will not erase the last 8 bytes here
+
+
