@@ -242,7 +242,7 @@ $0770 constant PMD1
 	#65535 for 						\ 524288 / 8
 	$0 $0 $0 $0 
 	r@ s>d d2* d2* d2* 					\ calculate double address
-	wrMRAM8 						\ write quad
+	wrmram8 						\ write quad
 	next ;
 \ NOTE: ISSUE WITH FOR-NEXT loop - it will not erase the last 8 bytes here
 
