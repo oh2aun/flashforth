@@ -1,5 +1,6 @@
 \ FOR and ?FOR NEXT loops- the DESIGN 
 \ (copyright) Igor Mokos, 27.5.2015
+\ GNU GPL V3
 
 -fortest
 marker -fortest
