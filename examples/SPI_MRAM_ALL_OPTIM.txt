@@ -97,7 +97,7 @@ $0770 constant PMD1
 	;
 	
 \ read procedure for reading 1 byte from MRAM
-: rdmram1 ( addr. -- c )
+: mramb@ ( addr. -- c )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -116,7 +116,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 byte to MRAM
-: wrmram1 ( c addr. -- )
+: mramb! ( c addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -138,7 +138,7 @@ $0770 constant PMD1
 	;
 
 \ read procedure for reading 1 word (16bit) from MRAM
-: rdmram2 ( addr. -- x )
+: mram@ ( addr. -- x )
 	MRAM_READ #8 lshift or					\ addr FRaddrh
 	MRAM_CS_L
 	spi!							\ send FRaddrh
@@ -148,7 +148,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 word (16bit) to MRAM
-: wrmram2 ( x addr. -- )
+: mram! ( x addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -167,7 +167,7 @@ $0770 constant PMD1
 	;
 	
 \ read procedure for reading 1 double (32bit) from MRAM
-: rdmram4 ( addr. -- d )
+: mramd@ ( addr. -- d )
 	MRAM_READ #8 lshift or					\ addr FRaddrh
 	MRAM_CS_L
 	spi!							\ send FRaddrh
@@ -179,7 +179,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 double (32bit) to MRAM
-: wrmram4 ( d addr. -- )
+: mramd! ( d addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -199,7 +199,7 @@ $0770 constant PMD1
 	;
 
 \ read procedure for reading 1 quad (64bit) from MRAM
-: rdmram8 ( addr. -- q )
+: mramq@ ( addr. -- q )
 	MRAM_READ #8 lshift or					\ addr FRaddrh
 	MRAM_CS_L
 	spi!							\ send FRaddrh
@@ -216,7 +216,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 quad (64bit) to MRAM
-: wrmram8 ( q addr. -- )
+: mramq! ( q addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -242,7 +242,7 @@ $0770 constant PMD1
 	#65535 for 						\ 524288 / 8
 	$0 $0 $0 $0 
 	r@ s>d d2* d2* d2* 					\ calculate double address
-	wrmram8 						\ write quad
+	mramq! 						\ write quad
 	next ;
 \ NOTE: ISSUE WITH FOR-NEXT loop - it will not erase the last 8 bytes here
 

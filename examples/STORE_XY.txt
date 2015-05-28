@@ -25,14 +25,14 @@ variable y
 	x @ 800 um*
 	y @ 4 um*
 	d+ 
-	wrfram4 next ;
+	framw! next ;
 	
 : storexy 200 for r@ x ! storex next ;
 
 : readx 200 for 
 	r@ dup y ! dup . 4 um*
 	x @ dup . 800 um*
-	d+ 2dup ud. rdfram4 fs. 
+	d+ 2dup ud. framw@ fs. 
 	x @ s>f fsin y @ s>f fcos f* fs. 
 	cr next ;
 	

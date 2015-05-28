@@ -104,7 +104,7 @@ $0770 constant PMD1
 	;
 	
 \ read procedure for reading 1 byte from fram
-: rdfram1 ( addr. -- c )
+: framb@ ( addr. -- c )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -123,7 +123,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 byte to fram
-: wrfram1 ( c addr. -- )
+: framb! ( c addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -145,7 +145,7 @@ $0770 constant PMD1
 	;
 
 \ read procedure for reading 1 word (16bit) from fram
-: rdfram2 ( addr. -- x )
+: fram@ ( addr. -- x )
 	FRAM_READ #8 lshift or					\ addr FRaddrh
 	FRAM_CS_L
 	spi!							\ send FRaddrh
@@ -155,7 +155,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 word (16bit) to fram
-: wrfram2 ( x addr. -- )
+: fram! ( x addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -174,7 +174,7 @@ $0770 constant PMD1
 	;
 	
 \ read procedure for reading 1 double (32bit) from fram
-: rdfram4 ( addr. -- d )
+: framd@ ( addr. -- d )
 	FRAM_READ #8 lshift or					\ addr FRaddrh
 	FRAM_CS_L
 	spi!							\ send FRaddrh
@@ -186,7 +186,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 double (32bit) to fram
-: wrfram4 ( d addr. -- )
+: framd! ( d addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -206,7 +206,7 @@ $0770 constant PMD1
 	;
 
 \ read procedure for reading 1 quad (64bit) from fram
-: rdfram8 ( addr. -- q )
+: framq@ ( addr. -- q )
 	FRAM_READ #8 lshift or					\ addr FRaddrh
 	FRAM_CS_L
 	spi!							\ send FRaddrh
@@ -223,7 +223,7 @@ $0770 constant PMD1
 	;
 
 \ write procedure for writing 1 quad (64bit) to fram
-: wrfram8 ( q addr. -- )
+: framq! ( q addr. -- )
 	[ #15 SPI1STAT bclr, ]					\ disable SPI, SPI1EN=0
 	[ #10 SPI1CON1 bclr, ]					\ 8bit SPI mode
 	[ #15 SPI1STAT bset, ]					\ enable SPI, SPI1EN=1
@@ -249,7 +249,7 @@ $0770 constant PMD1
 	#32768 for 						\ 262144 / 8
 	$0 $0 $0 $0 
 	r@ s>d d2* d2* d2* 					\ calculate double address
-	wrfram8 						\ write quad
+	framq! 						\ write quad
 	next ;
 	
 	
@@ -267,19 +267,19 @@ spiinit
 
 hex
 
-$88 $17444. wrfram1 $17444. rdfram1
-$1234 $12999. wrfram2 $12999. rdfram2
-$4321 $8765 $20221. wrfram4 $20221. rdfram4 
-$abcd $ef89 $1234 $5678 $3366. wrfram8 $3366. rdfram8
+$88 $17444. framb! $17444. framb@
+$1234 $12999. fram! $12999. fram@
+$4321 $8765 $20221. framd! $20221. framd@ 
+$abcd $ef89 $1234 $5678 $3366. framq! $3366. framq@
 
 decimal
 
 \ Write and Read 40kB of data
 \
-\ : rfm1a 0 count ! cr 40000 for r@ s>d rdfram1 u. count @ dup u. cr  1 + count ! next ;
-: wfmt1 ticks 40000 for data @ r@ s>d wrfram1 next ticks swap - . ; 
-\ : rfm1 40000 for r@ s>d rdfram1 . cr next ;
-: rfmt1 ticks 40000 for r@ s>d rdfram1 drop next ticks swap - . ;
+\ : rfm1a 0 count ! cr 40000 for r@ s>d framb@ u. count @ dup u. cr  1 + count ! next ;
+: wfmt1 ticks 40000 for data @ r@ s>d framb! next ticks swap - . ; 
+\ : rfm1 40000 for r@ s>d framb@ . cr next ;
+: rfmt1 ticks 40000 for r@ s>d framb@ drop next ticks swap - . ;
 \ wfmt1 696msecs at Fcy=27.648MHz :(
 \ rfmt1 544msecs at Fcy=27.648MHz :(
 wfmt1
@@ -287,9 +287,9 @@ rfmt1
 
 \ Write and Read 40kB of data
 \
-: wfmt2 0 count ! ticks 20000 for count @ r@ 2* s>d wrfram2 count @ 1+ count ! next ticks swap - . ; 
-\ : rfm2 0 count ! cr 20000 for r@ 2* s>d rdfram2 u. count @ dup u. 1+ count ! cr next cr ;
-: rfmt2 0 count ! ticks 20000 for r@ 2* s>d rdfram2 drop count @ 1+ count ! next ticks swap - . ;
+: wfmt2 0 count ! ticks 20000 for count @ r@ 2* s>d fram! count @ 1+ count ! next ticks swap - . ; 
+\ : rfm2 0 count ! cr 20000 for r@ 2* s>d fram@ u. count @ dup u. 1+ count ! cr next cr ;
+: rfmt2 0 count ! ticks 20000 for r@ 2* s>d fram@ drop count @ 1+ count ! next ticks swap - . ;
 \ wfmt2 349msecs at Fcy=27.648MHz :(
 \ rfmt2 270msecs at Fcy=27.648MHz :)
 wfmt2
@@ -297,9 +297,9 @@ rfmt2
 
 \ Write and Read 40kB of data
 \
-: wfmt4 0 count ! ticks 10000 for count @ 12345 m* r@ 2* 2* s>d wrfram4 count @ 1+ count ! next ticks swap - . ; 
-\ : rfm4 0 count ! cr 10000 for r@ 2* 2* s>d rdfram4 ud. count @ dup 12345 m* ud. 1+ count ! cr next cr ;
-: rfmt4 0 count ! ticks 10000 for r@ 2* 2* s>d rdfram4 2drop count @ 1+ count ! next ticks swap - . ;
+: wfmt4 0 count ! ticks 10000 for count @ 12345 m* r@ 2* 2* s>d framd! count @ 1+ count ! next ticks swap - . ; 
+\ : rfm4 0 count ! cr 10000 for r@ 2* 2* s>d framd@ ud. count @ dup 12345 m* ud. 1+ count ! cr next cr ;
+: rfmt4 0 count ! ticks 10000 for r@ 2* 2* s>d framd@ 2drop count @ 1+ count ! next ticks swap - . ;
 \ wfmt4 214msecs at Fcy=27.648MHz :)
 \ rfmt4 171msecs at Fcy=27.648MHz :)
 \ 203kB/sec aver.
@@ -308,8 +308,8 @@ rfmt4
 
 \ Write and Read 40kB of data
 \
-: wfmt8 0 count ! ticks 5000 for count @ 12345 m* 2dup r@ 2* 2* 2* s>d wrfram8 count @ 1+ count ! next ticks swap - . ; 
-: rfmt8 0 count ! ticks 5000 for r@ 2* 2* 2* s>d rdfram8 2drop 2drop count @ 1+ count ! next ticks swap - . ;
+: wfmt8 0 count ! ticks 5000 for count @ 12345 m* 2dup r@ 2* 2* 2* s>d framq! count @ 1+ count ! next ticks swap - . ; 
+: rfmt8 0 count ! ticks 5000 for r@ 2* 2* 2* s>d framq@ 2drop 2drop count @ 1+ count ! next ticks swap - . ;
 \ wfmt8 144msecs at Fcy=27.648MHz :)
 \ rfmt8 123msecs at Fcy=27.648MHz :) 
 \ 294kB/sec aver.
