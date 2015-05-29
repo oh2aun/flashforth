@@ -1,0 +1,158 @@
+
+\ DOT TOOLS
+\ copyright IgorM 2010-09-09
+\ v2 WITH TOS AND TOR ON RIGHT SIDE
+\    WITH TOS AND TOR ON BOTTOM
+\ No warranties of any kind
+\ Provided as is
+\ written for amforth, it may work for flashforth
+
+-newdots
+marker -newdots
+
+: u.r 0 swap ud.r ;  \ comment out if installed
+
+: depth sp@ s0 @ - 2/ ;  \ stack depth
+
+: .r >r 0 <# #s #> r> over - spaces type space ;
+
+: rdepth rp0 rp@ - 2/  1- 1- ; 
+
+variable temporary
+
+
+\ SINGLE LINE HEXA STACK
+: .slh
+	sp@ temporary !
+	." ["
+	  depth dup 0 ?do
+		dup 1- i  -
+    		2* temporary @ + 
+    		base @ swap hex @ 6 u.r base !
+  	loop
+	drop ." <TOSH]"
+;
+
+\ SINGLE LINE UNSIGNED STACK
+: .slu
+	sp@ temporary !
+	." ["
+	  depth dup 0 ?do
+		dup 1- i  -
+    		2* temporary @ +
+    		base @ swap decimal @ 6 u.r base !
+  	loop
+	drop ." <TOSU]"
+;
+
+\ SINGLELINE SIGNED STACK
+: .sls
+	sp@ temporary !
+	." ["
+	  depth dup 0 ?do
+		dup 1- i  -
+    		2* temporary @ +
+    		base @ swap decimal @ 6 .r base !
+  	loop
+	drop ." <TOSS]"
+;
+
+\ SINGLELINE SIGNED RSTACK
+: .rls
+	rp@  1- temporary !      \ alignment vs. .s ???
+	." [" 
+	rdepth dup 0 ?do   
+    		dup 1- i -
+    		2* temporary @ +    		
+		base @ swap decimal @ 6 .r base ! 
+  	loop
+	drop ." <TORS]"
+;
+
+\ SINGLELINE UNSIGNED RSTACK
+: .rlu
+	rp@  1- temporary !      \ alignment vs. .s ???
+	." [" 
+	rdepth dup 0 ?do   
+    		dup 1- i -
+    		2* temporary @ +    		
+		base @ swap decimal @ 6 u.r base ! 
+  	loop
+	drop ." <TORU]"
+;
+
+\ SINGLELINE HEXA RSTACK
+: .rlh
+	rp@  1- temporary !      \ alignment vs. .s ???
+	." [" 
+	rdepth dup 0 ?do   
+    		dup 1- i -
+    		2* temporary @ +    		
+		base @ swap hex @ 6 u.r base !
+  	loop
+	drop ." <TORH]"
+;
+
+\ IN COLUMNS DSTACK ON BOTTOM NO ADDRR UNSIGNED SIGNED HEXA 
+: .scb
+	sp@ temporary ! 
+	depth dup 0 ?do
+    		dup 1- i -
+		    dup dup 0 = if ." TOS>|" drop else negate 4 .r ." |" then   	
+    		2* temporary @ +   \ dup 7 u.r 	( prints the address )
+    		dup dup 
+			base @ swap decimal @ 7 u.r base !
+			base @ swap decimal @ 7 .r base !
+			base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;
+
+\ IN COLUMNS DSTACK ON BOTTOM WITH ADDRR UNSIGNED SIGNED HEXA 
+: .sab
+	sp@ temporary !
+	depth dup 0 ?do
+    		dup 1- i -
+    		dup dup 0 = if ." TOS>|" drop else negate 4 .r ." |" then 
+    		2* temporary @ + dup 7 u.r ." |"  ( prints the address )
+    		dup dup 
+			base @ swap decimal @ 7 u.r base !
+			base @ swap decimal @ 7 .r base !
+			base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;
+
+\ IN COLUMNS RSTACK ON BOTTOM WITH ADDRR UNSIGNED SIGNED HEXA 
+: .rcb
+	rp@  1- temporary ! 
+	rdepth dup 0 ?do
+    		dup 1- i -
+		    dup dup 0 = if ." TOR>|" drop else negate 4 .r ." |" then   	
+    		2* temporary @ +   \ dup 7 u.r 	( prints the address )
+    		dup dup 
+			base @ swap decimal @ 7 u.r base !
+			base @ swap decimal @ 7 .r base !
+			base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;
+
+\ IN COLUMNS RSTACK ON BOTTOM WITH ADDRR UNSIGNED SIGNED HEXA 
+: .rab
+	rp@  1- temporary !
+	rdepth dup 0 ?do
+    		dup 1- i -
+    		dup dup 0 = if ." TOR>|" drop else negate 4 .r ." |" then 
+    		2* temporary @ + dup 7 u.r ." |"  ( prints the address )
+    		dup dup 
+			base @ swap decimal @ 7 u.r base !
+			base @ swap decimal @ 7 .r base !
+			base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;

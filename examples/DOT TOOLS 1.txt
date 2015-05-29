@@ -1,0 +1,168 @@
+
+\ DOT TOOLS 1
+\ copyright IgorM 2010-09-06
+\ No warraties of any kind
+\ Provided as-is
+\ written for amforth, it may work with FlashForth
+
+-newdots
+marker -newdots
+
+: u.r       ( s n -- )   0 swap ud.r ;  \ comment if installed
+
+
+\ SINGLE LINE HEXA STACK
+: .slh
+	sp@ 
+	." [TOS> " 
+	depth 1- 0 ?do
+    		dup i
+    		2* +
+    		base @ swap hex @ 6 u.r base !
+  	loop
+	drop ." ]"
+;
+
+
+\ SINGLE LINE UNSIGNED STACK
+: .slu
+	sp@ 
+	." [TOS> " 
+	depth 1- 0 ?do
+    		dup i
+    		2* +
+    		@ 6 u.r
+  	loop
+	drop ." ]"
+	\ cr .slh
+;
+
+
+\ SINGLE LINE SIGNED STACK
+: .sls
+	sp@ 
+	." [TOS> " 
+	depth 1- 0 ?do
+    		dup i
+    		2* +
+    		@ 6 .r 
+  	loop
+	drop ." ]"
+	\ cr .slh
+;
+
+: rdepth rp0 rp@ - 2/  1- 1- ; 
+\ SINGLE LINE SIGNED RSTACK
+: .rls
+	rp@  1-                  \ alignment vs. .s ???
+	." [TOR> " 
+	rdepth 1- 0 ?do   
+    		dup i
+    		2* + 
+    		@ 6 .r 
+  	loop
+	drop ." ]"
+;
+
+\ SINGLE LINE SIGNED AND HEXA STACK
+: .sld
+	sp@ 
+	." [TOS> " 
+	depth 1- 0 ?do
+    		dup i
+    		2* +
+    		@ 6 .r 
+  	loop
+	drop ." ]"
+	cr .slh
+;
+
+\ SINGLE LINE SIGNED AND UNSIGNED AND HEXA STACK
+: .sla
+	sp@ 
+	." [TOS> " 
+	depth 1- 0 ?do
+    		dup i
+    		2* +
+    		@ 6 .r 
+  	loop
+	drop ." ]"
+	cr .slu
+	cr .slh
+;
+
+\ IN COLUMNS NO ADDRR UNSIGNED SIGNED HEXA 
+: .sc
+	sp@ 
+	depth 1- 0 ?do
+    		dup 
+		i dup dup 0 = if ." TOS>" drop else negate 4 .r then   	
+    		2* +      \ dup 7 u.r 	 	( prints the address )
+    		dup dup @ 7 u.r @ 7 .r base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;
+
+\ IN COLUMNS WITH ADDRR UNSIGNED SIGNED HEXA 
+: .sch
+	sp@
+	depth 1- 0 ?do
+    		dup i
+    		dup negate 4 .r
+    		2* + dup 7 u.r 	 	( prints the address )
+    		dup dup @ 7 u.r @ 7 .r base @ swap hex @ 6 u.r base !
+    		cr
+  	loop
+	drop
+;
+
+
+\ AN EXPERIMENT WITH 2DECIMAL
+: .scd
+  sp@ depth 1- 0 ?do
+    dup i
+    dup u.      ( gives the "index" )
+    2* + dup u. ( prints the address )
+    i $0001 and 0 = if dup @ u. 2@ d.  else @ u. then ( content )
+    cr
+  loop
+  drop
+;
+
+\ AN EXPERIMENT WITH 2DECIMAL and FLOAT
+: .scf
+  sp@ depth 1- 0 ?do
+    dup i
+    dup 4 u.r      ( gives the "index" )
+    2* + dup 8 u.r ( prints the address )
+    i $0001 and 0 = if dup dup @ 8 u.r 2@ 12 d.r ."  " f@ fs. else @ 8 u.r then 
+    cr
+  loop
+  drop
+;
+
+\ AN EXPERIMENT WITH 2DECIMAL and FLOAT
+: .scf1
+  sp@ depth 1- 0 ?do
+    dup i
+    dup negate 4 .r      ( gives the "index" )
+    2* + dup 7 u.r ( prints the address )
+    i $0001 and 0 = if dup dup @ 7 u.r 2@ 13 d.r ."   " f@ fs. else @ 7 u.r then 
+    cr
+  loop
+  drop
+;
+
+
+\ AN EXPERIMENT WITH 2DECIMAL and FLOAT
+: .sf
+  sp@ depth 1- 0 ?do
+    dup i
+    dup 4 u.r      ( gives the "index" )
+    2* + dup 8 u.r ( prints the address )
+    i $0001 and 0 = if f@ ."   " fs. else @ 8 u.r then 
+    cr
+  loop
+  drop
+;
