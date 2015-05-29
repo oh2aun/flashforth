@@ -6308,24 +6308,26 @@ REPEAT_:
         rcall   AGAIN
         goto    THEN_
 
-; FOR   -- bc-addr bra-addr
+; Loop N times until Zero, 0 loops 65536 times
+; FOR2   -- bc-addr bra-addr
         .pword  paddr(REPEAT_L)+PFLASH
 9:
         .byte   NFA|IMMED|COMPILE|4
         .ascii  "for2"
         .align  2
-        mlit    handle(TOR)+PFLASH
+        mlit    handle(XFOR2)+PFLASH
         rcall   INLINE_0
         rcall   IHERE
         goto    FALSE_
 
-; ?FOR   -- bc-addr bra-addr
+; Loop N times until Zero, skip initial zero
+; FOR   -- bc-addr bra-addr
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|IMMED|COMPILE|3
         .ascii  "for"
         .align  2
-        mlit    handle(TOR)+PFLASH
+        mlit    handle(XFOR)+PFLASH
         rcall   INLINE_0
         rcall   IHERE
         rcall   UNC
@@ -6334,7 +6336,7 @@ REPEAT_:
         rcall   IHERE
         goto    SWOP
 
-; NEXT bc-addr bra-addr cond --
+; NEXT bc-addr bra-addr --
 
         .pword  paddr(9b)+PFLASH
 9:
@@ -6359,10 +6361,12 @@ NEXT2:
 XNEXT:  
         dec     [--W15], [W15++] ; XNEXT
         return
-
+XFOR2:  dec     [W14], [W14]
+XFOR:   mov     [W14--], [W15++]
+        return
 ; leave clear top of return stack
         .pword  paddr(9b)+PFLASH
-LEAVE_L:
+9:
         .byte   NFA|INLINE|COMPILE|5
         .ascii  "endit"
         .align  2
@@ -6372,8 +6376,8 @@ LEAVE:
         return
 
 ; unnext compile a pop
-        .pword  paddr(LEAVE_L)+PFLASH
-RDROP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|COMPILE|5
         .ascii  "rdrop"
         .align  2
@@ -6384,7 +6388,7 @@ RDROP:
 ; leave clear top of return stack
 
 ; BL      -- char                 an ASCII space
-        .pword  paddr(RDROP_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 BL_L:
         .byte   NFA|INLINE|2
         .ascii  "bl"
