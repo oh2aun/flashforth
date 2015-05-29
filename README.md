@@ -14,11 +14,13 @@ Includes additional floating point math functions..
 
 Includes examples for floating point math..
 
-Includes TeraTerm macro for a fast upload to FF..
+Includes TeraTerm macro for a fast upload of code..
 
-Includes SPI driver for SPI FRAM and MRAM (and examples).
+Includes SPI driver for SPI FRAM and MRAM..
 
-Includes our RECOMMENDED SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops implementation (for any CPU architectures).
+Includes Examples with code, which might be useful..
+
+Includes our SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops implementation (for any CPU/MCU architectures).
 
 And more will come soon!
 
