@@ -6308,26 +6308,14 @@ REPEAT_:
         rcall   AGAIN
         goto    THEN_
 
-; Loop N times until Zero, 0 loops 65536 times
-; FOR2   -- bc-addr bra-addr
-        .pword  paddr(REPEAT_L)+PFLASH
-9:
-        .byte   NFA|IMMED|COMPILE|4
-        .ascii  "for2"
-        .align  2
-        mlit    handle(XFOR2)+PFLASH
-        rcall   INLINE_0
-        rcall   IHERE
-        goto    FALSE_
-
-; Loop N times until Zero, skip initial zero
 ; FOR   -- bc-addr bra-addr
-        .pword  paddr(9b)+PFLASH
+        .pword  paddr(REPEAT_L)+PFLASH
 9:
         .byte   NFA|IMMED|COMPILE|3
         .ascii  "for"
         .align  2
-        mlit    handle(XFOR)+PFLASH
+FOR:
+        mlit    handle(TOR)+PFLASH
         rcall   INLINE_0
         rcall   IHERE
         rcall   UNC
@@ -6344,26 +6332,20 @@ REPEAT_:
         .ascii  "next"
         .align  2
 NEXT:
-        cp0     [W14--]
-        bra     z, NEXT2
-        inc2    W14, W14
         rcall   THENC
-NEXT2:
         mlit    handle(XNEXT)+PFLASH
         rcall   INLINE_0
         rcall   NC
         rcall   UNTILC
         mlit    handle(RDROP)+PFLASH
-        goto    INLINE_0
+        goto    INLINE_0  
 
 ; (next) decrement top of return stack
 ; Works only if inlined.
 XNEXT:  
         dec     [--W15], [W15++] ; XNEXT
         return
-XFOR2:  dec     [W14], [W14]
-XFOR:   mov     [W14--], [W15++]
-        return
+
 ; leave clear top of return stack
         .pword  paddr(9b)+PFLASH
 9:
