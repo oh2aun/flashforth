@@ -1,15 +1,27 @@
-A fork of FlashForth with some addons.
+EXPERIMENTAL_ZZ is a system for providing automated experiments in science and technology.
 
-Includes addtional floating point math functions in float.s
+EXPERIMENTAL_ZZ is focused mainly at advanced experiments in
 
-Includes examples for floating point math.
+	Earth sciences
+	Deep Space exploration
+	Underwater research
 
-Includes TeraTerm macro for a fast upload to FF.
+EXPERIMENTAL_ZZ is based on a fork of FlashForth.
 
-Includes SPI driver for (256kB large) SPI FRAM (and examples).
+In addition, EXPERIMENTAL_ZZ:
 
-Includes my RECOMMENDED DESIGN SPEC for FOR-NEXT and ?FOR-NEXT loops (any CPU architectures).
+Includes additional floating point math functions..
 
-And more coming soon :)
+Includes examples for floating point math..
 
-IgorM 5/2015
+Includes TeraTerm macro for a fast upload to FF..
+
+Includes SPI driver for SPI FRAM and MRAM (and examples).
+
+Includes our RECOMMENDED SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops implementation (for any CPU architectures).
+
+And more will come soon!
+
+Igor de om1zz on 27.5.2015 :)
+
+
