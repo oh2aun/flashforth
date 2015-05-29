@@ -1,0 +1,148 @@
+\ DRIVER FOR PCF8563T RTC CHIP
+\ read/set time on PCF8563 real time clock
+\ c IgorM 9/2010
+\ based on Erich Waelde 2008 PCF8583, bcd>dec, needs i2c.frt, twi.frt
+\ No warranties of any kind
+\ Provided as-is
+\
+\
+\ words: 
+\	get.rtc ( -- x0 .. x5 yy )
+\	set.rtc ( Y m wd d H M S -- )
+\	printdate.rtc ( Y m wd d H M S -- )
+
+\ PCF8563:
+\ addr
+\ 0x00    control1
+\ 0x01    control2
+\ 0x02    6-0: sec.bcd
+\ 0x03    6-0: min.bcd
+\ 0x04    5-0: hour.bcd
+\ 0x05    5-0: day.bcd
+\ 0x06    2-1: weekday.bin
+\ 0x07    4-0: month.bcd
+\ 0x08    7-0: year.bcd / 00-99
+
+-driverPCF8563
+marker -driverPCF8563
+
+hex
+a2 constant i2c_addr_rtc
+decimal
+
+: bcd>dec ( n.bcd -- n.dec )
+  255 and
+  dup
+  4 rshift 10 * 	\ extract high nibble as 10s
+  swap
+  15 and       		\ extract low  nibble as 1s
+  +             	\ add
+;
+
+: dec>bcd ( n.dec -- n.bcd )
+  100 mod      		\ 99 is largest for 8 bit bcd
+  10 /mod
+  4 lshift
+  +
+  255 and       	\ truncate to 8 bit
+;
+ 
+: get.rtc ( -- tos> YY MM WD DD HH MM SS )
+2                     	\ start address
+1 i2c_addr_rtc >i2c   	\ send > rtc
+7 i2c_addr_rtc <i2c   	\ read 7 Bytes
+
+>r >r >r >r >r >r >r  	\ removes garbage
+r> $7f and		\ SS
+r> $7f and		\ MM
+r> $3f and		\ HH
+r> $3f and		\ DD
+r> $07 and		\ WeekDay
+r> $1f and		\ MONTH
+r> $ff and  		\ YY
+;
+
+: u0.r ( u n -- )                  \ uncomment when installed
+ >r 0 <# r> 0 ?do # loop #> type ;
+
+: weekday ( n -- )
+dup 0 = if ." SUN" else
+dup 1 = if ." MON" else
+dup 2 = if ." TUE" else
+dup 3 = if ." WED" else
+dup 4 = if ." THU" else
+dup 5 = if ." FRI" else
+dup 6 = if ." SAT" else
+then then then 
+then then then 
+then drop
+;
+
+\ > printdate.rtc
+\ 2010/09/08-03-23:25:49 ok
+\ 2010/09/08 23:18:18 ok
+: printdate.rtc  ( SS MM HH DD WD MM YY -- )
+  get.rtc
+  ." 20"
+  bcd>dec 2 u0.r 		\ year
+  47 emit			\  /
+  bcd>dec 2 u0.r		\ month
+  47 emit			\  /  
+  swap				\    WeekD <-> date
+  bcd>dec 2 u0.r		\ date
+  45 emit			\ -
+  weekday			\ weekday
+  45 emit			\ -
+\ drop ."  "			\ < comment this and uncomment wd
+  bcd>dec 2 u0.r		\ hh
+  58 emit			\ :  
+  bcd>dec 2 u0.r		\ mm
+  58 emit			\ :
+  bcd>dec 2 u0.r		\ ss
+;
+
+
+\ convert human readable decimal numbers to expected
+\ BCD numbers
+: format2bcd.rtc 
+( dec: YY MM WD DD HH MM SS -- bcd: YY MM WD DD HH MM SS )
+  \ YY MM WD DD HH MM SS 
+ 
+  dec>bcd >r \ sec.bcd
+  dec>bcd >r \ min.bcd
+  dec>bcd >r \ hour.bcd
+  dec>bcd >r \ day.bcd
+	>r \ weekday.bin
+  dec>bcd >r \ month.bcd
+  dec>bcd >r \ year.bcd
+
+  r> r> r> r> r> r> r>
+;
+
+\ convert human unreadable packed BCD numbers to readable
+\ decimal numbers
+: format2dec.rtc 
+( bcd: YY MM WD DD HH MM SS -- dec: YY MM WD DD HH MM SS )
+  \ YY MM WD DD HH MM SS 
+ 
+  bcd>dec >r \ sec.bcd
+  bcd>dec >r \ min.bcd
+  bcd>dec >r \ hour.bcd
+  bcd>dec >r \ day.bcd
+	>r \ weekday.bin
+  bcd>dec >r \ month.bcd
+  bcd>dec >r \ year.bcd
+
+  r> r> r> r> r> r> r>
+;
+
+: set.rtc ( YY MM wd DD HH MM SS --  )
+  format2bcd.rtc
+  0 $20 0                \ stop rtc, bit5 = 1, CNTRL0
+  10 i2c_addr_rtc >i2c   \ send all args
+  0 0 
+  2 i2c_addr_rtc >i2c    \ start rtc
+;
+
+
+

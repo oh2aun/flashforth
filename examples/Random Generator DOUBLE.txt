@@ -1,0 +1,43 @@
+\ RANDOM NUMBER GENERATOR
+\ based on http://www.taygeta.com/fsl/library/r250.seq
+\ Copyright 1994  Everett F. Carter 
+\ mod for amforth IgorM 2010
+\ No warranties of any kind
+\ Provided as is
+
+-rnd
+marker -rnd
+decimal
+
+2147483647. 2constant max32
+
+: ?dup  ( a -- a a | 0 ) dup if dup then ;
+: mu* ( ud1 u--ud2 )  tuck * >r  um*  r> + ;
+: um/ ( ud u--u )  um/mod nip ;
+: mu/ ( ud u--ud )  >r  0 r@  um/mod  r> swap >r  um/  r> ;
+: um*/ ( u1 u2 u3--ud )  >r um*  r> mu/ ;
+: m*/ ( u1 u2 u3--ud )  >r m*  r> mu/ ;
+
+: +d/ ( +d1 +d2--+d3 )  ?dup if  dup 1+  0 1 rot  um/
+                                dup >r  mu*
+                                >r over swap r@ um*/ d-
+                                r> r> m*/  nip 0             
+                          else  mu/
+                          then ;
+: ud* ( ud ud--ud )  dup if  2swap  then  drop  mu* ;
+: 4dup 2dup 2dup ;
+: +d/mod ( +d1 +d2--+d3 +d4 )  4dup  +d/  2dup  >r >r  ud*  d-  r> r> ; 
+
+2variable seed               
+
+68623691. seed 2!
+
+: rnd  ( -- d )  seed 2@ 127773. +d/mod
+                         >r >r
+                         16807 mu*
+                         r> r>
+                         2836 mu* d-
+                         2dup d0< if max32 d+ then
+                         2dup seed 2!
+;
+
