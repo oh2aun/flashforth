@@ -239,12 +239,12 @@ $0770 constant PMD1
 
 \ clears the entire MRAM (512kB)
 : clrmram ( -- )
-	#65535    \ this shall be 0 but FOR does not work with zero yet
+	#.   \ requires IgorM's FOR such it accepts zero and loops 65536x
 	for 						\ 524288 / 8
 	$0 $0 $0 $0 
-	r@ s>d d2* d2* d2* 					\ calculate double address
+	r@ s>d d2* d2* d2* 				\ calculate double address
 	mramq! 						\ write quad
 	next ;
-\ NOTE: Currently BUG WITH 0 FOR-NEXT loop - it will not erase the last 8 bytes here
+\
 
 
