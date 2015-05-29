@@ -1,11 +1,12 @@
 \ Distance and Bearing
 \ Example for FlashForth with floating point installed
-\ Calculates distance in meters and initial bearing degrees based on
-\ latidute and longitude of two points on Earth.
+\ Calculates distance in meters and initial bearing in degrees based on
+\ latidute and longitude (decimal) of two points on Earth.
 \ Uses the Haversine formula
 \ c IgorM 5/2015
 \ GNU GPL v3
 \ No warranties of any kind
+\ Provided as-is
 
 -distbear
 marker -distbear
@@ -44,7 +45,7 @@ fvariable lon2
   f- fatan2 todeg ;
 
 \ lat1  lon1   lat2     lon2 (degree)
-\ 50.0e 15.0e 50.0001e 15.0001.0e distance fs. inibearing fe. (13.22m, 32 43 56 = 32.73222)
+\ 50.0e 15.0e 50.0001e 15.0001e distance fs. inibearing fe. (13.22m, 32 43 56 = 32.73222)
 \ 50.0e 15.0e 60.0e    80.0e      distance fs. inibearing fe. (4108km, 48 56 13 = 48.93694)
 \ 50.0e 15.0e -60.0e   -170.0e    distance fs. inibearing fe. (18860km, 166 01 30 = 166.025)
 
