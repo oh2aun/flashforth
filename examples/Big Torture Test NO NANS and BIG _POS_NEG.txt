@@ -1,0 +1,276 @@
+\ Big Torture TEST for float lib
+\
+\ Note:
+\ The "shall be" results are more precise than could
+\ be calculated with single precision -> for info only
+\
+\ Also remove tests where the math functions are not 
+\ available in the library
+\
+\ IgorM c 2010-2015
+\ GNU GPL v3
+\ No warranties of any kind
+\ Provided as-is
+
+\ THIS VERSION IS WITHOUT NANs AND BIG POSITIVE AND NEGATIVE
+\ TESTS AS THE FF FPOINT LIB HAS GOT ISSUES WITH IT AS OF TODAY
+\ IgorM 29.5.2015
+
+-bigtorture
+marker -bigtorture
+
+decimal
+
+\ 6 set-precision
+
+$0000 $0000 fconstant f0.0
+
+$0418 $423f fconstant f47.754
+$0418 $c23f fconstant f-47.754
+
+$f1a9 $3fb2 fconstant f1.398
+$f1a9 $bfb2 fconstant f-1.398
+
+$0000 $3f80 fconstant f1.0
+$0000 $bf80 fconstant f-1.0
+
+$04f3 $3f35 fconstant f0.7071 ( sqrt2/2 )
+$04f3 $bf35 fconstant f-0.7071
+
+$e147 $3f3a fconstant f0.73
+$e147 $bf3a fconstant f-0.73
+
+$b22d $3edd fconstant f0.433
+$b22d $bedd fconstant f-0.433
+
+$0fda $4049 fconstant fpi
+$0fda $c049 fconstant f-pi
+
+$0fda $3fc9 fconstant fpi/2
+$0fda $bfc9 fconstant f-pi/2
+
+$0000 $4110 fconstant f9
+
+: deg2rad fpi 180 s>f f/ f* ;
+: rad2deg 180 s>f fpi f/ f* ;
+
+: bigtest
+
+1000 0 do
+
+cr ." @@@@@@@@@@@@@@@@@@@@@ loop start @@@@@@@@@@@@@@@@@@@@@@@@@" cr
+
+\ large positive and negative
+cr .s ." large positive and negative" cr .s
+\ $ffff $ff7f fs. ." shall be -3.402823466e+38 "  cr .s
+\ $ffff $7f7f fs.	." shall be 3.402823466e+38 "  cr .s
+
+\ sinus
+cr .s ." sinus" cr .s
+180 s>f deg2rad fsin fs. ." shall be 0.000000 "  cr .s
+90 s>f deg2rad fsin fs. ." shall be 1.000000 "  cr .s
+-180 s>f deg2rad fsin fs. ." shall be 0.000000 "  cr .s
+-90 s>f deg2rad fsin fs. ." shall be -1.000000 "  cr .s
+270 s>f deg2rad fsin fs. ." shall be -1.000000 "  cr .s
+360 s>f deg2rad fsin fs. ." shall be 0.000000 "  cr .s
+-270 s>f deg2rad fsin fs. ." shall be 1.000000 "  cr .s
+-360 s>f deg2rad fsin fs. ." shall be 0.000000 "  cr .s
+
+45 s>f deg2rad fsin fs. ." shall be 0.707106781 "  cr .s
+135 s>f deg2rad fsin fs. ." shall be 0.707106781 "  cr .s
+-45 s>f deg2rad fsin fs. ." shall be -0.707106781 "  cr .s
+-135 s>f deg2rad fsin fs. ." shall be -0.707106781 "  cr .s
+225 s>f deg2rad fsin fs. ." shall be -0.707106781 "  cr .s
+315 s>f deg2rad fsin fs. ." shall be -0.707106781 "  cr .s
+-225 s>f deg2rad fsin fs. ." shall be 0.707106781 "  cr .s
+-315 s>f deg2rad fsin fs. ." shall be 0.707106781 "  cr .s
+
+\ cosinus
+cr .s ." cosinus" cr .s
+180 s>f deg2rad fcos fs. ." shall be -1.000000 "  cr .s
+90 s>f deg2rad fcos fs. ." shall be 0.000000 "  cr .s
+-180 s>f deg2rad fcos fs. ." shall be -1.000000 "  cr .s
+-90 s>f deg2rad fcos fs. ." shall be 0.000000 "  cr .s
+270 s>f deg2rad fcos fs. ." shall be 0.000000 "  cr .s
+360 s>f deg2rad fcos fs. ." shall be 1.000000 "  cr .s
+-270 s>f deg2rad fcos fs. ." shall be 0.000000 "  cr .s
+-360 s>f deg2rad fcos fs. ." shall be 1.000000 "  cr .s
+
+45 s>f deg2rad fcos fs. ." shall be 0.707106781 "  cr .s
+135 s>f deg2rad fcos fs. ." shall be -0.707106781 "  cr .s
+-45 s>f deg2rad fcos fs. ." shall be 0.707106781 "  cr .s
+-135 s>f deg2rad fcos fs. ." shall be -0.707106781 "  cr .s
+225 s>f deg2rad fcos fs. ." shall be -0.707106781 "  cr .s
+315 s>f deg2rad fcos fs. ." shall be 0.707106781 "  cr .s
+-225 s>f deg2rad fcos fs. ." shall be -0.707106781 "  cr .s
+-315 s>f deg2rad fcos fs. ." shall be 0.707106781 "  cr .s
+
+\ tan
+cr .s ." tangent" cr .s
+180 s>f deg2rad ftan fs. ." shall be 0.000000 "  cr .s
+\ 90 s>f deg2rad ftan fs. ." shall be invalid 3.402823e38 "  cr .s
+-180 s>f deg2rad ftan fs. ." shall be 0.000000 "  cr .s
+\ -90 s>f deg2rad ftan fs. ." shall be invalid -3.402823e38 "  cr .s
+\ 270 s>f deg2rad ftan fs. ." shall be invalid 3.402823e38 "  cr .s
+360 s>f deg2rad ftan fs. ." shall be 0.000000 "  cr .s
+\ -270 s>f deg2rad ftan fs. ." shall be invalid -3.402823e38 "  cr .s
+-360 s>f deg2rad ftan fs. ." shall be 0.000000 "  cr .s
+
+45 s>f deg2rad ftan fs. ." shall be 1.000000 "  cr .s
+135 s>f deg2rad ftan fs. ." shall be -1.000000 "  cr .s
+-45 s>f deg2rad ftan fs. ." shall be -1.000000 "  cr .s
+-135 s>f deg2rad ftan fs. ." shall be 1.000000 "  cr .s
+225 s>f deg2rad ftan fs. ." shall be 1.000000 "  cr .s
+315 s>f deg2rad ftan fs. ." shall be -1.000000 "  cr .s
+-225 s>f deg2rad ftan fs. ." shall be -1.000000 "  cr .s
+-315 s>f deg2rad ftan fs. ." shall be 1.000000 "  cr .s
+
+\ asin
+cr .s ." asin" cr .s
+f0.0 fasin rad2deg fs. ." shall be 0.000000 "  cr .s
+f1.0 fasin rad2deg fs. ." shall be 90.000000 "  cr .s
+f-1.0 fasin rad2deg fs. ." shall be -90.000000 "  cr .s
+f0.7071 fasin rad2deg fs. ." shall be 45.000000 "  cr .s
+f-0.7071 fasin rad2deg fs. ." shall be -45.000000 "  cr .s
+\ fpi/2 fasin rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ f-pi/2  fasin rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ 2 s>f fasin rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ -2 s>f fasin rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+
+\ acos
+cr .s ." acos" cr .s
+f0.0 facos rad2deg fs. ." shall be 90.000000 "  cr .s
+f1.0 facos rad2deg fs. ." shall be 0.000000 "  cr .s
+f-1.0 facos rad2deg fs. ." shall be 180.000000 "  cr .s
+f0.7071 facos rad2deg fs. ." shall be 45.000000 "  cr .s
+f-0.7071 facos rad2deg fs. ." shall be 135.000000 "  cr .s
+\ fpi/2 facos rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ f-pi/2  facos rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ 2 s>f facos rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+\ -2 s>f facos rad2deg fs. ." shall be invalid 3.402823e38 "  cr .s
+
+\ atan
+cr .s ." atan" cr .s
+f0.0 fatan rad2deg fs. ." shall be 0.000000 "  cr .s
+f1.0 fatan rad2deg fs. ." shall be 45.000000 "  cr .s
+f-1.0 fatan rad2deg fs. ." shall be -45.000000 "  cr .s
+f0.7071 fatan rad2deg fs. ." shall be 35.26438968 "  cr .s
+f-0.7071 fatan rad2deg fs. ." shall be -35.26438968 "  cr .s
+fpi/2 fatan rad2deg fs. ." shall be 57.5183634 "  cr .s
+f-pi/2  fatan rad2deg fs. ." shall be -57.5183634 "  cr .s
+20 s>f fatan rad2deg fs. ." shall be 87.137594 "  cr .s
+-20 s>f fatan rad2deg fs. ." shall be -87.137594 "  cr .s
+
+
+\ sinh
+cr .s ." sinh" cr .s
+f0.0 fsinh fs. ." shall be 0.000000 "  cr .s
+f1.0 fsinh fs. ." shall be 1.175201193 "  cr .s
+f-1.0 fsinh fs. ." shall be -1.175201193 "  cr .s
+f0.7071 fsinh fs. ." shall be 0.767523145 "  cr .s
+f-0.7071 fsinh fs. ." shall be -0.767523145 "  cr .s
+10 s>f fsinh fs. ." shall be 11013.232874 "  cr .s
+-10 s>f fsinh fs. ." shall be -11013.232874 "  cr .s
+
+\ cosh
+cr .s ." cosh" cr .s
+f0.0 fcosh fs. ." shall be 1.000000 "  cr .s
+f1.0 fcosh fs. ." shall be 1.543080634 "  cr .s
+f-1.0 fcosh fs. ." shall be 1.543080634 "  cr .s
+f0.7071 fcosh fs. ." shall be 1.260591836 "  cr .s
+f-0.7071 fcosh fs. ." shall be 1.260591836 "  cr .s
+10 s>f fcosh fs. ." shall be 11013.232920 "  cr .s
+-10 s>f fcosh fs. ." shall be -11013.232920 "  cr .s
+
+\ tanh
+cr .s ." tanh" cr .s
+f0.0 ftanh fs. ." shall be 0.000000 "  cr .s
+f1.0 ftanh fs. ." shall be 0.761594155 "  cr .s
+f-1.0 ftanh fs. ." shall be -0.761594155 "  cr .s
+f0.7071 ftanh fs. ." shall be 0.608859365 "  cr .s
+f-0.7071 ftanh fs. ." shall be -0.608859365 "  cr .s
+10 s>f ftanh fs. ." shall be 0.9999999958 "  cr .s
+-10 s>f ftanh fs. ." shall be -0.9999999958 "  cr .s
+
+\ exp
+cr .s ." exp" cr .s
+f0.0 fexp fs. ." shall be 1.000000 "  cr .s
+f1.0 fexp fs. ." shall be 2.718281828 "  cr .s
+f-1.0 fexp fs. ." shall be 0.367879441 "  cr .s
+10 s>f fexp fs. ." shall be 22026.465794 "  cr .s
+-10 s>f fexp fs. ." shall be 4.539992976e-5 "  cr .s
+
+
+\ log
+cr .s ." log" cr .s
+\ f0.0 flog fs. ." shall be invalid -3.402823e38  "  cr .s
+f1.0 flog fs. ." shall be 0.000000 "  cr .s
+\ f-1.0 flog fs. ." shall be invalid -3.402823e38 "  cr .s
+10 s>f flog fs. ." shall be 2.302585092 "  cr .s
+\ -10 s>f flog fs. ." shall be invalid -3.402823e38 "  cr .s
+10000 s>f flog fs. ." shall be 9.210340371 "  cr .s
+\ -10000 s>f flog fs. ." shall be invalid -3.402823e38 "  cr .s
+
+\ log10
+cr .s ." log10" cr .s
+\ f0.0 flog10 fs. ." shall be invalid -3.402823e38  "  cr .s
+f1.0 flog10 fs. ." shall be 0.000000 "  cr .s
+\ f-1.0 flog10 fs. ." shall be invalid -3.402823e38 "  cr .s
+10 s>f flog10 fs. ." shall be 1.000000 "  cr .s
+\ -10 s>f flog10 fs. ." shall be invalid -3.402823e38 "  cr .s
+10000 s>f flog10 fs. ." shall be 4.000000 "  cr .s
+\ -10000 s>f flog10 fs. ." shall be invalid -3.402823e38 "  cr .s
+
+\ POW HERE
+\ pow
+cr .s ." pow" cr .s
+f0.0 f0.0 fpow fs. ." shall be 1.000000  "  cr .s
+f1.0 f1.0 fpow fs. ." shall be 1.000000 "  cr .s
+f-1.0 f1.0 fpow fs. ." shall be -1.000000 "  cr .s
+f-1.0 f-1.0 fpow fs. ." shall be -1.000000 "  cr .s
+fpi fpi fpow fs. ." shall be 36.462159607 "  cr .s
+fpi f-pi fpow fs. ." shall be 0.0274256931 "  cr .s
+fpi 33 s>f fpow fs. ." shall be 25465124213045828.470 "  cr .s
+f-pi 33 s>f fpow fs. ." shall be -25465124213045828.470 "  cr .s
+f-pi -33 s>f fpow fs. ." shall be -3.92693941578e-17 "  cr .s
+fpi -33 s>f fpow fs. ." shall be 3.92693941578e-17 "  cr .s
+
+\ atan2
+cr .s ." atan2" cr .s
+\ f0.0 f0.0 fatan2 fs. ." shall be invalid 3.402823e38 "  cr .s
+f1.0 f1.0 fatan2 fs. ." shall be 0.78539816339 "  cr .s
+f-1.0 f1.0 fatan2 fs. ." shall be -0.78539816339 "  cr .s
+f-1.0 f-1.0 fatan2 fs. ." shall be -2.356194490192345 "  cr .s
+fpi fpi fatan2 fs. ." shall be 7.853981633974483e-1 "  cr .s
+fpi f-pi fatan2 fs. ." shall be 2.356194490192345 "  cr .s
+fpi 33 s>f fatan2 fs. ." shall be 9.491373277902774e-2 "  cr .s
+f-pi 33 s>f fatan2 fs. ." shall be -9.491373277902774e-2 "  cr .s
+f-pi -33 s>f fatan2 fs. ." shall be -3.0466789208107654 "  cr .s
+fpi -33 s>f fatan2 fs. ." shall be 3.0466789208107654 "  cr .s
+
+\ calcs
+cr .s ." calcs" cr .s
+f-0.73 fsin f-0.433 fcos f+ fs. ." shall be  0.240841413 "  cr .s
+f0.73 fsin f0.433 fcos f+ fs. ." shall be  1.574580683 "  cr .s
+f-pi fsin f47.754 fcos f+ fs. ." shall be -0.807962581 "  cr .s
+f-pi/2 fsin f1.398 fcos f+ fs. ." shall be -0.828062298 "  cr .s
+
+f0.73 flog f-0.433 fexp f* fs. ." shall be -0.204108955 "  cr .s
+f0.73 f-1.398 fpow f47.754 flog10 f/ fs. ." shall be 0.924743787 "  cr .s
+
+f-0.73 fasin f-0.433 facos f- fs. ." shall be -2.836936582 "  cr .s
+f-1.398 fatan f0.73 fasin f+ fs. ." shall be -0.131548574 "  cr .s
+
+f-1.398 fsinh f0.433 fcosh f47.754 f+ f+ fsqrt fs. ." shall be 6.85194971 "  cr .s
+f0.73 ftanh fsqrt fs. ." shall be 0.789344886 "  cr .s
+
+f-0.73 f1.398 fatan2 fs. ." shall be -0.481229461 "  cr .s
+
+2 s>f 32 s>f fpow fs. ." shall be 4294967296 "  cr .s
+
+f1.398 f47.754 fpow fsqrt fs. ." shall be 2980.401214 "  cr .s
+
+
+cr .s ." @@@@@@@@@@@@@@@@@@@@@ loop end @@@@@@@@@@@@@@@@@@@@@@@@@" cr .s
+
+loop ;
