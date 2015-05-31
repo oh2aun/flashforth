@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          19.01.2015                                        *
+;    Date:          31.05.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -488,6 +488,7 @@ irq_async_rx_2:
 irq_async_rx_3:
 #if FC_TYPE_SW == ENABLE
         addlw   0x04                    ; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
+        btfss    FLAGS2, fFC, A         ; receive xoff if FC is off
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
         incf    RXcnt, F, A
@@ -1679,26 +1680,25 @@ TX0:
         sublw   h'6'                 ;discard char if USB not in CONFIGURED_STATE
         bnz     TX0_1
 
+        movlw   d'15'                ; IN end point buffer size - 1 = 15
+        subwf   TX0cnt, W, A         ; TX0cnt - W
+        bnn     TX0                  ; PAUSE if there is no space in buffer
         banksel ep3Bi
-        btfss   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
-        bra     TX0_0                ; Put char in USB buffer if UB TX is ready
-
-        clrf    TX0cnt, A
-        bra     TX0                  ; PAUSE if the USB TX is not ready
+        btfsc   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
+        bra     TX0                  ; Skip sending if UB TX is not ready
 TX0_0:
-        movf    ms_count, W, A
-        addlw   h'3'
-        movwf   TX0tmr, A
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
         movf    TX0cnt, W, A
         movff   Sminus, TWrw
         incf    TX0cnt, F, A
         movlw   d'15'                ; IN end point buffer size - 1 = 15
-        subwf   TX0cnt, W, A
-        bnz     TX0_2
+        subwf   TX0cnt, W, A         ; TX0cnt - W
+        bnz     TX0_2                ; Skip sending if there is space in buffer
 TX0_SEND:                            ; Called from PAUSE in case of timeout
         banksel ep3Bi
+        btfsc   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
+        bra     TX0_2                ; Skip sending if UB TX is not ready
         movf    TX0cnt, W, A
         movwf   ep3Bi+1, BANKED      ; BD3.COUNTER
         movlw   0x40
@@ -1711,7 +1711,11 @@ TX0_SEND:                            ; Called from PAUSE in case of timeout
 TX0_1:
         movf    Sminus, W, A
         movf    Sminus, W, A
-TX0_2:  
+        return
+TX0_2:
+        movf    ms_count, W, A
+        addlw   h'3'
+        movwf   TX0tmr, A
         return
 ;***************************************************
 ; KEY   -- c    get character from the USB line
@@ -2332,7 +2336,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        123456789012 +   11  + 012345678901234567890
-        db d'35'," FlashForth ",PICTYPE," 19.01.2015\r\n"
+        db d'35'," FlashForth ",PICTYPE," 31.05.2015\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
