@@ -112,6 +112,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ C_EXAMPLE, 0
 
 ; Include the 32-bit float number support
+; Load also pic24/forth/float.txt
 .equ FLOATS, 1
 
 ; Set to 1 to allow control-o to reset FlashForth
@@ -121,7 +122,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ; Method 2 updates flash and eeprom after no flash or eeprom
 ; update requests have been made for a time of WRITE_TIMEOUT
 .equ WRITE_METHOD, 2
-.equ WRITE_TIMEOUT, 1022         ; milliseconds
+.equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
 .equ PFLASH,         0x800+RAM_SIZE

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          26.05.2015                                        *
+;    Date:          31.05.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 26.05.2015\r\n"
+        .ascii  " FlashForth PIC24 31.05.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1620,6 +1620,12 @@ ISTORE_SUB:
         bset    iflags, #idirty
 .if WRITE_METHOD == 2
 SET_FLASH_W_TMO:
+        btsc    iflags, #idirty
+        bra     SET_FLASH_W_TMO2
+        btsc    iflags, #edirty
+        bra     SET_FLASH_W_TMO2
+        return
+SET_FLASH_W_TMO2:
         bset    iflags, #WTMO
         mov     ms_count, W3
         add     #WRITE_TIMEOUT, W3
@@ -5638,17 +5644,16 @@ QUIT1:
         rcall   ACCEPT
         rcall   SPACE_
         rcall   INTERPRET
+.if WRITE_METHOD == 2
+        rcall   SET_FLASH_W_TMO
+.endif
         rcall   STATE
         cp0     [W14--]
         bra     nz, QUIT1
-.if WRITE_METHOD == 2
-        btss    iflags, #edirty
-.endif
+.if WRITE_METHOD == 1
         rcall   IFLUSH
-.if WRITE_METHOD == 2
-        btss    iflags, #edirty
-.endif
         rcall   DP_TO_EEPROM ; If dirty then write after timeout in PAUSE
+.endif
         rcall   XSQUOTE
         .byte   3
         .ascii  " ok"
