@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 17.05.2015\r\n"
+        .ascii  " FlashForth PIC24 MOD?? 17.05.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -5691,8 +5691,8 @@ QABORTQ_L:
         .align  2
 QABORTQ:
         rcall   XSQUOTE
-        .byte   1
-        .ascii  "?"
+        .byte   2
+        .ascii  "??"
         .align  2
         bra     QABORT
 
