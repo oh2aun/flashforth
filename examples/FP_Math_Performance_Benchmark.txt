@@ -1,0 +1,112 @@
+\  Test floating point
+\  IgorM c 2015
+\  Under GNU GPL v3
+\  v.2.0
+\    2.6.2015:
+\     Fixed Fcy conversion
+\     Added more functions
+
+-mytest1
+marker -mytest1
+
+11111 s>f fconstant                     _1e4
+-11111 s>f 10000 s>f f/ fconstant         _-1
+11111 s>f 10000 s>f f/ fconstant         _1
+
+\ average cpu clocks per instruction
+1.5e fconstant cpi   
+\ 1 s>f fconstant cpi
+\ 2 s>f fconstant cpi
+\ 4 s>f fconstant cpi
+
+fvariable emptyloop
+
+: tst_empty 30000 for _-1 _1e4 fdrop fdrop next ;
+: bempty ticks tst_empty ticks swap - s>f 1000 s>f 
+f/ 30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ fdup emptyloop f! fe. ." CPU INSTRs emptyloop loop" ;
+
+
+: tst+ 30000 for _-1 _1e4 f+ fdrop next ;
+: b+ ticks tst+ ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per f+" ;
+
+
+: tst- 30000 for _-1 _1e4 f- fdrop next ;
+: b- ticks tst- ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per f-" ;
+
+
+: tst* 30000 for _-1 _1e4 f* fdrop next ;
+: b* ticks tst* ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per f*" ;
+
+
+: tst/ 30000 for _-1 _1e4 f/ fdrop next ;
+: b/ ticks tst/ ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per f/" ;
+
+
+: tstsin 30000 for _-1 fsin fdrop next ;
+: bsin ticks tstsin ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fsin" ;
+
+: tstcos 30000 for _-1 fcos fdrop next ;
+: bcos ticks tstcos ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fcos" ;
+
+: tsttan 30000 for _-1 ftan fdrop next ;
+: btan ticks tsttan ticks swap - s>f 1000 s>f f/ 30000 
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per ftan" ;
+
+: tstlog 30000 for _1 flog fdrop next ;
+: blog ticks tstlog ticks swap - s>f 1000 s>f f/ 30000
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per flog" ;
+
+: tstexp 30000 for _1 fexp fdrop next ;
+: bexp ticks tstexp ticks swap - s>f 1000 s>f f/ 30000
+s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fexp" ;
+
+: tstsqrt 30000 for _1e4 fsqrt fdrop next ;
+: bsqrt ticks tstsqrt ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fsqrt" ;
+
+: tstpow 30000 for _1e4 _-1 fpow fdrop next ;
+: bpow ticks tstpow ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fpow" ;
+
+: tstatan2 30000 for _1 _-1 fatan2 fdrop next ;
+: batan2 ticks tstatan2 ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fatan2" ;
+
+: tstsinh 30000 for _-1 fsinh fdrop next ;
+: bsinh ticks tstsinh ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fsinh" ;
+
+: tstcosh 30000 for _-1 fcosh fdrop next ;
+: bcosh ticks tstcosh ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per fcosh" ;
+
+: tsttanh 30000 for _-1 ftanh fdrop next ;
+: btanh ticks tsttanh ticks swap - s>f 1000 s>f f/ 
+30000 s>f f/ Fcy #0 d>f 1000 s>f f* f* cpi f/ emptyloop f@ f- fe. ." CPU INSTRs per ftanh" ;
+
+\ bempty must be run before other benchmarks
+bempty
+
+\ Results PIC24 (assuming 1.5 clocks per instruction)
+b+ 152.576e0 CPU INSTRs per f+ ok<#,ram>
+b- 152.576e0 CPU INSTRs per f- ok<#,ram>
+b* 81.9200e0 CPU INSTRs per f* ok<#,ram>
+b/ 260.096e0 CPU INSTRs per f/ ok<#,ram>
+bsin 1.48070e3 CPU INSTRs per fsin ok<#,ram>
+bcos 1.98963e3 CPU INSTRs per fcos ok<#,ram>
+btan 1.90874e3 CPU INSTRs per ftan ok<#,ram>
+blog 1.65683e3 CPU INSTRs per flog ok<#,ram>
+bexp 2.03878e3 CPU INSTRs per fexp ok<#,ram>
+bsqrt 319.488e0 CPU INSTRs per fsqrt ok<#,ram>
+bpow 5.77741e3 CPU INSTRs per fpow ok<#,ram>
+batan2 2.15962e3 CPU INSTRs per fatan2 ok<#,ram>
+bsinh 2.59584e3 CPU INSTRs per fsinh ok<#,ram>
+bcosh 2.54362e3 CPU INSTRs per fcosh ok<#,ram>
+btanh 2.76992e3 CPU INSTRs per ftanh ok<#,ram>
+
