@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          31.05.2015                                        *
+;    Date:          3.06.2015                                         *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -107,7 +107,7 @@
 .equ utoin,        - 2          ; Input stream
 .equ uhp,            0          ; Hold pointer
 .equ urbuf,        ustart-us0 + UADDSIZE + 2        ; return stack
-.equ usbuf,        urbuf + RETURN_STACK_SIZE        ; Parameter stack
+.equ usbuf,        urbuf + RETURN_STACK_SIZE                   ; Parameter stack
 .equ usbuf0,       usbuf - 2
 .equ utibbuf,      usbuf + PARAMETER_STACK_SIZE ; Terminal Input buffer
 
@@ -292,7 +292,7 @@ RETFIE_T1_0:
 __U1RXInterrupt:
         push.s
         push    TBLPAG
-        add     #4, W14
+        lnk     #INTERRUPT_STACK_FRAME
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -342,7 +342,7 @@ __U1RXInterrupt3:
         btsc    U1STA, #URXDA
         bra     __U1RXInterrupt0
 __U1RXTXIRQ_END:
-        sub     #4, W14
+        ulnk
         pop     TBLPAG
 ALT_INT_EXIT:
         pop.s
@@ -360,7 +360,7 @@ U1RX_ERR1:
 __U1TXInterrupt:
         push.s
         push    TBLPAG
-        add     #4, W14
+        lnk     #INTERRUPT_STACK_FRAME
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
         btsc    U1STA, #UTXBF
@@ -379,7 +379,7 @@ __U1TXInterrupt0:
 __U2RXInterrupt:
         push.s
         push    TBLPAG
-        add     #4, W14
+        lnk     #INTERRUPT_STACK_FRAME
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -443,7 +443,7 @@ U2RX_ERR1:
 __U2TXInterrupt:
         push.s
         push    TBLPAG
-        add     #4, W14
+        lnk     #INTERRUPT_STACK_FRAME
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
         btsc    U2STA, #UTXBF
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 31.05.2015\r\n"
+        .ascii  " FlashForth PIC24 03.06.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1266,17 +1266,17 @@ BRACKETI:
         push    TBLPAG  ; Used by eeprom access
         push    W13     ; Preg        
         push    RCOUNT  ; used by repeat
-        add     #4, W14
+        lnk     #INTERRUPT_STACK_FRAME
         return
 
 ; i] ( -- ) exit the interrupt context
         .pword   paddr(BRACKETI_L)+PFLASH
-IBRACKET_L:
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "i]"
         .align  2
 IBRACKET:
-        sub     #4, W14
+        ulnk
         pop     RCOUNT  ; used by repeat
         pop     W13     ; Preg
         pop     TBLPAG  ; Used by eeprom access
@@ -1285,9 +1285,17 @@ IBRACKET:
 .endif
         return
 
+; isfs ( -- n ) Interrupt stack frame size
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "isfs";rsfs psfs
+        .align  2
+        mlit    INTERRUPT_STACK_FRAME
+        return
 
 ; di ( -- ) disable interrupts
-        .pword   paddr(IBRACKET_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 DI_L:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "di"
@@ -2783,10 +2791,18 @@ ROT_L:
 ROT:
         mov     [W14-0x4], W0
         mov     [W14-0x2], W1
-        mov     [W14], W2 
+        mov     [W14], W2
         mov     W1, [W14-0x4]
         mov     W2, [W14-0x2]
         mov     W0, [W14]
+.if 0
+        mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14--], W0
+        mov     W1, [++W14]
+        mov     W2, [++W14]
+        mov     W0, [++W14]
+.endif
         return
         
         .pword  paddr(ROT_L)+PFLASH

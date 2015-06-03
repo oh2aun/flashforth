@@ -16,7 +16,7 @@
 config __FOSCSEL, IESO_ON & FNOSC_PRI
 config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-;config FWDT,
+config __FWDT, WDTPOST_PS1024
 ;config FPOR,
 ;config FICD, ICS_PGD3
 
@@ -68,10 +68,10 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 1
+.equ IDLE_MODE, 0
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
@@ -85,7 +85,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 31  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 63
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -94,8 +94,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE, 96           ; 48 cells return stack
+.equ RETURN_STACK_SIZE, 160          ; 80 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
+.equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt parameter stack frame on return stack
 .equ TIB_SIZE, 84                    ; 84 chars tib size
 .equ HOLD_SIZE, 10                   ; 10 chars hold area
 

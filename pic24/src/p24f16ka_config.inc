@@ -56,9 +56,10 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE, 96           ; 48 cells return stack
+.equ RETURN_STACK_SIZE, 128          ; 64 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
-.equ TIB_SIZE, 74                    ; 74 chars tib size
+.equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt stack frame  on return stack
+.equ TIB_SIZE, 84                    ; 84 chars tib size
 .equ HOLD_SIZE, 10                   ; 10 chars hold area
 
 ;;; Storage space for OPERATOR uservariables 2 and upwards

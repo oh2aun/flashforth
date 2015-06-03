@@ -238,3 +238,66 @@ CFACOS_:
         return
 
 
+; Additional math words, IgorM
+
+		.pword  paddr(9b)+PFLASH
+; float atan2
+9:
+        .byte   NFA|6
+        .ascii  "fatan2"
+        .align  2
+CFATAN2_:
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _atan2f
+        rcall    _atan2f
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+; float cosh
+9:
+        .byte   NFA|5
+        .ascii  "fcosh"
+        .align  2
+CFCOSH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _coshf
+        rcall    _coshf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+; float sinh
+9:
+        .byte   NFA|5
+        .ascii  "fsinh"
+        .align  2
+CFSINH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _sinhf
+        rcall    _sinhf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
+
+       .pword  paddr(9b)+PFLASH
+; float tanh
+9:
+        .byte   NFA|5
+        .ascii  "ftanh"
+        .align  2
+CFTANH_:
+        mov     [W14--], W1
+        mov     [W14], W0
+        .extern _tanhf
+        rcall    _tanhf
+        mov     W0, [W14++]
+        mov     W1, [W14]
+        return
