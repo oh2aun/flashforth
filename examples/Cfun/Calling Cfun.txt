@@ -1,0 +1,24 @@
+....
+
+FCY_:
+        mov     #(FCY/1000), W0
+        mov     W0, [++W14]
+        return
+
+.if FLOATS == 1
+.include "floats.s"
+.endif
+
+.if C_EXAMPLE == 1
+.include "Cfun.s"
+.endif
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|INLINE|5
+        .ascii  "false"
+        .align  2
+FALSE_:                     ; TOS is 0000 (FALSE)
+        clr     [++W14]
+	
+....
