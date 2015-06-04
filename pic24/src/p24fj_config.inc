@@ -92,7 +92,7 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .equ C_EXAMPLE, 0
 
 ; Include the 32-bit float number support
-.equ FLOATS, 1
+.equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
 .equ CTRL_O_WARM_RESET, 1

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          3.06.2015                                         *
+;    Date:          4.06.2015                                         *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -292,7 +292,7 @@ RETFIE_T1_0:
 __U1RXInterrupt:
         push.s
         push    TBLPAG
-        lnk     #INTERRUPT_STACK_FRAME
+        lnk     #6                    ; 3 cell parameter stack
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -360,7 +360,7 @@ U1RX_ERR1:
 __U1TXInterrupt:
         push.s
         push    TBLPAG
-        lnk     #INTERRUPT_STACK_FRAME
+        lnk     #4                      ; 2 cell parameter stack
         bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
         btsc    U1STA, #UTXBF
@@ -379,7 +379,7 @@ __U1TXInterrupt0:
 __U2RXInterrupt:
         push.s
         push    TBLPAG
-        lnk     #INTERRUPT_STACK_FRAME
+        lnk     #6             ; 3 cell parameter stack
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
         bset    iflags, #istream      ; Indicate UART activity.
@@ -443,7 +443,7 @@ U2RX_ERR1:
 __U2TXInterrupt:
         push.s
         push    TBLPAG
-        lnk     #INTERRUPT_STACK_FRAME
+        lnk     #4        ; 2 Cell parameter stack
         bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
         btsc    U2STA, #UTXBF
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 03.06.2015\r\n"
+        .ascii  " FlashForth PIC24 04.06.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1283,15 +1283,6 @@ IBRACKET:
 .ifndecl INTTREG
         pop.s           ; W0...W3
 .endif
-        return
-
-; isfs ( -- n ) Interrupt stack frame size
-        .pword   paddr(9b)+PFLASH
-9:
-        .byte   NFA|4
-        .ascii  "isfs";rsfs psfs
-        .align  2
-        mlit    INTERRUPT_STACK_FRAME
         return
 
 ; di ( -- ) disable interrupts
