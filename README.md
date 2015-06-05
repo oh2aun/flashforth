@@ -8,19 +8,15 @@ EXPERIMENTAL_ZZ is focused mainly at advanced experiments in
 
 EXPERIMENTAL_ZZ is based on a fork of FlashForth.
 
-In addition, EXPERIMENTAL_ZZ:
+In addition, EXPERIMENTAL_ZZ includes:
 
-Includes additional floating point math functions..
-
-Includes examples for floating point math..
-
-Includes TeraTerm macro for a fast upload of code..
-
-Includes SPI driver for SPI FRAM and MRAM..
-
-Includes Examples with code, which might be useful..
-
-Includes our SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops implementation (for any CPU/MCU architectures).
+	Additional floating point math functions..
+	Examples for floating point math..
+	TeraTerm macro for a fast upload of code..
+	SPI driver for SPI FRAM and MRAM..
+	PIC24/33 Clock and Baudrate Calc sheet..
+	Examples with source, which might be useful..
+	SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops..
 
 And more will come soon!
 
