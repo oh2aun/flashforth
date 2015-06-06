@@ -18,9 +18,10 @@ In addition, EXPERIMENTAL_ZZ includes:
 	Examples with source, which might be useful..
 	SPECIFICATION for FOR-NEXT and ?FOR-NEXT loops..
 	How to call a complex C function with many arguments..
+	Double Precison Math introduction..
 
 And more will come soon!
 
-Igor de om1zz on 27.5.2015 :)
+Igor de om1zz on 6.6.2015 :)
 
 

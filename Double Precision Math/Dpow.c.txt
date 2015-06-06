@@ -1,0 +1,14 @@
+// Calling user's C function
+// POW(x,y) - DOUBLE PRECISION CALCULATION
+//
+// IgorM (c) 6.6.2015
+
+#include <stddef.h>
+#include <math.h>
+
+
+double Dpow( double x, double y) {
+
+	return pow(x,y);
+}
+
