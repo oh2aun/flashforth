@@ -1,14 +1,15 @@
 // Calling user's C function
 // Examples
-// Mind we are in XC16
-// 	int is 16bit
-// 	long int is 32bit
-// 	float is 32bit
+// Mind we are in XC16:
+// 	int 		is 16bit
+// 	long int 	is 32bit
+// 	float 		is 32bit
 //
 // Note: you have to enable "Init data section" in the xc16-ld settings!
+//
+// Ctest.c shall be added to Source files (within the project)
+//
 // IgorM (c) 6.6.2015
-
-
 
 #include <stddef.h>
 #include <math.h>
@@ -21,7 +22,7 @@
     c = c * b;
     d = c - d;
     e = e * d;
-    return e;    // -200000000
+    return e;    
 }
 */
 
@@ -36,7 +37,7 @@ float Ctest(int a, int b, long int c, float x, float y)
     c = c * b;
     x = sqrtf((float)c - x);
     y = y / x;
-    return y;    // 4.5894021E-1
+    return y;   
 }
 
 // decimal 100 2000 5. $0fdb $4049 $0fdb $4049 Ctest hex ok<#,ram> fa36 3eea
@@ -56,6 +57,7 @@ float Ctest(int a, int b, long int c, float x, float y)
     return y; 
 }
 */
+// $0fdb $4049 2constant pi
 // decimal 900 -20000 -5. pi pi Ctest hex  ok<$,ram> 5b81 be04
 // -1.292553E-1
 
