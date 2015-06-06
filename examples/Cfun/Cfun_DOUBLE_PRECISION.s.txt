@@ -1,0 +1,58 @@
+; Calling user's C function
+;
+; Example: Calling C finction with DOUBLE PRECISION result
+;
+; IgorM (c) 3.6.2015
+;
+; XC16 compiler doc says:
+; 	. the caller shall save/restore the W0-W7
+; 	. registers W8 to W14 are callee saved, W14 will be used as a frame pointer
+; 	. function arguments are passed in registers W0-W7 (left to right)
+; 	. function return value is in W0-W3
+;
+; What fits into W0-W7 arguments and W0-W1 returned (examples):
+; 	float Ctest( int a, int b, long int c, float x, float y)
+; 	long int Ctest( int a, int b, long int c, long int d, long int e)
+;	double Ctest( double x, double y)
+;
+; Place this Cfun.s into ../src/ folder
+;
+
+	.pword  paddr(9b)+PFLASH
+; Ctest
+9:
+	.byte   NFA|5
+	.ascii  "Ctest"
+	.align  2
+CCTEST_:
+	push	W0
+	push	W1
+	push	W2
+	push 	W3
+	push	W4
+	push	W5
+	push	W6
+	push 	W7
+	;mov     [W14--], W7
+	;mov     [W14--], W6
+	;mov     [W14--], W5
+	;mov     [W14--], W4
+	;mov     [W14--], W3
+	;mov     [W14--], W2
+	;mov     [W14--], W1
+	mov     [W14], W0	; int a
+	.extern _Ctest
+	call  _Ctest
+	mov     W0, [W14++]
+	mov     W1, [W14++]
+	mov     W2, [W14++]
+	mov     W3, [W14]   ; returns 64bit double 
+	pop     W7
+	pop     W6
+	pop     W5
+	pop     W4
+	pop     W3
+	pop     W2
+	pop     W1
+	pop     W0
+	return

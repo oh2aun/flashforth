@@ -1,0 +1,37 @@
+// Calling user's C function
+// Examples - DOUBLE PRECISION CALCULATION
+//
+// Mind we are in XC16:
+// 	int 		is 16bit
+// 	long int 	is 32bit
+// 	float 		is 32bit
+//
+// Note: you have to enable "Init data section" in the xc16-ld settings!
+//
+// This Ctest.c shall be added to Source files (within the project)
+//
+// IgorM (c) 6.6.2015
+
+#include <stddef.h>
+#include <math.h>
+
+
+double Ctest( int degree_x) {
+
+#define torad(x) x*3.1415926535897932384626433832795/180.0
+#define todeg(x) x*180.0/3.1415926535897932384626433832795
+
+    double temp = (double) degree_x;
+
+    temp = sin(torad(temp));
+    temp = cos(torad(temp));
+    temp = tan(torad(temp));
+    temp = todeg(atan(temp));
+    temp = todeg(acos(temp));
+    temp = todeg(asin(temp));
+
+    return temp;
+}
+
+// 9 Ctest hex  ok<$,ram> e23b 0 0 4022
+// 0x402200000000e23b = 9.00000000010287770635
