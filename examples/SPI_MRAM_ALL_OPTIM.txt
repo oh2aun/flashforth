@@ -63,7 +63,7 @@ $0770 constant PMD1
 	[ #15 latb bclr, ]
 	;
 
-: spiinit
+: mraminit
 	$ffff adpcfg !						\ all RBx digital pins
 	$4fff trisb !						\ RB14 input, RB12,13,15 output, 1-input 0-output
 	MRAM_CS_H						\ deselect MRAM
