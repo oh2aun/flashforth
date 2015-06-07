@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          10.01.2015                                        *
+;    Date:          07.06.2015                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2014  Mikael Nordman
+; Copyright (C) 2015  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "10.01.2015"
+#define DATE "07.06.2015"
 
 
 ; Register definitions
@@ -2613,8 +2613,8 @@ TIBSIZE_L:
 TIBSIZE:
         rcall   TASK
         rcall   FETCH_A
-        adiw    tosl, 5
-        jmp     CFETCH
+        adiw    tosl, 8
+        jmp     FETCH
 
 ; TIB     -- a-addr        Terminal Input Buffer
         fdw     TIBSIZE_L
@@ -5723,8 +5723,8 @@ OPERATOR:
         fdw     OPERATOR_AREA
 OPERATOR_AREA:
         .dw     up0
-        .db     0, ursize
-        .db     ussize, utibsize
+        .dw     0, ursize
+        .dw     ussize, utibsize
 
         fdw     OPERATOR_L
 ICOMMA_L:

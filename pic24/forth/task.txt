@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          02.03.2014                                      *
+\    Date:          07.06.2015                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 30 33                                    *
 \    Copyright:     Mikael Nordman                                  *
@@ -58,7 +58,7 @@ hex ram
   up@ s0 - dup          \ Basic size     ts ss rs as bs bs
   ram here flash + ,    \ User pointer   ts ss rs as bs
   4 for
-    over c, +
+    over , +
   next
   cell+                 \ Task size
   ram allot
@@ -75,7 +75,7 @@ hex ram
     \ Pointer to task area
     dup 2- task ! 0 task 2+ !
     \ rsave = uarea+cell+addsize+cell
-    c@+ up@ + cell+ rot >xa over 
+    @+ up@ + cell+ rot >xa over
                             \ rsize-addr rbuf task-adr rbuf
     \ Store taskloop-addr in the return stack
     !                 \ rsize-addr rbuf
@@ -85,8 +85,8 @@ hex ram
     \ Point to  free returns stack cell
     cell+ cell+ rsave !       \ rsize-addr
     \ s0 = ssave = rsave + rsize 
-    c@+ rsave @ + dup dup s0 ! ssave ! \ ssize-addr s0
-    swap c@ + tiu !
+    @+ rsave @ + dup dup s0 ! ssave ! \ ssize-addr s0
+    swap @ + tiu !
     0 ul!
     0 task 2+ !        \ set the cr flag
     decimal            \ Set the base to decimal

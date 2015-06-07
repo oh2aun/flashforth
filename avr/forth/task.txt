@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.txt                                        *
-\    Date:          02.03.2014                                      *
+\    Date:          07.06.2015                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -57,7 +57,7 @@ hex ram
   up@ s0 - dup          \ Basic size     ts ss rs as bs bs
   ram here + flash ,    \ User pointer   ts ss rs as bs
   4 for
-    over c, +
+    over , +
   next
   cell+                 \ Task size
   ram allot
@@ -74,11 +74,11 @@ hex ram
     \ Pointer to task area
     dup 2- task ! 
     \ r0 = uarea+addsize+rsize
-    c@+ swap c@+ rot + up@ +       \  a ssize-addr r0
+    @+ swap @+ rot + up@ +         \  a ssize-addr r0
     \ Save r0
     r0 !                           \  a ssize-addr
     \ s0 = r0 + ssize
-    c@ r0 @ + s0 !                 \  a
+    @ r0 @ + s0 !                  \  a
     \ Store task-loop address to the return stack
     r0 @ x>r                       \  rsp
     \ Store SP to return stack

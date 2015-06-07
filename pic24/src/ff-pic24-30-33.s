@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          4.06.2015                                         *
+;    Date:          07.06.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1081,7 +1081,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 04.06.2015\r\n"
+        .ascii  " FlashForth PIC24 07.06.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1321,14 +1321,14 @@ OPERATOR_L:
         .ascii  "operator"
         .align  2
 OPERATOR:
-        call    DOCREATE        ; Use call to align with PIC18 and AVR
+        rcall   DOCREATE
         .pword  paddr(OPERATOR_AREA)+PFLASH
 OPERATOR_AREA: 
         .word   ustart-us0      ; user pointer
-        .byte   UADDSIZE
-        .byte   RETURN_STACK_SIZE
-        .byte   PARAMETER_STACK_SIZE
-        .byte   TIB_SIZE+HOLD_SIZE
+        .word   UADDSIZE
+        .word   RETURN_STACK_SIZE
+        .word   PARAMETER_STACK_SIZE
+        .word   TIB_SIZE+HOLD_SIZE
 
 
 ;  rcall, ( rel-addr -- )
@@ -5150,9 +5150,9 @@ TIBSIZE_L:
 TIBSIZE:
         rcall   TASK
         rcall   FETCH
-        mov     #0x5, W0
+        mov     #0x8, W0
         add     W0, [W14], [W14]
-        goto    CFETCH
+        goto    FETCH
 
 ; TIU     -- a-addr        Terminal Input Buffer Pointer
         .pword  paddr(TIBSIZE_L)+PFLASH

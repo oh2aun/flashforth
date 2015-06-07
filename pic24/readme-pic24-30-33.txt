@@ -12,7 +12,9 @@ REVISION HISTORY
 
 FlashForth V5.0
 ---------------
-- Python shell with command line editoing and history. 
+- 8->16 bit task parameters
+- FLOAT support
+- Python shell with command line editing and history. 
   #send command for uploading files to FF.
 - DO ?DO LEAVE UNLOOP I J LOOP +LOOP
 - Old LEAVE used with FOR NEXT has changed to ENDIT

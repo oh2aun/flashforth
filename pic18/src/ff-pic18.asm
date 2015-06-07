@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          31.05.2015                                        *
+;    Date:          07.06.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2013  Mikael Nordman
+; Copyright (C) 2015  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1890,8 +1890,8 @@ OPERATOR:
         dw      OPERATOR_AREA
 OPERATOR_AREA:  
         dw      u0+h'f000'      ; User pointer
-        db      UADDSIZE, ursize
-        db      ussize, utibsize
+        dw      UADDSIZE, ursize
+        dw      ussize, utibsize
 
 ; I,   x --             append cell to Flash
 ;   IHERE ! 1 CELLS IALLOT ;
@@ -2336,7 +2336,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        123456789012 +   11  + 012345678901234567890
-        db d'35'," FlashForth ",PICTYPE," 31.05.2015\r\n"
+        db d'35'," FlashForth ",PICTYPE," 07.06.2015\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -4497,17 +4497,17 @@ SWOP_A
         goto    SWOP
 
 ; TI#  -- n                      size of TIB
-; : ti# task @ 5 + c@ ;
+; : ti# task @ 8 + @ ;
         dw      L_NUMBERQ
 L_TIBSIZE:
         db      NFA|3,"ti#"
 TIBSIZE:
         rcall   TASK
         rcall   FETCH_A
-        movlw   h'5'
+        movlw   h'8'
         call    WTOS
         rcall   PLUS
-        goto    CFETCH
+        goto    FETCH
 
 ; TIB     -- a-addr        Terminal Input Buffer
         dw      L_TIBSIZE
