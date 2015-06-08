@@ -15,29 +15,35 @@ decimal
 : mu* ( ud1 u--ud2 )  tuck * >r  um*  r> + ;
 : um/ ( ud u--u )  um/mod nip ;
 : mu/ ( ud u--ud )  >r  0 r@  um/mod  r> swap >r  um/  r> ;
-: um*/ ( u1 u2 u3--ud )  >r um*  r> mu/ ;
-: m*/ ( u1 u2 u3--ud )  >r m*  r> mu/ ;
+
+: r_um*/ ( u1 u2 u3--ud )  >r um*  r> mu/ ;
+: r_m*/  ( n1 n2 n3 -- n4 ) >r m* r> sm/rem nip ;
 
 : +d/ ( +d1 +d2--+d3 )  ?dup if  dup 1+  0 1 rot  um/
                                 dup >r  mu*
-                                >r over swap r@ um*/ d-
-                                r> r> m*/  nip 0             
+                                >r over swap r@ r_um*/ d-
+                                r> r> swap r_m*/  nip 0             
                           else  mu/
                           then ;
-: ud* ( ud ud--ud )  dup if  2swap  then  drop  mu* ;
-: 4dup 2dup 2dup ;
-: +d/mod ( +d1 +d2--+d3 +d4 )  4dup  +d/  2dup  >r >r  ud*  d-  r> r> ; 
+: r_ud* ( ud ud--ud )  dup if  2swap  then  drop  mu* ;
+: 4dup 3 pick 3 pick 3 pick 3 pick ;
+: +d/mod ( +d1 +d2--+d3 +d4 ) 4dup  +d/  2dup swap >r >r  r_ud*  d-  r> r> swap ; 
 
-2variable seed               
+2variable seed          
 
 68623691. seed 2!
 
 : rnd  ( -- d )  seed 2@ 127773. +d/mod
-                         >r >r
+                         swap >r >r
                          16807 mu*
-                         r> r>
+                         r> r> swap
                          2836 mu* d-
                          2dup d0< if max32 d+ then
                          2dup seed 2!
 ;
+
+
+
+
+
 
