@@ -16,7 +16,7 @@
 long long Cddstune (long ddsclock, long mult, long offs, long vco) {
 
 long long ddstune = (long long)vco + (long long)offs;
-ddstune = ddstune / mult;
+ddstune = ddstune / (long long)mult;
 ddstune = ddstune * tuningbits32;
 ddstune = ddstune / (long long)ddsclock;
 
