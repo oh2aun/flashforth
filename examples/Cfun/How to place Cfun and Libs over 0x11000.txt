@@ -1,0 +1,18 @@
+In order to place the xc16 libraries and user Cfunctions over the 0x11000 (the start of the free flash in FlashForth) you have to:
+
+
+1. Use Modded .gld file, ie. p33FJ128GP802_MOD.gld
+2. add that .gld into "Linker Files" in the FF project
+3. set "Large" Code model in gcc Memory model
+4. set "Use 64-bit double" in gcc when using double
+5. Modify the FF source code (ff-pic24-30-33.s ) :
+
+ 
+; Start of code !
+;.text
+.section ffcode, code
+;;; *************************************
+;;; COLD dictionary data
+
+
+IgorM 10.6.2015

@@ -6,9 +6,10 @@
 // 	long int 	is 32bit
 // 	float 		is 32bit
 //
-// Note: you have to enable "Init data section" in the xc16-ld settings!
 //
 // This Ctest.c shall be added to Source files (within the project)
+//
+// Enable "Use 64-bit double" in xc16 settings!
 //
 // IgorM (c) 6.6.2015
 

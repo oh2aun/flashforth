@@ -5,7 +5,6 @@
 // 	long int 	is 32bit
 // 	float 		is 32bit
 //
-// Note: you have to enable "Init data section" in the xc16-ld settings!
 //
 // Ctest.c shall be added to Source files (within the project)
 //
