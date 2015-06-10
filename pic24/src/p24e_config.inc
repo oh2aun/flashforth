@@ -145,8 +145,6 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ FLASH_WRITE,    0x4001     ; Memory row write = double word
 .equ FLASH_WRITE_SINGLE, 0x4001 ; Memory double word write
 .equ FLASH_WRITE_DOUBLE, 0x4001 ; Memory double word write
-
-;.equ PAIVT,          0x0100
 .equ IBUFSIZEL,      0x0800
 .equ IBUFSIZEH,      0x0400
 .equ IBUFLEN1,       0x0002   ; Inner write loop
@@ -162,9 +160,10 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > 0x10000
-.equ DPS_BASE, 0
-.equ DPS_PAGE, 1
+.if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.equ DPS_ADDR, 0x10000 - PFLASH
+.equ DPS_BASE, DPS_ADDR&0xffff
+.equ DPS_PAGE, DPS_ADDR>>16
 .else
 .equ DPS_BASE, CONFIG_DATA
 .equ DPS_PAGE, 0

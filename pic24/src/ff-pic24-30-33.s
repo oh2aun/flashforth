@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          07.06.2015                                        *
+;    Date:          10.06.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -216,6 +216,14 @@ ustart:     .space uareasize ; The operator user area
 
 ; Start of code !
 .text
+
+; Alternative section for modified linker files
+;.section ffcode, code
+;  ffcode 0x400 :
+;  {
+;        *(ffcode);
+;  } >program
+
 ;;; *************************************
 ;;; COLD dictionary data
 COLDLIT:
@@ -655,27 +663,15 @@ LITERAL:
         return
 
         .pword   paddr(LITERAL_L)+PFLASH
-TMR2_L:
-        .byte   NFA|INLINE|4
-        .ascii  "t2>r"
+9:
+        .byte   NFA|INLINE|3
+        .ascii  "dps"
         .align 2
-TMR2_:
-        mov     TMR2, W0
-        push    W0
+        mlit    (DPS_ADDR+(IBUFSIZEL*4))&0xffff
+        mlit    (DPS_ADDR+(IBUFSIZEL*4))>>16
         return
 
-        .pword   paddr(TMR2_L)+PFLASH
-T2CON_L:
-        .byte   NFA|INLINE|5
-        .ascii  "t2con"
-        .align 2
-T2CON_:
-        bclr    PMD1, #T2MD
-        mov     #T2CON, W0
-        mov     W0, [++W14]
-        return
-
-        .pword   paddr(T2CON_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 TO_A_L:
         .byte   NFA|INLINE|2
         .ascii  ">a"
@@ -691,16 +687,6 @@ TO_A:
         .align 2
 A_FROM:
         mov     W11, [++W14]
-        return
-
-        .pword   paddr(9b)+PFLASH
-9:
-        .byte   NFA|INLINE|3
-        .ascii  "inc"
-        .align 2
-INCR_:
-        mov     [W14--], W0
-        inc     [W0], [W0]
         return
 
         .pword   paddr(9b)+PFLASH
@@ -1081,7 +1067,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 07.06.2015\r\n"
+        .ascii  " FlashForth PIC24 10.06.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -5330,7 +5316,11 @@ INUMBER:                           ; Convert to number
         sub     W14, #2, W14       ; DROP the FIND result code
         rcall   NUMBERQ            ; a f
         cp0     [W14]
+.if FLOATS == 1
         bra     z, IFLOAT
+.else
+        bra     z, IUNKNOWN
+.endif
         rcall   STATE
         cp0     [W14--]
         bra     z, INUMBER1
@@ -5345,6 +5335,7 @@ ISINGLE:
 INUMBER1:
         sub     W14, #2, W14
         bra     INTER1              ; n/d
+.if FLOATS == 1
 IFLOAT:
         rcall   DROP
         rcall   DUP                 ; a
@@ -5365,6 +5356,7 @@ NOT_FLOAT1:                         ;  a a n xt
         dec2    W14, W14
 NOT_FLOAT2:                         ;  a dl dh
         dec2    W14, W14
+.endif
 IUNKNOWN:                           ;  a f
         dec2    W14, W14
         rcall   CFETCHPP

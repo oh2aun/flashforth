@@ -68,10 +68,10 @@ config __FWDT, WDTPOST_PS1024
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 0
+.equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 0
+.equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
@@ -154,9 +154,10 @@ config __FWDT, WDTPOST_PS1024
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > 0x10000
-.equ DPS_BASE, 0
-.equ DPS_PAGE, 1
+.if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.equ DPS_ADDR, 0x10000 - PFLASH
+.equ DPS_BASE, DPS_ADDR&0xffff
+.equ DPS_PAGE, DPS_ADDR>>16
 .else
 .equ DPS_BASE, CONFIG_DATA
 .equ DPS_PAGE, 0
@@ -164,3 +165,4 @@ config __FWDT, WDTPOST_PS1024
 
 ; Amount of interrupt vectors
 .equ IVECSIZE, 126
+

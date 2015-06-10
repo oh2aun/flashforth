@@ -13,7 +13,7 @@ CFADD_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern ___addsf3
-        rcall    ___addsf3
+        call    ___addsf3
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -30,7 +30,7 @@ CFSUB_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern ___subsf3
-        rcall    ___subsf3
+        call    ___subsf3
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -47,7 +47,7 @@ CFMUL_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern ___mulsf3
-        rcall    ___mulsf3
+        call    ___mulsf3
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -64,7 +64,7 @@ CFDIV_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern ___divsf3
-        rcall    ___divsf3
+        call    ___divsf3
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -81,7 +81,7 @@ CFPOW_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _powf
-        rcall    _powf
+        call    _powf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -96,7 +96,7 @@ CFSIN_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _sinf
-        rcall    _sinf
+        call    _sinf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -111,7 +111,7 @@ CFCOS_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _cosf
-        rcall    _cosf
+        call    _cosf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -126,7 +126,7 @@ CFTAN_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _tanf
-        rcall    _tanf
+        call    _tanf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -141,7 +141,7 @@ CFSQRT_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _sqrtf
-        rcall    _sqrtf
+        call    _sqrtf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -156,7 +156,7 @@ CFEXP_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _expf
-        rcall    _expf
+        call    _expf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -171,7 +171,7 @@ CFLOG_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _logf
-        rcall    _logf
+        call    _logf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -186,7 +186,7 @@ CFLoG10_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _log10f
-        rcall    _log10f
+        call    _log10f
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -202,7 +202,7 @@ CFATAN_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _atanf
-        rcall    _atanf
+        call    _atanf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -217,7 +217,7 @@ CFASIN_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _asinf
-        rcall    _asinf
+        call    _asinf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -232,7 +232,7 @@ CFACOS_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _acosf
-        rcall    _acosf
+        call    _acosf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -252,7 +252,7 @@ CFATAN2_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _atan2f
-        rcall    _atan2f
+        call    _atan2f
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -267,7 +267,7 @@ CFCOSH_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _coshf
-        rcall    _coshf
+        call    _coshf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -282,7 +282,7 @@ CFSINH_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _sinhf
-        rcall    _sinhf
+        call    _sinhf
         mov     W0, [W14++]
         mov     W1, [W14]
         return
@@ -297,7 +297,7 @@ CFTANH_:
         mov     [W14--], W1
         mov     [W14], W0
         .extern _tanhf
-        rcall    _tanhf
+        call    _tanhf
         mov     W0, [W14++]
         mov     W1, [W14]
         return

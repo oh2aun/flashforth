@@ -133,9 +133,10 @@ config FDS, DSWDTEN_OFF& DSBOREN_OFF
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > 0x10000
-.equ DPS_BASE, 0
-.equ DPS_PAGE, 1
+.if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.equ DPS_ADDR, 0x10000 - PFLASH
+.equ DPS_BASE, DPS_ADDR&0xffff
+.equ DPS_PAGE, DPS_ADDR>>16
 .else
 .equ DPS_BASE, CONFIG_DATA
 .equ DPS_PAGE, 0

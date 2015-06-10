@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../src/ff-pic24-30-33.s ../src/C4add.c
+SOURCEFILES_QUOTED_IF_SPACED=../src/ff-pic24-30-33.s
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o ${OBJECTDIR}/_ext/1360937237/C4add.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d ${OBJECTDIR}/_ext/1360937237/C4add.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o ${OBJECTDIR}/_ext/1360937237/C4add.o
+OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.o
 
 # Source Files
-SOURCEFILES=../src/ff-pic24-30-33.s ../src/C4add.c
+SOURCEFILES=../src/ff-pic24-30-33.s
 
 
 CFLAGS=
@@ -79,21 +79,7 @@ MP_LINKER_FILE_OPTION=,--script=p33FJ128GP802.gld
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: compile
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1360937237/C4add.o: ../src/C4add.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../src/C4add.c  -o ${OBJECTDIR}/_ext/1360937237/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1360937237/C4add.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PICKIT2=1    -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -msmart-io=1 -Wall -msfr-warn=off
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
-	
 else
-${OBJECTDIR}/_ext/1360937237/C4add.o: ../src/C4add.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1360937237/C4add.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../src/C4add.c  -o ${OBJECTDIR}/_ext/1360937237/C4add.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/1360937237/C4add.o.d"        -g -omf=elf -msmall-code -msmall-data -mconst-in-code -O0 -msmart-io=1 -Wall -msfr-warn=off
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/C4add.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
-	
 endif
 
 # ------------------------------------------------------------------------------------

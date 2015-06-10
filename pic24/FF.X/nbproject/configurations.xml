@@ -22,7 +22,6 @@
                    displayName="Source Files"
                    projectFiles="true">
       <itemPath>../src/ff-pic24-30-33.s</itemPath>
-      <itemPath>../src/C4add.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -73,7 +72,7 @@
       </makeCustomizationType>
       <C30>
         <property key="code-model" value="small-code"/>
-        <property key="const-model" value="const-in-code"/>
+        <property key="const-model" value="default"/>
         <property key="data-model" value="small-data"/>
         <property key="enable-all-warnings" value="true"/>
         <property key="enable-ansi-std" value="false"/>
