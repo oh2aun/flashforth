@@ -11,8 +11,8 @@
 .endm
 
 ; list here the registers you want to include in the FF core dictionary
-mreg 0,5,PORTA, porta
-mreg 0,5,TRISA, trisa
+;mreg 0,5,PORTA, porta
+;mreg 0,5,TRISA, trisa
 mreg 0,5,PORTB, portb
 mreg 0,5,TRISB, trisb
 ;mreg 0,3,PR1

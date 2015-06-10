@@ -639,7 +639,7 @@ verify_imem_2:
 
 ; LITERAL  x --           append numeric literal as inline code
         .pword   0
-LITERAL_L:
+9:
         .byte   NFA|IMMED|7
         .ascii "literal"
         .align 2
@@ -661,8 +661,8 @@ LITERAL:
         mov     W1, [++W14]
         rcall   AS_COMMA
         return
-
-        .pword   paddr(LITERAL_L)+PFLASH
+.ifdef DPS_ADDR
+        .pword   paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|3
         .ascii  "dps"
@@ -670,7 +670,7 @@ LITERAL:
         mlit    (DPS_ADDR+(IBUFSIZEL*4))&0xffff
         mlit    (DPS_ADDR+(IBUFSIZEL*4))>>16
         return
-
+.endif
         .pword   paddr(9b)+PFLASH
 TO_A_L:
         .byte   NFA|INLINE|2
