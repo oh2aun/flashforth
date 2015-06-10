@@ -433,6 +433,12 @@ dp         ( -- addr )       Eeprom variable mirrored in ram
            Leave the address of the current data section
            dictionary pointer
 
+dps        ( -- d )
+           End address of Dictionary Pointers. 
+           Absolute address of start of free flash.
+           Library and C code can be linked starting at this address.
+           PIC24 and dsPIC33
+
 drop       ( x1 -- )
            Drop top of stack
 
