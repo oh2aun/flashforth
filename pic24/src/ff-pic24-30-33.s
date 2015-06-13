@@ -2971,9 +2971,7 @@ QDNEGATE_L:
         .align  2
 QDNEGATE:
         cp0     [W14--]
-        bra     nn, QDNEGATE1
-        bra     DNEGATE
-QDNEGATE1:
+        bra     n, DNEGATE
         return        
         
         .pword  paddr(QDNEGATE_L)+PFLASH

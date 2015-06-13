@@ -1352,3 +1352,68 @@ then,      ( back-addr -- )
 begin,     ( -- here )
 again,     ( back-addr -- )
 until,     ( back-addr cc -- )
+
+
+PIC24-30-33 floating point
+==========================
+
+These words require that FF has been compiled with the FLOATS 1 option.
+
+float?     ( -- )
+           Interpreter defer for parsing floating point values.
+           ' >float is float?
+
+>float     ( c-addr u-length -- float flag )
+           Convert a string to a 32 bit floating point value.
+           Works correctly only with decimal base.
+           Valid formats:
+           1e10 -1e-10 1.234e10 -1.234e-10
+
+f.         ( f -- )
+           Print a floating point number in decimal format
+           PIC24-30-33
+
+fe.        ( f -- )
+           Print a floating point number in engineering format.
+
+fs.        ( f  -- )
+           Print a floating point number in scientific format
+
+fdrop      ( f -- )
+fdup       ( f -- f f )
+fover      ( f1 f2 -- f1 f2 f1 )
+fswap      ( f1 f2 -- f2 f1 )
+frot       ( f1 f2 f3 -- f2 f3 f1 )
+fnip       ( f1 f2 -- f2 )
+ftuck      ( f1 f2 -- f2 f1 f2 )
+nfswap     ( f n -- n f )
+fnswap     ( n f -- f n )
+nfover     ( f n -- f n f )
+fnover     ( n f -- n f n )
+f@         ( addr -- f )
+f!         ( f addr -- )
+fconstant  ( f "name" -- )
+fvariable  ( "name" -- )
+fliteral   ( f -- )
+f0         ( -- f )
+f1         ( -- f )
+f10        ( -- f )
+f0.5       ( -- f )
+d>f        ( d -- f )
+s>f        ( n -- f )
+f>d        ( f -- d )
+f>s        ( f -- n )
+f0=        ( f -- flag )
+f0<        ( f -- flag)
+fnegate    ( f -- -f )
+fabs       ( f -- |f| )
+f=         ( f1 f2 -- flag )
+f2/        ( f -- f/2 )
+f2*        ( f -- f/2 )
+f<         ( f1 f2 -- flag )
+f>         ( f1 f2 -- flag )
+f>=        ( f1 f2 -- flag )
+f<=        ( f1 f2 -- flag )
+fmax       ( f1 f2 -- f )
+fmin       ( f1 f2 -- f )
+fround     ( f -- f )
