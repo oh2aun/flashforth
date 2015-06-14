@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          10.06.2015                                        *
+;    Date:          14.06.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1067,7 +1067,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 10.06.2015\r\n"
+        .ascii  " FlashForth PIC24 14.06.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1249,6 +1249,8 @@ BRACKETI:
 .ifndecl INTTREG
         push.s          ; W0...W3
 .endif
+        push.d  W4
+        push.d  W6
         push    TBLPAG  ; Used by eeprom access
         push    W13     ; Preg        
         push    RCOUNT  ; used by repeat
@@ -1266,6 +1268,8 @@ IBRACKET:
         pop     RCOUNT  ; used by repeat
         pop     W13     ; Preg
         pop     TBLPAG  ; Used by eeprom access
+        pop.d   W6
+        pop.d   W4
 .ifndecl INTTREG
         pop.s           ; W0...W3
 .endif
@@ -3286,7 +3290,7 @@ SLASHMOD:
         return
 
         .pword  paddr(SLASHMOD_L)+PFLASH
-MOD_L:
+9:
         .byte   NFA|3
         .ascii  "mod"
         .align  2
@@ -3298,8 +3302,119 @@ MOD:
         mov     W1, [++W14]
         return
 
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "uq*"
+        .align  2
+        push.d  w8
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14--], W0
+        mul.uu  w0, w2, w4
+        mul.uu  w1, w2, w6
+        add     w5, w6, w5
+        addc    w7, #0, w6
+        mul.uu  w0, w3, w8
+        add     w5, w8, w5
+        addc    w6, w9, w6
+        mul.uu  w1, w3, w8
+        addc    w9, #0, w9
+        add     w6, w8, w6
+        addc    w9, #0, w7
+        mov     w4, [++w14]
+        mov     w5, [++w14]
+        mov     w6, [++w14]
+        mov     w7, [++w14]
+        pop.d   w8
+        return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|6
+        .ascii  "uq/mod"
+        .align  2
+        mov     #32, W0
+        push    W0
+        mov     [W14--], W1
+        mov     [W14--], W0
+        mov     [W14--], W5
+        mov     [W14--], W4
+        mov     [W14--], W3
+        mov     [W14--], W2
+UQMOD1:
+        clr     W6
+        bclr    SR, #0
+        rlc     W2, W2
+        rlc     W3, W3
+        rlc     W4, W4
+        rlc     W5, W5
+        rlc     w6, w6
+        sub     w4, w0, w7
+        subb    w5, w1, w7
+        subb    #0, w6
+        bra     NC, UQMOD2
+        sub     w4, w0, w4
+        subb    w5, w1, w5
+        bset    w2, #0
+UQMOD2:
+        dec     [--W15], [W15++]
+        bra     nz, UQMOD1
+        mov     w4, [++w14]
+        mov     w5, [++w14]
+        mov     w2, [++w14]
+        mov     w3, [++w14]
+        pop     w0
+        return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "d>q"
+        .align  2
+        clr     W0
+        btsc    [W14], #15
+        dec     W0, W0
+        mov     W0, [++W14]
+        mov     W0, [++W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "qm+"
+        .align  2
+        clr     W2
+        btsc    [W14], #15
+        dec     W2, W2
+        mov     [W14--], W1
+        mov     [W14--], W0
+        sub     W14, #6, W14
+        add     W0, [W14],[W14++]
+        add     W1, [W14],[W14++]
+        add     W2, [W14],[W14++]
+        add     W2, [W14],[W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|2
+        .ascii  "q+"
+        .align  2
+        mov     [W14--], W3
+        mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14--], W0
+        sub     W14, #6, W14
+        add     W0, [W14],[W14++]
+        add     W1, [W14],[W14++]
+        add     W2, [W14],[W14++]
+        add     W3, [W14],[W14]
+        return
+
 ; user ( n "name" -- )
-        .pword  paddr(MOD_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 USER_L:
         .byte   NFA|4
         .ascii  "user"
