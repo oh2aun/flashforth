@@ -1010,19 +1010,23 @@ user       ( +n "name" -- )
 
 uq*        ( ud ud -- uq )
            Multiply two double numbers to a quad result
-           PIC18
+           PIC18 PIC24 PIC30 PIC33
 
 uq/mod     ( qu du -- du-rem du-quot )
            Divide a 64 bit unsigned number with a 32 bit unsigned number
-           PIC18
+           PIC18 PIC24 PIC30 PIC33
 
 d>q        ( d -- q )
            Extend a double number to a quad number
-           PIC18
+           PIC18 PIC24 PIC30 PIC33
+
+q+         ( q q -- q )
+           Add a quad number to quad number
+           PIC24 PIC30 PIC33
 
 qm+        ( q d -- q )
            Add a double number to quad number
-           PIC18
+           PIC18 PIC24 PIC30 PIC33
 
 ut*        ( ud u -- ut )
            Multiply single number with double number
