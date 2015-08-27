@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff30.inc                                          *
-;    Date:          14.11.2010                                        *
-;    File Version:  4.7                                               *
+;    Date:          27.08.2015                                        *
+;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -40,7 +40,7 @@
  
 .ifdecl    __PIC24FK  
   .include "p24Fxxxx.inc"
-  .include "p24f16ka_config.inc"
+  .include "p24fk_config.inc"
 .endif  
  
 .ifdecl    __PIC24FJ
@@ -49,12 +49,48 @@
 .endif  
 
 .ifdecl    __PIC24F
-  .include "p24Fxxxx.inc"
-  .ifdecl __24FV16KM202
-    .include "p24f16ka_config.inc"
-  .else
-    .include "p24f_config.inc"
-  .endif
+    .include "p24Fxxxx.inc"
+    .ifdecl __24FV16KA301
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KA302
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KA304
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KM102
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KM104
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KM202
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV16KM204
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV32KA301
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV32KA302
+      .include "p24fk_config.inc"
+    .else
+    .ifdecl __24FV32KA304
+      .include "p24fk_config.inc"
+    .else
+      .include "p24f_config.inc"
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
+    .endif
 .endif
 .ifdecl    __dsPIC30F  
   .include "p30Fxxxx.inc"  

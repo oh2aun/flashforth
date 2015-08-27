@@ -1,15 +1,15 @@
-;;; FlashForth device configuration for the PIC24F16KAxxx
+;;; FlashForth device configuration for the PIC24FKxxx
 
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for PIC24F16KA102
-.equ FLASH_SIZE,     0x2C00  ; Flash size in bytes without the high byte
+.equ FLASH_SIZE,     0x29fe  ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x0600  ; Ram size in bytes
+.equ RAM_SIZE,       0x0400  ; Ram size in bytes
 .equ EEPROM_SIZE,    0x0200  ; Eeprom size
 
 config FOSCSEL, FNOSC_FRCPLL
-config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS & OSCIOFNC_OFF
+config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS ; & OSCIOFNC_OFF
 config FWDT, FWDTEN_ON 
 config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
@@ -30,7 +30,7 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 1
+.equ IDLE_MODE, 0
 
 ; Set to 1 for CPU load measurement
 .equ CPU_LOAD, 1

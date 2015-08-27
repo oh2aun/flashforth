@@ -1713,11 +1713,9 @@ ESTORE:
         ior.w   W0, W1, W0
         mov.w   #0x7f, W1
         mov     W1, TBLPAG
-.ifndef __24F16KA102
         TBLWTL  [W14], [W0]
         mov.w   #EEPROM_ERASE, W1
         rcall   EWENABLE
-.endif
         TBLWTL  [W14--], [W0]
         mov     #EEPROM_WRITE, W1
         rcall   EWENABLE
