@@ -5,7 +5,6 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>../src/ff30.inc</itemPath>
-      <itemPath>../src/p24f16ka_config.inc</itemPath>
       <itemPath>../src/p24f_config.inc</itemPath>
       <itemPath>../src/p24fj_config.inc</itemPath>
       <itemPath>../src/p24hj_config.inc</itemPath>
@@ -13,6 +12,7 @@
       <itemPath>../src/p33_config.inc</itemPath>
       <itemPath>../src/p24e_config.inc</itemPath>
       <itemPath>../src/p33e_config.inc</itemPath>
+      <itemPath>../src/p24fk_config.inc</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -40,7 +40,7 @@
     <conf name="default" type="2">
       <toolsSet>
         <developmentServer>localhost</developmentServer>
-        <targetDevice>dsPIC33FJ128GP802</targetDevice>
+        <targetDevice>dsPIC30F4012</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
         <platformTool>PICkit2PlatformTool</platformTool>
@@ -53,11 +53,8 @@
           <linkerLibItems>
           </linkerLibItems>
         </linkerTool>
-        <archiverTool>
-        </archiverTool>
         <loading>
           <useAlternateLoadableFile>false</useAlternateLoadableFile>
-          <parseOnProdLoad>false</parseOnProdLoad>
           <alternateLoadableFile></alternateLoadableFile>
         </loading>
       </compileType>
@@ -109,9 +106,6 @@
         <property key="use-cci" value="false"/>
         <property key="use-iar" value="false"/>
       </C30>
-      <C30-AR>
-        <property key="additional-options-chop-files" value="false"/>
-      </C30-AR>
       <C30-AS>
         <property key="assembler-symbols" value=""/>
         <property key="expand-macros" value="true"/>
@@ -192,7 +186,7 @@
       <PICkit2PlatformTool>
         <property key="pk2settings.3state" value="false"/>
         <property key="pk2settings.preserveee" value="false"/>
-        <property key="pk2settings.setvddvoltage" value="3.25"/>
+        <property key="pk2settings.setvddvoltage" value="${pk2settings.setvddvoltage}"/>
         <property key="pk2settings.userpgmexec" value="true"/>
         <property key="pk2settings.usetargetpower" value="false"/>
       </PICkit2PlatformTool>

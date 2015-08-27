@@ -1006,8 +1006,8 @@ WARM_ABAUD2:
         rcall   WMOVE
 
 		; Wait 10 ms for UARTs to reset
-;        mlit    10
-;        rcall   MS
+        mlit    10
+        rcall   MS
 
 ; Check if EEPROM INIT is needed
 .ifdef PEEPROM
