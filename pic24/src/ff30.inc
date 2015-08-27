@@ -49,10 +49,13 @@
 .endif  
 
 .ifdecl    __PIC24F
-  .include "p24Fxxxx.inc"  
-  .include "p24f_config.inc"
-.endif  
-
+  .include "p24Fxxxx.inc"
+  .ifdecl __24FV16KM202
+    .include "p24f16ka_config.inc"
+  .else
+    .include "p24f_config.inc"
+  .endif
+.endif
 .ifdecl    __dsPIC30F  
   .include "p30Fxxxx.inc"  
   .include "p30f_config.inc"

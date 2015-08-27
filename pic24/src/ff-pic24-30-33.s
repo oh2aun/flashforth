@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          14.06.2015                                        *
+;    Date:          27.08.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1067,7 +1067,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 14.06.2015\r\n"
+        .ascii  " FlashForth PIC24 27.08.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1641,6 +1641,7 @@ PCFETCH1:
 
 ICFETCH:
         rcall   IFETCH_INIT
+        cp      W1, W2
         bra     NZ, PCFETCH1
         mov     #IBUFSIZEL-1, W1
         and     W1, W0, W0
@@ -1657,6 +1658,7 @@ PFETCH1:
 
 IFETCH:
         rcall    IFETCH_INIT
+        cp       W1, W2
         bra      NZ, PFETCH1
         mov      #IBUFSIZEL-1, W1
         and      W1, W0, W0
@@ -1674,10 +1676,11 @@ IFETCH:
         
 IFETCH_INIT:
         clr      TBLPAG
+        mov      #PFLASH, W1
+        sub      W0, W1, W0
         mov      ibase, W1
         mov      #IBUFMASK, W2
         and      W2, W0, W2
-        cp       W1, W2
         return
 
 EWENABLE:
@@ -1993,23 +1996,24 @@ FETCH_L:
         .ascii  "@"
         .align  2
 FETCH:
-        mov.w   [W14], W2
+        mov.w   [W14], W0
         mov.w   #PFLASH, W1
-        sub     W2, W1, W0  ; address - pfl
+        cp      W0, W1
 .ifdef PEEPROM
         bra     GEU, FETCH1
 .else
         bra     GEU, IFETCH
 .endif
-        mov.w   [W2], [W14]
+        mov.w   [W0], [W14]
         return
 FETCH1:
 .ifdef PEEPROM
         mov.w   #PEEPROM, W1
-        sub     W2, W1, W0
+        cp      W0, W1
         bra     GEU, EFETCH
         bra     IFETCH
 .endif
+
 
        .pword   paddr(FETCH_L)+PFLASH
 CFETCH_L:
@@ -2017,21 +2021,21 @@ CFETCH_L:
         .ascii  "c@"
         .align  2
 CFETCH:
-        mov.w   [W14], W2
-        clr.w   [W14]
+        mov.w   [W14], W0
+        clr     [W14]
         mov.w   #PFLASH, W1
-        sub     W2, W1, W0  ; W0=address - pfl (W0=physical address)
+        cp      W0, W1
 .ifdef PEEPROM
         bra     GEU, CFETCH1
 .else
         bra     GEU, ICFETCH
 .endif
-        mov.b   [W2], [W14]
+        mov.b   [W0], [W14]
         return
 CFETCH1:
 .ifdef PEEPROM
         mov.w   #PEEPROM, W1
-        sub     W2, W1, W0
+        cp      W0, W1
         bra     GEU, ECFETCH
         bra     ICFETCH
 .endif
