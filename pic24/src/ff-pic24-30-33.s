@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          27.08.2015                                        *
+;    Date:          01.09.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -796,18 +796,18 @@ WARM_FILL_IVEC:
         bra     nz, WARM_FILL_IVEC
 .endif
 
-        setm    PMD1
-        setm    PMD2
+;        setm    PMD1
+;        setm    PMD2
 .ifdecl PMD3
-        setm    PMD3
+;        setm    PMD3
 .endif
 .ifdecl PMD4
-        setm    PMD4
+;        clr    PMD4      ; Don't set PMD4, it may disable the eeprom
 .endif
 .ifdecl PMD5
-        setm    PMD5
+;        setm    PMD5
 .endif
-.ifdef AD1PCFGL
+.ifdecl AD1PCFGL
         setm    AD1PCFGL
 .endif
 .ifdef ANSELA
@@ -821,6 +821,9 @@ WARM_FILL_IVEC:
 .endif
 .ifdef ANSELE
         clr      ANSELE
+.endif
+.ifdecl ANSB
+        clr     ANSB
 .endif
 WARM_0:
 ; Init the serial TX buffer
@@ -1067,7 +1070,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 27.08.2015\r\n"
+        .ascii  " FlashForth PIC24 01.09.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1709,19 +1712,18 @@ EWENABLE1:
 .ifdef PEEPROM
 ESTORE:
         rcall   wait_silence
-        mov.w   #0xf000, W1 
-        ior.w   W0, W1, W0
         mov.w   #0x7f, W1
         mov     W1, TBLPAG
+.ifdef EEPROM_ERASE
         TBLWTL  [W14], [W0]
         mov.w   #EEPROM_ERASE, W1
         rcall   EWENABLE
+.endif
         TBLWTL  [W14--], [W0]
         mov     #EEPROM_WRITE, W1
         rcall   EWENABLE
         clr     TBLPAG
         return
-
 
 ECSTORE:
         mov.w   #0xf000, W1
@@ -1748,12 +1750,12 @@ ECSTORE2:
         bra     ESTORE
 
 EFETCH:
-        mov.w   #0xf000, W1
-        ior.w   W0, W1, W0
         mov.w   #0x7f, W1
         mov.w   W1, TBLPAG
-        tblrdl  [W0], W0
-        mov     W0, [W14]
+        nop
+        tblrdl  [W0], W1
+        nop
+        mov     W1, [W14]
         clr     TBLPAG
         return
 ECFETCH:

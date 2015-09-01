@@ -1,17 +1,17 @@
-;;; FlashForth device configuration for the PIC24FKxxx
+;;; FlashForth device configuration for the PIC24FyyKxxx
 
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24F16KA102
-.equ FLASH_SIZE,     0x29fe  ; Flash size in bytes without the high byte
+;;; Below is the setting for max amount of ram for PIC24FV32KA302
+.equ FLASH_SIZE,     0x5800  ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x0400  ; Ram size in bytes
+.equ RAM_SIZE,       0x0800  ; Ram size in bytes
 .equ EEPROM_SIZE,    0x0200  ; Eeprom size
 
-config FOSCSEL, FNOSC_FRCPLL
-config FOSC, FCKSM_CSDCMD & SOSCSEL_SOSCLP & POSCFREQ_MS ; & OSCIOFNC_OFF
-config FWDT, FWDTEN_ON 
-config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
+; For some reason the normal config macros did not work
+           .section __FOSCSEL.sec, code
+           .global __FOSCSEL
+__FOSCSEL: .pword FNOSC_FRCPLL
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
 .equ BAUDRATE1, 38400		 ; Serial baudrate
@@ -30,7 +30,7 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 0
+.equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
 .equ CPU_LOAD, 1
@@ -47,11 +47,11 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 31
-.equ RX1_OFF_FILL, 8   ; Fill level for XOFF
+.equ RX1_OFF_FILL, 4   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
+.equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -97,8 +97,8 @@ config FPOR, MCLRE_ON & BORV_V18 & I2C1SEL_PRI & PWRTEN_ON & BOREN_BOR3
 .endif
 
 ;;; Memory control defines
-.equ EEPROM_ERASE, 0x4058   ; Erase one word
-.equ EEPROM_WRITE, 0x4004	; Write one word
+;.equ EEPROM_ERASE, 0x4058	; Write one word automatic erase
+.equ EEPROM_WRITE, 0x4004	; Write one word automatic erase
 .equ FLASH_ERASE,  0x4058	; Erase one row (64/96 bytes)
 .equ FLASH_WRITE,  0x4004   ; Write one row (64/96 bytes)
 .equ PAIVT,        0x100

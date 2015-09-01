@@ -50,47 +50,7 @@
 
 .ifdecl    __PIC24F
     .include "p24Fxxxx.inc"
-    .ifdecl __24FV16KA301
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KA302
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KA304
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KM102
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KM104
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KM202
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV16KM204
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV32KA301
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV32KA302
-      .include "p24fk_config.inc"
-    .else
-    .ifdecl __24FV32KA304
-      .include "p24fk_config.inc"
-    .else
-      .include "p24f_config.inc"
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
-    .endif
+    .include "p24f_config.inc"
 .endif
 .ifdecl    __dsPIC30F  
   .include "p30Fxxxx.inc"  
