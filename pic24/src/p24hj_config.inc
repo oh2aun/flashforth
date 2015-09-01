@@ -40,8 +40,8 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .ifdecl RPINR18
 .equ RPINR18VAL, 0x000f    ; (U1RXPIN)
 .equ U1TXPIN, 0xe
-;.equ RPINR18VAL, 0x000b    ; U1RXPIN RP11 pin22 microstick2
-;.equ U1TXPIN, 0xa          ; RP10         pin21 microstick2
+;.equ RPINR18VAL, 0x000b    ; U1RXPIN RP11 pin22 microstickplus
+;.equ U1TXPIN, 0xa          ; RP10         pin21 microstickplus
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12

@@ -45,8 +45,8 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 
 ; Map UART1 pins
 .ifdecl RPINR18
-.equ RPINR18VAL, 43       ; U1RXPIN RP43 PB11 pin22 microstick2
-.equ U1_RPO_REGISTER, RPOR4  ; RP42         PB10 pin21 microstick2
+.equ RPINR18VAL, 43          ; U1RXPIN RP43 PB11 pin22 microstickplus
+.equ U1_RPO_REGISTER, RPOR4  ; RP42         PB10 pin21 microstickplus
 .equ U1_RPO_VALUE, 0x0001    ; UART1 TX on RP42 pin
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB

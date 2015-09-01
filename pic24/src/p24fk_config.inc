@@ -33,7 +33,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
@@ -97,7 +97,6 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .endif
 
 ;;; Memory control defines
-;.equ EEPROM_ERASE, 0x4058	; Write one word automatic erase
 .equ EEPROM_WRITE, 0x4004	; Write one word automatic erase
 .equ FLASH_ERASE,  0x4058	; Erase one row (64/96 bytes)
 .equ FLASH_WRITE,  0x4004   ; Write one row (64/96 bytes)

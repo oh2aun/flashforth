@@ -46,8 +46,8 @@ config __FWDT, WDTPOST_PS1024
 .ifdecl RPINR18
 .equ RPINR18VAL, 6     ; RP6 (U1RXPIN)
 .equ U1TXPIN, 5        ; RP5
-;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstick2
-;.equ U1TXPIN, 10        ; PB10 pin21 microstick2
+;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstickplus
+;.equ U1TXPIN, 10        ; PB10 pin21 microstickplus
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12       ; Solder to MCP2200 CTS pin13 on microstickplus if HW flow control
