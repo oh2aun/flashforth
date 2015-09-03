@@ -43,11 +43,6 @@
   .include "p24fk_config.inc"
 .endif  
  
-.ifdecl    __PIC24FJ
-  .include "p24Fxxxx.inc"  
-  .include "p24fj_config.inc"
-.endif  
-
 .ifdecl    __PIC24F
     .include "p24Fxxxx.inc"
     .ifdecl __24F16KM102

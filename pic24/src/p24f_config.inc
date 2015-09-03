@@ -113,7 +113,6 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ FLASH_ERASE,  0x4042	; Erase one row (1024/1596 bytes)
 .equ FLASH_WRITE,  0x4001   ; Write one row (128/196 bytes)
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ PAIVT,        0x100
 .equ IBUFSIZEL,    0x0400
 .equ IBUFSIZEH,    0x0200
 .equ IBUFLEN1,     0x0040   ; Inner write loop

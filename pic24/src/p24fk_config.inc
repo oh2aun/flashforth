@@ -33,7 +33,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 0
+.equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
@@ -53,12 +53,12 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 
 .equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 31
-.equ RX2_OFF_FILL, 8   ; Fill level for XOFF
+.equ RX2_OFF_FILL, 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 128          ; 64 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
-.equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt stack frame  on return stack
+.equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt stack frame on return stack
 .equ TIB_SIZE, 84                    ; 84 chars tib size
 .equ HOLD_SIZE, 10                   ; 10 chars hold area
 

@@ -254,7 +254,7 @@ again      ( a-addr -- )  COMPILE_ONLY
 
 aivt       ( -- )
            Activate the alternate interrupt vector table
-           PIC24
+           Not PIC24E PIC33E
 
 align      ( -- )
            Align the current data section dictionary pointer
@@ -569,12 +569,19 @@ inline     ( "name" -- )
 inlined    ( -- )
            Mark the latest compiled word as for automatic inlining.
 
+int/       ( vector-no -- )
+           Restore the original vector to the alternate table in flash
+           PIC30 PIC24FK
+
 int!       ( xt vector-no -- )
            Store an interrupt vector to the interrupt vector table.
            PIC18: Dummy vector number (0) for high prority interrupts.
            PIC30: Alternate interrupt vector table in flash.
            PIC33: Alternate interrupt vector table in ram.
-           PIC24: Alternate interrupt vector table in ram.
+           PIC24H: Alternate interrupt vector table in ram.
+           PIC24F: Alternate interrupt vector table in ram.
+           PIC24FK: Alternate interrupt vector table in flash.
+           PIC24E: Main table in ram
            ATMEGA: Interrupt vector table in ram.
 
 interpret  ( c-addr u - )
@@ -588,7 +595,7 @@ is         ( x "name" -- )
 
 ivt        ( -- )
            Activate the normal interrupt vector table
-           PIC24
+           Not PIC24E PIC33E
 
 j          ( -- n )  COMPILE ONLY
            The outer loop index

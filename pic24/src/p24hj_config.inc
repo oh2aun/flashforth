@@ -136,7 +136,6 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ FLASH_ERASE,    0x4042  ; Memory page erase
 .equ FLASH_WRITE,    0x4001  ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ PAIVT,          0x0100
 .equ IBUFSIZEL,      0x0400
 .equ IBUFSIZEH,      0x0200
 .equ IBUFLEN1,       0x0040   ; Inner write loop

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          01.09.2015                                        *
+;    Date:          03.09.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -204,8 +204,10 @@ dpSAVE:     .space 8
 .equ MARKER_LENGTH, 4
 .endif
 
+.ifndef PAIVT
 .ifdecl INTTREG
 IVECTAB:    .space IVECSIZE*2 ; space for interrupt vectors
+.endif
 .endif
 
 cse:        .space 2 ; Current data section 0=flash, 1=eeprom, 2=ram
@@ -275,6 +277,8 @@ __T1Interrupt:
 
 .if IDLE_MODE == 1
 .if CPU_LOAD == 1
+.ifdecl TSIDL
+.ifdecl TMR3
         push.s
         mov     TMR3, W0
         clr     TMR3
@@ -293,6 +297,8 @@ __T1Interrupt:
         clr     load_acc+2
 RETFIE_T1_0:
         pop.s
+.endif
+.endif
 .endif
 .endif
         retfie
@@ -467,6 +473,10 @@ __U2TXInterrupt0:
 .endif
 .endif
 ;*******************************************************************
+.ifdef PAIVT
+__DefaultInterrupt:
+        bra     __AddressError
+.else
 .ifdecl INTTREG
 __DefaultInterrupt:
 .ifdef ALTIVT
@@ -481,11 +491,8 @@ __DefaultInterrupt:
         add     W0, W1, W2
         mov     [W2], W0
         goto    W0
-.else
-__DefaultInterrupt:
-        bra     __AddressError
 .endif
-
+.endif
 ; *******************************************************************
 ; ibufmask = 0xffc0 or 0xfc00 or 0xf800
 ; ibuflen  = 0x0040 or 0x0400 or 0x0800
@@ -698,7 +705,7 @@ A_FROM:
         goto    UDOT
 
         .pword   paddr(9b)+PFLASH
-IDLE_L:
+9:
         .byte   NFA|4
         .ascii  "idle"
         .align 2
@@ -706,8 +713,8 @@ IDLE_:
         bclr     iflags, #fIDLE
         return
         
-        .pword   paddr(IDLE_L)+PFLASH
-BUSY_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "busy"
         .align 2
@@ -715,8 +722,8 @@ BUSY_:
         bset     iflags, #fIDLE
         return
         
-        .pword   paddr(BUSY_L)+PFLASH
-LOAD_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "load"
         .align 2
@@ -730,8 +737,8 @@ LOAD_:
         return
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        .pword   paddr(LOAD_L)+PFLASH
-EMPTY_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "empty"
         .align 2
@@ -748,7 +755,33 @@ EMPTY:
         rcall   DP_TO_RAM
         return
 
-        .pword   paddr(EMPTY_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|6
+        .ascii  "forget"
+        .align 2
+        rcall   BL
+        rcall   WORD
+        rcall   LATEST
+        rcall   FETCH
+        rcall   findi
+        rcall   QABORTQ
+        rcall   CFATONFA
+        rcall   TWOMINUS
+        rcall   DUP
+        rcall   FETCH
+        rcall   QABORTQ
+        rcall   DUP
+        rcall   FLASH
+        rcall   DP
+        rcall   STORE
+        rcall   FETCH
+        rcall   LATEST
+        rcall   STORE
+        goto    RAM
+
+
+        .pword   paddr(9b)+PFLASH
 WARM_L:
         .byte   NFA|4
         .ascii  "warm"
@@ -786,6 +819,7 @@ FILL_RAM:
         mov     #usbuf0, W14
         setm    ibase
         clr     iflags
+.ifndef PAIVT
 .ifdecl INTTREG
         mov     #IVECTAB, W0
         mov     #IVECSIZE, W1
@@ -795,7 +829,7 @@ WARM_FILL_IVEC:
         dec     W1, W1
         bra     nz, WARM_FILL_IVEC
 .endif
-
+.endif
 ;        setm    PMD1
 ;        setm    PMD2
 .ifdecl PMD3
@@ -878,10 +912,14 @@ PLL_NOT_IN_USE:
 
 .if IDLE_MODE == 1
 .if CPU_LOAD == 1
+.ifdecl TMR3
+.ifdecl TSIDL
 ; Configure CPU load counter timer3
         bclr    PMD1, #T3MD
         mov     #0xA010, W0    ; Stop timer3 in idle mode, prescaler = 8
         mov     W0, T3CON
+.endif
+.endif
 .endif
 .endif
 
@@ -1070,7 +1108,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 01.09.2015\r\n"
+        .ascii  " FlashForth PIC24 03.09.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1175,53 +1213,68 @@ PAUSE_BUSY:
         return
 
         .pword   paddr(PAUSE_L)+PFLASH
-CWD_L:
+9:
         .byte   NFA|INLINE|3
         .ascii  "cwd"
         .align 2
 CWD:
         clrwdt
         return
-
+.ifdef PAIVT
+; INT/  ( intnumber -- )
+; Reset the AIVT interrupt vector to the defaul IVT value
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "int/"
+        .align 2
+        mov     [W14], W2
+        sl      W2, W0
+        add     #4, W0
+        and     #(PAIVT-1), W0
+        tblrdl  [W0], [W14]
+        rcall   XA_FROM
+        mov     W2, [++W14]
+        goto    INTERRUPT_STORE
+.endif
 ; INT!  ( xt intnumber -- ) intnumber 8..
 ; Store interrupt vector in alternate interrupt vector table
-; Stored directly in Flash on the 30F series     intnumber 0..61 
+; Stored directly in Flash on the 30F series     intnumber 0..61
+; Stored directly in Flash on the 24FK series     intnumber 0..80
 ; Stored in ram revector table in 24,33 series   intnumber 0..83
 
-        .pword   paddr(CWD_L)+PFLASH
-INTERRUPT_STORE_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "int!"
         .align 2
 INTERRUPT_STORE:
-.ifdecl INTTREG
-        mov     #IVECTAB, W0
-        mov     [W14--], W1
-        sl      W1, W1
-        add     W0, W1, W0
-        mov     #PFLASH, W1
-        mov     [W14--], W2
-        sub     W2, W1, W1
-        mov     W1, [W0]
-        return
-.else
-        mov     #0x3f, W0
-        mov     [W14--], W1
-        and     W1, W0, W1
-        sl      W1, W1
-        mov     #PAIVT+PFLASH+4, W0
+        rcall   IVT
+.ifdef PAIVT
+        mov     [W14--], W3
+        rcall   TO_XA
+        sl      W3, W0
+        add     #4, W0
+        and     #(PAIVT-1), W0
+        mov     #PAIVT+PFLASH, W1
         add     W1, W0, W0
-        mov     #PFLASH, W1
-        mov     [W14], W2
-        sub     W2, W1, [W14]
         clr     W3             ; hibyte
-        rcall   ISTORE_RAW
+        rcall   ISTORE_RAW     ; IntNo address in W0, xt on stack
         rcall   IFLUSH
-        return
+.else
+.ifdecl INTTREG
+        mov     [W14--], W3
+        rcall   TO_XA
+        sl      W3, W1
+        mov     #IVECTAB, W0
+        add     W0, W1, W0
+        mov     [W14--], [W0]
 .endif
+.endif
+        return
 
 ; IVT  ( -- )  Use the normal interrupt vector table
-        .pword   paddr(INTERRUPT_STORE_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 .ifdef ALTIVT
 IVT_L:
         .byte   NFA|INLINE|3
@@ -1249,7 +1302,7 @@ BRACKETI_L:
         .ascii  "[i"
         .align  2
 BRACKETI:
-.ifndecl INTTREG
+.ifdef  PAIVT
         push.s          ; W0...W3
 .endif
         push.d  W4
@@ -1273,7 +1326,7 @@ IBRACKET:
         pop     TBLPAG  ; Used by eeprom access
         pop.d   W6
         pop.d   W4
-.ifndecl INTTREG
+.ifdef PAIVT
         pop.s           ; W0...W3
 .endif
         return
@@ -6125,11 +6178,11 @@ SEMICOLONI_L:
         .ascii  ";i"
         .align  2
 SEMICOLONI:
-.ifdecl INTTREG
+.ifdef  PAIVT
+        rcall   RETFIE_
+.else
         mlit    handle(ALT_INT_EXIT)+PFLASH
         rcall   AGAINC
-.else
-        rcall   RETFIE_
 .endif
 .if WRITE_METHOD == 2
         rcall   IFLUSH

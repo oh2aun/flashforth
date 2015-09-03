@@ -82,7 +82,7 @@ variable hour
 \ Display the current time
 : time ( -- )
   decimal hour @ u. mins @ u. sec  @ u. ;
-
+iflush
 \ Initialise the RTC
 T2RtcInit
 \ ' T2RtcInit is turnkey
