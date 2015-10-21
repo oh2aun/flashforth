@@ -99,10 +99,7 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ CTRL_O_WARM_RESET, 1
 
 ; Method 1 updates flash and eeprom after each ok prompt.
-; Method 2 updates flash and eeprom after no flash or eeprom
-; update requests have been made for a time of WRITE_TIMEOUT
-.equ WRITE_METHOD,  2
-.equ WRITE_TIMEOUT, 300         ; milliseconds
+.equ WRITE_METHOD,  1
 
 ;;; Memory mapping prefixes. Do not modify
 .equ PFLASH,         0x800+RAM_SIZE

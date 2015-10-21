@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          03.09.2015                                        *
+;    Date:          21.10.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -35,6 +35,7 @@
         mov     #\lval, w0
         mov     w0, [++w14]
 .endm
+
 ;..............................................................................
 ;Global Declarations:
 ;..............................................................................
@@ -1108,7 +1109,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 03.09.2015\r\n"
+        .ascii  " FlashForth PIC24 21.10.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1816,9 +1817,9 @@ ECFETCH:
         bclr    W0, #0
         rcall   EFETCH
         btsc    W2, #0
-        swap.w  W0
-        and.w   #0xff, W0
-        mov.w   W0, [W14]
+        swap.w  W1
+        and.w   #0xff, W1
+        mov.w   W1, [W14]
         return
 .else
 ;;; Only for TURNKEY, DP_FLASH, DP_RAM, LATEST !
