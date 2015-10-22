@@ -328,6 +328,8 @@
 .equ LF_=0x0a
 .equ BS_=0x08
 .equ TAB_=0x09
+.equ BL_=0x20
+.equ DEL_=0x7F
 
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
@@ -1301,29 +1303,38 @@ ACC2:
         rcall   FALSE_
         rcall   FCR
         rcall   CSTORE_A
+; treat DEL like BS
+        cpi     tosl, DEL_
+        breq    ACC_DEL   
+; test received char against backspace
+        cpi     tosl, BS_
+        brne    ACC3
+; yes, backspace, or del
+ACC_DEL:
+        rcall   DROP            ; get rid of char
+        rcall   TOR
+        rcall   OVER            ; first buffer address
+        rcall   RFROM
+        rcall   TUCK            ; current buffering address
+        rcall   MINUS           ; difference is -count of buffered chars
+        rcall   ZEROSENSE
+        breq    ACC1            ; no chars buffered
+        rcall   XSQUOTE
+        .db     3,BS_,BL_,BS_
+        rcall   TYPE            ; wipe character from terminal by overwriting with space
+        rcall   ONEMINUS        ; remove char from buffer
+        rjmp    ACC1
+; char is neither LF, CR, BS nor DEL. Output and buffer.
+ACC3:
         rcall   DUP
         rcall   EMIT
-        rcall   DUP
-        rcall   DOLIT
-        .dw     BS_
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        breq    ACC3
-        rcall   DROP
-        rcall   ONEMINUS
-        rcall   TOR
-        rcall   OVER
-        rcall   RFROM
-        rcall   UMAX
-        rjmp    ACC1
-ACC3:
         rcall   OVER
         rcall   CSTORE_A
         rcall   ONEPLUS
         rcall   OVER
         rcall   UMIN
         rcall   TWODUP
-        rcall   NOTEQUAL
+        rcall   MINUS
         rcall   ZEROSENSE
         brne     ACC1
 ACC6:
