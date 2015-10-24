@@ -31,6 +31,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 ;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
+; Define the UART used for the operator
+.equ OPERATOR_UART, 1        ; 1 or 2
+
 ;;; UART1 configuration
 .equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
 .equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS

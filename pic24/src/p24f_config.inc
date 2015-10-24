@@ -16,6 +16,9 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 
 .equ FCY, (FREQ_OSC/2)
 
+; Define the UART used for the operator
+.equ OPERATOR_UART, 1        ; 1 or 2
+
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
 .equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS

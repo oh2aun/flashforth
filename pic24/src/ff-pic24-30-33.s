@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          21.10.2015                                        *
+;    Date:          24.10.2015                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -253,9 +253,16 @@ WARMLIT:
         .word      u0                    ; UP
         .word      usbuf0                ; S0, First user variable
         .word      urbuf                 ; R0
+.if OPERATOR_UART == 1
         .word      handle(TX1)+PFLASH
         .word      handle(RX1)+PFLASH
         .word      handle(RX1Q)+PFLASH
+.endif
+.if OPERATOR_UART == 2
+        .word      handle(TX2)+PFLASH
+        .word      handle(RX2)+PFLASH
+        .word      handle(RX2Q)+PFLASH
+.endif
         .word      u0                    ; ULINK
         .word      BASE_DEFAULT          ; BASE
         .word      utibbuf               ; TIB
@@ -535,18 +542,30 @@ fill_buffer_from_imem2:
 
 wait_silence:
         rcall   LOCKED
+.if OPERATOR_UART ==1
 .if FC1_TYPE == 1
         btss    U1STA, #TRMT
         bra     wait_silence
         mov     #XOFF, W2
         mov     W2, U1TXREG
         bset    iflags, #ixoff1
-.else
+.endif
 .if FC1_TYPE == 2
         bset    U1RTSPORT, #U1RTSPIN
 .endif
 .endif
-.if FC1_TYPE == 1
+.if OPERATOR_UART == 2
+.if FC2_TYPE == 1
+        btss    U2STA, #TRMT
+        bra     wait_silence
+        mov     #XOFF, W2
+        mov     W2, U2TXREG
+        bset    iflags, #ixoff2
+.endif
+.if FC2_TYPE == 2
+        bset    U2RTSPORT, #U2RTSPIN
+.endif
+.endif
 wbtil:
         bclr    iflags, #istream
         ; The delay here should be 10 character times long
@@ -559,7 +578,6 @@ wbtil2:
         bra     wbtil               ; 5 cycles per round
         dec     W2, W2              ;
         bra     nz, wbtil2          ;
-.endif
         return
 ;***********************************************************
 wbti_init:
@@ -634,12 +652,7 @@ wbtil6:
         dec       W4, W4
         bra       nz, wbtil5
         bclr      iflags, #idirty
-;.if WRITE_METHOD == 1
         setm      ibase       ; Now the flash row has been verified
-;.endif
-;.if WRITE_METHOD == 2
-;        bset      iflags, #fwritten ; Flash has been written
-;.endif
         return
 
 verify_imem_2:
@@ -1109,7 +1122,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 21.10.2015\r\n"
+        .ascii  " FlashForth PIC24 24.10.2015\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1

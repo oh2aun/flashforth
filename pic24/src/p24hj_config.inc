@@ -24,6 +24,9 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 ;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
+; Define the UART used for the operator
+.equ OPERATOR_UART, 1        ; 1 or 2
+
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
 .equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS

@@ -28,6 +28,9 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
                                     ; NOTE: The baud calculation depends
                                     ; on this exact value for the FRC oscillator
 
+; Define the UART used for the operator
+.equ OPERATOR_UART, 1        ; 1 or 2
+
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				; Serial baudrate UART1
 .equ FC1_TYPE, 1                    ; 1 = XON/XOFF, 2=CTS/RTS

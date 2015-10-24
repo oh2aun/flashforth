@@ -9,11 +9,18 @@
 .equ EEPROM_SIZE,    0x0200  ; Eeprom size
 
 ; For some reason the normal config macros did not work
-           .section __FOSCSEL.sec, code
+           .pushsection __FOSCSEL.sec, code
            .global __FOSCSEL
 __FOSCSEL: .pword FNOSC_FRCPLL
+           .popsection
+
 
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
+
+; Define the UART used for the operator
+.equ OPERATOR_UART, 1        ; 1 or 2
+
+;;; UART1 configuration
 .equ BAUDRATE1, 38400		 ; Serial baudrate
 .equ FC1_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0            ; 0 = to use fixed baudrate
@@ -22,12 +29,17 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 0xc
 
-; Set to one to use the alternate UART pins
-.equ USE_ALTERNATE_UART_PINS, 0
+;;; UART2 configuration
+;.equ BAUDRATE2, 38400		 ; Serial baudrate, comment if not used
+.equ FC2_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
+.equ AUTOBAUD2, 0            ; 0 = to use fixed baudrate
+                             ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 0xc
 
 ; Default number base
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
-
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
@@ -107,6 +119,9 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 
 .equ FCY, (FREQ_OSC/2)
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
+.ifdecl BAUDRATE2
+.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART divisor
+.endif
 .equ MS_PR_VAL, (FCY/1000-1)		      ; Timer value for 1 ms ticks
 .equ write_delay, 20                      ; Flash write delay
 
