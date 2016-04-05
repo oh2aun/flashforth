@@ -3,6 +3,10 @@
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
 ;;; Below is the setting for max amount of ram for dsPIC24E256GP502
+;;; NOTE: The last words on the last FLASH page contains the configuration bits.
+;;; If these are overwritten the the device will loose its configuration bits.
+;;; So for example on PIC24EP256GP202 the FLASH_SIZE is set to 0x2b000 - 0x00800.
+
 .equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
                              ; See program memory size in the device datasheet.
 .equ RAM_SIZE,       0x8000  ; Ram size in bytes
@@ -11,15 +15,16 @@
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
+;; Check the configuration for your particular chip from the datasheet.
+config __FWDT, FWDTEN_OFF
 ;config __FOSCSEL, IESO_ON & FNOSC_FRC
 config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;config __FOSCSEL, IESO_ON & FNOSC_PRI
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-config FWDT, FWDTEN_OFF
 ;config FDS, GWRP_OFF & GCP_OFF
 ;config FPOR,
-config __FICD, JTAGEN_OFF & ICS_PGD3
+;;config __FICD, JTAGEN_OFF & ICS_PGD1
 
 .equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
@@ -71,7 +76,7 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
@@ -81,9 +86,9 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 1       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISA
-.equ CPU_LOAD_PORT, PORTA
-.equ CPU_LOAD_BIT, 0
+.equ CPU_LOAD_TRIS, TRISB
+.equ CPU_LOAD_PORT, PORTB
+.equ CPU_LOAD_BIT, 15
 .equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led
 
 ; Define the startup delay for turnkey words. Milliseconds
@@ -95,9 +100,12 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX2_BUF_SIZE, 0   ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
+
+; Set to 1 if the UARTS have ERRATA on the UTXBF status flag.
+.equ ERRATA_UTXBF, 0
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 128          ; 64 cells return stack
@@ -133,16 +141,6 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ WRITE_METHOD, 2
 .equ WRITE_TIMEOUT, 300         ; milliseconds
 
-;;; Memory mapping prefixes
-.equ SFR_SPACE,      0x1000
-.equ PFLASH,         SFR_SPACE+RAM_SIZE
-.equ HI_TEMP,        PFLASH+FLASH_SIZE
-.if HI_TEMP > 0xffff
-.equ FLASH_HI,       (0xffff)
-.else
-.equ FLASH_HI,       (HI_TEMP-1)
-.endif
-
 ;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4003     ; Memory page erase
 .equ FLASH_WRITE,    0x4001     ; Memory row write = double word
@@ -154,6 +152,21 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ IBUFLEN2,       0x0200   ; Outer write loop
 .equ IBUFMASK,       0xf800
 
+;;; Memory mapping prefixes
+.equ SFR_SIZE,       0x1000
+.equ PFLASH,         SFR_SIZE+RAM_SIZE
+.equ HI_TEMP,        PFLASH+FLASH_SIZE
+.if HI_TEMP > 0xffff
+.equ FLASH_HI,       (0xffff)
+.else
+.equ FLASH_HI,       (HI_TEMP-1)
+.endif
+
+.if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
+.equ WANT_X, 1
+.else
+.equ WANT_X, 0
+.endif
 
 .equ FCY, (FREQ_OSC/2)
 .equ MS_PR_VAL, ((FCY/1000)-1)			      ; Timer value for 1 ms ticks
@@ -164,13 +177,19 @@ config __FICD, JTAGEN_OFF & ICS_PGD3
 .equ write_delay, 20                      ; Flash write delay
 
 .if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
+.else
+.equ DPS_LOW,  1    ; EEPROM emulation inside kernel
+.endif
+.if DPS_LOW == 0    ; EEPROM EMULATION after end of addressable kernel
 .equ DPS_ADDR, 0x10000 - PFLASH
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
-.else
-.equ DPS_BASE, CONFIG_DATA
+.else               ; EEPROM emulation inside kernel
+.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*3))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
+
 
 ;;; Different flash write logic for E devices than HJ or FJ devices
 .equ PIC2433E, 1

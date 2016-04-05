@@ -2,8 +2,8 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"  ; 
-.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
-;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
+;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
 ;.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
@@ -19,7 +19,7 @@
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturbs the XON/XOFF flow control. 
-;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program.
+;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
 .equ BAUDRATE0 = 9600               ; Serial baudrate UART0
 .equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
@@ -34,7 +34,7 @@
 .equ U1RTS_BIT = 4
 
 ; Default number base
-.equ BASE_DEFAULT = 10      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT = 16      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE = 1
@@ -46,7 +46,7 @@
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrb
 .equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduinomega:portb arduinouno:portb
-.equ CPU_LOAD_BIT = 7            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
+.equ CPU_LOAD_BIT = 5            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
 .equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
                                  ; arduino : 1 = high on port turns on led 
 

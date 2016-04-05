@@ -12,6 +12,7 @@ REVISION HISTORY
 
 FlashForth V5.0
 ---------------
+- X@ X!
 - 8->16 bit task parameters
 - FLOAT support
 - Python shell with command line editing and history. 

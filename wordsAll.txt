@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0
+Dictionary of FlashForth 5.0 21.03.2016
 
 !          ( x addr -- )
            Store x to addr
@@ -1079,6 +1079,22 @@ wmove      ( addr1 addr2 u -- )
 
 words      ( -- )
            List words
+
+x!         ( u addr.d -- )
+           Extended store into flash. Real flash address
+           PIC18 ATMEGA
+
+x!         ( ud addr.d -- )
+           Extended store into flash. Real flash address
+           PIC-24-30-33
+
+x@         ( addr.d -- u )
+           Extended fetch from flash. Real flash address
+           PIC18 ATMEGA
+
+x@         ( addr.d -- ud )
+           Extended fetch from flash. Real flash address
+           PIC24-30-33
 
 xa>        ( a-addr1 -- a-addr2 )
            Convert a real executable address to virtual flash address

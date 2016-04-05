@@ -8,6 +8,7 @@
 .equ RAM_SIZE,       0x0800  ; Ram size in bytes
 .equ EEPROM_SIZE,    0x0200  ; Eeprom size
 
+;; Check the configuration for your particular chip from the datasheet.
 ; For some reason the normal config macros did not work
            .pushsection __FOSCSEL.sec, code
            .global __FOSCSEL
@@ -67,6 +68,9 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 4   ; Fill level for XOFF
 
+; Set to 1 if the UARTS have ERRATA on the UTXBF status flag.
+.equ ERRATA_UTXBF, 1
+
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 128          ; 64 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
@@ -97,7 +101,8 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ WRITE_METHOD, 1
 
 ;;; Memory mapping prefixes
-.equ PFLASH,         0x800+RAM_SIZE
+.equ SFR_SIZE,       0x800
+.equ PFLASH,         SFR_SIZE+RAM_SIZE
 .equ PEEPROM,        0x10000-EEPROM_SIZE
 .equ HI_TEMP,        PFLASH+EEPROM_SIZE+FLASH_SIZE
 .if HI_TEMP > 0xffff
@@ -116,6 +121,12 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ IBUFLEN1,     0x0020   ; Inner write loop
 .equ IBUFLEN2,     0x0001   ; Outer write loop
 .equ IBUFMASK,     0xffc0
+
+.if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
+.equ WANT_X, 1
+.else
+.equ WANT_X, 0
+.endif
 
 .equ FCY, (FREQ_OSC/2)
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor

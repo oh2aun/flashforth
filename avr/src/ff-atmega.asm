@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          07.06.2015                                        *
+;    Date:          02.04.2016                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "07.06.2015"
+#define DATE "02.04.2016"
 
 
 ; Register definitions
@@ -302,7 +302,6 @@
 .equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fBUSY=     7   ; 1 = busy
 .equ fIDLE=     6   ; 1 = busy
 .equ fLOAD=     5   ; Load measurement ready
 .equ fLOADled=  4   ; 0 = no load led, 1 = load led on
@@ -332,8 +331,8 @@
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
 .equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
-.if (FLASHEND == 0x1ffff)              ; 128 Kwords flash
-.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm2560)
+.if (FLASHEND == 0x1ffff)             ; 128 Kwords flash
+.equ OFLASH  = PEEPROM+EEPROMEND+1    ; 52 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
 .equ KERNEL_SIZE=0x0d00
@@ -437,9 +436,14 @@ dpLATEST:   .byte 2
 areg:       .byte 2 ; A register data
 iaddrl:     .byte 1
 iaddrh:     .byte 1
+.ifdef RAMPZ
+iaddru:	    .byte 1
+ibaseu:	    .byte 1
+.endif
+
 load_acc:   .byte 3 ; Load measurement accumulator
 load_res:   .byte 3 ; Load result
-; load:       .byte 1 ; Cpu load in percent
+
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
 uvars:      .byte   (-us0)
@@ -457,6 +461,21 @@ dpdata:     .byte   2
 ;*******************************************************************
 .cseg
 .org KERNEL_START
+
+; M? -- caddr count    current data space string
+;        dw      L_DOTBASE
+L_MEMQ:
+        .db     NFA|1," "
+MEMQ:
+        call    CSE_
+        call    DOLIT
+        fdw     MEMQADDR_N
+        call    PLUS
+        call    FETCH_A
+        call    CFETCHPP
+        call    DOLIT
+        .dw     NFAmask
+        jmp     AND_
 
 
 
@@ -520,7 +539,7 @@ umslashmod3:
         pop t2
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
         ret
-; *******************************************************************
+;*********************************************************************
 ; EXIT --   Compile a return
 ;        variable link
         .dw     0
@@ -531,6 +550,17 @@ EXIT:
         pop     t0
         pop     t0
         ret
+
+        fdw     IFLUSH_L
+OPERATOR_L:
+        .db     NFA|8,"operator",0
+OPERATOR:
+        call    DOCREATE
+        fdw     OPERATOR_AREA
+OPERATOR_AREA:
+        .dw     up0
+        .dw     0, ursize
+        .dw     ussize, utibsize
 
 ; idle
         fdw(EXIT_L)
@@ -1451,7 +1481,7 @@ ROT:
         rcall   TOR
         rcall   SWOP
         rcall   RFROM
-        rjmp    SWOP
+        jmp     SWOP
 
         fdw     ROT_L
 TOR_L:
@@ -1646,10 +1676,12 @@ NOTEQUAL_L:
         .db     NFA|2,"<>",0
 NOTEQUAL:
         rcall   MINUS           ; MINUS leaves a valid zero flag
+        ser     tosh
+        ser     tosl
         brne    NOTEQUAL1
-        rjmp    FALSE_F
+        adiw    tosl,1
 NOTEQUAL1:
-        jmp     TRUE_F
+        ret
 
         fdw     ZEROLESS_L
 EQUAL_L:
@@ -1677,12 +1709,10 @@ GREATER:
 ULESS_L:
         .db     NFA|2,"u<",0
 ULESS:
-        rcall   MINUS
-        brcc    ULESS1        ; Carry test  
-        rjmp    TRUE_F
-ULESS1:
-        jmp     FALSE_F
-
+        rcall   MINUS       ; Carry is valid after MINUS
+        sbc     tosl, tosl
+        sbc     tosh, tosh
+        ret
 
         fdw     ULESS_L
 UGREATER_L:
@@ -2142,14 +2172,10 @@ USER:
         call    ICOMMA
         rcall   XDOES
 DOUSER:
-        pushtos
         m_pop_zh
         pop     zh
         pop     zl
-        lsl     zl
-        rol     zh
-        lpm_    tosl, z+
-        lpm_    tosh, z+
+        rcall   FETCHLIT
         add     tosl, upl
         adc     tosh, uph
         ret
@@ -3002,24 +3028,19 @@ DUP:
         fdw     NOTEQUAL_L
 ZEROEQUAL_L:
         .db     NFA|2, "0=",0
-ZEROEQUAL:      
-        or      tosh, tosl
-        brne    FALSE_F
-TRUE_F:
-        ser     tosh
-        ser     tosl
-ZEROEQUAL_1:
+ZEROEQUAL:
+        sbiw    tosl, 1
+        sbc     tosl, tosl
+        sbc     tosh, tosh
         ret
 
         fdw     ZEROEQUAL_L
 ZEROLESS_L:
         .db     NFA|2, "0<",0
 ZEROLESS:
-        tst     tosh
-        brmi    TRUE_F
-FALSE_F:
-        clr     tosh
-        clr     tosl
+        lsl     tosh
+        sbc     tosl, tosl
+        sbc     tosh, tosh
         ret
 
 
@@ -3454,7 +3475,8 @@ DOTID3:
         fdw     DOTID_L
 TO_PRINTABLE_L:
         .db     NFA|3,">pr"
-TO_PRINTABLE:   
+TO_PRINTABLE:
+        clr     tosh   
         cpi     tosl, 0
         brmi    TO_PRINTABLE1
         cpi     tosl, 0x20
@@ -3634,7 +3656,7 @@ PFL_L:
         .db     NFA|3,"pfl"
 PFL:
          call   DOCREATE
-        .dw     PFLASH
+        .dw     OFLASH
 ;***************************************************************
         fdw    PFL_L
 ZFL_L:
@@ -4066,6 +4088,35 @@ FLASHHI:
         .dw      FLASH_HI
         .dw      EEPROM_HI
         .dw      RAM_HI
+
+.if FLASHEND > 0x3fff
+;;; x@ ( addrl addru -- x )
+        fdw     A_FROM_L
+XFETCH_L:
+        .db     NFA|2, "x@",0
+.ifdef RAMPZ
+	out_    RAMPZ, tosl
+.endif
+	poptos
+        movw    z, tosl
+        lpm_    tosl, z+     ; Fetch from Flash directly
+        lpm_    tosh, z+
+.ifdef RAMPZ
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
+.endif
+	ret
+	
+;;; x! ( x addrl addru -- )
+        fdw     XFETCH_L
+XSTORE_L:
+        .db     NFA|2, "x!",0
+	mov     t0, tosl
+	poptos
+        call    XUPDATEBUF
+	jmp     ISTORE1
+.endif
+
 ;***************************************************
 
         fdw      MEMHI_L
@@ -4185,14 +4236,12 @@ TX1_:
         cpi     tosl, XOFF
         breq    XXOFF_TX1_TOS
 TX1_LOOP:
-        sbr     FLAGS2, (1<<fBUSY)
         rcall   PAUSE
         in_     t0, UCSR1A
         sbrs    t0, UDRE1
         rjmp    TX1_LOOP
         out_    UDR1, tosl
         poptos
-        cbr     FLAGS2, (1<<fBUSY)
         ret
 
 XXON_TX1_TOS:
@@ -4370,8 +4419,6 @@ CPU_LOAD_END:
 LOAD_LED_END:
 .endif
         sbrc    FLAGS2, fIDLE
-        rjmp    IDLE_LOAD1
-        sbrc    FLAGS2, fBUSY
         rjmp    IDLE_LOAD1
         ldi     t0, low(up0)
         cp      upl, t0
@@ -4792,14 +4839,12 @@ TX0_:
         breq    XXOFF_TX0_TOS
 .endif
 TX0_LOOP:
-        sbr     FLAGS2, (1<<fBUSY)
         rcall   PAUSE
         in_     t0, UCSR0A
         sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_LOOP
         out_    UDR0_, tosl
         poptos
-        cbr     FLAGS2, (1<<fBUSY)
         ret
 
 .if U0FC_TYPE == 1
@@ -4885,7 +4930,7 @@ RX0Q:
         rjmp    ABORT
         
 ; Coded for max 256 byte pagesize !
-;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibasehi != iaddrhi)
+;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibaseh != iaddrh)(ibaseu != iaddru)
 ;   if (idirty)
 ;       writebuffer_to_imem
 ;   endif
@@ -4894,17 +4939,34 @@ RX0Q:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
+	sub_pflash_tos
+.ifdef  RAMPZ
+	ldi     t0, RAMPZV
+.endif
+XUPDATEBUF:
         sts     iaddrl, tosl
         sts     iaddrh, tosh
-        cpi     tosh, high(FLASH_HI+1)       ; Dont allow kernel writes
+.ifdef RAMPZ
+        sts     iaddru, t0
+	cpi     t0, RAMPZV
+	brne    XUPDATEBUF2
+.endif
+        cpi     tosh, high(FLASH_HI-PFLASH+1) ; Dont allow kernel writes
         brcc    ISTORERR
-        lds     t0, iaddrl
+XUPDATEBUF2:	
+	lds     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
         rjmp    IFILL_BUFFER
-                lds     t0, iaddrh
+        lds     t0, iaddrh
         cpse    t0, ibaseh
         rjmp    IFILL_BUFFER
+.ifdef RAMPZ
+        lds     t0, iaddru
+	lds     t1, ibaseu
+        cpse    t0, t1
+        rjmp    IFILL_BUFFER
+.endif
         ret
 
 IFILL_BUFFER:
@@ -4913,10 +4975,14 @@ IFILL_BUFFER:
         andi    t0, ~(PAGESIZEB-1)
         mov     ibasel, t0
         lds     ibaseh, iaddrh
+.ifdef RAMPZ
+	lds     t0, iaddru
+	sts     ibaseu, t0
+	out_    RAMPZ, t0
+.endif
 IFILL_BUFFER_1:
         ldi     t0, PAGESIZEB&0xff ; 0x100 max PAGESIZEB
         movw    zl, ibasel
-        sub_pflash_z
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
 IFILL_BUFFER_2:
@@ -4924,6 +4990,10 @@ IFILL_BUFFER_2:
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
+.ifdef RAMPZ
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
+.endif
         ret
 
 IWRITE_BUFFER:
@@ -4952,7 +5022,10 @@ IWRITE_BUFFER:
         ; Disable interrupts
         cli
         movw    zl, ibasel
-        sub_pflash_z
+.ifdef RAMPZ
+	lds     t0, ibaseu
+	out_    RAMPZ, t0
+.endif
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
         rcall   DO_SPM
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
@@ -4990,8 +5063,15 @@ IWRITE_BUFFER2:
         rjmp    WARM_     ; reset
         subi    t0, 1
         brne    IWRITE_BUFFER2
-
-        clr     ibaseh
+	ser     t0
+	mov     ibaseh, t0
+.ifdef RAMPZ
+	sts     ibaseu, t0
+.endif
+.ifdef RAMPZ
+        ldi     t0, RAMPZV
+        out_    RAMPZ, t0
+.endif
         cbr     FLAGS1, (1<<idirty)
         // reenable interrupts
         sei
@@ -5034,7 +5114,6 @@ DO_SPM:
         spm
         ret
 
-                
         fdw     PAUSE_L
 IFLUSH_L:
         .db     NFA|6,"iflush",0
@@ -5285,7 +5364,7 @@ VER:
         call    XSQUOTE
          ;      1234567890123456789012345678901234567890
         ;.db 34,"FlashForth Atmega 5.0 ",DATE,0xd,0xa,0
-                .db     partlen+datelen+14,"FlashForth ",partstring," ", DATE,0xd,0xa
+        .db     partlen+datelen+16,"FlashForth 5 ",partstring," ", DATE,0xd,0xa
         jmp     TYPE
 
 ; ei  ( -- )    Enable interrupts
@@ -5373,6 +5452,7 @@ LITERALruntime:
 ISTORE:
         rcall   LOCKEDQ
         rcall   IUPDATEBUF
+ISTORE1:
         poptos
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
@@ -5447,6 +5527,12 @@ LOCKEDQ:
 ;***********************************************************
 IFETCH:
         movw    z, tosl
+        sub_pflash_z
+.ifdef RAMPZ
+	lds     t0, ibaseu
+	cpi     t0, RAMPZV
+	brne    IIFETCH
+.endif
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zl
@@ -5461,13 +5547,8 @@ IFETCH:
         ld      tosh, x+
         ret
 IIFETCH:
-        sub_pflash_z
         lpm_    tosl, z+     ; Fetch from Flash directly
         lpm_    tosh, z+
-.ifdef RAMPZ
-        ldi     t0, RAMPZV
-        out_    RAMPZ, t0
-.endif
         ret
                 
         fdw     STORE_L
@@ -5478,7 +5559,11 @@ A_FROM_L:
         ldi     zh, high(areg)
         rjmp    FETCH_RAM_2
 
+.if FLASHEND > 0x3fff
+        fdw     XSTORE_L
+.else
         fdw     A_FROM_L
+.endif
 FETCH_L:
         .db     NFA|1, "@"
 FETCH:
@@ -5510,6 +5595,12 @@ EFETCH:
 
 ICFETCH:
         movw    z, tosl
+        sub_pflash_z
+.ifdef RAMPZ
+	lds     t0, ibaseu
+	cpi     t0, RAMPZV
+	brne    IICFETCH
+.endif
         cpse    zh, ibaseh
         rjmp    IICFETCH
         mov     t0, zl
@@ -5524,13 +5615,8 @@ ICFETCH:
         clr     tosh
         ret
 IICFETCH:
-        sub_pflash_z
         lpm_    tosl, z+     ; Fetch from Flash directly
         clr     tosh
-.ifdef RAMPZ
-        ldi     t0, RAMPZV
-        out_    RAMPZ, t0
-.endif
         ret
 
         fdw     FETCH_L
@@ -5715,17 +5801,6 @@ PAUSE:
         ret
 
 
-        fdw     IFLUSH_L
-OPERATOR_L:
-        .db     NFA|8,"operator",0
-OPERATOR:
-        call    DOCREATE
-        fdw     OPERATOR_AREA
-OPERATOR_AREA:
-        .dw     up0
-        .dw     0, ursize
-        .dw     ussize, utibsize
-
         fdw     OPERATOR_L
 ICOMMA_L:
         .db     NFA|2, "i,",0
@@ -5774,21 +5849,6 @@ MEMQADDR_N:
         fdw     ROM_N
         fdw     EROM_N
         fdw     FRAM_N
-; M? -- caddr count    current data space string
-;        dw      L_DOTBASE
-L_MEMQ:
-        .db     NFA|1," "
-MEMQ:
-        call    CSE_
-        call    DOLIT
-        fdw     MEMQADDR_N
-        call    PLUS
-        call    FETCH_A
-        call    CFETCHPP
-        call    DOLIT
-        .dw     NFAmask
-        jmp     AND_
-
 ;*******************************************************
 umstar0:
         push t2
@@ -5819,8 +5879,8 @@ umstar0:
 
 ;;; *************************************
 ;;; EMPTY dictionary data
+; *******************************************************************
 .equ coldlitsize=12
-;.section user_eedata
 COLDLIT:
 STARTV: .dw      0
 DPC:    .dw      OFLASH

@@ -8,6 +8,7 @@
 .equ RAM_SIZE,       0x0800  ; Ram size in bytes
 .equ EEPROM_SIZE,    0x0400  ; Eeprom size
 
+;; Check the configuration for your particular chip from the datasheet.
 config __FOSC, CSW_FSCM_OFF & FRC;_PLL8
 ;config __FOSC, HS;FRC; HS            ;Turn off clock switching and
                               ;fail-safe clock monitoring and
@@ -76,6 +77,9 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
+; Set to 1 if the UARTS have ERRATA on the UTXBF status flag.
+.equ ERRATA_UTXBF, 0
+
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 128          ; 64 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
@@ -105,7 +109,8 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ WRITE_METHOD,  1
 
 ;;; Memory mapping prefixes. Do not modify
-.equ PFLASH,         0x800+RAM_SIZE
+.equ SFR_SIZE,       0x800
+.equ PFLASH,         SFR_SIZE+RAM_SIZE
 .equ PEEPROM,        0x10000-EEPROM_SIZE
 .equ HI_TEMP,        PFLASH+EEPROM_SIZE+FLASH_SIZE
 .if HI_TEMP > 0xffff
@@ -125,6 +130,12 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ IBUFLEN1,       0x0020
 .equ IBUFLEN2,       0x0001
 .equ IBUFMASK,       0xffc0
+
+.if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
+.equ WANT_X, 1
+.else
+.equ WANT_X, 0
+.endif
 
 .equ FCY, (FREQ_OSC/4)                  ; CPU intruction frequency
 .equ MS_PR_VAL, ((FCY/1000)-1)          ; Timer value for 1 ms ticks

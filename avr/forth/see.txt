@@ -19,7 +19,7 @@ hex ram
     *@ fff and dup 800 and 
     if f800 or then 2* over +  cell+ ;
 : @xtaddr ( addr -- addr xt-addr )
-  dup cell+ @ 2* pfl + ;
+  dup cell+ @ xa> ;
 : .rjmp ( addr -- addr+2 ) @braddr u.4 cell+ ;
 : .br  ( addr -- addr+2 )
      *@ 3 rshift 7f and dup 40 and

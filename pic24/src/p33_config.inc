@@ -11,6 +11,7 @@
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
+;; Check the configuration for your particular chip from the datasheet.
 ;config __FOSCSEL, IESO_ON & FNOSC_FRC
 ;config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 config __FOSCSEL, IESO_ON & FNOSC_PRI
@@ -96,6 +97,9 @@ config __FWDT, WDTPOST_PS1024
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
+; Set to 1 if the UARTS have ERRATA on the UTXBF status flag.
+.equ ERRATA_UTXBF, 0
+
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE, 160          ; 80 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
@@ -129,7 +133,8 @@ config __FWDT, WDTPOST_PS1024
 .equ WRITE_TIMEOUT, 300         ; milliseconds
 
 ;;; Memory mapping prefixes
-.equ PFLASH,         0x800+RAM_SIZE
+.equ SFR_SIZE,       0x800
+.equ PFLASH,         SFR_SIZE+RAM_SIZE
 .equ HI_TEMP,        PFLASH+FLASH_SIZE
 .if HI_TEMP > 0xffff
 .equ FLASH_HI,       (0xffff)
@@ -148,6 +153,12 @@ config __FWDT, WDTPOST_PS1024
 .equ IBUFMASK,       0xfc00
 
 
+.if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
+.equ WANT_X, 1
+.else
+.equ WANT_X, 0
+.endif
+
 .equ FCY, (FREQ_OSC/2)
 .equ MS_PR_VAL, ((FCY/1000)-1)			      ; Timer value for 1 ms ticks
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART1 divisor
@@ -157,11 +168,16 @@ config __FWDT, WDTPOST_PS1024
 .equ write_delay, 20                      ; Flash write delay
 
 .if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
+.else
+.equ DPS_LOW,  1    ; EEPROM emulation inside kernel
+.endif
+.if DPS_LOW == 0    ; EEPROM EMULATION after end of addressable kernel
 .equ DPS_ADDR, 0x10000 - PFLASH
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
-.else
-.equ DPS_BASE, CONFIG_DATA
+.else               ; EEPROM emulation inside kernel
+.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*3))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 

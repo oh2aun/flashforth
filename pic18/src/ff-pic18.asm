@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          07.06.2015                                        *
+;    Date:          21.03.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -146,8 +146,7 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fTX1REQ equ 3           ; TX1 signal sleep to enable TX1IE
-fLOAD   equ 2           ; 256 mS Load sample available
+fTX1REQ equ 2           ; TX1 signal sleep to enable TX1IE
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
 
@@ -175,6 +174,7 @@ indexl   res 1       ; DO LOOP INDEX
 indexh   res 1
 ibase_lo res 1       ; Memory address of ibuffer
 ibase_hi res 1       ; Memory address of ibuffer
+ibase_up res 1       ; Memory address of ibuffer
 p_lo     res 1       ; p pointer
 p_hi     res 1
 FLAGS1   res 1       ; Some flags                                    
@@ -248,6 +248,9 @@ ihabank     res 1
 
 iaddr_lo    res 1       ; Instruction Memory access address
 iaddr_hi    res 1       ; Instruction Memory access address
+#if XSTORE == ENABLE
+iaddr_up    res 1       ; Instruction Memory access address
+#endif
 areg        res 2
 
 #ifdef USB_CDC
@@ -428,7 +431,12 @@ irq_ms:
         addwfc  load_acc+2, F, A
         movf    ms_count, W, A
         bnz     irq_ms_end
-        bsf     FLAGS2, fLOAD, A
+        movff   load_acc, load_res
+        movff   load_acc+1, load_res+1
+        movff   load_acc+2, load_res+2
+        clrf    load_acc, A
+        clrf    load_acc+1, A
+        clrf    load_acc+2, A
 #endif
 #endif
 #endif
@@ -920,12 +928,17 @@ UMSLASHMOD2:
 ;endif
 iupdatebuf:
         banksel iaddr_lo
+#if XSTORE == ENABLE
+        movf    iaddr_up, W, BANKED
+        cpfseq  ibase_up
+        bra     iupdatebuf0
+#endif
+        movf    iaddr_hi, W, BANKED
+        cpfseq  ibase_hi
+        bra     iupdatebuf0
         movlw   h'c0'
         andwf   iaddr_lo, W, BANKED
         cpfseq  ibase_lo, A
-        bra     iupdatebuf0
-        movf    iaddr_hi, W, BANKED
-        cpfseq  ibase_hi
         bra     iupdatebuf0
         return
 
@@ -936,6 +949,9 @@ iupdatebuf0:
         andwf   iaddr_lo, W, BANKED
         movwf   ibase_lo, A
         movff   iaddr_hi, ibase_hi
+#if XSTORE == ENABLE
+        movff   iaddr_up, ibase_up
+#endif
 fill_buffer_from_imem:
         movlw   d'64'
         movwf   PCLATH, A
@@ -945,6 +961,9 @@ fill_buffer_from_imem_1:
         movff   TABLAT, Tplus
         decfsz  PCLATH, F, A
         bra     fill_buffer_from_imem_1
+#if XSTORE == ENABLE
+        clrf    TBLPTRU, A
+#endif
         return
 ;***********************************************************
 write_buffer_to_imem:
@@ -1031,11 +1050,18 @@ verify_imem_1:
 
         bcf     FLAGS1, idirty, A ; Mark flash buffer clean
         setf    ibase_hi, A ; Mark flash buffer empty
+#if XSTORE == ENABLE
+        setf    ibase_up, A ; Mark flash buffer empty
+	    clrf    TBLPTRU
+#endif
         return
 init_ptrs:
         lfsr    Tptr, flash_buf
         movff   ibase_lo, TBLPTRL
         movff   ibase_hi, TBLPTRH
+#if XSTORE == ENABLE
+        movff   ibase_up, TBLPTRU
+#endif
         return
 magic:
         movlw   h'55'
@@ -1250,15 +1276,20 @@ LITER5:
 
 ;**************************************************
 ;   INSTRUCTION MEMORY INSTRUCTIONS
+FETCHLIT:
+        movwf   TBLPTRH
 pfetch0:
         tblrd*+
-        movff   TABLAT, plusS
+        movf    TABLAT, W
+        movwf   plusS
         tblrd*+
-        movff   TABLAT, plusS
+        movf    TABLAT, W
+        movwf   plusS
         return
 pcfetch0:
         tblrd*+
-        movff   TABLAT, plusS
+        movf    TABLAT, W
+        movwf   plusS
         clrf    plusS, A
         return
         
@@ -1315,7 +1346,7 @@ IFETCH:
 ;read_cell_from_buffer
         movf    TBLPTRL, W, A
         andlw   0x3f
-                lfsr    Tptr, flash_buf
+        lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         bra     FETCH2
 
@@ -1366,7 +1397,11 @@ ECSTORE:
 ECSTORE1:
         bcf     EECON1, EEPGD, A
         bcf     EECON1, CFGS, A
+#ifdef PIR6
+        bcf     PIR6, EEIF, A
+#else
         bcf     PIR2, EEIF, A
+#endif
         bsf     EECON1, WREN, A
         bcf     INTCON, GIE, A
         movlw   h'55'
@@ -1376,11 +1411,18 @@ ECSTORE1:
         bsf     EECON1, WR, A
         bsf     INTCON, GIE, A
 ECSTORE2:
+#ifdef PIR6
+        btfss   PIR6, EEIF, A
+#else
         btfss   PIR2, EEIF, A
+#endif
         bra     ECSTORE2
         bcf     EECON1, WREN, A
+#ifdef PIR6
+        bcf     PIR6, EEIF, A
+#else
         bcf     PIR2, EEIF, A
-
+#endif
         return
 
 
@@ -1545,17 +1587,6 @@ PAUSE0:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-        btfss   FLAGS2, fLOAD, A
-        bra     PAUSE_IDLE0
-        bcf     FLAGS2, fLOAD, A
-        bcf     INTCON, GIE, A
-        movff   load_acc, load_res
-        movff   load_acc+1, load_res+1
-        movff   load_acc+2, load_res+2
-        clrf    load_acc, A
-        clrf    load_acc+1, A
-        clrf    load_acc+2, A
-        bsf     INTCON, GIE, A
 PAUSE_IDLE0:
 #endif
         movf    status, W, A   ; Sleep only if all tasks ar idle
@@ -2141,7 +2172,7 @@ main:
         movwf   OSCTUNE, A
 #endif
 #endif
-                            ; Clear ram
+                                ; Clear ram
 WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
         movff   RCON, 1         ; Save reset reasons
@@ -2174,7 +2205,18 @@ WARM_ZERO_2:
         
         clrf    PIE1, A         ; Disable all peripheral interrupts
         clrf    PIE2, A
-        
+#ifdef PIE3
+        clrf    PIE3, A
+#endif
+#ifdef PIE4
+        clrf    PIE4, A
+#endif
+#ifdef PIE5
+        clrf    PIE5, A
+#endif
+#ifdef PIE6
+        clrf    PIE6, A
+#endif
         movlw   spbrgval
         movwf   SPBRG, A
 ; TX enable
@@ -2340,9 +2382,14 @@ VER:
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
+#if XSTORE == ENABLE
+        tstfsz  iaddr_up, A
+        return
+#else
         movlw   HIGH FLASH_HI+1
         cpfslt  Srw, A
         bra     ISTORERR
+#endif
         movlw   HIGH dpcode ;(dp_user_dictionary>>8) ;
         cpfslt  Srw, A
         return
@@ -2392,15 +2439,6 @@ KEYQ:
         rcall   UKEYQ
         goto    FEXECUTE
 
-FETCHLIT:
-        movwf   TBLPTRH
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        return
 ;***************************************************
 ; LIT   -- x    fetch inline 16 bit literal to the stack
 ; 17 clock cycles
@@ -2594,9 +2632,23 @@ ISTORERR:
         db      3,"AD?"
         rcall   TYPE
         bra     STARTQ2        ; goto    ABORT
-; !     x addr --   store x at addr in memory
+
+; !     x addrl addru  --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
         dw      L_SPFETCH
+#if XSTORE == ENABLE
+L_XSTORE:
+        db      NFA|2,"x!"
+        movf    Sminus, W, A
+        movff   Sminus, iaddr_up
+        call    ISTORE
+        clrf    iaddr_up
+        return
+
+; !     x addr --   store x at addr in memory
+; 17 clock cycles for ram. 3.5 us @ 12 Mhz
+        dw      L_XSTORE
+#endif
 L_STORE:
         db      NFA|1,"!"
 STORE:
@@ -2658,6 +2710,7 @@ FETCH2:
         movff   Tplus, plusS
         return
 
+
 ;   C@      addr -- x fetch char from memory
 ;;; 15 cycles for ram.
         dw      L_FETCH
@@ -2679,9 +2732,24 @@ CFETCH2:
         clrf    plusS, A
         return
 
+;   x@       addrl addru -- x    fetch cell from flash
+        dw      L_CFETCH
+#if XSTORE == ENABLE
+L_XFETCH:
+        db      NFA|2,"x@"
+XFETCH:
+        movf    Sminus, W, A
+        movff   Sminus, TBLPTRU
+        movff   Sminus, TBLPTRH
+        movff   Sminus, TBLPTRL
+        call    pfetch0
+        clrf    TBLPTRU, A
+        return
+
 ; DICTIONARY POINTER FOR the current section
 ; Flash -- sets the data section to flash
-        dw      L_CFETCH
+        dw      L_XFETCH
+#endif
 L_FLASH:
 ROM_N:  
         db      NFA|5,"flash"
@@ -5287,7 +5355,7 @@ TO_PRINTABLE1:
         movlw   '.'
         movwf   Srw, A
 TO_PRINTABLE2:
-        movf    plusS, W, A
+        clrf    plusS, A
         return
 
  ; WORDS    --          list all words in dict.
@@ -5413,8 +5481,6 @@ DUMP7:
 IALLOT:
         rcall   IDP
         goto    PLUSSTORE
-    
-
         
 ;***************************************************************
 ; check that the relative address is within reach of conditional branch
@@ -5800,12 +5866,15 @@ DPLUS:
         movlw   4
         movf    SWrw, W, A
         addwf   Splus, F, A
+
         movlw   4
         movf    SWrw, W, A
         addwfc  Splus, F, A
+
         movlw   4
         movf    SWrw, W, A
         addwfc  Splus, F, A
+
         movlw   4
         movf    SWrw, W, A
         addwfc  Srw, F, A

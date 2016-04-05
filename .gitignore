@@ -5,3 +5,8 @@
 *.tgz
 *.gz
 *.zip
+
+*.lst
+*.o
+*.out
+

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          24.10.2015                                        *
+;    Date:          03.04.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -65,7 +65,6 @@
 
 ; flags
 .equ BUSYIDLE_MASK, 0xc000
-.equ fBUSY,   15  ; 0=IDLE, 1=BUSY
 .equ fIDLE,   14  ; 0=IDLE, 1=BUSY
 .equ fwritten,13
 .equ edirty,  12  ; eeprom status dirty
@@ -133,11 +132,11 @@
 .endif
 ;****************************************************
 .bss
-ibufl:      .space IBUFSIZEL
-ibufh:      .space IBUFSIZEH
-
 temp:        .space 2
 intcon1dbg:  .space 2
+
+ibufl:      .space IBUFSIZEL
+ibufh:      .space IBUFSIZEH
 
 .if TX1_BUF_SIZE > 0
 txqueue1:
@@ -176,8 +175,10 @@ rbuf2:       .space RX2_BUF_SIZE+1
 .endif
 
 index:      .space 2
-ibase:      .space 2
-iaddr:      .space 2
+ibasel:     .space 2
+ibaseh:     .space 2
+iaddrl:     .space 2
+iaddrh:     .space 2
 iflags:     .space 2
 status:     .space 2        ; 0 = allow CPU idle 
 load_acc:   .space 4
@@ -227,6 +228,7 @@ ustart:     .space uareasize ; The operator user area
 ;        *(ffcode);
 ;  } >program
 
+
 ;;; *************************************
 ;;; COLD dictionary data
 COLDLIT:
@@ -253,15 +255,14 @@ WARMLIT:
         .word      u0                    ; UP
         .word      usbuf0                ; S0, First user variable
         .word      urbuf                 ; R0
-.if OPERATOR_UART == 1
-        .word      handle(TX1)+PFLASH
-        .word      handle(RX1)+PFLASH
-        .word      handle(RX1Q)+PFLASH
-.endif
 .if OPERATOR_UART == 2
         .word      handle(TX2)+PFLASH
         .word      handle(RX2)+PFLASH
         .word      handle(RX2Q)+PFLASH
+.else
+        .word      handle(TX1)+PFLASH
+        .word      handle(RX1)+PFLASH
+        .word      handle(RX1Q)+PFLASH
 .endif
         .word      u0                    ; ULINK
         .word      BASE_DEFAULT          ; BASE
@@ -280,6 +281,7 @@ __MathError:
 __T1Interrupt:
 ; No nested interrupts, T1 interrupt must the first interrupt to be enabled
         bset    INTCON1, #NSTDIS
+        push.s
         bclr    IFS0, #T1IF
         inc     ms_count
 
@@ -287,7 +289,6 @@ __T1Interrupt:
 .if CPU_LOAD == 1
 .ifdecl TSIDL
 .ifdecl TMR3
-        push.s
         mov     TMR3, W0
         clr     TMR3
         
@@ -304,11 +305,11 @@ __T1Interrupt:
         clr     load_acc
         clr     load_acc+2
 RETFIE_T1_0:
+.endif
+.endif
+.endif
+.endif
         pop.s
-.endif
-.endif
-.endif
-.endif
         retfie
 
 __U1RXInterrupt:
@@ -502,29 +503,35 @@ __DefaultInterrupt:
 .endif
 .endif
 ; *******************************************************************
-; ibufmask = 0xffc0 or 0xfc00 or 0xf800
-; ibuflen  = 0x0040 or 0x0400 or 0x0800
+; ibufmask = 0xfffc0 or 0xffc00 or 0xff800
+; ibuflen  = 0x00040 or 0x00400 or 0x00800
 iupdatebuf:
-;if (ibase != (iaddr&0xffc0)) // ibufmask = 0xffc0 or fc00 
+;if (ibase != (iaddr&ibufmask)) // ibufmask = 0xffffc0 or fffc00 
 ;   if (idirty)
 ;       writebuffer_to_imem
 ;   endif
 ;   fillbuffer_from_imem
-;   ibase = iaddr&0xffc0
+;   ibase = iaddr&ibufmask
 ;endif
-;        mov     iaddr, W0  ; Done in caller
+        mov     iaddrh, W0
+        cp      ibaseh
+        bra     nz, iupdatebuf0
+        mov     iaddrl, W0
         mov     #IBUFMASK, W1
         and     W0, W1, W0
-        cp      ibase
+        cp      ibasel
         bra     nz, iupdatebuf0
         return
 
 iupdatebuf0:
         rcall   IFLUSH
-        mov     iaddr, W0
+        mov     iaddrl, W0
         mov     #IBUFMASK, W1
         and     W0, W1, W0
-        mov     W0, ibase
+        mov     W0, ibasel
+        mov     iaddrh, W0
+        mov     W0, ibaseh
+        mov     W0, TBLPAG
 fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
@@ -584,9 +591,10 @@ wbti_init:
         mov.w   W0, NVMCON
         mov.w   #ibufl, W0 ; Low word flash buffer in ram
         mov.w   #ibufh, W1 ; High byte buffer
-        mov.w   ibase, W2
+        mov.w   ibaseh, W2
+        mov.w   W2, TBLPAG
+        mov.w   ibasel, W2
         mov.w   #IBUFLEN2, W4
-        clr     TBLPAG
         tblwtl  W2, [W2]          ; Set page address
         return
 
@@ -603,16 +611,18 @@ write_buffer_to_imem_again:
         mov     #'F', W2
         mov     W2, U1TXREG
 .endif
-
-        mov.w   #FLASH_ERASE, W0  ; #30F 0x4041,  24F 0x4058
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Erase The Flash
+        mov.w   #FLASH_ERASE, W0
         rcall   wbti_init
 .ifdecl PIC2433E
-        clr     NVMADRU
         mov     W2, NVMADR
+        mov     TBLPAG, W2
+        mov     W2, NVMADRU
 .endif
         rcall   EWENABLE0         ; Now the flash row has been erased.
 
-        mov.w   #FLASH_WRITE, W0  ;  30F 0x4001,  24F 0x4004
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Write The Flash
+        mov.w   #FLASH_WRITE, W0
         rcall   wbti_init
 .ifdecl PIC2433E
         mov     #0xfa, W5
@@ -636,6 +646,12 @@ wbtil4:
         dec     W4, W4
         bra     nz, wbtil3  ; write more rows for big flashblocks
 
+.ifdecl PIC2433E
+        mov     NVMADRU, W0
+        mov     W0, TBLPAG
+.endif
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;; Verify The Flash
         clr     W0
         rcall   wbti_init
 wbtil5:
@@ -652,7 +668,8 @@ wbtil6:
         dec       W4, W4
         bra       nz, wbtil5
         bclr      iflags, #idirty
-        setm      ibase       ; Now the flash row has been verified
+        setm      ibasel       ; Now the flash row has been verified
+        setm      ibaseh       ; Now the flash row has been verified
         return
 
 verify_imem_2:
@@ -693,7 +710,7 @@ LITERAL:
         return
 .endif
         .pword   paddr(9b)+PFLASH
-TO_A_L:
+9:
         .byte   NFA|INLINE|2
         .ascii  ">a"
         .align 2
@@ -701,7 +718,7 @@ TO_A:
         mov     [W14--], W11
         return
 
-        .pword   paddr(TO_A_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|2
         .ascii  "a>"
@@ -796,7 +813,7 @@ EMPTY:
 
 
         .pword   paddr(9b)+PFLASH
-WARM_L:
+9:
         .byte   NFA|4
         .ascii  "warm"
         .align 2
@@ -831,7 +848,8 @@ FILL_RAM:
         cp      W14, W1
         bra     nz, FILL_RAM
         mov     #usbuf0, W14
-        setm    ibase
+        setm    ibasel
+        setm    ibaseh
         clr     iflags
 .ifndef PAIVT
 .ifdecl INTTREG
@@ -1060,7 +1078,7 @@ WARM_ABAUD2:
         mlit    warmlitsize
         rcall   WMOVE
 
-		; Wait 10 ms for UARTs to reset
+                ; Wait 10 ms for UARTs to reset
         mlit    10
         rcall   MS
 
@@ -1122,7 +1140,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   30
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth PIC24 24.10.2015\r\n"
+        .ascii  " FlashForth 5 PIC24 2.4.2016\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1156,8 +1174,8 @@ STARTQ2:
         bra     ABORT
 
 
-        .pword   paddr(WARM_L)+PFLASH
-TURNKEY_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "turnkey"
         .align 2
@@ -1166,8 +1184,8 @@ TURNKEY:
         .word   dpSTART
 
 ; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
-        .pword   paddr(TURNKEY_L)+PFLASH
-PAUSE_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "pause"
         .align 2
@@ -1186,9 +1204,8 @@ PAUSE:
 PAUSE2:
 .endif
 .if IDLE_MODE == 1
-        mov     #BUSYIDLE_MASK, W0
-        and     iflags, WREG
-        bra     nz, PAUSE_BUSY
+        btsc    iflags, #fIDLE
+        bra     PAUSE_BUSY
         mov     #u0, W0        ; IDLE only in operator task.
         cp      upcurr
         bra     nz, PAUSE_BUSY
@@ -1226,7 +1243,7 @@ PAUSE_BUSY:
         mov     [W0+ussave], W14    ; Restore SP W14
         return
 
-        .pword   paddr(PAUSE_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|3
         .ascii  "cwd"
@@ -1263,7 +1280,9 @@ CWD:
         .ascii  "int!"
         .align 2
 INTERRUPT_STORE:
+.ifdef IVT
         rcall   IVT
+.endif
 .ifdef PAIVT
         mov     [W14--], W3
         rcall   TO_XA
@@ -1290,7 +1309,7 @@ INTERRUPT_STORE:
 ; IVT  ( -- )  Use the normal interrupt vector table
         .pword   paddr(9b)+PFLASH
 .ifdef ALTIVT
-IVT_L:
+9:
         .byte   NFA|INLINE|3
         .ascii  "ivt"
         .align  2
@@ -1299,8 +1318,8 @@ IVT:
         return
 
 ; AIVT ( -- ) Use the alternate interrupt vector table
-        .pword   paddr(IVT_L)+PFLASH
-AIVT_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|4
         .ascii  "aivt"
         .align  2
@@ -1309,9 +1328,9 @@ AIVT:
         return
 
 ; [i ( -- ) enter the interrupt context
-        .pword   paddr(AIVT_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 .endif
-BRACKETI_L:
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "[i"
         .align  2
@@ -1328,7 +1347,7 @@ BRACKETI:
         return
 
 ; i] ( -- ) exit the interrupt context
-        .pword   paddr(BRACKETI_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "i]"
@@ -1347,7 +1366,7 @@ IBRACKET:
 
 ; di ( -- ) disable interrupts
         .pword   paddr(9b)+PFLASH
-DI_L:
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "di"
         .align  2
@@ -1362,8 +1381,8 @@ DI:
         return
 
 ; ei ( -- ) enable interrupts
-        .pword   paddr(DI_L)+PFLASH
-EI_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "ei"
         .align  2
@@ -1375,8 +1394,8 @@ EI:
 .endif
         return
 
-        .pword   paddr(EI_L)+PFLASH
-OPERATOR_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|8
         .ascii  "operator"
         .align  2
@@ -1392,8 +1411,8 @@ OPERATOR_AREA:
 
 
 ;  rcall, ( rel-addr -- )
-        .pword   paddr(OPERATOR_L)+PFLASH
-RCALL_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "rcall,"
         .align  2
@@ -1404,8 +1423,8 @@ RCALL_:
         return
 
 ;  return, ( -- )
-        .pword   paddr(RCALL_L)+PFLASH
-RETURN_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "return,"
         .align  2
@@ -1416,8 +1435,8 @@ RETURN_:
         return
 
 ;  retfie, ( -- )
-        .pword   paddr(RETURN_L)+PFLASH
-RETFIE_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "retfie,"
         .align  2
@@ -1428,8 +1447,8 @@ RETFIE_:
         return
 
 ;  bra, ( cc rel-addr -- )
-        .pword   paddr(RETFIE_L)+PFLASH
-BRA_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "bra,"
         .align  2
@@ -1443,8 +1462,8 @@ BRA_:
 
 ;  as0 ( bit ram-addr -- u ) 
 ; : bset, swap dup >r 8 u/ + r> $7 and #12 lshift or ;
-        .pword   paddr(BRA_L)+PFLASH
-AS0_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "as0"
         .align  2
@@ -1463,8 +1482,8 @@ AS0:
         return
 
 ; bclr, ( bit ram-addr -- ) clr bit in ram
-        .pword   paddr(AS0_L)+PFLASH
-BCLR_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "bclr,"
         .align  2
@@ -1475,8 +1494,8 @@ BCLR_:
         return
                     
 ; bset, ( bit ram-addr -- ) set bit in ram
-        .pword   paddr(BCLR_L)+PFLASH
-BSET_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "bset,"
         .align  2
@@ -1486,8 +1505,8 @@ BSET_:
         rcall   AS_COMMA
         return
 ; btst, ( bit ram-addr -- ) test bit in ram -> STATUS, Z bit
-        .pword   paddr(BSET_L)+PFLASH
-BTST_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "btst,"
         .align  2
@@ -1498,8 +1517,8 @@ BTST_:
         return
 
 ; btsc, ( bit ram-addr -- ) bit test f, skip if clear
-        .pword   paddr(BTST_L)+PFLASH
-BTSC_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "btsc,"
         .align  2
@@ -1510,8 +1529,8 @@ BTSC_:
         return
 
 ; btss, ( bit ram-addr -- ) bit test f, skip if set
-        .pword   paddr(BTSC_L)+PFLASH
-BTSS_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "btss,"
         .align  2
@@ -1522,8 +1541,8 @@ BTSS_:
         return
 
 ; cf! ( datal datah addr -- )
-        .pword   paddr(BTSS_L)+PFLASH
-CF_STORE_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cf!"
         .align  2
@@ -1534,8 +1553,8 @@ CF_STORE:
         return
 
 ; cf@ ( addr -- datal datah)
-        .pword   paddr(CF_STORE_L)+PFLASH
-CF_FETCH_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cf@"
         .align  2
@@ -1543,16 +1562,16 @@ CF_FETCH:
         rcall   FETCH
         mov     W3, [++W14]
         return
-	
+        
 ; as, ( datal datah -- )
-        .pword   paddr(CF_FETCH_L)+PFLASH
-AS_COMMA_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "as,"
         .align  2
 AS_COMMA:
         mov     [W14--], W0
-.if 1        
+.if 1
         cp      W0, W10
         bra     nz, AS_COMMA1
         sub     #0x78, W10
@@ -1584,7 +1603,6 @@ AS_COMMA2:
 
 ; i, ( data  -- )  upper byte is in 'hibyte'
 ;        .pword   paddr(AS_COMMA_L)+PFLASH
-ICOMMA_L:
         .byte   NFA|2
         .ascii  "i,"
         .align  2
@@ -1596,8 +1614,8 @@ ICOMMA:
         return
 
 ; cf,    xt --  append codefield
-        .pword  paddr(AS_COMMA_L)+PFLASH
-COMMAXT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cf,"
         .align  2
@@ -1608,8 +1626,8 @@ COMMAXT:
         rcall   RCALL_
         return
 
-        .pword   paddr(COMMAXT_L)+PFLASH
-IFLUSH_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "iflush"
         .align  2
@@ -1624,11 +1642,11 @@ BFLUSH:
         sub     W2, W0, W2
         mov     #IBUFMASK, W1
         and     W2, W1, W0
-        cp      ibase   ; ibase - address
+        cp      ibasel   ; ibasel - address
         bra     z, IFLUSH  ; FLUSH if execute on the current flash page
         mov     #IBUFSIZEL, W1
         add     W0, W1, W0
-        cp      ibase   ; ibase - address
+        cp      ibasel   ; ibasel - address
         btss    iflags, #fwritten
         bra     z, IFLUSH  ; FLUSH if execute on the previous flash page
         return
@@ -1637,7 +1655,11 @@ BFLUSH:
 ; data addr IC! Address is in W0
 ICSTORE:
         rcall   ISTORE_ADDRCHK
-        clr     W3               ; hibyte
+        setm    W3               ; hibyte
+        mov     #PFLASH, W1
+        sub     W0, W1, W0
+        mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
+        clr     iaddrh
         rcall   ISTORE_SUB
         mov.b   W1, [W0]
         return
@@ -1647,23 +1669,24 @@ CFISTORE:
         mov     [W14--], W0
         bra     ISTORECF
 ISTORE:
-        clr     W3
+        setm    W3
 ISTORECF:
         rcall   ISTORE_ADDRCHK
 ISTORE_RAW:
+        mov     #PFLASH, W1
+        sub     W0, W1, W0
+        mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
+        clr     iaddrh
         rcall   ISTORE_SUB
         mov     W1, [W0]
 ISTORE1:
         return
 
 ISTORE_SUB:
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
-        mov     W0, iaddr       ; W0 = addr, iaddr = addr
         push    W3
         rcall   iupdatebuf      ; uses w3
         pop     W3
-        mov     iaddr, W0
+        mov     iaddrl, W0
         
         mov     #IBUFSIZEL-1, W1
         and     W0, W1, W2
@@ -1699,6 +1722,10 @@ SET_EEPROM_W_TMO:
 .endif
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
+        mov     #IBUFSIZEL, W2
+        add     W1, W2, W1
+        mov     #IBUFMASK,W2
+        and     W1, W2, W1
         cp      W0, W1
         bra     LTU, ISTORE_ADDRERR
         return
@@ -1710,6 +1737,7 @@ PCFETCH1:
         return
 
 ICFETCH:
+        clr      TBLPAG
         rcall   IFETCH_INIT
         cp      W1, W2
         bra     NZ, PCFETCH1
@@ -1727,6 +1755,7 @@ PFETCH1:
         return
 
 IFETCH:
+        clr      TBLPAG
         rcall    IFETCH_INIT
         cp       W1, W2
         bra      NZ, PFETCH1
@@ -1745,10 +1774,9 @@ IFETCH:
         return
         
 IFETCH_INIT:
-        clr      TBLPAG
         mov      #PFLASH, W1
         sub      W0, W1, W0
-        mov      ibase, W1
+        mov      ibasel, W1
         mov      #IBUFMASK, W2
         and      W2, W0, W2
         return
@@ -1862,6 +1890,10 @@ EEREAD1:
         return
 EECHECK:
         mov     #handle(DPS_BASE), W0
+.if DPS_LOW == 1
+        mov     #IBUFMASK, W1
+        and     W0, W1, W0
+.endif
         mov     #DPS_PAGE, W1
         mov     W1, TBLPAG
         tblrdl  [W0], W1
@@ -1950,16 +1982,16 @@ EEERASE:
         return
 .endif
 
-        .pword   paddr(IFLUSH_L)+PFLASH
-FLOCK_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "fl+"
         .align  2
         bclr    iflags, #fLOCK
         return
 
-        .pword   paddr(FLOCK_L)+PFLASH
-FUNLOCK_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "fl-"
         .align  2
@@ -1971,44 +2003,44 @@ LOCKED:
         return
         bset    INTCON1, #ADDRERR
 
-        .pword   paddr(FUNLOCK_L)+PFLASH
-FCON_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "u1+"
         .align  2
         bclr    iflags, #fFC1
         return
 
-        .pword   paddr(FCON_L)+PFLASH
-FCOFF_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "u1-"
         .align  2
         bset    iflags, #fFC1
         return
 
-        .pword   paddr(FCOFF_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
-FCON2_L:
+9:
         .byte   NFA|3
         .ascii  "u2+"
         .align  2
         bclr    iflags, #fFC2
         return
 
-        .pword   paddr(FCON2_L)+PFLASH
-FCOFF2_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "u2-"
         .align  2
         bset    iflags, #fFC2
         return
 
-        .pword   paddr(FCOFF2_L)+PFLASH
+        .pword   paddr(9b)+PFLASH
 .endif
 .endif
-STORE_L:
+9:
         .byte   NFA|1
         .ascii  "!"
         .align  2
@@ -2032,8 +2064,8 @@ STORE1:
         bra     ISTORE
 .endif
 
-        .pword   paddr(STORE_L)+PFLASH
-CSTORE_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "c!"
         .align  2
@@ -2057,8 +2089,8 @@ CSTORE1:
         bra     ICSTORE
 .endif
 
-        .pword   paddr(CSTORE_L)+PFLASH
-FETCH_L:
+        .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|1
         .ascii  "@"
         .align  2
@@ -2082,8 +2114,8 @@ FETCH1:
 .endif
 
 
-       .pword   paddr(FETCH_L)+PFLASH
-CFETCH_L:
+       .pword   paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "c@"
         .align  2
@@ -2106,9 +2138,51 @@ CFETCH1:
         bra     GEU, ECFETCH
         bra     ICFETCH
 .endif
+.if WANT_X == 1
+;;; Xtended Fetch from Flash Memory
+;;; xu@ ( addrl addrh -- x c )
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|2
+        .ascii  "x@"
+        .align  2
+XEFETCH:
+        push    TBLPAG
+        mov     [W14--], W0
+        mov     W0, TBLPAG
+        mov     [W14], W0
+        tblrdl  [W0], [W14++]
+        clr     [W14]
+        tblrdh.b [W0], [W14]
+        pop     TBLPAG
+        return
 
-        .pword  paddr(CFETCH_L)+PFLASH
-MSET_L:
+;;; Xtended Store to Flash Memory
+;;; x! ( x c addrl addrh -- )
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|2
+        .ascii  "x!"
+        .align  2
+XESTORE:
+        mov     [W14--], W1
+        mov     W1, iaddrh
+        mov     [W14--], W0
+        mov     W0, iaddrl
+        mov     #handle(KERNEL_END), W0
+        mov     [W14--], W3               ; W3 has upper flash byte
+        cp0     iaddrh
+        bra     NZ, XUSTORE1
+        cp      iaddrl
+        bra     GTU, XUSTORE1
+        bset    INTCON1, #ADDRERR ; Kernel write protection
+XUSTORE1:
+        rcall   ISTORE_SUB
+        mov     W1, [W0]
+        return
+.endif
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "mset"
         .align  2
@@ -2118,8 +2192,8 @@ MSET:
         ior.w   W1, [W0],[W0] 
         return
 
-        .pword  paddr(MSET_L)+PFLASH
-MCLR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "mclr"
         .align  2
@@ -2129,8 +2203,8 @@ MCLR:
         and.w   W1, [W0],[W0] 
         return
 
-        .pword  paddr(MCLR_L)+PFLASH
-MTST_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "mtst"
         .align  2
@@ -2142,8 +2216,8 @@ MTST:
         return
 
 ; bset ( addr bit-index -- )
-        .pword  paddr(MTST_L)+PFLASH
-BSET__L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "bset"
         .align  2
@@ -2156,8 +2230,8 @@ BSET__:
 
 
 ; bclr ( addr bit-index -- )
-        .pword  paddr(BSET__L)+PFLASH
-BCLR__L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "bclr"
         .align  2
@@ -2169,8 +2243,8 @@ BCLR__:
         return
 
 ; btst ( addr bit-index -- f )
-        .pword  paddr(BCLR__L)+PFLASH
-BTST__L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "btst"
         .align  2
@@ -2183,8 +2257,8 @@ BTST__:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(BTST__L)+PFLASH
-LSHIFT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "lshift"
         .align  2
@@ -2195,8 +2269,8 @@ LSHIFT:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(LSHIFT_L)+PFLASH
-RSHIFT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "rshift"
         .align  2
@@ -2207,8 +2281,8 @@ RSHIFT:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(RSHIFT_L)+PFLASH
-NEQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "n="
         .align  2
@@ -2242,8 +2316,8 @@ NEQUAL_TRUE:
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
-        .pword  paddr(NEQUAL_L)+PFLASH
-SKIP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "skip"
         .align  2
@@ -2271,8 +2345,8 @@ SKIP2:
         mov     w4, [++w14]
         return
 
-        .pword  paddr(SKIP_L)+PFLASH
-SCAN_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "scan"
         .align  2
@@ -2299,8 +2373,8 @@ SCAN3:
         mov     W4, [++W14]
         return
 
-        .pword  paddr(SCAN_L)+PFLASH
-EMIT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "emit"
         .align  2
@@ -2308,8 +2382,8 @@ EMIT:
         rcall   UEMIT
         goto    FEXECUTE
 
-        .pword  paddr(EMIT_L)+PFLASH
-KEY_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "key"
         .align  2
@@ -2317,8 +2391,8 @@ KEY:
         rcall   UKEY
         goto    FEXECUTE
 
-        .pword  paddr(KEY_L)+PFLASH
-KEYQ_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "key?"
         .align  2
@@ -2326,8 +2400,8 @@ KEYQ:
         rcall   UKEYQ
         goto    FEXECUTE
 
-        .pword  paddr(KEYQ_L)+PFLASH
-UEMIT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "'emit"
         .align  2
@@ -2335,8 +2409,8 @@ UEMIT:
         rcall   DOUSER
         .word   uemit
 
-        .pword  paddr(UEMIT_L)+PFLASH
-UKEY_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "'key"
         .align  2
@@ -2344,8 +2418,8 @@ UKEY:
         rcall   DOUSER
         .word   ukey
 
-        .pword  paddr(UKEY_L)+PFLASH
-UKEYQ_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "'key?"
         .align  2
@@ -2354,8 +2428,8 @@ UKEYQ:
         .word   ukeyq
 
 ; >CQ ( c addr -- ) Put to character queue
-        .pword  paddr(UKEYQ_L)+PFLASH
-CQUEUE_TO_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  ">cq"
         .align  2
@@ -2373,8 +2447,8 @@ CQUEUE_TO:
         return
 
 ; >CQ? ( addr -- flag ) Space available ? false = queue is full
-        .pword  paddr(CQUEUE_TO_L)+PFLASH
-CQUEUE_TOQ_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  ">cq?"
         .align  2
@@ -2390,8 +2464,8 @@ CQUEUE_TOQ:
         return
 
 ; CQ> ( addr -- c) Get from character queue
-        .pword  paddr(CQUEUE_TOQ_L)+PFLASH
-CQUEUE_FROM_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cq>"
         .align  2
@@ -2409,8 +2483,8 @@ CQUEUE_FROM:
         return
 
 ; CQ>? ( addr -- flag ) Character available ? false = no
-        .pword  paddr(CQUEUE_FROM_L)+PFLASH
-CQUEUE_FROMQ_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "cq>?"
         .align  2
@@ -2422,8 +2496,8 @@ CQUEUE_FROMQ:
         return
 
 ; CQ0 ( addr -- ) Reset a character queue 
-        .pword  paddr(CQUEUE_FROMQ_L)+PFLASH
-CQUEUEZ_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cq0"
         .align  2
@@ -2441,8 +2515,8 @@ CQUEUEZ:
         return
     
 ; CQ: ( size "name" -- ) Create a character queue
-        .pword  paddr(CQUEUEZ_L)+PFLASH
-CQUEUE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "cq:"
         .align  2
@@ -2464,9 +2538,9 @@ CQUEUE_DOES:
         rcall   DODOES
         return
 
-        .pword  paddr(CQUEUE_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .if TX1_BUF_SIZE > 0
-U1TXQUEUE_L:
+9:
         .byte   NFA|INLINE|5
         .ascii  "u1txq"
         .align  2
@@ -2477,9 +2551,9 @@ U1TXQUEUE_DATA:
         .word   txqueue1
         .word   TX1_BUF_SIZE
 
-        .pword  paddr(U1TXQUEUE_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .endif
-U1RXQUEUE_L:
+9:
         .byte   NFA|INLINE|5
         .ascii  "u1rxq"
         .align  2
@@ -2490,19 +2564,17 @@ U1RXQUEUE_DATA:
         .word   rxqueue1
         .word   RX1_BUF_SIZE
 
-        .pword  paddr(U1RXQUEUE_L)+PFLASH
-TX1_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "tx1"
         .align  2
 TX1:
-        bset    iflags, #fBUSY
         rcall   PAUSE
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
 TX1_1:
-        bclr    iflags, #fBUSY
 .if TX1_BUF_SIZE > 0
         rcall   U1TXQUEUE
         rcall   CQUEUE_TO
@@ -2513,8 +2585,8 @@ TX1_1:
 .endif
         return
 
-        .pword  paddr(TX1_L)+PFLASH
-TX1Q_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "tx1?"
         .align  2
@@ -2523,12 +2595,17 @@ TX1Q:
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
         goto    CQUEUE_TOQ
 .else
+.if ERRATA_UTXBF == 1
         btsc    U1STA, #TRMT
+.else
+        btss    U1STA, #UTXBF
+.endif
         bra     TRUE_
         goto    FALSE_
 .endif
-        .pword  paddr(TX1Q_L)+PFLASH
-RX1_L:
+        
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "rx1"
         .align  2
@@ -2541,8 +2618,8 @@ RX1:
         rcall   CQUEUE_FROM
         return
 
-        .pword  paddr(RX1_L)+PFLASH
-RX1Q_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "rx1?"
         .align  2
@@ -2569,11 +2646,11 @@ RX1Q:
 RX1Q1:
         return
 
-        .pword  paddr(RX1Q_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
 .if TX2_BUF_SIZE > 0
-U2TXQUEUE_L:
+9:
         .byte   NFA|INLINE|5
         .ascii  "u2txq"
         .align  2
@@ -2584,9 +2661,9 @@ U2TXQUEUE_DATA:
         .word   txqueue2
         .word   TX2_BUF_SIZE
 
-        .pword  paddr(U2TXQUEUE_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .endif
-U2RXQUEUE_L:
+9:
         .byte   NFA|INLINE|5
         .ascii  "u2rxq"
         .align  2
@@ -2597,18 +2674,16 @@ U2RXQUEUE_DATA:
         .word   rxqueue2
         .word   RX2_BUF_SIZE
 
-        .pword  paddr(U2RXQUEUE_L)+PFLASH
-TX2_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "tx2"
         .align  2
 TX2:    
-        bset    iflags, #fBUSY
         rcall   PAUSE
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
-        bclr    iflags, #fBUSY
 .if TX2_BUF_SIZE > 0
         rcall   U2TXQUEUE
         rcall   CQUEUE_TO
@@ -2620,8 +2695,8 @@ TX2:
 TX2_2:
         return
 
-        .pword  paddr(TX2_L)+PFLASH
-TX2Q_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "tx2?"
         .align  2
@@ -2630,12 +2705,17 @@ TX2Q:
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         goto    CQUEUE_TOQ
 .else
+.if ERRATA_UTXBF == 1
+        btsc    U2STA, #TRMT
+.else
+        btss    U2STA, #UTXBF
+.endif
         btsc    U2STA, #TRMT
         bra     TRUE_
         goto    FALSE_
 .endif
-        .pword  paddr(TX2Q_L)+PFLASH
-RX2_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "rx2"
         .align  2
@@ -2648,8 +2728,8 @@ RX2:
         rcall   CQUEUE_FROM
         return
 
-        .pword  paddr(RX2_L)+PFLASH
-RX2Q_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "rx2?"
         .align  2
@@ -2676,10 +2756,10 @@ RX2Q:
 RX2Q1:
         return
 
-        .pword  paddr(RX2Q_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .endif
 .endif
-DUP_L:
+9:
         .byte   NFA|INLINE|3
         .ascii  "dup"
         .align  2
@@ -2687,8 +2767,8 @@ DUP:
         mov.w   [W14++], [W14]
         return
 
-        .pword  paddr(DUP_L)+PFLASH
-EXECUTE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "execute"
         .align  2
@@ -2698,8 +2778,8 @@ EXECUTE:
         sub     W0, W1, W0
         goto    W0
 
-        .pword  paddr(EXECUTE_L)+PFLASH
-FEXECUTE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "@ex"
         .align  2
@@ -2710,8 +2790,8 @@ FEXECUTE:
         sub     W0, W1, W0
         goto    W0
 
-        .pword  paddr(FEXECUTE_L)+PFLASH
-EXIT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|4
         .ascii  "exit"
         .align  2
@@ -2719,6 +2799,8 @@ EXIT:
         sub     #4, W15
         return
 
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|3
         .ascii  "(,)"
         .align  2
@@ -2730,8 +2812,8 @@ DOCOMMAXT:
          push   W1
          goto   COMMAXT
 
-        .pword  paddr(EXIT_L)+PFLASH
-DOCREATE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|3
         .ascii  "(c)"
         .align  2
@@ -2748,8 +2830,8 @@ DOEMIT:
         mov.w   W0, [W15-4]
         goto    EMIT
 
-        .pword  paddr(DOCREATE_L)+PFLASH
-DODOES_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|3
         .ascii  "(d)"
         .align  2
@@ -2762,8 +2844,8 @@ DODOES:
         tblrdl  [W1], [++W14]
         goto    W0
 
-        .pword  paddr(DODOES_L)+PFLASH
-SPSTORE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "sp!"
         .align  2
@@ -2771,8 +2853,8 @@ SPSTORE:
         mov.w   [W14], W14
         return
 
-        .pword  paddr(SPSTORE_L)+PFLASH
-SPFETCH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "sp@"
         .align  2
@@ -2781,8 +2863,8 @@ SPFETCH:
         return
 
 ; RP points to the first empty stack cell.
-        .pword  paddr(SPFETCH_L)+PFLASH
-RPFETCH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "rp@"
         .align  2
@@ -2791,8 +2873,8 @@ RPFETCH:
         dec2    W0, [++W14]
         return
 
-        .pword  paddr(RPFETCH_L)+PFLASH
-RPEMPTY_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|3
         .ascii  "rp0"
         .align  2
@@ -2805,8 +2887,8 @@ RPEMPTY:
         mov     [W14--], W0
         goto    W0
 
-        .pword  paddr(RPEMPTY_L)+PFLASH
-DROP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|4
         .ascii  "drop"
         .align  2
@@ -2814,8 +2896,8 @@ DROP:
         sub     W14, #2, W14
         return
 
-        .pword  paddr(DROP_L)+PFLASH
-SWAP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|4
         .ascii  "swap"
         .align  2
@@ -2825,8 +2907,8 @@ SWOP:
         mov     W0, [W14-2]
         return
 
-        .pword  paddr(SWAP_L)+PFLASH
-OVER_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|4
         .ascii  "over"
         .align  2
@@ -2835,30 +2917,22 @@ OVER:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(OVER_L)+PFLASH
-ROT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "rot"
         .align  2
 ROT:
-        mov     [W14-0x4], W0
-        mov     [W14-0x2], W1
-        mov     [W14], W2
-        mov     W1, [W14-0x4]
-        mov     W2, [W14-0x2]
-        mov     W0, [W14]
-.if 0
         mov     [W14--], W2
         mov     [W14--], W1
         mov     [W14--], W0
         mov     W1, [++W14]
         mov     W2, [++W14]
         mov     W0, [++W14]
-.endif
         return
         
-        .pword  paddr(ROT_L)+PFLASH
-TOR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  ">r"
         .align  2
@@ -2866,9 +2940,9 @@ TOR:
         push    [W14--]
         return
 
-        .pword  paddr(TOR_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
         .align  2
-RFROM_L:
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "r>"
         .align  2
@@ -2876,9 +2950,9 @@ RFROM:
         pop     [++W14]
         return
         
-        .pword  paddr(RFROM_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
         .align  2
-RFETCH_L:
+9:
         .byte   NFA|INLINE|COMPILE|2
         .ascii  "r@"
         .align  2
@@ -2888,8 +2962,8 @@ RFETCH:
         return
 
 ;   ABS     n   --- n1      absolute value of n
-        .pword  paddr(RFETCH_L)+PFLASH
-ABS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "abs"
         .align  2
@@ -2899,8 +2973,8 @@ ABS:
         return
 
 ;   ABS     n   --- n1      absolute value of n
-        .pword  paddr(ABS_L)+PFLASH
-DABS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "dabs"
         .align  2
@@ -2908,8 +2982,8 @@ DABS:
         mov     [W14++], [W14]      ; dup
         goto    QDNEGATE
 
-        .pword  paddr(DABS_L)+PFLASH
-PLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|1
         .ascii  "+"
         .align  2
@@ -2918,8 +2992,8 @@ PLUS:
         add     W0, [W14], [W14]
         return
 
-        .pword  paddr(PLUS_L)+PFLASH
-MPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "m+"
         .align  2
@@ -2932,8 +3006,8 @@ MPLUS:
         addc    W1, [W14], [W14]
         return
 
-        .pword  paddr(MPLUS_L)+PFLASH
-DPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "d+"
         .align  2
@@ -2945,8 +3019,8 @@ DPLUS:
         addc    W0, W2, [W14]
         return
 
-        .pword  paddr(DPLUS_L)+PFLASH
-MINUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|1
         .ascii  "-"
         .align  2
@@ -2955,8 +3029,8 @@ MINUS:
         sub     W0, [W14], [--W14]
         return
 
-        .pword  paddr(MINUS_L)+PFLASH
-DMINUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "d-"
         .align  2
@@ -2969,8 +3043,8 @@ DMINUS:
         subb    W2, W0, [W14]
         return
 
-        .pword  paddr(DMINUS_L)+PFLASH
-AND_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "and"
         .align  2
@@ -2979,8 +3053,8 @@ AND:
         and     W0, [W14], [W14]
         return
 
-        .pword  paddr(AND_L)+PFLASH
-OR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "or"
         .align  2
@@ -2989,8 +3063,8 @@ OR:
         ior     W0, [W14], [W14]
         return
 
-        .pword  paddr(OR_L)+PFLASH
-XOR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "xor"
         .align  2
@@ -2999,8 +3073,8 @@ XOR:
         xor     W0, [W14], [W14]
         return
 
-        .pword  paddr(XOR_L)+PFLASH
-INVERT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|6
         .ascii  "invert"
         .align  2
@@ -3008,8 +3082,8 @@ INVERT:
         com     [W14], [W14]
         return
 
-        .pword  paddr(INVERT_L)+PFLASH
-DINVERT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|7
         .ascii  "dinvert"
         .align  2
@@ -3018,8 +3092,8 @@ DINVERT:
         com     [W14], [W14++]
         return
 
-        .pword  paddr(DINVERT_L)+PFLASH
-NEGATE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|6
         .ascii  "negate"
         .align  2
@@ -3027,8 +3101,8 @@ NEGATE:
         neg     [W14], [W14]
         return
 
-        .pword  paddr(NEGATE_L)+PFLASH
-DNEGATE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "dnegate"
         .align  2
@@ -3039,8 +3113,8 @@ DNEGATE:
         addc    W1, #0, [W14]
         return
         
-        .pword  paddr(DNEGATE_L)+PFLASH
-QDNEGATE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|8
         .ascii  "?dnegate"
         .align  2
@@ -3049,8 +3123,8 @@ QDNEGATE:
         bra     n, DNEGATE
         return        
         
-        .pword  paddr(QDNEGATE_L)+PFLASH
-ONEPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "1+"
         .align  2
@@ -3058,8 +3132,8 @@ ONEPLUS:
         inc     [W14], [W14]
         return
 
-        .pword  paddr(ONEPLUS_L)+PFLASH
-TWOPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "2+"
         .align  2
@@ -3067,8 +3141,8 @@ TWOPLUS:
         inc2    [W14], [W14]
         return
 
-        .pword  paddr(TWOPLUS_L)+PFLASH
-ONEMINUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "1-"
         .align  2
@@ -3076,8 +3150,8 @@ ONEMINUS:
         dec     [W14], [W14]
         return
 
-        .pword  paddr(ONEMINUS_L)+PFLASH
-TWOMINUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "2-"
         .align  2
@@ -3085,8 +3159,8 @@ TWOMINUS:
         dec2    [W14], [W14]
         return
 
-        .pword  paddr(TWOMINUS_L)+PFLASH
-TWOSTAR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "2*"
         .align  2
@@ -3094,8 +3168,8 @@ TWOSTAR:
         sl      [W14], [W14]        ; 2*
         return
 
-        .pword  paddr(TWOSTAR_L)+PFLASH
-DTWOSTAR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "d2*"
         .align  2
@@ -3104,8 +3178,8 @@ DTWOSTAR:
         rlc     [++W14], [W14]
         return
 
-        .pword  paddr(DTWOSTAR_L)+PFLASH
-TWOSLASH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "2/"
         .align  2
@@ -3113,18 +3187,18 @@ TWOSLASH:
         asr     [W14], [W14]        ; 2/
         return
 
-        .pword  paddr(TWOSLASH_L)+PFLASH
-DTWOSLASH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "d2/"
         .align  2
 DTWOSLASH:
-        asr     [W14], [W14--]		; 2/ lsb -> c
-        rrc     [W14], [W14++]		; 2/ c -> msb
+        asr     [W14], [W14--]          ; 2/ lsb -> c
+        rrc     [W14], [W14++]          ; 2/ c -> msb
         return
 
-        .pword  paddr(DTWOSLASH_L)+PFLASH
-ZEROEQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "0="
         .align  2
@@ -3135,8 +3209,8 @@ test_true:
         setm    [W14]
         return
 
-        .pword  paddr(ZEROEQUAL_L)+PFLASH
-DZEROEQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "d0="
         .align  2
@@ -3144,10 +3218,10 @@ DZEROEQUAL:
         mov     [W14--], W0
         ior     W0, [W14], [W14]
         bra     nz, test_false
-        goto	test_true
+        goto    test_true
 
-        .pword  paddr(DZEROEQUAL_L)+PFLASH
-ZEROLESS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "0<"
         .align  2
@@ -3158,18 +3232,18 @@ test_false:
         clr     [W14]
         return
 
-        .pword  paddr(ZEROLESS_L)+PFLASH
-DZEROLESS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "d0<"
         .align  2
 DZEROLESS:
         cp0     [W14--]
         bra     n, test_true
-        goto	test_false
+        goto    test_false
 
-        .pword  paddr(DZEROLESS_L)+PFLASH
-STORE_P_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "!p"
         .align  2
@@ -3177,8 +3251,8 @@ STORE_P:
         mov     [w14--], W13
         return
 
-        .pword  paddr(STORE_P_L)+PFLASH
-STORE_P_TO_R_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|COMPILE|INLINE|4
         .ascii  "!p>r"
         .align  2
@@ -3187,8 +3261,8 @@ STORE_P_TO_R:
         mov     [W14--], W13
         return
 
-        .pword  paddr(STORE_P_TO_R_L)+PFLASH
-R_TO_P_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|COMPILE|3
         .ascii  "r>p"
         .align  2
@@ -3196,8 +3270,8 @@ R_TO_P:
         pop     W13
         return
 
-        .pword  paddr(R_TO_P_L)+PFLASH
-FETCH_P_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "@p"
         .align  2
@@ -3205,8 +3279,8 @@ FETCH_P:
         mov     W13, [++W14]
         return
 
-        .pword  paddr(FETCH_P_L)+PFLASH
-PFETCH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "p@"
         .align  2
@@ -3214,8 +3288,8 @@ PFETCH:
         mov     W13, [++W14]
         goto    FETCH
 
-        .pword  paddr(PFETCH_L)+PFLASH
-PCFETCH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "pc@"
         .align  2
@@ -3223,8 +3297,8 @@ PCFETCH:
         mov     W13, [++W14]
         goto    CFETCH      
 
-        .pword  paddr(PCFETCH_L)+PFLASH
-PSTORE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "p!"
         .align  2
@@ -3232,8 +3306,8 @@ PSTORE:
         mov     W13, [++W14]
         goto    STORE
 
-        .pword  paddr(PSTORE_L)+PFLASH
-PCSTORE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "pc!"
         .align  2
@@ -3241,8 +3315,8 @@ PCSTORE:
         mov     W13, [++W14]
         goto    CSTORE
 
-        .pword  paddr(PCSTORE_L)+PFLASH
-PPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|2
         .ascii  "p+"
         .align  2
@@ -3250,8 +3324,8 @@ PPLUS:
         inc     W13, W13
         return
 
-        .pword  paddr(PPLUS_L)+PFLASH
-PPLUS2_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "p2+"
         .align  2
@@ -3259,8 +3333,8 @@ PPLUS2:
         inc2    W13, W13
         return
 
-        .pword  paddr(PPLUS2_L)+PFLASH
-PNPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "p++"
         .align  2
@@ -3269,8 +3343,8 @@ PNPLUS:
         add     W0, W13, W13
         return
 
-        .pword  paddr(PNPLUS_L)+PFLASH
-STOD_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "s>d"
         .align  2
@@ -3278,8 +3352,8 @@ STOD:
         mov     [W14++], [W14]
         goto    ZEROLESS
 
-        .pword  paddr(STOD_L)+PFLASH
-UMSTAR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "um*"
         .align  2
@@ -3290,8 +3364,8 @@ UMSTAR:
         mov     W3, [W14]
         return
 
-        .pword  paddr(UMSTAR_L)+PFLASH
-MSTAR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "m*"
         .align  2
@@ -3302,8 +3376,8 @@ MSTAR:
         mov     W3, [W14]
         return
 
-        .pword  paddr(MSTAR_L)+PFLASH
-UMSLASHMOD_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "um/mod"
         .align  2
@@ -3317,8 +3391,8 @@ UMSLASHMOD:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(UMSLASHMOD_L)+PFLASH
-SMSLASHREM_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "sm/rem"
         .align  2
@@ -3332,8 +3406,8 @@ SMSLASHREM:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(SMSLASHREM_L)+PFLASH
-USLASHMOD_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "u/mod"
         .align  2
@@ -3346,8 +3420,8 @@ USLASHMOD:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(USLASHMOD_L)+PFLASH
-SLASHMOD_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "/mod"
         .align  2
@@ -3360,7 +3434,7 @@ SLASHMOD:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(SLASHMOD_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|3
         .ascii  "mod"
@@ -3486,7 +3560,7 @@ UQMOD2:
 
 ; user ( n "name" -- )
         .pword  paddr(9b)+PFLASH
-USER_L:
+9:
         .byte   NFA|4
         .ascii  "user"
         .align  2
@@ -3503,8 +3577,8 @@ DOUSER:
         return
 
 ; value
-        .pword  paddr(USER_L)+PFLASH
-VALUE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "value"
         .align  2
@@ -3517,8 +3591,8 @@ VALUE_DOES:
         goto    FETCH
 
 ; defer ( "name" -- )
-        .pword  paddr(VALUE_L)+PFLASH
-DEFER_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "defer"
         .align  2
@@ -3531,8 +3605,8 @@ DEFER_DOES:
         rcall   DODOES
         goto    FEXECUTE
 
-        .pword  paddr(DEFER_L)+PFLASH
-IS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|2
         .ascii  "is"
         .align  2
@@ -3552,8 +3626,8 @@ IS1:
 IS2:
         return
 
-        .pword  paddr(IS_L)+PFLASH
-TO_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|2
         .ascii  "to"
         .align  2
@@ -3562,8 +3636,8 @@ TO:
 
 
 ; >body xt -- a-addr transform a created words XT to it's data field address
-        .pword  paddr(TO_L)+PFLASH
-TOBODY_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  ">body"
         .align  2
@@ -3571,8 +3645,8 @@ TOBODY:
         inc2    [W14], [W14]
         return
 
-        .pword  paddr(TOBODY_L)+PFLASH
-VARIABLE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|8
         .ascii  "variable"
         .align  2
@@ -3582,19 +3656,19 @@ VARIABLE_:
         rcall   ALLOT
         goto    CON_
 
-        .pword  paddr(VARIABLE_L)+PFLASH
-TWOVARIABLE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|9
         .ascii  "2variable"
         .align  2
 TWOVARIABLE:
         rcall   HERE
-        mlit	#4
+        mlit    #4
         rcall   ALLOT
         goto    CON_
 
-        .pword  paddr(TWOVARIABLE_L)+PFLASH
-CONSTANT_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  "co:"
         .align  2
@@ -3605,8 +3679,8 @@ CONSTANT:
         rcall   IALLOT
         goto    ICOMMA
 
-        .pword  paddr(CONSTANT_L)+PFLASH
-CON_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|8
         .ascii  "constant"
         .align  2
@@ -3615,8 +3689,8 @@ CON_:
         rcall   LITERAL
         goto    SEMICOLON
 
-        .pword  paddr(CON_L)+PFLASH
-TWOCON_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|9
         .ascii  "2constant"
         .align  2
@@ -3627,8 +3701,8 @@ TWOCON_:
         rcall   LITERAL
         goto    SEMICOLON
 
-        .pword  paddr(TWOCON_L)+PFLASH
-PFLASH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "pfl"
         .align  2
@@ -3636,8 +3710,8 @@ PFLASH_:
         mlit    PFLASH
         return
 
-        .pword  paddr(PFLASH_L)+PFLASH
-TO_XA_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  ">xa"
         .align  2
@@ -3647,8 +3721,8 @@ TO_XA:
         sub     W1, W0, [W14]
         return
 
-        .pword  paddr(TO_XA_L)+PFLASH
-XA_FROM_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|3
         .ascii  "xa>"
         .align  2
@@ -3657,7 +3731,8 @@ XA_FROM:
         add     W0, [W14],[W14]
         return
 
-        .pword  paddr(XA_FROM_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
+9:
 FLASH_L:
         .byte   NFA|5
         .ascii  "flash"
@@ -3667,8 +3742,9 @@ FLASH:
         mov     W0, cse
         return
 
-        .pword  paddr(FLASH_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .ifdef PEEPROM
+9:
 EEPROM_L:
         .byte   NFA|6
         .ascii  "eeprom"
@@ -3678,8 +3754,9 @@ EEPROM:
         mov     W0, cse
         return
 
-        .pword  paddr(EEPROM_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 .endif
+9:
 RAM_L:
         .byte   NFA|3
         .ascii  "ram"
@@ -3709,8 +3786,8 @@ IDP:
         rcall   DOCREATE
         .word   dpFLASH
 
-        .pword  paddr(RAM_L)+PFLASH
-DP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "dp"
         .align  2
@@ -3719,8 +3796,8 @@ DP:
         rcall   CSE
         goto    PLUS
 
-        .pword  paddr(DP_L)+PFLASH
-HERE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "here"
         .align  2
@@ -3728,8 +3805,8 @@ HERE:
         rcall   DP
         goto    FETCH
 
-        .pword  paddr(HERE_L)+PFLASH
-COMMA_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|1
         .ascii  ","
         .align  2
@@ -3739,8 +3816,8 @@ COMMA:
         rcall   CELL
         goto    ALLOT
 
-        .pword  paddr(COMMA_L)+PFLASH
-CCOMMA_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "c,"
         .align  2
@@ -3750,8 +3827,8 @@ CCOMMA:
         rcall   ONE
         goto    ALLOT
 
-        .pword  paddr(CCOMMA_L)+PFLASH
-CELL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|4
         .ascii  "cell"
         .align  2
@@ -3760,8 +3837,8 @@ CELL:
         mov     W0, [++W14]
         return
 
-        .pword  paddr(CELL_L)+PFLASH
-ALIGN_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "align"
         .align  2
@@ -3771,8 +3848,8 @@ ALIGN:
         rcall   DP
         goto    STORE
 
-        .pword  paddr(ALIGN_L)+PFLASH
-ALIGNED_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|7
         .ascii  "aligned"
         .align  2
@@ -3782,8 +3859,8 @@ ALIGNED:
         and     W0, [W14], [W14]
         return
 
-        .pword  paddr(ALIGNED_L)+PFLASH
-CELLPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  "cell+"
         .align  2
@@ -3791,8 +3868,8 @@ CELLPLUS:
         inc2    [W14], [W14]
         return
 
-        .pword  paddr(CELLPLUS_L)+PFLASH
-CELLS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  "cells"
         .align  2
@@ -3800,8 +3877,8 @@ CELLS:
         sl      [W14], [W14]        ; 2*
         return
 
-        .pword  paddr(CELLS_L)+PFLASH
-CHARPLUS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  "char+"
         .align  2
@@ -3809,8 +3886,8 @@ CHARPLUS:
         inc     [W14], [W14]        ; char+
         return
 
-        .pword  paddr(CHARPLUS_L)+PFLASH
-CHARS_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  "chars"
         .align  2
@@ -3821,8 +3898,8 @@ STORCOLON:
         mlit    #0xfffc; -4
         goto    IALLOT
 
-        .pword  paddr(CHARS_L)+PFLASH
-TWOFETCH_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "2@"
         .align  2
@@ -3832,8 +3909,8 @@ TWOFETCH:
         inc2    [--W15], [++W14]
         goto    FETCH
 
-        .pword  paddr(TWOFETCH_L)+PFLASH
-TWOSTORE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "2!"
         .align  2
@@ -3844,8 +3921,8 @@ TWOSTORE:
         mov    [--W15], [++W14]
         goto    STORE
 
-        .pword  paddr(TWOSTORE_L)+PFLASH
-TWODROP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|5
         .ascii  "2drop"
         .align  2
@@ -3853,8 +3930,8 @@ TWODROP:
         sub     W14, #4, W14        ; 2drop
         return
 
-        .pword  paddr(TWODROP_L)+PFLASH
-TWODUP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "2dup"
         .align  2
@@ -3862,8 +3939,8 @@ TWODUP:
         rcall   OVER
         goto    OVER
 
-        .pword  paddr(TWODUP_L)+PFLASH
-TWOSWAP_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "2swap"
         .align  2
@@ -3874,8 +3951,8 @@ TWOSWAP:
         pop     [++W14]
         return
 
-        .pword  paddr(TWOSWAP_L)+PFLASH
-CR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "cr"
         .align  2
@@ -3885,8 +3962,8 @@ CR:
         mlit    #0x0a       ; LF \n
         goto    EMIT
 
-        .pword  paddr(CR_L)+PFLASH
-SPACE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|5
         .ascii  "space"
         .align  2
@@ -3894,8 +3971,8 @@ SPACE_:
         rcall   BL
         goto    EMIT
 
-        .pword  paddr(SPACE_L)+PFLASH
-SPACES_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "spaces"
         .align  2
@@ -3910,8 +3987,8 @@ SPCS2:
         sub     W14, #2, W14
         return
 
-        .pword  paddr(SPACES_L)+PFLASH
-UMIN_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "umin"
         .align  2
@@ -3925,8 +4002,8 @@ UMIN1:
         sub     W14, #2, W14
         return
 
-        .pword  paddr(UMIN_L)+PFLASH
-UMAX_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "umax"
         .align  2
@@ -3940,8 +4017,8 @@ UMAX1:
         sub     W14, #2, W14
         return
 
-        .pword  paddr(UMAX_L)+PFLASH
-ZERO_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|1
         .ascii  "0"
         .align  2
@@ -3949,8 +4026,8 @@ ZERO:
         clr     [++W14]
         return
 
-        .pword  paddr(ZERO_L)+PFLASH
-ONE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|INLINE|1
         .ascii  "1"
         .align  2
@@ -3959,7 +4036,7 @@ ONE:
         return
 
 ; ACCEPT  c-addr +n -- +n'  get line from terminal
-        .pword  paddr(ONE_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 ACCEPT_L:
         .byte   NFA|6
         .ascii  "accept"
@@ -4037,8 +4114,8 @@ FCR:
         .word   uflg
 
 ;  .id ( nfa -- ) 
-        .pword  paddr(ACCEPT_L)+PFLASH
-DOTID_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  ".id"
         .align  2
@@ -4060,12 +4137,14 @@ DOTID3:
         
 
 ; >pr   c -- c      Filter a character to printable 7-bit ASCII
-        .pword  paddr(DOTID_L)+PFLASH
-TO_PR_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|3
         .ascii  ">pr"
         .align  2
 TO_PR:
+        mov     #255, W0
+        and     W0, [W14], [W14]
         mov     [W14++], [W14]
         rcall   BL
         mlit    0x7f
@@ -4077,7 +4156,20 @@ TO_PR:
 TO_PR1:
         return
 
-        .pword  paddr(TO_PR_L)+PFLASH
+;   ><  Swap bytes
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte    NFA|2
+        .ascii  "><"
+        .align  2
+SWAPB:
+        mov     [W14], W0
+        swap    W0
+        mov     W0, [W14]
+        return
+
+
+        .pword  paddr(9b)+PFLASH
 TYPE_L:
         .byte   NFA|4
         .ascii  "type"
@@ -5619,24 +5711,29 @@ DOTSTATUS:
 
 .ifndef PEEPROM
 FTURNKEY_A:
-        rcall   DOCREATE
-        .word   DPS_BASE
+        mov     #handle(DPS_BASE), W0
+        bra     DPS_ALIGN
 FRAM_A:
-        rcall   DOCREATE
-        .word   DPS_BASE + IBUFSIZEL
+        mov     #handle(DPS_BASE) + IBUFSIZEL, W0
+        bra     DPS_ALIGN
 FLATEST_A:
-        rcall   DOCREATE
-        .word   DPS_BASE + IBUFSIZEL*2
+        mov     #handle(DPS_BASE) + IBUFSIZEL*2, W0
+        bra     DPS_ALIGN
 FFLASH_A:
-        rcall   DOCREATE
-        .word   DPS_BASE + IBUFSIZEL*3
+        mov     #handle(DPS_BASE) + IBUFSIZEL*3, W0
+DPS_ALIGN:
+        mov     W0, [++W14]
+.if DPS_LOW  == 1
+        mov     #IBUFMASK, W0
+        and     W0, [W14],[W14]
+.endif
+        return
 
 ; dp0 ( -- ) Initialize turnkey, DPs and latest in flash
 ;        dw      link
 ;link    set     $
 ;        db      NFA|3,"dp0"
 DP_COLD:
-        
         mlit    handle(STARTV)+PFLASH
         rcall   FETCHPP
         rcall   FTURNKEY_A
@@ -5651,6 +5748,10 @@ DP_COLD:
         rcall   EEINIT
 
         rcall   FETCH
+        mov     #IBUFSIZEL, W0
+        add     W0, [W14], [W14]
+        mov     #IBUFMASK,W0
+        and     W0, [W14], [W14]
         rcall   FFLASH_A
         bra     EEINIT
 .endif
@@ -6657,12 +6758,12 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
-MS1:    
+MS_1:
         rcall   PAUSE
         mov     [W14], W1
         mov     ms_count, W0
         sub     W1, W0, W0         ; time - ticks
-        bra     nn, MS1
+        bra     nn, MS_1
         sub     W14, #2, W14
         return
 
@@ -6934,17 +7035,10 @@ MARKER_DOES:
         mlit    MARKER_LENGTH
         goto    WMOVE
 
-.palign IBUFSIZEL
 .ifndef PEEPROM
-.if FLASH_SIZE < 0x10001
-CONFIG_DATA:
-;.pspace IBUFSIZEL*4
-KERNEL_END1:
-.equ KERNEL_END, KERNEL_END1 + IBUFSIZEL*4
-.else
-KERNEL_END:
+.if DPS_LOW == 1
+.pspace IBUFSIZEL*6, 0xff
 .endif
-.else
-KERNEL_END:
 .endif
+KERNEL_END:
 .end
