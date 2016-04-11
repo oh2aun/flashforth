@@ -22,7 +22,7 @@ marker -xdump
 \
 
 : ud.r <# 1- for # next #s #> type ;
-: u.2 $ff and 0 2 ud.r ;
+: u.2 $ff and 0 2 ud.r space ;
 : xx@ 2dup x@ dup ;
 
 \ Extended Memory Dump.
@@ -35,14 +35,13 @@ marker -xdump
      [char] : emit space   \ display row addr
      $8 for                \ number of instructions per row
        xx@                 \ print 1 row of program space
-       8 rshift u.2 u.2
+       u.2 8 rshift u.2
        2 m+
      next
      -$10 m+               \ wind back the addr
      $8 for                \ print ASCII
        xx@
-       $8 rshift >pr emit
-       >pr emit
+       >pr emit $8 rshift >pr emit
        2 m+
      next
    next

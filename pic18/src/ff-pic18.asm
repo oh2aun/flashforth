@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          21.03.2016                                        *
+;    Date:          07.04.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2015  Mikael Nordman
+; Copyright (C) 2016  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -146,7 +146,6 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fTX1REQ equ 2           ; TX1 signal sleep to enable TX1IE
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
 
@@ -228,8 +227,9 @@ SINTCON     res 1       ; Save INTCON before disabling interrupts
 SPIE1       res 1       ; Save PIE1 before disabling interrupts
 SPIE2       res 1       ; Save PIE2 before disabling interrupts
 #endif
-
+#if IDLE_MODE == ENABLE
 load_res    res 3       ; 256 ms load result
+#endif
 ;;; Interrupt high priority save variables
 #ifdef USB_CDC
 ihpclath    res 1
@@ -630,6 +630,7 @@ A_FROM:
 
 ; idle
         dw      L_A_FROM
+#if IDLE_MODE == ENABLE
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
@@ -660,6 +661,7 @@ LOAD:
         
 ; a, ( -- 0 ) Force Access bank
         dw      L_LOAD
+#endif
 L_A_:
         db      NFA|2,"a,"
 A_:
@@ -724,7 +726,6 @@ L_TX1_:
         db      NFA|3,"tx1"
 #if TX1_BUF_SIZE == 0
 TX1_:
-        bsf     FLAGS2, fTX1REQ, A
         rcall   PAUSE
         btfss   PIR1, TXIF, A
         bra     TX1_
@@ -735,13 +736,10 @@ TX1_SEND:
         andlw   h'7f'
 #endif
         movwf   TXREG, A
-        bcf     FLAGS2, fTX1REQ, A
         return
 #else
 TX1_:
-        bsf     FLAGS2, fTX1REQ, A
         rcall   PAUSE                   ; Try other tasks
-;        btfsc   TXcnt, TXfullBit, A    ; Queue full?
         TX_FULL_BIT TX1_BUF_SIZE
         bra     TX1_
         movf    Sminus, W
@@ -752,8 +750,7 @@ TX1_:
         lfsr    Tptr, TXbuf
         movf    TXhead, W, A
         movff   Sminus, TWrw
-        
-;        bcf     INTCON, GIE, A
+
         bcf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
 
         incf    TXhead, F, A
@@ -761,9 +758,7 @@ TX1_:
         andwf   TXhead, F, A
         incf    TXcnt, F, A
 
-;        bsf     INTCON, GIE, A  ; Enable interrupts
         bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
-        bcf     FLAGS2, fTX1REQ, A
         return
 #endif
 ;***************************************************
@@ -1589,7 +1584,7 @@ PAUSE0:
 #if CPU_LOAD == ENABLE
 PAUSE_IDLE0:
 #endif
-        movf    status, W, A   ; Sleep only if all tasks ar idle
+        movf    status, W, A   ; idle allowed ?
         bnz     PAUSE_IDLE1
         banksel upcurr
         movf    upcurr, W, BANKED
@@ -1607,8 +1602,6 @@ PAUSE_IDLE0:
 #if CPU_LOAD == ENABLE
         bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
 #endif
-        btfsc   FLAGS2, fTX1REQ, A
-        bsf     PIE1, TXIE, A  ;  Enable TX interrupts. Wakeup from idle mode when TXREG becomes EMPTY
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
@@ -1816,6 +1809,7 @@ IFLUSH:
 
 ; Print restart reason
 RQ:
+        call    CR
 RQ_DIVZERO:
         btfss   2, 0, A
         bra     RQ_STKFUL
@@ -2377,13 +2371,14 @@ L_VER:
                 db              NFA|3,"ver"
 VER:
         rcall   XSQUOTE
-         ;        123456789012 +   11  + 012345678901234567890
-        db d'35'," FlashForth ",PICTYPE," 07.06.2015\r\n"
+         ;        12345678901234 +   11  + 012345678901234567890
+        db d'35'," FlashForth 5 ",PICTYPE," 7.4.2016\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
 #if XSTORE == ENABLE
-        tstfsz  iaddr_up, A
+        banksel iaddr_up
+        tstfsz  iaddr_up, BANKED
         return
 #else
         movlw   HIGH FLASH_HI+1
@@ -4318,14 +4313,13 @@ IMMEDQ:
 L_FIND:
         db      NFA|4,"find"
 FIND:   
-        rcall   LIT_A
-        dw      kernellink
+        rcall   KLINK
+;        dw      kernellink
         rcall   findi
         rcall   DUPZEROSENSE
         bnz     FIND1
         rcall   DROP
-        rcall   LATEST
-        rcall   FETCH_A
+        rcall   LAST
         rcall   findi
 FIND1:
         return
@@ -4365,23 +4359,23 @@ DIGITQ1:
 L_SIGNQ:
         db      NFA|5,"sign?"
 SIGNQ:
-        rcall   OVER
-        rcall   CFETCH_A
+        rcall   OVER              ; a n a
+        rcall   CFETCH_A          ; a n c
         rcall   LIT_A
-        dw      ','
-        rcall   MINUS
-        rcall   DUP
-        rcall   ABS
-        call    ONE
-        rcall   EQUAL
-        rcall   AND
+        dw      ','               ; a n c c
+        rcall   MINUS             ; a n c
+        rcall   DUP               ; a n c c
+        rcall   ABS               ; a n c c
+        call    ONE               ; a n c c 1
+        rcall   EQUAL             ; a n c f
+        rcall   AND               ; a n f
         rcall   DUPZEROSENSE
-        bz      QSIGN1
-        rcall   ONEPLUS
-        rcall   TOR
+        bz      QSIGN1            ; a n f
+        rcall   ONEPLUS           ; a n f
+        rcall   TOR               ; a n
         call    ONE
         rcall   SLASHSTRING
-        rcall   RFROM
+        rcall   RFROM             ; a n f
 QSIGN1: return
 
 ; UD*  ud u -- ud
@@ -4732,8 +4726,7 @@ FETCH_A:
 L_SHB:
         db      NFA|3,"shb"     ; Set header bit
 SHB:
-        rcall   LATEST
-        rcall   FETCH_A
+        rcall   LAST
         rcall   DUP_A
         rcall   CFETCH_A
         call    ROT
@@ -5045,8 +5038,7 @@ CREATE:
         call    WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
-        rcall   LATEST
-        rcall   FETCH_A
+        rcall   LAST
         call    ICOMMA          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
@@ -5109,8 +5101,7 @@ IDP:
         db      NFA|7,"(does>)"
 XDOES:
         call    RFROM
-        rcall   LATEST
-        rcall   FETCH_A
+        rcall   LAST
         rcall   NFATOCFA
         rcall   IDP
         rcall   FETCH_A
@@ -5133,10 +5124,16 @@ DOES:   rcall   DOCOMMAXT_A
         dw      DODOES
         return
 
+        dw      L_DOES
+L_LAST:
+        db      NFA|3,"lst"
+LAST:
+        rcall   LATEST
+        goto    FETCH
 
 ;*****************************************************************
 ; [        --      enter interpretive state
-        dw      L_DOES
+        dw      L_LAST
 L_LEFTBRACKET:
         db      NFA|IMMED|1,"["
 LEFTBRACKET:
@@ -5358,23 +5355,27 @@ TO_PRINTABLE2:
         clrf    plusS, A
         return
 
- ; WORDS    --          list all words in dict.
         dw      L_TO_PRINTABLE
+L_KLINK:
+        db      NFA|3,"klk"
+KLINK:
+        rcall   DOCREATE_A
+        dw      kernellink
+
+ ; WORDS    --          list all words in dict.
+        dw      L_KLINK
 L_WORDS:
         db      NFA|5,"words"
         rcall   FALSE_
         rcall   CR
 
-        rcall   LIT_A
-        dw      kernellink
-
+        rcall   KLINK
 
         rcall   WDS1
         rcall   FALSE_
         rcall   CR
 
-        rcall   LATEST
-        rcall   FETCH_A
+        rcall   LAST
 
 WDS1:   rcall   DUP_A
         rcall   DOTID
