@@ -185,14 +185,13 @@ TXhead   res 1       ; Head of serial TX interrupt buffer
 TXtail   res 1       ; Tail of serial TX interrupt buffer
 TXcnt    res 1       ; Number of characters in the TX fifo
 ms_count res 1       ; millisecond counter 2 bytes
-ms_cnt_h res 1       ; millisecond counter 2 bytes
+ms_cnt_h res 1       ; millisecond counter 2 bytes (f050)
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
 status   res 1       ; if zero, cpu idle is allowed (f054)
 irq_v    res 2       ; Interrupt vector
-load_acc res 3
-load     res 1       ; CPU load  (26)
+load_acc res 3       ; (f059)
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
@@ -200,9 +199,8 @@ TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
 ihpclath res 1
 ihtablat res 1
 #endif
-acs_byte res 1       ; Access bank byte to be used in assy embedded in C.
-;not_used res 1
-;;; One byte of free access bank is needed by the USB library.
+acs_byte res 1       ; Access bank byte to be used in assy embedded in C. (f05c)
+;not_used res 1      ; One byte of free access bank is needed by the USB library.
 
 IRQ_STACK udata
 irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
@@ -235,6 +233,7 @@ load_res    res 3       ; 256 ms load result
 ihpclath    res 1
 ihtablat    res 1
 #endif
+
 ihtp        res 1
 ihtbank     res 1
 ihtblptrl   res 1
@@ -634,7 +633,7 @@ A_FROM:
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
-        clrf    status, A
+        bsf    status, 7, A
         return
         
 ; busy
@@ -642,7 +641,7 @@ IDLE:
 L_BUSY:
         db      NFA|4,"busy"
 BUSY:
-        bsf    status, 7, A
+        clrf    status, A
         return
 
 ; load -- n
@@ -925,7 +924,7 @@ iupdatebuf:
         banksel iaddr_lo
 #if XSTORE == ENABLE
         movf    iaddr_up, W, BANKED
-        cpfseq  ibase_up
+        cpfseq  ibase_up, A
         bra     iupdatebuf0
 #endif
         movf    iaddr_hi, W, BANKED
@@ -1585,13 +1584,12 @@ PAUSE0:
 PAUSE_IDLE0:
 #endif
         movf    status, W, A   ; idle allowed ?
-        bnz     PAUSE_IDLE1
+        bz      PAUSE_IDLE1
         banksel upcurr
         movf    upcurr, W, BANKED
         sublw   low(u0)        ; Sleep only in operator task
         bnz     PAUSE_IDLE1    ; Prevents execution delay when many tasks are running
 #if CPU_LOAD_LED == ENABLE
-        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
@@ -1605,6 +1603,7 @@ PAUSE_IDLE0:
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
+        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
@@ -2241,9 +2240,6 @@ WARM_ZERO_2:
         movlw   h'08'           ; TMR0 used for CPU_LOAD
         movwf   T0CON           ; prescale = 1
 #endif
-        movlw   d'100'
-        movwf   load, A
-
 #if MS_TMR == 1
         ;; Timer 1 for 1 ms system tick
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
