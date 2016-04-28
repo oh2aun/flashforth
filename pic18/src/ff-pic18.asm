@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          07.04.2016                                        *
+;    Date:          28.04.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -34,10 +34,15 @@
 #include "p18fxxxx.cfg"
 
 #ifdef USB_CDC 
-
+#if USB_OPERATOR_UART == 0
 #define OPERATOR_TX  TX0
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
+#else
+#define OPERATOR_TX  TX1
+#define OPERATOR_RX  RX1
+#define OPERATOR_RXQ RX1Q
+#endif
 
 #undefine IDLE_MODE      ; Not supported for USB
 #define IDLE_MODE DISABLE 
@@ -209,15 +214,15 @@ irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter
 #ifdef USB_CDC
 UART_RX udata 
 #endif
-RXbufmask   equ RX1_BUF_SIZE - 1
-RXbuf       res RX1_BUF_SIZE
+RXbufmask   equ RX_BUF_SIZE - 1
+RXbuf       res RX_BUF_SIZE
 
 #ifdef USB_CDC
 UART_TX udata
 #endif
-#if TX1_BUF_SIZE > 0
-TXbufmask   equ TX1_BUF_SIZE - 1
-TXbuf       res TX1_BUF_SIZE
+#if TX_BUF_SIZE > 0
+TXbufmask   equ TX_BUF_SIZE - 1
+TXbuf       res TX_BUF_SIZE
 #endif
 
 #ifdef p18fxx2xx8_fix_1
@@ -463,12 +468,16 @@ irq_user_skip:
 ;;; Feeds the input buffer with characters
 ;;; from the serial line
 irq_async_rx:
+#if UART == 1
         btfss   PIR1, RCIF, A
+#else
+        btfss   PIR3, RC2IF, A
+#endif
         bra     irq_async_rx_end
 
         bsf     FLAGS1, istream, A      ; Indicate input stream activity to FLASH write routine
         movf    RXcnt, W, A
-        addlw   d'255' - RX1_OFF_FILL
+        addlw   d'255' - RX_OFF_FILL
         bnc     irq_async_rx_2
         
 #if FC_TYPE_SW == ENABLE
@@ -484,7 +493,11 @@ irq_async_rx_1:
 irq_async_rx_2:
         lfsr    Tptr, RXbuf
         movf    RXhead, W, A
+#if UART == 1
         movff   RCREG, TWrw
+#else
+        movff   RCREG2, TWrw
+#endif
         movf    TWrw, W, A
                 
         sublw   0x0f                    ; ctrl-o
@@ -499,8 +512,7 @@ irq_async_rx_3:
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
         incf    RXcnt, F, A
-;        btfss   RXcnt, RX_OVFL_BIT, A     ;  Buffer full ? 
-        RX_FULL_BIT RX1_BUF_SIZE
+        RX_FULL_BIT RX_BUF_SIZE     ;  Buffer full ?
         bra     irq_async_rx_4
         movlw   '|'                     ;  Buffer overflow 
         rcall   asmemit
@@ -514,9 +526,13 @@ irq_async_rx_end:
 ;;; *******************************************************************************
 ;;; UART TX interrupt routine
 irq_async_tx:
+#if UART == 1
         btfss   PIR1, TXIF, A
+#else
+        btfss   PIR3, TX2IF, A
+#endif
         bra     irq_async_tx_end
-#if TX1_BUF_SIZE > 0
+#if TX_BUF_SIZE > 0
         movf    TXcnt, W, A
         bz      irq_async_tx_1
 
@@ -529,8 +545,11 @@ irq_async_tx:
 irq_async_tx_0: 
         lfsr    Tptr, TXbuf
         movf    TXtail, W, A
+#if UART == 1
         movff   TWrw, TXREG
- 
+ #else
+        movff   TWrw, TXREG2
+#endif
         incf    TXtail, F, A
         movlw   TXbufmask
         andwf   TXtail, F, A
@@ -539,7 +558,11 @@ irq_async_tx_0:
         bra     irq_async_tx_end
 irq_async_tx_1: 
 #endif
+#if UART == 1
         bcf     PIE1, TXIE, A           ;  Disable TX interrupts. Queue is empty
+#else
+        bcf     PIE3, TX2IE, A           ;  Disable TX interrupts. Queue is empty
+#endif
 irq_async_tx_end:
 ;;; *****************************************************************
 #ifdef HW_FC_RTS_PORT
@@ -550,7 +573,11 @@ irq_fc:
         bra     irq_fc_end
 
         tstfsz  TXcnt, A                ; Is there anything in the TX queue ?
+#if UART == 1
         bsf     PIE1, TXIE, A           ;  Enable TX interrupts. Queue is not empty
+#else
+        bsf     PIE3, TXIE2, A           ;  Enable TX interrupts. Queue is not empty
+#endif
 irq_fc_end:
 #endif
 ;;; *****************************************************************
@@ -723,10 +750,14 @@ L_IR:
         dw      L_IR
 L_TX1_:
         db      NFA|3,"tx1"
-#if TX1_BUF_SIZE == 0
+#if TX_BUF_SIZE == 0
 TX1_:
         rcall   PAUSE
+#if UART == 1
         btfss   PIR1, TXIF, A
+#else
+        btfss   PIR3, TX2IF, A
+#endif
         bra     TX1_
 TX1_SEND:
         movf    Sminus, W, A
@@ -734,7 +765,12 @@ TX1_SEND:
 #if USE_8BIT_ASCII == DISABLE
         andlw   h'7f'
 #endif
+#if UART == 1
         movwf   TXREG, A
+#else
+        banksel TXREG2
+        movwf   TXREG2, BANKED
+#endif
         return
 #else
 TX1_:
@@ -749,15 +785,20 @@ TX1_:
         lfsr    Tptr, TXbuf
         movf    TXhead, W, A
         movff   Sminus, TWrw
-
-        bcf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
-
+#if UART == 1
+        bcf     PIE1, TXIE, A   ; Disable TX interrupts.
+#else
+        bcf     PIE3, TX2IE, A   ; Disable TX interrupts.
+#endif
         incf    TXhead, F, A
         movlw   TXbufmask
         andwf   TXhead, F, A
         incf    TXcnt, F, A
-
+#if UART == 1
         bsf     PIE1, TXIE, A   ; Enable TX interrupts. Queue is not empty
+#else
+        bsf     PIE3, TXIE2, A   ; Enable TX interrupts. Queue is not empty
+#endif
         return
 #endif
 ;***************************************************
@@ -791,9 +832,16 @@ RX1_:
 L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
+#if UART == 1
         btfsc   RCSTA, OERR, A
         bcf     RCSTA, CREN, A ; Restart RX on case of RX overrun
         bsf     RCSTA, CREN, A
+#else
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, BANKED
+        bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, BANKED
+#endif
         rcall   PAUSE
         movf    RXcnt, W, A
         movwf   plusS
@@ -1067,12 +1115,16 @@ magic:
 
 ;***************************************************
 asmemit:
-;        btfss   PIR1, TXIF, A
-;        bra     asmemit
+#if UART == 1
         btfss   PIR1, TXIF, A
         bra     asmemit
-asmemit1:
         movwf   TXREG, A
+#else
+        btfss   PIR3, TX2IF, A
+        bra     asmemit
+        banksel TXREG2
+        movwf   TXREG2, BANKED
+#endif
         return
 ;***************************************************
 ; N=    c-addr nfa u -- n   string:name cmp
@@ -2233,9 +2285,14 @@ WARM_ZERO_2:
         movwf   RCSTA, A        ; USB warm start does not reset the chip
 #endif
         movlw   b'10010000'
+#if UART == 1
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
-
+#else
+        banksel RCSTA2
+        movwf   RCSTA2, BANKED
+        bsf     PIE3, RC2IE, A
+#endif
 #if IDLE_MODE == ENABLE
         movlw   h'08'           ; TMR0 used for CPU_LOAD
         movwf   T0CON           ; prescale = 1
@@ -2368,7 +2425,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'35'," FlashForth 5 ",PICTYPE," 7.4.2016\r\n"
+        db d'36'," FlashForth 5 ",PICTYPE," 28.4.2016\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
