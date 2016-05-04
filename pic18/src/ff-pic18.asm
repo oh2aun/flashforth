@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          28.04.2016                                        *
+;    Date:          04.05.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2262,37 +2262,44 @@ WARM_ZERO_2:
 #ifdef PIE6
         clrf    PIE6, A
 #endif
+        banksel Sp  ; Select register bank ($0f00)
+#if UART == 1 ; ----------------------------------------------
         movlw   spbrgval
         movwf   SPBRG, A
 ; TX enable
         movlw   b'00100100'
         movwf   TXSTA, A
-
-; RX enable
-#ifdef ANSELH
-#ifdef ANS11
-        bcf     ANSELH, ANS11, A ; Enable digital RB5 for RX  
-#endif
-#endif
-#ifdef ANSELC
-#ifdef ANSC7
-        banksel ANSELC
-        bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
-#endif
-#endif
 #ifdef USB_CDC
         movlw   b'00000000'     ; Reset the UART since
         movwf   RCSTA, A        ; USB warm start does not reset the chip
 #endif
+; RX enable
         movlw   b'10010000'
-#if UART == 1
         movwf   RCSTA, A
         bsf     PIE1, RCIE, A
-#else
-        banksel RCSTA2
+#ifdef ANSELH
+#ifdef ANS11
+        bcf     ANSELH, ANS11, A ; Enable digital RB5 for RX
+#endif
+#endif
+#ifdef ANSELC
+#ifdef ANSC7
+        bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
+#endif
+#endif
+#else  ; UART == 2 ---------------------------------------
+        movlw   spbrgval
+        movwf   SPBRG2, BANKED
+; TX enable
+        movlw   b'00100100'
+        movwf   TXSTA2, BANKED
+; RX enable
         movwf   RCSTA2, BANKED
         bsf     PIE3, RC2IE, A
+
+        bcf     ANCON2, ANSEL18, BANKED   ; Enable digital RG2 for RX2
 #endif
+
 #if IDLE_MODE == ENABLE
         movlw   h'08'           ; TMR0 used for CPU_LOAD
         movwf   T0CON           ; prescale = 1
@@ -2321,7 +2328,6 @@ WARM_ZERO_2:
 #else
 #if MS_TMR == 4
         ;; Timer 4 for 1 ms system tick
-        banksel T4CON
         movlw   h'7d'      ; Prescale = 4, Postscale = 16
         movwf   T4CON, BANKED
         movlw   tmr2ms_val
@@ -2330,7 +2336,6 @@ WARM_ZERO_2:
 #else
 #if MS_TMR == 5
         ;; Timer 5 for 1 ms system tick
-        banksel T5CON
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T5CON, BANKED
         setf    TMR5H, BANKED
@@ -2338,7 +2343,6 @@ WARM_ZERO_2:
 #else
 #if MS_TMR == 6
         ;; Timer 6 for 1 ms system tick
-        banksel T6CON
         movlw   h'7d'      ; Prescale = 4, Postscale = 16
         movwf   T6CON, BANKED
         movlw   tmr2ms_val
@@ -2425,7 +2429,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'36'," FlashForth 5 ",PICTYPE," 28.4.2016\r\n"
+        db d'35'," FlashForth 5 ",PICTYPE," 4.5.2016\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
