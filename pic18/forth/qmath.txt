@@ -1,6 +1,6 @@
 \                                                                     *
 \    Filename:      qmath.txt                                         *
-\    Date:          31.12.2013                                        *
+\    Date:          05.05.2016                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -24,7 +24,7 @@ $ffd8 constant status
 
 \ Assembler words
 : as2 ( opcode "name" -- ) ( f a -- )
-  constant
+  co:
   does> rot ic, or ic, ;
 
 $24 as3 addwf,          ( f d a -- )  
