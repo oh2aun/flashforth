@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          03.04.2016                                        *
+;    Date:          14.05.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1138,9 +1138,9 @@ RQ_END:
 
 WARM1:
         rcall   XSQUOTE
-        .byte   30
+        .byte   31
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 2.4.2016\r\n"
+        .ascii  " FlashForth 5 PIC24 14.5.2016\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -2738,7 +2738,7 @@ RX2Q:
         mov     W0, [++W14]
         cp0     [W14]
         bra     nz, RX2Q1
-        btss    iflags, #fFC2
+        btsc    iflags, #fFC2
         bra     RX2Q1      
 .if FC2_TYPE == 1
         btst    iflags, #ixoff2
