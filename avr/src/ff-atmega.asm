@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          02.04.2016                                        *
+;    Date:          02.07.2016                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2015  Mikael Nordman
+; Copyright (C) 2016  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "02.04.2016"
+#define DATE "02.07.2016"
 
 
 ; Register definitions
@@ -285,7 +285,7 @@
 .equ ms_pre_tmr2   = 4
 .endif
 .endif
-.equ CPU_LOAD_VAL  = (FREQ_OSC*256/100000)
+.equ CPU_LOAD_VAL  = (FREQ_OSC*255/100000)
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -302,7 +302,7 @@
 .equ NFAmask= 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fIDLE=     6   ; 1 = busy
+.equ fIDLE=     6   ; 0 = busy, 1 = idle
 .equ fLOAD=     5   ; Load measurement ready
 .equ fLOADled=  4   ; 0 = no load led, 1 = load led on
 .equ fFC_tx1=   3   ; 0=Flow Control, 1 = no Flow Control   
@@ -567,7 +567,7 @@ OPERATOR_AREA:
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
-        cbr     FLAGS2, (1<<fIDLE)
+        sbr     FLAGS2, (1<<fIDLE)
         ret
         
 ; busy
@@ -575,7 +575,7 @@ IDLE:
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
-        sbr     FLAGS2, (1<<fIDLE)
+        cbr     FLAGS2, (1<<fIDLE)
         ret        
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
@@ -4418,7 +4418,7 @@ CPU_LOAD_END:
 .endif
 LOAD_LED_END:
 .endif
-        sbrc    FLAGS2, fIDLE
+        sbrs    FLAGS2, fIDLE
         rjmp    IDLE_LOAD1
         ldi     t0, low(up0)
         cp      upl, t0
@@ -5170,6 +5170,14 @@ WARM_2:
         st      x+, zero
         cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
         brne    WARM_2
+
+; Init empty flash buffer
+	dec     ibaseh
+.ifdef RAMPZ
+	sts     ibaseu, ibaseh
+.endif
+
+; Init constant registers
         ldi     yl, 1
         mov     r_one, yl
         ldi     yl, 2
