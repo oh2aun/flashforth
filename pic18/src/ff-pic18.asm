@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          04.05.2016                                        *
+;    Date:          09.08.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2429,7 +2429,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'35'," FlashForth 5 ",PICTYPE," 4.5.2016\r\n"
+        db d'35'," FlashForth 5 ",PICTYPE," 9.8.2016\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -4916,7 +4916,6 @@ QUIT:
         rcall   LEFTBRACKET
         call    FRAM
 QUIT0:  
-        call    IFLUSH
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1: 
@@ -4932,6 +4931,7 @@ QUIT1:
         rcall   INTERPRET
         movf    state, W, A
         bnz     QUIT1
+        call    IFLUSH
         rcall   DP_TO_EEPROM
         call    XSQUOTE
         db      3," ok"

@@ -71,6 +71,10 @@
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
 .equ MS_TIMER = 0
 
+; Debug flash and eeprom writes
+; Prints F=Write to FLASH E=Write to EEPROM
+.equ DEBUG_FLASH = 0
+
 #if defined(__ATmega2560__)
 #define partstring "ATmega2560"
 #elif defined(__ATmega328P__)

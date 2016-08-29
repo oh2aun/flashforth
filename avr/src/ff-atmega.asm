@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          02.07.2016                                        *
+;    Date:          09.08.2016                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "02.07.2016"
+#define DATE "09.08.2016"
 
 
 ; Register definitions
@@ -2884,6 +2884,11 @@ DP_TO_EEPROM_0:
         rcall   NOTEQUAL
         rcall   ZEROSENSE
         breq    DP_TO_EEPROM_1
+.if DEBUG_FLASH == 1
+        rcall   DOLIT
+        .dw     'E'
+        call    EMIT
+.endif
         rcall   PSTORE
         rjmp    DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
@@ -2925,7 +2930,6 @@ QUIT:
         rcall   LEFTBRACKET
         rcall   FRAM
 QUIT0:  
-        rcall   IFLUSH
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1: 
@@ -2942,6 +2946,7 @@ QUIT1:
         rcall   STATE_
         rcall   ZEROSENSE
         brne    QUIT1
+        rcall   IFLUSH
         rcall   DP_TO_EEPROM
          
         rcall    XSQUOTE
@@ -5093,6 +5098,11 @@ IWRITE_BUFFER2:
 .if U1FC_TYPE == 2
         cbi_    U1RTS_PORT, U1RTS_BIT
 .endif
+.endif
+.if DEBUG_FLASH == 1
+        rcall   DOLIT
+        .dw     'F'
+        call    EMIT
 .endif
          ret
         ; ret to RWW section
