@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          09.08.2016                                        *
+;    Date:          11.11.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -219,7 +219,16 @@ RXbuf       res RX_BUF_SIZE
 
 #ifdef USB_CDC
 UART_TX udata
+#if TX_BUF_SIZE == 0
+#ifdef __18F14K50
+#if PARAMETER_STACK_SIZE < d'53'
+#define USBUF_DEFINED
+usbuf       res PARAMETER_STACK_SIZE
 #endif
+#endif
+#endif
+#endif
+
 #if TX_BUF_SIZE > 0
 TXbufmask   equ TX_BUF_SIZE - 1
 TXbuf       res TX_BUF_SIZE
@@ -299,7 +308,9 @@ utoin       equ -d'0'
 uvars       res -us0
 u0          res 2 + UADDSIZE
 urbuf       res ursize
+#ifndef USBUF_DEFINED
 usbuf       res ussize
+#endif
 utibbuf     res utibsize
 
 #else  ; Support multi tasking
@@ -324,13 +335,18 @@ urptr       equ d'0'            ; Top of the saved return stack
 uvars       res -us0
 u0          res 2 + UADDSIZE
 urbuf       res ursize
+#ifndef USBUF_DEFINED
 usbuf       res ussize
+#endif
 utibbuf     res utibsize
 #endif
 
 ;;;  Initial USER area pointer (operator)
+#if TX_BUF_SIZE > 0
 uareasize   equ -us0+ursize+ussize+utibsize + 2
-
+#else
+uareasize   equ -us0+ursize+utibsize + 2
+#endif
 ;;; Start of free ram
 #ifdef USB_CDC
 #ifndef __18F14K50
@@ -775,7 +791,7 @@ TX1_SEND:
 #else
 TX1_:
         rcall   PAUSE                   ; Try other tasks
-        TX_FULL_BIT TX1_BUF_SIZE
+        TX_FULL_BIT TX_BUF_SIZE
         bra     TX1_
         movf    Sminus, W
 #if USE_8BIT_ASCII == DISABLE
@@ -2429,7 +2445,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'35'," FlashForth 5 ",PICTYPE," 9.8.2016\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 11.11.2016\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2480,7 +2496,7 @@ L_KEY:
         db      NFA|3,"key"
 KEY:
         rcall   UKEY
-        goto    FEXECUTE
+        goto     FEXECUTE
 
 ;***************************************************
 ; KEY   -- c    get char from UKEY vector
@@ -3220,9 +3236,9 @@ CQUOTE:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
-        rcall   ALIGNED
         rcall   ALLOT
-        goto    PLACE
+        rcall   PLACE
+        goto    ALIGN
 
 
 ; ."       --            compile string to print into flash
@@ -3251,8 +3267,8 @@ ALLOT:
 L_DROP
         db      NFA|INLINE|4,"drop"
 DROP:
-        movf    Sminus, W, A
-        movf    Sminus, W, A
+        movwf   Sminus, A       ; no status change
+        movwf   Sminus, A
         return
     
 
@@ -3706,8 +3722,9 @@ PPLUS:
         incf    p_hi, F, A
         return
 ;***************************************************
-        dw      L_PPLUS
+        dw      L_PNPLUS
 L_PTWOPLUS:
+kernellink:
         db      NFA|3,"p2+" ; ( n -- ) Add 2 to p
 PTWOPLUS:
         movlw   2
@@ -3716,8 +3733,8 @@ PTWOPLUS:
         addwfc  p_hi, F, A
         return
 ;***************************************************
-; UEMIT  -- addr         Address of EMIT user vector
-        dw      L_PTWOPLUS
+; 'EMIT  -- addr         Address of EMIT user vector
+        dw      L_PPLUS
 L_UEMIT:
         db      NFA|5,"'emit"
 UEMIT:
@@ -3926,26 +3943,26 @@ LESSNUM:
         rcall   HP
         goto    STORE
 
-; >digit   n -- c            convert to 0..9a..z
+; digit   n -- c            convert to 0..9a..z
 ;   [ HEX ] DUP 9 > 7 AND + 30 + ;
         dw      L_LESSNUM
 L_TODIGIT:
-        db      NFA|6,">digit"
-TODIGIT: 
-        rcall   DUP
-        rcall   LIT_A
-        dw      9
-        rcall   GREATER
-        rcall   LIT_A
-        dw      h'27'
-        rcall   AND
-        rcall   PLUS
-        rcall   LIT_A
-        dw      h'30'
-        goto    PLUS
+        db      NFA|5,"digit"
+TODIGIT:
+        movf    Sminus, W, A
+        movf    Srw, W, A
+        addlw   h'f6'
+        bn      TODIGIT1
+        addlw   h'27'
+TODIGIT1:
+        addlw   h'3a'
+        movwf   Srw, A
+        clrf    plusS
+        return
+
 
 ; #     ud1 -- ud2     convert 1 digit of output
-;   base @ ud/mod rot >digit hold ;
+;   base @ ud/mod rot digit hold ;
         dw      L_TODIGIT
 L_NUM
         db      NFA|1,"#"
@@ -4265,7 +4282,7 @@ L_CFETCHPP:
         db      NFA|3,"c@+"
 CFETCHPP:
         rcall   DUP
-        call    CFETCH
+        rcall   CFETCH_A
         movlw   -3
         incf    SWrw, F, A
         bnc     CFETCHPP1
@@ -4324,7 +4341,7 @@ L_BRACFIND:
 findi:
 findi1:
 FIND_1: 
-        call    TWODUP
+        rcall   TWODUP
         rcall   OVER
         rcall   CFETCH_A
         call    NEQUAL
@@ -4370,8 +4387,8 @@ IMMEDQ:
 L_FIND:
         db      NFA|4,"find"
 FIND:   
-        rcall   KLINK
-;        dw      kernellink
+        rcall   LIT_A
+        dw      kernellink
         rcall   findi
         rcall   DUPZEROSENSE
         bnz     FIND1
@@ -4467,6 +4484,7 @@ UDSLASHMOD:
         rcall   ROT             ; q.h ud.l r.h
         rcall   RFROM           ; q.h ud.l r.h u
         rcall   UMSLASHMOD      ; q.h r.l q.l
+ROT_A:
         goto    ROT             ; r.l q.l q.h
         
 ; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
@@ -4584,7 +4602,7 @@ QNUM_ERR:                       ; Not a number
         bra     QNUM3
 QNUMD:                          ; Single or double Double number
                                 ; a ud.l ud.h a'
-        call    ONEMINUS
+        rcall   ONEMINUS
         call    CFETCH          ; a ud.l ud.h c
         call    TO_A            ; a ud.l ud.h 
         rcall   RFROM           ; a ud.l ud.d sign
@@ -4598,7 +4616,7 @@ QNUMD1:
         rcall   MINUS
         rcall   ZEROSENSE       ; a d.l d.h
         bnz     QNUM1
-        call    ROT             ; d.l d.h a
+        rcall    ROT_A             ; d.l d.h a
         call    DROP            ; d.l d.h
         rcall   LIT_A           ; 
         dw      2               ; d.l ud.h 2    Double number
@@ -4610,10 +4628,6 @@ QNUM1:                          ; single precision dumber
         call    ONE             ; n 1           Single number
 QNUM3:  
         return
-
-        db      NFA|4,"swap"
-SWOP_A
-        goto    SWOP
 
 ; TI#  -- n                      size of TIB
 ; : ti# task @ 8 + @ ;
@@ -4737,7 +4751,7 @@ ICOMMAXT:
 ICOMPILE:
         btfss   wflags, 5, A    ; Inline check
         bra     ICOMMAXT
-        rcall   INLINE0
+        call    INLINE0
         bra     IPARSEWORD
 INUMBER: 
         bcf     FLAGS1, izeroeq ; Clear 0= encountered in compilation
@@ -4786,7 +4800,7 @@ SHB:
         rcall   LAST
         rcall   DUP_A
         rcall   CFETCH_A
-        call    ROT
+        rcall    ROT_A
         call    OR
         rcall   SWOP_A
         goto    CSTORE
@@ -4797,7 +4811,11 @@ L_IMMEDIATE:
 IMMEDIATE:
         rcall   LIT_A
         dw      IMMED
-        goto    SHB
+        bra     SHB
+
+        db      NFA|4,"swap"
+SWOP_A:
+        goto    SWOP
 
 ;***************************************************************
         dw      L_IMMEDIATE
@@ -4806,8 +4824,8 @@ L_INLINED:
 INLINED:
         rcall   LIT_A
         dw      INLINE
-        goto    SHB
-
+        bra     SHB
+EMIT_A: goto    EMIT
 ;; .st ( -- ) output a string with current data section and current base info
 ;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type 
 ;;;     <# [char] > hold cse @ #s #> type base ! ;
@@ -4817,17 +4835,17 @@ L_DOTSTATUS:
 DOTSTATUS:
         rcall   LIT_A
         dw      h'003c'
-        call    EMIT
+        rcall    EMIT_A
         call    DOTBASE
-        call    EMIT
+        rcall    EMIT_A
         rcall   LIT_A
         dw      h'002C'
-        call    EMIT
+        rcall    EMIT_A
         call    MEMQ
         call    TYPE
         rcall   LIT_A
         dw      h'003e'
-        call    EMIT
+        rcall    EMIT_A
         goto    DOTS
         
         db      NFA|3,"lit"
@@ -4972,7 +4990,7 @@ QABORTQ:
 L_QABORT:
         db      NFA|6,"?abort"
 QABORT:
-        call    ROT
+        rcall    ROT_A
         call    ZEROSENSE
         bnz     QABO1
 QABORT1:        
@@ -5374,6 +5392,7 @@ MS1:
         bz      MS1
         goto    DROP
 
+CFETCHPP_A: bra CFETCHPP
 ;  .id ( nfa -- ) 
         dw      L_MS
 L_DOTID:
@@ -5383,12 +5402,12 @@ DOTID:
         rcall   LIT_A
         dw      h'0f'
         call    AND
-        call    TOR
+        rcall    TOR_A
         bra     DOTID3
 DOTID1:
         rcall   CFETCHPP
         rcall   TO_PRINTABLE
-        call    EMIT
+        rcall    EMIT_A
 DOTID3:
         decf    TOSL, F, A
         bc      DOTID1  
@@ -5411,53 +5430,88 @@ TO_PRINTABLE1:
 TO_PRINTABLE2:
         clrf    plusS, A
         return
-
-        dw      L_TO_PRINTABLE
-L_KLINK:
-        db      NFA|3,"klk"
-KLINK:
-        rcall   DOCREATE_A
-        dw      kernellink
-
- ; WORDS    --          list all words in dict.
-        dw      L_KLINK
-L_WORDS:
-        db      NFA|5,"words"
-        rcall   FALSE_
-        rcall   CR
-
-        rcall   KLINK
-
-        rcall   WDS1
-        rcall   FALSE_
-        rcall   CR
-
-        rcall   LAST
-
-WDS1:   rcall   DUP_A
-        rcall   DOTID
-        rcall   SWOP_A
-        call    ONEPLUS
-        rcall   DUP_A
-        rcall   LIT_A
-        dw      h'7'
-        call    AND
+;;;;;;;;;;;;;;
+CMP:
+        rcall   TOR_A
+        bra     CMP2
+CMP1:
+        rcall   CFETCHPP_A
+        rcall   ROT_A
+        rcall   CFETCHPP_A
+        rcall   ROT_A
+        call    MINUS
         call    ZEROSENSE
-        bz      WDS2
+        bnz     TWODROPZ
+CMP2:
+        decf    TOSL, F, A
+        bc      CMP1
+        bra     TWODROPNZ
+;;;;;;;;;;;;;;;;;;;;
+LIKEQ:
+        rcall   CFETCHPP_A
         rcall   LIT_A
-        dw      h'9'
-        call    EMIT
-        bra     WDS3
-WDS2:   
-        rcall   CR
-WDS3:
+        dw      0xf
+        call    AND
         rcall   SWOP_A
+        call    STORE_P
+        rcall   SWOP_A
+        rcall   CFETCHPP_A
+        rcall   ROT_A
+        call    OVER
+        call    MINUS
+        call    ONEPLUS
+        rcall   FALSE_
+        call    MAX
+        rcall   TOR_A
+        bra     LIKEQ3
+LIKEQ1:
+        call    TWODUP
+        rcall   FETCH_P
+        call    PPLUS
+        rcall   SWOP_A
+        rcall   CMP
+        bz      LIKEQ3
+TWODROPNZ:
+        bcf     STATUS, Z, A
+        bra     LIKEQ4
+LIKEQ3:
+        decf    TOSL, F, A
+        bc      LIKEQ1
+TWODROPZ:
+        bsf     STATUS, Z, A
+LIKEQ4:
+        pop
+        bra     DOTS2
 
+;;;;;;;;;;;;;;;
+LIKES:
+        call    TWODUP
+        rcall   LIKEQ
+        bz      LIKES1
+        rcall   DUP_A
+        rcall   DOTID
+        call    SPACE_
+LIKES1:
         rcall   TWOMINUS
         rcall   FETCH_A
         call    DUPZEROSENSE
-        bnz     WDS1
-        goto    TWODROP
+        bnz     LIKES
+        bra     DOTS2
+
+ ; WORDS    --          list all words in dict.
+        dw      L_TO_PRINTABLE
+L_WORDS:
+        db      NFA|5,"words"
+        rcall   BL
+        call    WORD
+        rcall   DUP_A
+        rcall   LIT_A
+        dw      kernellink
+        rcall   WORDS1
+        rcall   LAST
+WORDS1: 
+        rcall   CR
+        bra     LIKES
 
 ; .S      --           print stack contents
 ; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
@@ -5498,12 +5552,12 @@ DUMP1:
         call    UDOTR
         rcall   LIT_A
         dw      h'3a'
-        call    EMIT
+        rcall    EMIT_A
         rcall   LIT_A
         dw      h'10'
         rcall   TOR_A
 DUMP2:
-        call    CFETCHPP
+        rcall    CFETCHPP_A
         rcall   LIT_A
         dw      2
         call    UDOTR
@@ -5518,9 +5572,9 @@ DUMP2:
         dw      h'10'
         rcall   TOR_A
 DUMP4:  
-        call    CFETCHPP
+        rcall    CFETCHPP_A
         rcall   TO_PRINTABLE
-        call    EMIT
+        rcall    EMIT_A
         decf    TOSL, F, A
         bnz     DUMP4
         pop
@@ -6104,7 +6158,6 @@ PCFETCH:
 ;***************************************************
         dw      L_PCFETCH
 L_PNPLUS:
-kernellink:
         db      NFA|3,"p++" ; ( n -- ) Add n to p
 PNPLUS:
         movff   Sminus, Tp

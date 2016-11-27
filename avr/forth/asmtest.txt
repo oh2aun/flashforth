@@ -5,20 +5,22 @@ marker -asmtest
 : asmtest ( n1 n2 -- ) 
   = if ." OK" else ." ERROR" then cr ;
 
-#30 #28 mov, flash here 2- @ $2fec asmtest  \ Rd,Rr:
+#30 #28 mov, 
+flash here ram 2- @ $2fec asmtest  \ Rd,Rr:
 
-#17 #15 ldi, flash here 2- @ $e01f asmtest  \ Rd,k:
+#17 #15 ldi, 
+flash here ram 2- @ $e01f asmtest  \ Rd,k:
 
 #17 $1234 lds, 
-flash here 4 - @+ swap @ u. u. \ Rd: 9110 1234
+flash here ram 4 - @+ swap @ u. u. \ Rd: 9110 1234
 
 $09 constant Y+
 9 Y+ $31 ldd,
- flash here 2 - @ $a899 asmtest
+ flash here ram 2 - @ $a899 asmtest
 
 $01 constant Z+
 9 Z+ $31 ldd,
- flash here 2 - @ $a891 asmtest
+ flash here ram 2 - @ $a891 asmtest
 
 \ Leave true flag if zero flag is true
 : testif0
@@ -29,8 +31,7 @@ $01 constant Z+
       false
   [ then, ]
 ;
-testif0
-see testif0
+testif0 .
 
 \ Leave true flag if zero flag is false
 : testif1 
@@ -41,8 +42,7 @@ see testif0
       false
   [ then, ]
 ;
-testif1
-see testif1
+testif1 .
 
 \ Increment 24 bit value until result is zero
 : testuntil
@@ -56,4 +56,4 @@ see testif1
   [ eq, until, ]    \ until R18 is zero
 ;
 testuntil
-see testuntil
+

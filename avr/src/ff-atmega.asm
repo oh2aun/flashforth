@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          09.08.2016                                        *
+;    Date:          11.11.2016                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "09.08.2016"
+#define DATE "11.11.2016"
 
 
 ; Register definitions
@@ -60,9 +60,9 @@
   .def t2 = r0          ; Not in interrupt
   .def t3 = r1          ; Not in interrupt
 
-  .def il = r18         ; FOR..LOOP INDEX variable
-  .def ih = r19
-  .def pl = r20         ; P Register
+  .def al = r18
+  .def ah = r19
+  .def pl = r20         ; P Register and FOR..LOOP INDEX variable
   .def ph = r21
 
   .def FLAGS1 = r22     ; Not in interrupt
@@ -375,7 +375,6 @@
 .equ RAM_HI = RAMEND
         
 ;;; USER AREA for the OPERATOR task
-;.equ uaddsize=     0          ; No additional user variables 
 .equ ursize=       RETURN_STACK_SIZE
 .equ ussize=       PARAMETER_STACK_SIZE
 .equ utibsize=     TIB_SIZE
@@ -433,7 +432,6 @@ dpEEPROM:   .byte 2
 dpRAM:      .byte 2
 dpLATEST:   .byte 2
 
-areg:       .byte 2 ; A register data
 iaddrl:     .byte 1
 iaddrh:     .byte 1
 .ifdef RAMPZ
@@ -441,8 +439,12 @@ iaddru:	    .byte 1
 ibaseu:	    .byte 1
 .endif
 
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1       
 load_acc:   .byte 3 ; Load measurement accumulator
 load_res:   .byte 3 ; Load result
+.endif
+.endif
 
 cse:        .byte 1 ; Current data section 0=flash, 1=eeprom, 2=ram
 state:      .byte 1 ; Compilation state
@@ -460,8 +462,28 @@ dpdata:     .byte   2
 ; Start of kernel
 ;*******************************************************************
 .cseg
+.if (FLASHEND == 0x1ffff)
+.org 0x17f00
+.else
 .org KERNEL_START
-
+.endif
+;***********************************************************
+CMP:
+        call    TOR
+        rjmp    CMP2
+CMP1:
+        call    NEQUALSFETCH
+        call    MINUS
+        call    ZEROSENSE
+        breq    CMP2
+        jmp     TWODROPZ
+CMP2:
+        call    XNEXT
+        brcc    CMP1
+        jmp     TWODROPNZ
+.if (FLASHEND == 0x1ffff)
+.org KERNEL_START
+.endif
 ; M? -- caddr count    current data space string
 ;        dw      L_DOTBASE
 L_MEMQ:
@@ -476,8 +498,6 @@ MEMQ:
         call    DOLIT
         .dw     NFAmask
         jmp     AND_
-
-
 
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
@@ -647,7 +667,7 @@ NEQUALSFETCH:
         rcall   CFETCHPP
         rcall   ROT
         rcall   CFETCHPP
-        jmp     ROT
+        rjmp    ROT
 ;***************************************************
 ; N=    c-addr nfa -- n   string:name cmp
 ;             n=0: s1==s2, n=ffff: s1!=s2
@@ -776,21 +796,20 @@ SCAN4:
 MTST_L:
         .db     NFA|4,"mtst",0
 MTST:
-        call    CFETCH
-        jmp     AND_
+        movw    zl, tosl
+        ld      tosl, z+
+        ld      t0, Y+
+        ld      t1, Y+
+        and     tosl, t0
+        clr     tosh
+        ret
+
 
         fdw     MTST_L
 FCY_L:
         .db     NFA|3,"Fcy"
         rcall   DOCREATE
         .dw     FREQ_OSC / 1000
-
-;*******************************************************
-; Assembler
-;*******************************************************
-; FIXME
-;*******************************************************
-        
 
 ;;; Check parameter stack pointer
         .db     NFA|3,"sp?"
@@ -1404,7 +1423,7 @@ XSQUOTE:
         rcall   RFROM
         rcall   PLUS
         movw    zl, tosl
-        poptos
+        rcall   DROP
         mijmp
 
         fdw     TYPE_L
@@ -1960,22 +1979,17 @@ LESSNUM:
         rcall   HP
         jmp     STORE
 
-; >digit   n -- c            convert to 0..9a..z
+; digit   n -- c            convert to 0..9a..z
         fdw     LESSNUM_L
 TODIGIT_L:
-        .db     NFA|6,">digit",0
-TODIGIT: 
-        rcall   DUP
-        rcall   DOLIT
-        .dw     9
-        rcall   GREATER
-        rcall   DOLIT
-        .dw     0x27
-        rcall   AND_
-        rcall   PLUS
-        rcall   DOLIT
-        .dw     0x30
-        jmp     PLUS
+        .db     NFA|5,"digit"
+TODIGIT:
+        cpi     tosl, 0xa
+        brlt    TODIGIT1
+        adiw    tosl, 0x27
+TODIGIT1:
+        adiw    tosl, 0x30
+        ret
 
 ; #     ud1 -- ud2     convert 1 digit of output
 ;   base @ ud/mod rot >digit hold ;
@@ -2021,15 +2035,14 @@ NUMGREATER:
         fdw     NUMGREATER_L
 SIGN_L:
         .db     NFA|4,"sign",0
-SIGN:   
-        rcall   ZEROLESS
-        rcall   ZEROSENSE
-        breq    SIGN1
+SIGN:
+        cpi     tosh, 0
+        brpl    SIGN1
         rcall   DOLIT
         .dw     0x2D
         rcall   HOLD
 SIGN1:
-        ret
+        jmp     DROP
 
 ; U.    u --                  display u unsigned
 ;   <# 0 #S #> TYPE SPACE ;
@@ -2321,9 +2334,7 @@ NTOC_L:
         .db     NFA|3,"n>c"
 NFATOCFA:
         rcall   CFETCHPP
-        rcall   DOLIT
-        .dw     0x0f
-        rcall   AND_
+        andi    tosl, 0x0f
         rcall   PLUS
         jmp     ALIGNED
 
@@ -2335,10 +2346,8 @@ CFATONFA:
         rcall   TWOMINUS
         rcall   DUP
         rcall   CFETCH_A
-        rcall   DOLIT
-        .dw     0x007F
-        rcall   GREATER
-        rcall   ZEROSENSE
+        call    TO_A
+        sbrs    al, 7
         breq    CFATONFA
         ret
 
@@ -2352,8 +2361,6 @@ findi:
 findi1:
 FIND_1: 
         rcall   TWODUP
-;        rcall   OVER
-;        rcall   CFETCH_A
         rcall   NEQUAL
         rcall   DUPZEROSENSE
         breq    findi2
@@ -2385,9 +2392,8 @@ IMMEDQ_L:
 IMMEDQ: 
         rcall   CFETCH_A
         mov     wflags, tosl  ; COMPILE and INLINE flags for the compiler
-        rcall   DOLIT
-        .dw     IMMED
-        jmp     AND_
+        andi    tosl, IMMED
+        ret
 
 ; FIND   c-addr -- c-addr 0   if not found
 ;                  xt  1      if immediate
@@ -2414,19 +2420,11 @@ DIGITQ_L:
         .db     NFA|6,"digit?",0
 DIGITQ:
                                 ; 1 = 31    A = 41
-        rcall   DUP             ; c c       c c
-        rcall   DOLIT
-        .dw     0x39            ; c c 39    c c 39
-        rcall   GREATER         ; c 0       c ffff
-        rcall   ZEROSENSE
-        breq    DIGITQ1
-        rcall   DOLIT
-        .dw     0x27
-        rcall   MINUS
+        cpi     tosl, 0x40
+        brlt    DIGITQ1
+        sbiw    tosl, 0x27
 DIGITQ1:        
-        rcall   DOLIT
-        .dw     0x30            ; c 30
-        rcall   MINUS           ; 1
+        sbiw    tosl, 0x30      ; 1
         rcall   DUP             ; 1 1
         rcall   BASE            ; 1 1 base
         rcall   FETCH_A         ; 1 1 10
@@ -2445,9 +2443,7 @@ SIGNQ_L:
 SIGNQ:
         rcall   OVER
         rcall   CFETCH_A
-        rcall   DOLIT
-        .dw     ','
-        rcall   MINUS
+        sbiw    tosl, ','
         rcall   DUP
         rcall   ABS_
         rcall   ONE
@@ -2556,17 +2552,11 @@ NUMBERQ:
         rcall   OVER
         rcall   CFETCH_A
         
-        rcall   DOLIT
-        .dw     '#'
-        rcall   MINUS
-        rcall   DUP
-        rcall   DOLIT
-        .dw     3
-        rcall   ULESS
-        rcall   ZEROSENSE
-        breq    BASEQ1
+        sbiw    tosl, '#'
+        cpi     tosl, 3
+        brsh    BASEQ1
+
         rcall   CELLS
-        
         rcall   DOLIT
         fdw     BASEQV
         rcall   PLUS
@@ -2849,7 +2839,7 @@ TOR_A:  jmp     TOR
 
 
 ;;; TEN ( -- n ) Leave decimal 10 on the stack
-        .db     NFA|1,"a"
+;        .db     NFA|1,"a"
 TEN:
         rcall   DOCREATE
         .dw     10
@@ -2907,7 +2897,7 @@ DP_TO_EEPROM_3:
 FALSE_L:
         .db     NFA|5,"false"
 FALSE_:                     ; TOS is 0000 (FALSE)
-        pushtos
+        rcall DUP;pushtos
         clr     tosl
         clr     tosh
         ret
@@ -2916,7 +2906,7 @@ FALSE_:                     ; TOS is 0000 (FALSE)
 TRUE_L:
         .db     NFA|4,"true",0
 TRUE_:                      ; TOS is ffff (TRUE)
-        pushtos
+        rcall DUP;pushtos
         ser     tosl
         ser     tosh
         ret
@@ -2953,8 +2943,8 @@ QUIT1:
         .db     3," ok"
         rcall    TYPE
         rcall   PROMPT_
-        rjmp    QUIT0
-        ret
+        jmp     QUIT0
+
 
         fdw     QUIT_L
 PROMPT_L:
@@ -3421,7 +3411,7 @@ INI:
         fdw     R0_L
 TICKS_L:
         .db     NFA|5,"ticks"
-TICKS:
+TICKS:  
         pushtos
         in_     t0, SREG
         cli
@@ -3491,44 +3481,74 @@ TO_PRINTABLE1:
 TO_PRINTABLE2:
         ret
 
- ; WORDS    --          list all words in dict.
-        fdw     TO_PRINTABLE_L
-WORDS_L:
-        .db     NFA|5,"words"
-        rcall   FALSE_
-        rcall   CR
+;;;;;;;;;;;;;;
+LIKEQ:
+        rcall   CFETCHPP
         rcall   DOLIT
-        fdw     kernellink
-        rcall   WDS1
-        rcall   FALSE_
-        rcall   CR
-                rcall   CR
-        rcall   LATEST_
-        rcall   FETCH_A
-WDS1:   rcall   DUP
-        rcall   DOTID
-        rcall   SWOP_A
-        rcall   ONEPLUS
-        rcall   DUP
-        rcall   DOLIT
-        .dw     7
+        .dw     0x0f
         rcall   AND_
-        rcall   ZEROSENSE
-        breq    WDS2
-        rcall   DOLIT
-        .dw     9
-        rcall   EMIT_A
-        rjmp    WDS3
-WDS2:   
-        rcall   CR
-WDS3:
-        rcall   SWOP_A
+        rcall   SWOP
+        rcall   STORE_P
+        rcall   SWOP
+        rcall   CFETCHPP
+        rcall   ROT
+        rcall   OVER
+        rcall   MINUS
+        rcall   ONEPLUS
+        rcall   FALSE_
+        rcall   MAX
+        rcall   TOR
+        rjmp    LIKEQ3
+LIKEQ1:
+        rcall   TWODUP
+        rcall   FETCH_P
+        rcall   PPLUS
+        rcall   SWOP
+        call    CMP
+        breq    LIKEQ3
+TWODROPNZ:
+        clz
+        rjmp    LIKEQ4
+LIKEQ3:
+        rcall   XNEXT
+        brcc    LIKEQ1
+TWODROPZ:
+        sez
+LIKEQ4:
+        pop     t1
+        pop     t0
+        rjmp    TWODROP__
 
+;;;;;;;;;;;;;;;;;;;;
+LIKES:
+        rcall   TWODUP
+        rcall   LIKEQ
+        breq    LIKES1
+        rcall   DUP
+        rcall   DOTID
+        rcall   SPACE_
+LIKES1:
         rcall   TWOMINUS
         rcall   FETCH_A
         rcall   DUPZEROSENSE
-        brne    WDS1
+        brne    LIKES
+TWODROP__:
         jmp     TWODROP
+
+ ; WORDS    -- filter
+        fdw     TO_PRINTABLE_L
+WORDS_L:
+        .db     NFA|5,"words"
+        rcall   BL
+        rcall   WORD
+        rcall   DUP
+        rcall   DOLIT
+        fdw     kernellink
+        rcall   WDS1
+        rcall   LATEST_
+        rcall   FETCH_A
+WDS1:   rcall   CR
+        jmp     LIKES
 
 ; .S      --           print stack contents
 ; : .s space sp@ s0 @ 2- begin 2dup < while -@ u. repeat 2drop ;
@@ -3892,10 +3912,8 @@ LEAVE:
         pop     zl
         pop     t1
         pop     t0
-        clr     t0
-        clr     t1
-        push    t0
-        push    t1
+        push    zero
+        push    zero
         mijmp
 ;***************************************************
 ; RDROP compile a pop
@@ -3998,14 +4016,14 @@ DTWOSTAR_L:
 DINVERT_L:
         .db     NFA|7,"dinvert"
 DINVERT:
-        ld      xl, y+
-        ld      xh, y+
-        com     xl
-        com     xh
+        ld      t0, y+
+        ld      t1, y+
+        com     t0
+        com     t1
         com     tosl
         com     tosh
-        st      -y, xh
-        st      -y, xl
+        st      -y, t1
+        st      -y, t0
         ret
 ;***************************************************
         fdw     DINVERT_L
@@ -4116,10 +4134,10 @@ XFETCH_L:
         fdw     XFETCH_L
 XSTORE_L:
         .db     NFA|2, "x!",0
-	mov     t0, tosl
-	poptos
-        call    XUPDATEBUF
-	jmp     ISTORE1
+    	mov     t0, tosl
+        call    DROP
+        rcall   XUPDATEBUF
+        rjmp    ISTORE1
 .endif
 
 ;***************************************************
@@ -4172,7 +4190,8 @@ MARKER:
         rcall   TEN
         jmp     CMOVE
 
-
+.if IDLE_MODE == 1
+.if CPU_LOAD_LED == 1
 ;;; Enable load led
         fdw     BUSY_L
 LOADON_L:
@@ -4194,22 +4213,29 @@ LOADOFF_L:
 .endif
 .endif
         ret
-;;; Enable load led
+.endif
+;;; 
+.if CPU_LOAD == 1
+.if CPU_LOAD_LED == 1
         fdw     LOADOFF_L
+.else
+        fdw     BUSY_L
+.endif
 LOAD_L:
         .db     NFA|4,"load",0
-        pushtos
+        rcall DUP
         lds     tosl, load_res
         lds     tosh, load_res+1
-        pushtos
+        rcall DUP
         lds     tosl, load_res+2
         clr     tosh
-        pushtos
+        rcall DUP
         ldi     tosl, low(CPU_LOAD_VAL)
         ldi     tosh, high(CPU_LOAD_VAL)
         call    UMSLASHMOD
         jmp     NIP 
-
+.endif
+.endif
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize= 28
@@ -4833,7 +4859,19 @@ RX1_ISR: rjmp   RX1_ISRR
 .endif
 ;***************************************************
 ; TX0   c --    output character to UART 0
+.if IDLE_MODE == 1
+.if CPU_LOAD == 1
         fdw(LOAD_L)
+.else
+.if CPU_LOAD_LED == 1
+        fdw(LOADOFF_L)
+.else
+        fdw(BUSY_L)
+.endif
+.endif
+.else
+        fdw(EXIT_L)
+.endif
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
@@ -5426,8 +5464,8 @@ IRQ_V:
         sbiw    zl, 1
         lsl     zl
 .if low(ivec) == 0x80
-                ldi     zh, low(ivec)
-                add     zl,  zh
+        ldi     zh, low(ivec)
+        add     zl,  zh
 .endif
         ldi     zh, high(ivec)
         poptos
@@ -5486,9 +5524,11 @@ ISTORE1:
         fdw     LITERAL_L
 TO_A_L:
         .db     NFA|2, ">a",0
-        ldi     zl, low(areg)
-        ldi     zh, high(areg)
-        rjmp    STORE_RAM_2
+TO_A:
+        mov     al, tosl
+        mov     ah, tosh
+        poptos
+        ret
 
         fdw     TO_A_L
 STORE_L:
@@ -5573,9 +5613,9 @@ IIFETCH:
 A_FROM_L:
         .db     NFA|2, "a>",0
         pushtos
-        ldi     zl, low(areg)
-        ldi     zh, high(areg)
-        rjmp    FETCH_RAM_2
+        mov     tosl, al
+        mov     tosh, ah
+        ret
 
 .if FLASHEND > 0x3fff
         fdw     XSTORE_L

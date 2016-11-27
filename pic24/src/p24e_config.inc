@@ -76,7 +76,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .endif
 
 ; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+.equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
@@ -85,7 +85,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ CPU_LOAD, 1
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED, 1       ; set to 0 to disable
+.equ CPU_LOAD_LED, 0       ; set to 0 to disable
 .equ CPU_LOAD_TRIS, TRISB
 .equ CPU_LOAD_PORT, PORTB
 .equ CPU_LOAD_BIT, 15

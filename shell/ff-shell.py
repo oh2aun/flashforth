@@ -137,6 +137,7 @@ def main():
       else:
         while waitForNL > 0:
           pass
+        sleep(0.04)
         line = file.readline()
         if line == "":
           file.close()

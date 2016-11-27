@@ -40,7 +40,7 @@
 .equ IDLE_MODE = 1
 
 ; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE = 1
-.equ CPU_LOAD = 1
+.equ CPU_LOAD = 0
 
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
@@ -61,9 +61,9 @@
 .equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE = 96          ; 48 cells return stack
+.equ RETURN_STACK_SIZE = 64          ; 48 cells return stack
 .equ PARAMETER_STACK_SIZE = 64       ; 32 cells parameter stack
-.equ TIB_SIZE = 96                   ; 86 chars tib size +  10 chars hold area
+.equ TIB_SIZE = 90                   ; 80 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART
 .equ CTRL_O_WARM_RESET = 1

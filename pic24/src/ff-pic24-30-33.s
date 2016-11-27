@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          14.05.2016                                        *
+;    Date:          25.10.2016                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -45,8 +45,6 @@
 .global __U1RXInterrupt
 .global __U2TXInterrupt
 .global __U2RXInterrupt
-.global __DAC1LInterrupt
-.global __DAC1RInterrupt
 .global __OscillatorFail
 .global __AddressError
 .global __StackError
@@ -741,7 +739,7 @@ A_FROM:
         .ascii  "idle"
         .align 2
 IDLE_:
-        bclr     iflags, #fIDLE
+        bset     iflags, #fIDLE
         return
         
         .pword   paddr(9b)+PFLASH
@@ -750,7 +748,7 @@ IDLE_:
         .ascii  "busy"
         .align 2
 BUSY_:
-        bset     iflags, #fIDLE
+        bclr     iflags, #fIDLE
         return
         
         .pword   paddr(9b)+PFLASH
@@ -1138,9 +1136,9 @@ RQ_END:
 
 WARM1:
         rcall   XSQUOTE
-        .byte   31
+        .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 14.5.2016\r\n"
+        .ascii  " FlashForth 5 PIC24 25.10.2016\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1204,13 +1202,12 @@ PAUSE:
 PAUSE2:
 .endif
 .if IDLE_MODE == 1
-        btsc    iflags, #fIDLE
+        btss    iflags, #fIDLE
         bra     PAUSE_BUSY
         mov     #u0, W0        ; IDLE only in operator task.
         cp      upcurr
         bra     nz, PAUSE_BUSY
 .if CPU_LOAD_LED == 1
-        bclr    CPU_LOAD_TRIS, #CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 0
         bset    CPU_LOAD_PORT, #CPU_LOAD_BIT
 .else
@@ -1220,6 +1217,7 @@ PAUSE2:
         pwrsav  #1             ; Go to IDLE mode to save power.
 PAUSE_BUSY:
 .if CPU_LOAD_LED == 1
+        bclr    CPU_LOAD_TRIS, #CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 0
         bclr    CPU_LOAD_PORT, #CPU_LOAD_BIT
 .else
@@ -1233,13 +1231,13 @@ PAUSE_BUSY:
         mov     W13, [W0+upsave]    ; Save P pointer
         mov     [W0+ulink], W0      ; Set UP
 
-        disi    #7
+        disi    #5
         setm    SPLIM               ; Disable Return Stack overflow protection
         mov     W0, upcurr
         mov     [W0+upsave], W13    ; Restore P pointer
         mov     [W0+ursave], W15    ; Restore RP
         mov     [W0+us0], W1        ; Set SPLIM
-        mov     W1, SPLIM
+        mov     W1, SPLIM           ;
         mov     [W0+ussave], W14    ; Restore SP W14
         return
 
@@ -1571,12 +1569,10 @@ CF_FETCH:
         .align  2
 AS_COMMA:
         mov     [W14--], W0
-.if 1
         cp      W0, W10
         bra     nz, AS_COMMA1
         sub     #0x78, W10
         bra     nz, AS_COMMA1  ; hibytecheck
-        
         mov     [W14], W1
         mov     #0x002e, W2
         cp      W1, W2
@@ -1588,8 +1584,7 @@ AS_COMMA:
         rcall   IDPMINUS
         mov     #0, W12
         mov     #0, W10
-        bra     AS_COMMA2
-.endif        
+        bra     AS_COMMA2        
 AS_COMMA1:
         mov     W0, W3          ; hibyte
         mov     W0, W10
@@ -1761,16 +1756,15 @@ IFETCH:
         bra      NZ, PFETCH1
         mov      #IBUFSIZEL-1, W1
         and      W1, W0, W0
-        mov      W0, W2
+        lsr      W0, #1, W2
         mov      #ibufl, W1
         add      W1, W0, W1
         mov      [W1],[W14]
 
-        lsr      W2, #1, W0
         mov      #ibufh, W1
-        add      W1, W0, W0
+        add      W1, W2, W2
         clr      W3
-        mov.b    [W0], W3       ; hibyte
+        mov.b    [W2], W3       ; hibyte
         return
         
 IFETCH_INIT:
@@ -2213,48 +2207,6 @@ MTST:
         mov     [W14--], W1
         and.w   W1, [W0], W0
         mov     W0, [++W14] 
-        return
-
-; bset ( addr bit-index -- )
-        .pword  paddr(9b)+PFLASH
-9:
-        .byte   NFA|4
-        .ascii  "bset"
-        .align  2
-BSET__:
-        mov.w   [W14--], W0
-        mov.w   [W14--], W1
-        bset    SR, #C
-        bsw.c   [W1], W0
-        return
-
-
-; bclr ( addr bit-index -- )
-        .pword  paddr(9b)+PFLASH
-9:
-        .byte   NFA|4
-        .ascii  "bclr"
-        .align  2
-BCLR__:
-        mov.w   [W14--], W0
-        mov.w   [W14--], W1
-        bclr    SR, #C
-        bsw.c   [W1], W0
-        return
-
-; btst ( addr bit-index -- f )
-        .pword  paddr(9b)+PFLASH
-9:
-        .byte   NFA|4
-        .ascii  "btst"
-        .align  2
-BTST__:
-        mov.w   [W14--], W0
-        mov.w   [W14--], W1
-        btst.c  [W1], W0
-        rrc     W1, W1
-        asr     W1, #15, W0
-        mov     W0, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -2898,7 +2850,7 @@ DROP:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|INLINE|4
+        .byte   NFA|4
         .ascii  "swap"
         .align  2
 SWOP:
@@ -3327,15 +3279,6 @@ PPLUS:
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|3
-        .ascii  "p2+"
-        .align  2
-PPLUS2:
-        inc2    W13, W13
-        return
-
-        .pword  paddr(9b)+PFLASH
-9:
-        .byte   NFA|INLINE|3
         .ascii  "p++"
         .align  2
 PNPLUS:
@@ -3537,9 +3480,9 @@ UQMOD2:
         mov     [W14--], W0
         sub     W14, #6, W14
         add     W0, [W14],[W14++]
-        add     W1, [W14],[W14++]
-        add     W2, [W14],[W14++]
-        add     W2, [W14],[W14]
+        addc    W1, [W14],[W14++]
+        addc    W2, [W14],[W14++]
+        addc    W2, [W14],[W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3553,9 +3496,9 @@ UQMOD2:
         mov     [W14--], W0
         sub     W14, #6, W14
         add     W0, [W14],[W14++]
-        add     W1, [W14],[W14++]
-        add     W2, [W14],[W14++]
-        add     W3, [W14],[W14]
+        addc    W1, [W14],[W14++]
+        addc    W2, [W14],[W14++]
+        addc    W3, [W14],[W14]
         return
 
 ; user ( n "name" -- )
@@ -3927,7 +3870,8 @@ TWOSTORE:
         .ascii  "2drop"
         .align  2
 TWODROP:
-        sub     W14, #4, W14        ; 2drop
+        mov.d   [W14--], W0
+;        sub     W14, #4, W14        ; 2drop
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3993,13 +3937,11 @@ SPCS2:
         .ascii  "umin"
         .align  2
 UMIN:
-        rcall   TWODUP
-        rcall   UGREATER
-        cp0     [W14--]
-        bra     z, UMIN1
-        rcall   SWOP
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     GTU, UMIN1
+        mov     W0, [W14]
 UMIN1:
-        sub     W14, #2, W14
         return
 
         .pword  paddr(9b)+PFLASH
@@ -4008,13 +3950,11 @@ UMIN1:
         .ascii  "umax"
         .align  2
 UMAX:
-        rcall   TWODUP
-        rcall   ULESS
-        cp0     [W14--]
-        bra     z, UMAX1
-        rcall   SWOP
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     LEU, UMAX1
+        mov     W0, [W14]
 UMAX1:
-        sub     W14, #2, W14
         return
 
         .pword  paddr(9b)+PFLASH
@@ -4037,7 +3977,7 @@ ONE:
 
 ; ACCEPT  c-addr +n -- +n'  get line from terminal
         .pword  paddr(9b)+PFLASH
-ACCEPT_L:
+9:
         .byte   NFA|6
         .ascii  "accept"
         .align  2
@@ -4078,11 +4018,9 @@ ACC2:
         rcall   FALSE_
         rcall   FCR
         rcall   CSTORE
-        mov     [W14++], [W14]      ; dup
-        mlit    #0x08              ; BS
-        rcall   EQUAL
-        cp0     [W14--]
-        bra     z, ACC3
+        mov     [W14], W0
+        cp      W0, #8
+        bra     nz, ACC3
         sub     W14, #2, W14
         dec     [W14], [W14]
         push    [W14--]
@@ -4170,7 +4108,7 @@ SWAPB:
 
 
         .pword  paddr(9b)+PFLASH
-TYPE_L:
+9:
         .byte   NFA|4
         .ascii  "type"
         .align  2
@@ -4187,8 +4125,8 @@ TYPE2:
         sub     W14, #2, W14    ; DROP
         return
 
-        .pword  paddr(TYPE_L)+PFLASH
-XSQUOTE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "(s" 
         .byte 0x22 
@@ -4209,8 +4147,8 @@ XSQUOTE:
         goto    W0
 
 ; S"      --            compile in-line string to flash
-        .pword  paddr(XSQUOTE_L)+PFLASH
-SQUOTE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|COMPILE|2
         .ascii  "s" 
         .byte 0x22
@@ -4223,8 +4161,8 @@ SQUOTE:
         goto    RAM
 
 ; ,"      --           store a string to current data space
-        .pword paddr(SQUOTE_L)+PFLASH
-CQUOTE_L:
+        .pword paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "," 
         .byte 0x22
@@ -4235,14 +4173,13 @@ CQUOTE:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
-        rcall   ALIGNED
         rcall   ALLOT
-        goto    PLACE
-
+        rcall   PLACE
+        goto    ALIGN
 
 ; ."       --            compile string to print into flash
-        .pword  paddr(CQUOTE_L)+PFLASH
-DOTQUOTE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|IMMED|COMPILE|2
         .ascii  "." 
         .byte 0x22
@@ -4254,8 +4191,8 @@ DOTQUOTE:
         return
 
 ;   +!      n/u addr --     add cell to data memory
-        .pword  paddr(DOTQUOTE_L)+PFLASH
-PLUSSTORE_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "+!" 
         .align  2
@@ -4269,8 +4206,8 @@ PLUSSTORE:
 
 ;   WITHIN      ( u ul uh -- t )
 ;               Return true if u is within the range of ul and uh. ( ul <= u < uh )
-        .pword  paddr(PLUSSTORE_L)+PFLASH
-WITHIN_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|6
         .ascii  "within" 
         .align  2
@@ -4283,8 +4220,8 @@ WITHIN:
         goto    ULESS
 
 ;   <>      x1 x2 -- flag       return true if not equal 
-        .pword  paddr(WITHIN_L)+PFLASH
-NOTEQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "<>" 
         .align  2
@@ -4295,8 +4232,8 @@ NOTEQUAL:
         bra     test_false
 
 ;   =       x1 x2 -- flag       return true if x1 = x2
-        .pword  paddr(NOTEQUAL_L)+PFLASH
-EQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|1
         .ascii  "=" 
         .align  2
@@ -4307,8 +4244,8 @@ EQUAL:
         bra     test_false
 
 ;   =       d1 d2 -- flag       return true if d1 = d2
-        .pword  paddr(EQUAL_L)+PFLASH
-DEQUAL_L:
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|2
         .ascii  "d=" 
         .align  2
@@ -4317,7 +4254,7 @@ DEQUAL:
         goto    DZEROEQUAL
 
 ;   <       n1 n2 -- flag       return true if n1 < n2
-        .pword  paddr(DEQUAL_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 LESS_L:
         .byte   NFA|1
         .ascii  "<" 
@@ -4557,13 +4494,12 @@ MAX_L:
         .byte   NFA|3
         .ascii  "max" 
         .align  2
-MAX:    
-        rcall   TWODUP
-        rcall   LESS
-        cp0     [W14--]
-        bra     z, max1
-        rcall   SWOP
-max1:   sub     W14, #2, W14
+MAX:
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     LT, MAX1
+        mov     W0, [W14]
+MAX1:
         return
 
 ; MIN    n1 n2 -- n3              signed minimum
@@ -4574,13 +4510,13 @@ MIN_L:
         .ascii  "min" 
         .align  2
 MIN:    
-        rcall   TWODUP
-        rcall   GREATER
-        cp0     [W14--]
-        bra     z, min1
-        rcall   SWOP
-min1:   sub     W14, #2, W14
+        mov     [W14--], W0
+        cp      W0, [W14]
+        bra     GT, MIN1
+        mov     W0, [W14]
+MIN1:
         return
+
 
 ; UP    -- a-addr       Current User area
         .pword  paddr(MIN_L)+PFLASH
@@ -4619,22 +4555,21 @@ LESSNUM:
         rcall   HP
         goto    STORE
 
-; >digit   n -- c            convert to 0..9a..z
-;   [ HEX ] DUP 9 > 7 AND + 30 + ;
+; digit   n -- c            convert to 0..9a..z
+;   [ HEX ] DUP 9 > IF 27 + THEN 30 + ;
         .pword  paddr(LESSNUM_L)+PFLASH
 TODIGIT_L:
-        .byte   NFA|6
-        .ascii  ">digit" 
+        .byte   NFA|5
+        .ascii  "digit" 
         .align  2
 TODIGIT: 
-        mov     [W14++], [W14]      ; dup
-        mlit    #9
-        rcall   GREATER
-        mov     #0x27, W0
-        and     W0, [W14--], W0
-        add     W0, [W14], W1
-        mov     #0x30, W0
-        add     W0, W1, [W14]
+        mov     [W14], W0
+        cp      W0, #10
+        bra     n, TODIGIT1
+        add     #0x27, W0
+TODIGIT1:
+        add     #0x30, W0
+        mov     W0, [W14]
         return
 
 ; #     ud1 -- ud2     convert 1 digit of output
@@ -5151,10 +5086,8 @@ CFATONFA1:
         dec     [W14], [W14]
         mov     [W14++], [W14]      ; dup
         rcall   CFETCH              ; nfu
-        mlit    #0x7F
-        rcall   GREATER
-        cp0     [W14--]
-        bra     z, CFATONFA1
+        btss    [W14--], #7
+        bra     CFATONFA1
         return
 
 ; findi   c-addr nfa -- c-addr 0   if not found
@@ -6258,10 +6191,9 @@ SEMICOLON:
         dec2    [W14], [W14]      ; 2-
         mov     [W14++], [W14]    ; DUP
         rcall   CF_FETCH
-        mlit    7
-        rcall   EQUAL
-        cp0     [W14--]
-        bra     z, SEMICOLON1
+        mov     [W14--], W0
+        cp      W0, #7
+        bra     nz, SEMICOLON1
         sl      [W14], [W14]        ; 2*
         rcall   IHERE
         rcall   PLUS
@@ -6357,10 +6289,7 @@ INC_L:
 INLINE_0:
         mov     [W14++], [W14]      ; dup
         rcall   CF_FETCH
-        mov     [W14++], [W14]      ; dup
-        mlit    #6
-        rcall   NOTEQUAL
-        cp0     [W14--]
+        cp      W3, #6
         bra     z, INLINE1
         rcall   AS_COMMA
         inc2    [W14], [W14]
@@ -6642,7 +6571,7 @@ XNEXT:
         .ascii  "endit"
         .align  2
 LEAVE:
-        pop     W0  
+        pop     W0
         clr     [W15++]
         return
 
@@ -6751,7 +6680,7 @@ TICKS:
 ;   until drop ;
 ;
         .pword  paddr(TICKS_L)+PFLASH
-MS_L:
+9:
         .byte   NFA|2
         .ascii  "ms"
         .align  2
@@ -6767,44 +6696,90 @@ MS_1:
         sub     W14, #2, W14
         return
 
+;;;;;;;;;;;;;;
+CMP:
+        mov     [W14--], [W15++]
+        bra     CMP2
+CMP1:
+        rcall   CFETCHPP
+        rcall   ROT
+        rcall   CFETCHPP
+        rcall   ROT
+        rcall   MINUS
+        rcall   ZEROSENSE
+        bra     nz, TWODROPZ
+CMP2:
+        dec     [--W15], [W15++]
+        bra     c, CMP1
+        bra     TWODROPNZ
+;;;;;;;;;;;;;;;;;;;;
+LIKEQ:
+        rcall   CFETCHPP
+        mlit    0xf
+        rcall   AND
+        rcall   SWOP
+        rcall   STORE_P
+        rcall   SWOP
+        rcall   CFETCHPP
+        rcall   ROT
+        rcall   OVER
+        rcall   MINUS
+        rcall   ONEPLUS
+        rcall   FALSE_
+        rcall   MAX
+        mov     [W14--], [W15++]
+        bra     LIKEQ3
+LIKEQ1:
+        rcall   TWODUP
+        rcall   FETCH_P
+        rcall   PPLUS
+        rcall   SWOP
+        rcall   CMP
+        bra     z, LIKEQ3
+TWODROPNZ:
+        bclr    SR, #Z
+        bra     LIKEQ4
+LIKEQ3:
+        dec     [--W15], [W15++]
+        bra     c, LIKEQ1
+TWODROPZ:
+        bset     SR, #Z
+LIKEQ4:
+        pop     W0
+        goto    TWODROP
+
+
+;;;;;;;;;;;;;;;;;;;;
+LIKES:
+        rcall   TWODUP
+        rcall   LIKEQ
+        bra     z, LIKES1
+        rcall   DUP
+        rcall   DOTID
+        rcall   SPACE_
+LIKES1:
+        rcall   TWOMINUS
+        rcall   FETCH
+        cp0     [W14]
+        bra     nz, LIKES
+        goto    TWODROP
+
  ; WORDS    --          list all words in dict.
-        .pword  paddr(MS_L)+PFLASH
+        .pword  paddr(9b)+PFLASH
 WORDS_L:
         .byte   NFA|5
         .ascii  "words"
         .align  2
 WORDS:
-        rcall   FALSE_
-        rcall   CR
+        rcall   BL
+        rcall   WORD
+        rcall   DUP
         mlit    handle(kernellink)+PFLASH
         rcall   WDS1
-        rcall   FALSE_
-        rcall   CR
         rcall   LATEST
         rcall   FETCH
-WDS1:   mov     [W14++], [W14]      ; dup
-        rcall   DOTID
-        rcall   SWOP
-        inc     [W14], [W14]
-        mov     [W14++], [W14]      ; dup
-        mlit    7
-        rcall   AND
-        cp0     [W14--]
-        bra     z, WDS2
-        mlit    9
-        rcall   EMIT
-        bra     WDS3
-WDS2:   
-        rcall   CR
-WDS3:
-        rcall   SWOP
-
-        rcall   TWOMINUS
-        rcall   FETCH
-        cp0     [W14]
-        bra     nz, WDS1
-        sub     W14, #4, W14        ; 2drop
-        return
+WDS1:   rcall   CR
+        goto    LIKES
 
 ; .S      --           print stack contents
 ; : .s sp@ s0 @ 2+ begin 2dup < 0= while @+ u. repeat 2drop ;
@@ -6943,7 +6918,6 @@ FALSE_:                     ; TOS is 0000 (FALSE)
 
         .pword  paddr(9b)+PFLASH
 9:
-;kernellink:
         .byte   NFA|INLINE|4
         .ascii  "true"
         .align  2
@@ -6952,6 +6926,16 @@ TRUE_:                      ; TOS is ffff (TRUE)
         return
 
 .include "registers.inc"
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|INLINE|3
+        .ascii  "p2+"
+        .align  2
+PPLUS2:
+        inc2    W13, W13
+        return
+
 
 .equ kernellink, 9b
 

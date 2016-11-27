@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task-test3.txt                                  *
-\    Date:          21.08.2014                                      *
+\    Date:          25.11.2016                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 33                                       *
 \    Copyright:     Mikael Nordman                                  *
@@ -18,19 +18,18 @@ $0e14 constant latb
 $0e12 constant portb
 $0e10 constant trisb
 ram variable delay
-: led14off  portb #14  bclr ;
-: led14on   portb #14  bset ;
-: led13off portb #13 bclr ;
-: led13on  portb #13 bset ;
+: led14off  %0100.0000.0000.0000 portb mclr ;
+: led14on   %0100.0000.0000.0000 portb mset ;
+: led13off  %0010.0000.0000.0000 portb mclr ;
+: led13on   %0010.0000.0000.0000 portb mset ;
 
 40 30 30 0 task: t1
 : tloop 
   #100 delay !
-  trisb #14  bclr 
-  trisb #13 bclr
+  %0110.0000.0000.0000 trisb mclr 
   begin 
     delay @ ms 
-    portb #14 btst
+    %0100.0000.0000.0000 portb mtst
     if
       led14off
       led13on

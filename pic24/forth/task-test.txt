@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task-test.txt                                   *
-\    Date:          05.01.2014                                      *
+\    Date:          25.11.2016                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 33                                       *
 \    Copyright:     Mikael Nordman                                  *
@@ -25,7 +25,7 @@ ram variable delay
 : led9on   [ #9 portb bset,  ] ; inlined
 : led10off [ #10 portb bclr, ] ; inlined
 : led10on  [ #10 portb bset, ] ; inlined
-
+: nop      [ flash 0 , ram ]   : inlined
 40 30 30 0 task: t1
 : tloop 
   $3f adpcfg c!
@@ -37,11 +37,11 @@ ram variable delay
     [ #10 portb btst,   ]
     [ z, if,          ]
         led9off
-        [ flash 0 , ram ] \ nop required 
+        nop
         led10on
     [ else,           ] 
         led9on
-        [ flash 0 , ram ] \ nop required
+        nop
         led10off
     [ then,           ]
   again

@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0 21.03.2016
+Dictionary of FlashForth 5.0 11.11.2016
 
 !          ( x addr -- )
            Store x to addr
@@ -279,17 +279,6 @@ begin      ( -- a-addr )  COMPILE_ONLY
 
 bin        ( -- )
            Set base to binary
-
-bit0:      ( c-addr bitno "name" -- )
-           Define a word that clears a bit.
-           The defined word can be inlined.
-
-bit1:      ( c-addr bitno "name" -- )
-           Define a word that sets a bit
-           The defined word can be inlined.
-
-bit?:      ( c-addr bitno "name" -- flag )
-           Define a word that tests a bit.
 
 bl         ( -- c )
            Ascii space
@@ -1077,8 +1066,8 @@ wmove      ( addr1 addr2 u -- )
            Move u cells from addr1 to addr2
            PIC24-30-33
 
-words      ( -- )
-           List words
+words xxx  ( "name" -- )
+           List words optionally filtered with xxx
 
 x!         ( u addr.d -- )
            Extended store into flash. Real flash address

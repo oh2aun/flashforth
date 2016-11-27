@@ -18,10 +18,10 @@ ACCESSBANK NAME=acs_ram    START=0x40           END=0x5F
 DATABANK   NAME=userarea   START=0x60           END=0x181          PROTECTED
 DATABANK   NAME=ram_dp     START=0x182          END=0x1FF          PROTECTED
 DATABANK   NAME=usbep      START=0x200          END=0x22F          PROTECTED
-DATABANK   NAME=cvars      START=0x230          END=0x25F
-DATABANK   NAME=usbbuf     START=0x260          END=0x27F          PROTECTED
-DATABANK   NAME=irqstack   START=0x280          END=0x29F          PROTECTED
-DATABANK   NAME=uarttx     START=0x2A0          END=0x2CF          PROTECTED
+DATABANK   NAME=cvars      START=0x230          END=0x255
+DATABANK   NAME=usbbuf     START=0x256          END=0x26E          PROTECTED
+DATABANK   NAME=irqstack   START=0x26F          END=0x27E          PROTECTED
+DATABANK   NAME=uarttx     START=0x280          END=0x2CF          PROTECTED
 DATABANK   NAME=uartrx     START=0x2D0          END=0x2EF          PROTECTED
 DATABANK   NAME=cstack     START=0x2F0          END=0x2FF
 DATABANK   NAME=sfrbanked  START=0xF53          END=0xF5F          PROTECTED
