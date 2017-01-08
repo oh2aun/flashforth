@@ -136,8 +136,9 @@ def main():
         sys.stdout.flush()
       else:
         while waitForNL > 0:
+          sleep(0.04)
+          waitForNL = waitForNL - 1
           pass
-        sleep(0.04)
         line = file.readline()
         if line == "":
           file.close()
@@ -160,7 +161,7 @@ def main():
         line = '\017'           # CTRL-O
       THR_LOCK.acquire()
       try:
-        waitForNL = 1
+        waitForNL = 10
         bytes = config.ser.write(line+'\n')
         config.ser.flush()       # Send the output buffer
       except Exception as e:
