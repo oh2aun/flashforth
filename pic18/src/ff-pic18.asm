@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          11.11.2016                                        *
+;    Date:          07.01.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2445,7 +2445,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 11.11.2016\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 07.01.2017\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2923,10 +2923,13 @@ ALIGN:
 L_ALIGNED:
         db      NFA|7,"aligned"
 ALIGNED:
-        rcall   ONEPLUS
-        rcall   LIT
-        dw      h'fffe'
-        goto    AND
+        swapf   Sminus, W, A
+        incf    Srw, F, A
+        bcf     Splus, 0, A
+        bnc     ALIGNED1
+        incf    Srw, F, A
+ALIGNED1:
+        return
 
 ; CELL+    a-addr1 -- a-addr2      add cell size
 ;   2 + ;
