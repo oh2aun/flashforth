@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          11.11.2016                                        *
+;    Date:          07.01.2017                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "11.11.2016"
+#define DATE "07.01.2017"
 
 
 ; Register definitions
@@ -311,6 +311,7 @@
 .equ ixoff_tx0= 0
 
 ; FLAGS1
+.equ fLIT=    7     ; Literal compiled
 .equ noclear= 6     ; dont clear optimisation flags 
 .equ idup=    5     ; Use dupzeroequal instead of zeroequal
 .equ izeroeq= 4     ; Use brne instead of breq if zeroequal
@@ -426,6 +427,8 @@ rbuf1_lv:    .byte 1
 rbuf1:       .byte RX1_BUF_SIZE
 .endif
 
+litbuf0:    .byte 1
+litbuf1:    .byte 1
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -484,6 +487,24 @@ CMP2:
 .if (FLASHEND == 0x1ffff)
 .org KERNEL_START
 .endif
+;;; *************************************************
+;;; WARM user area data
+.equ warmlitsize= 28
+WARMLIT:
+        .dw      0x0200                ; cse, state
+        .dw      utibbuf-4             ; S0
+        .dw      usbuf-1               ; R0
+        fdw      OP_TX_
+        fdw      OP_RX_
+        fdw      OP_RXQ
+        .dw      BASE_DEFAULT          ; BASE
+        .dw      utibbuf               ; TIB
+        fdw      OPERATOR_AREA         ; TASK
+        .dw      0                     ; ustatus & uflg
+        .dw      0                     ; source
+        .dw      0                     ; source
+        .dw      0                     ; TOIN
+        .dw      up0                   ; Task link
 ; M? -- caddr count    current data space string
 ;        dw      L_DOTBASE
 L_MEMQ:
@@ -499,66 +520,6 @@ MEMQ:
         .dw     NFAmask
         jmp     AND_
 
-;***********************************************************
-; unsigned 32/16 -> 16/16 division
-umslashmod0:
-        clt
-        tst  tosl
-        brne umslashmodstart
-        tst  tosh
-        brne umslashmodstart
-        set  ; Set T flag
-        jmp  WARM_
-umslashmodstart:
-        push t2
-        push t3
-        movw t4, tosl
-
-        ld t3, Y+
-        ld t6, Y+
-  
-        ld tosl, Y+
-        ld tosh, Y+
-
-; unsigned 32/16 -> 16/16 division
-        ; set loop counter
-        ldi t0,$10 ;6
-
-umslashmod1:
-        ; shift left, saving high bit
-        clr t7
-        lsl tosl
-        rol tosh
-        rol t3
-        rol t6
-        rol t7
-
-        ; try subtracting divisor
-        cp  t3, t4
-        cpc t6, t5
-        cpc t7,zero
-
-        brcs umslashmod2
-
-        ; dividend is large enough
-        ; do the subtraction for real
-        ; and set lowest bit
-        inc tosl
-        sub t3, t4
-        sbc t6, t5
-
-umslashmod2:
-        dec  t0
-        brne umslashmod1 ;16=17=272
-
-umslashmod3:
-        ; put remainder on stack
-        st -Y,t6
-        st -Y,t3
-        pop t3
-        pop t2
-        ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
-        ret
 ;*********************************************************************
 ; EXIT --   Compile a return
 ;        variable link
@@ -935,6 +896,7 @@ DODOES:
         rcall   FETCHLIT
         movw    z, x
         mijmp    ; (z)
+
 FETCHLIT:
         pushtos
         lsl     zl
@@ -978,7 +940,7 @@ RPEMPTY:
         m_pop_xh
         pop     xh
         pop     xl
-        rcall   R0_
+        call    R0_
         rcall   FETCH_A
         out     spl, tosl
         out     sph, tosh
@@ -1112,9 +1074,8 @@ ALIGNED_L:
         .db     NFA|7,"aligned"
 ALIGNED:
         adiw    tosl, 1
-        rcall   DOLIT
-        .dw     0xfffe
-        jmp     AND_
+        cbr     tosl, 1
+        ret
 
 ; CELL+    a-addr1 -- a-addr2      add cell size
 ;   2 + ;
@@ -1174,7 +1135,6 @@ STORECFF1:
         rampv_to_c
         ror     tosh
         ror     tosl
-        call    ICOMMA
         rjmp    STORECF2
 STORECF1:
         rcall   IHERE
@@ -1184,16 +1144,15 @@ STORECF1:
         ;rcall   RCALL_
         andi    tosh, 0x0f
         ori     tosh, 0xd0
-        call    ICOMMA
 STORECF2:
-        ret
+        jmp    ICOMMA
 
 
 ; !COLON   --       change code field to docolon
 ;   -6 IALLOT ; 
 ;       .dw    link
 ;link   set     $
-        .db     NFA|6,"!colon",0
+        .db     NFA|2,"!:",0
 STORCOLON:
         rcall   DOLIT
         .dw     0xfffa         ;  -6
@@ -1410,20 +1369,23 @@ TYPE2:
         .db      NFA|3,"(s",0x22
 XSQUOTE:
         m_pop_zh
-        rcall   RFETCH
-        lsl     tosl
-        rol     tosh
+        pop     zh
+        pop     zl
+        lsl     zl
+        rol     zh
+        lpm_    t0, z+
+        pushtos
+        movw    tosl, zl
         add_pflash_tos
-        rcall   CFETCHPP
-        rcall   DUP
-        rcall   ONEPLUS
-        rcall   ALIGNED
-        lsr     tosh
-        ror     tosl
-        rcall   RFROM
-        rcall   PLUS
-        movw    zl, tosl
-        rcall   DROP
+        pushtos
+        mov     tosl, t0
+        clr     tosh
+        add     zl, t0
+        adc     zh, tosh
+        adiw    zl, 1
+        rampv_to_c
+        ror     zh
+        ror     zl
         mijmp
 
         fdw     TYPE_L
@@ -1540,7 +1502,6 @@ RFETCH:
         push    tosh
         mijmp
 
-
 ;   ABS     n   --- n1      absolute value of n
         fdw     DUP_L
 ABS_L:
@@ -1578,6 +1539,57 @@ MINUS:
         sbc     t1, tosh
         movw    tosl, t0
         ret
+PLUSC_:
+        lds     zl, litbuf0
+        lds     zh, litbuf1
+        com     zl
+        com     zh
+        adiw    zl, 1
+        sts     litbuf0, zl
+        sts     litbuf1, zh
+MINUSC_:
+        rcall   ANDIC1
+        ori     tosh, 0x50
+        rcall   ICOMMA_
+        rcall   DUP
+        lds     tosl, litbuf1
+        rcall   ANDIC2
+        ori     tosl, 0x90
+        ori     tosh, 0x40
+        rjmp    ICOMMA_
+
+ANDIC1:
+        rcall   IDPMINUS
+        rcall   IDPMINUS
+        lds     tosl, litbuf0
+ANDIC2:
+        mov     tosh, tosl
+        swap    tosh
+        andi    tosl, 0x0f
+        andi    tosh, 0x0f
+        ori     tosl, 0x80
+        ret
+ANDIC_:
+        rcall   ANDIC1
+        ori     tosh, 0x70
+        rcall   ICOMMA_
+        rcall   DUP
+        lds     tosl, litbuf1
+        rcall   ANDIC2
+        ori     tosl, 0x90
+        ori     tosh, 0x70
+        rjmp    ICOMMA_
+ORIC_:
+        rcall   ANDIC1
+        ori     tosh, 0x60
+        rcall   ICOMMA_
+        rcall   DUP
+        lds     tosl, litbuf1
+        rcall   ANDIC2
+        ori     tosl, 0x90
+        ori     tosh, 0x60
+ICOMMA_:
+        jmp     ICOMMA
 
         fdw     MINUS_L
 AND_L:
@@ -1621,8 +1633,10 @@ INVERT:
 NEGATE_L:
         .db     NFA|6, "negate",0
 NEGATE:
-        rcall   INVERT
-        jmp     ONEPLUS
+        com     tosl
+        com     tosh
+        adiw    tosl, 1
+        ret
 
         fdw     NEGATE_L
 ONEPLUS_L:
@@ -1694,13 +1708,8 @@ WITHIN:
 NOTEQUAL_L:
         .db     NFA|2,"<>",0
 NOTEQUAL:
-        rcall   MINUS           ; MINUS leaves a valid zero flag
-        ser     tosh
-        ser     tosl
-        brne    NOTEQUAL1
-        adiw    tosl,1
-NOTEQUAL1:
-        ret
+        rcall   EQUAL
+        jmp     ZEROEQUAL
 
         fdw     ZEROLESS_L
 EQUAL_L:
@@ -2666,6 +2675,18 @@ TICKSOURCE:
         rcall   DOUSER
         .dw     usource       ; two cells !!!!!!
 
+WORDQ:
+        rcall   DUP
+        m_pop_t0
+        pop     zh
+        pop     zl
+        rcall   FETCHLIT
+        ror     zh
+        ror     zl
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        mijmp
+
 ;  INTERPRET  c-addr u --    interpret given buffer
         fdw     TICKSOURCE_L
 INTERPRET_L:
@@ -2688,7 +2709,9 @@ IPARSEWORD:
 IPARSEWORD1:
         rcall   FIND            ; sets also wflags
         rcall   DUPZEROSENSE    ; 0 = not found, -1 = normal, 1 = immediate
-        breq    INUMBER         ; NUMBER?
+        brne    IPARSEWORD2     ; NUMBER?
+        rjmp    INUMBER
+IPARSEWORD2:
         rcall   ONEPLUS         ; 0 = normal 2 = immediate
         rcall   STATE_
         rcall   ZEROEQUAL
@@ -2711,40 +2734,61 @@ IEXECUTE:
         rjmp    IPARSEWORD
         cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
         cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
-        rjmp    IPARSEWORD
+        rjmp    ICLRFLIT
 ICOMPILE_1:
         cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
-        rcall   DUP
-        rcall   DOLIT
+        rcall   WORDQ
         fdw     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
-        rcall   EQUAL
-        rcall   ZEROSENSE
         breq    ICOMPILE_2
         sbr     FLAGS1, (1<<izeroeq) ; Mark 0= encountered in compilation
         rjmp    ICOMMAXT
 ICOMPILE_2:
+        sbrs    FLAGS1, fLIT
+        rjmp    ICOMPILE_6
+        rcall   WORDQ
+        fdw     AND_    
+        breq    ICOMPILE_3
+        rcall   ANDIC_
+        rjmp    ICLRFLIT
+ICOMPILE_3:
+        rcall   WORDQ
+        fdw     OR_
+        breq    ICOMPILE_4
+        rcall   ORIC_
+        rjmp    ICLRFLIT
+ICOMPILE_4:
+        rcall   WORDQ
+        fdw     PLUS
+        breq    ICOMPILE_5
+        rcall   PLUSC_
+        rjmp    ICLRFLIT
+ICOMPILE_5:
+        rcall   WORDQ
+        fdw     MINUS
+        breq    ICOMPILE_6
+        rcall   MINUSC_
+        rjmp    ICLRFLIT
+ICOMPILE_6:
         cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
-        rcall   DUP
-        rcall   DOLIT
+        rcall   WORDQ
         fdw     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
-        rcall   EQUAL
-        rcall   ZEROSENSE
         breq    ICOMPILE
         sbr     FLAGS1, (1<<idup)    ; Mark DUP encountered during compilation
 ICOMPILE:
         sbrs    wflags, 5       ; Inline check
         rjmp    ICOMMAXT
         call    INLINE0
-        rjmp    IPARSEWORD
+        rjmp    ICLRFLIT
 ICOMMAXT:
         rcall   COMMAXT_A
         cbr     FLAGS1, (1<<fTAILC)  ; Allow tailjmp  optimisation
         sbrc    wflags, 4            ; Compile only ?
         sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
+ICLRFLIT:
+        cbr     FLAGS1, (1<<fLIT)
         rjmp    IPARSEWORD
 INUMBER: 
-        cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
-        cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
+        cbr     FLAGS1, (1<<izeroeq) | (1<<idup) | (1<<fLIT)
         rcall   DROP
         rcall   NUMBERQ
         rcall   DUPZEROSENSE
@@ -2765,7 +2809,7 @@ ISINGLE:
 
 INUMBER1:
         rcall   DROP
-        rjmp    IPARSEWORD
+        rjmp    ICLRFLIT
 
 IUNKNOWN:
         rcall   DROP 
@@ -2897,7 +2941,7 @@ DP_TO_EEPROM_3:
 FALSE_L:
         .db     NFA|5,"false"
 FALSE_:                     ; TOS is 0000 (FALSE)
-        rcall DUP;pushtos
+        pushtos
         clr     tosl
         clr     tosh
         ret
@@ -2906,7 +2950,7 @@ FALSE_:                     ; TOS is 0000 (FALSE)
 TRUE_L:
         .db     NFA|4,"true",0
 TRUE_:                      ; TOS is ffff (TRUE)
-        rcall DUP;pushtos
+        pushtos
         ser     tosl
         ser     tosh
         ret
@@ -2928,8 +2972,7 @@ QUIT1:
         rcall   TIB
         rcall   DUP
         rcall   TIBSIZE
-        rcall   TEN                 ; Reserve 10 bytes for hold buffer
-        rcall   MINUS
+        sbiw    tosl, 10     ; Reserve 10 bytes for hold buffer
         rcall   ACCEPT
         rcall   SPACE_
         rcall   INTERPRET
@@ -3000,7 +3043,7 @@ ABORTQUOTE:
 
 ;***************************************************
 ; LIT   -- x    fetch inline 16 bit literal to the stack
-
+        fdw     ABORTQUOTE_L
 DOLIT_L:
         .db     NFA|3, "lit"
 DOLIT:
@@ -3040,7 +3083,7 @@ ZEROLESS:
 
 
 ; '    -- xt             find word in dictionary
-        fdw     ABORTQUOTE_L
+        fdw     DOLIT_L
 TICK_L:
         .db     NFA|1,0x27    ; 27h = '
 TICK:
@@ -3236,8 +3279,7 @@ DOES:   rcall   DOCOMMAXT
 LEFTBRACKET_L:
         .db     NFA|IMMED|1,"["
 LEFTBRACKET:
-        cbr     t0, 0xff
-        sts     state, t0
+        sts     state, zero
         ret
 
 
@@ -3246,8 +3288,7 @@ LEFTBRACKET:
 RIGHTBRACKET_L:
         .db     NFA|1,"]"
 RIGHTBRACKET:
-        sbr     t0, 0xff
-        sts     state, t0
+        sts     state, r_one
         ret
 
 ; :        --           begin a colon definition
@@ -3450,9 +3491,7 @@ DOTID_L:
         .db     NFA|3,".id"
 DOTID:
         rcall   CFETCHPP
-        rcall   DOLIT
-        .dw     0x0f
-        rcall   AND_
+        andi    tosl, 0x0f
         rcall   TOR
         rjmp    DOTID3
 DOTID1:
@@ -4236,24 +4275,6 @@ LOAD_L:
         jmp     NIP 
 .endif
 .endif
-;;; *************************************************
-;;; WARM user area data
-.equ warmlitsize= 28
-WARMLIT:
-        .dw      0x0200                ; cse, state
-        .dw      utibbuf-4             ; S0
-        .dw      usbuf-1               ; R0
-        fdw      OP_TX_
-        fdw      OP_RX_
-        fdw      OP_RXQ
-        .dw      BASE_DEFAULT          ; BASE
-        .dw      utibbuf               ; TIB
-        fdw      OPERATOR_AREA         ; TASK
-        .dw      0                     ; ustatus & uflg
-        .dw      0                     ; source
-        .dw      0                     ; source
-        .dw      0                     ; TOIN
-        .dw      up0                   ; Task link
 
 .ifdef UCSR1A
 ;***************************************************
@@ -5480,6 +5501,9 @@ LITERAL:
         rcall   DOLIT
         fdw     DUP
         rcall   INLINE0
+        sts     litbuf0, tosl
+        sts     litbuf1, tosh
+        sbr     FLAGS1, (1<<fLIT)
         call    DUP
         mov     tosh, tosl
         swap    tosh
@@ -5506,7 +5530,6 @@ LITERALruntime:
 
 ;*****************************************************************
 ISTORE:
-        rcall   LOCKEDQ
         rcall   IUPDATEBUF
 ISTORE1:
         poptos
@@ -5517,9 +5540,7 @@ ISTORE1:
         add     xl, t0
         st      x+, tosl
         st      x+, tosh
-        poptos
-        sbr     FLAGS1, (1<<idirty)
-        ret
+        rjmp    ICSTORE_POP
 
         fdw     LITERAL_L
 TO_A_L:
@@ -5545,34 +5566,17 @@ STORE_RAM_2:
         poptos
         ret
 STORE1:
+        rcall   LOCKEDQ
         cpi     tosh, high(OFLASH)
         brcc    ISTORE
 ESTORE:
-        rcall   LOCKEDQ
-        sbic    eecr, eewe
-        rjmp    ESTORE
-        subi    tosh, high(PEEPROM)
-        out     eearl, tosl
-        out     eearh, tosh
-        poptos
-        out     eedr, tosl
-        sbi     eecr, eemwe
-        sbi     eecr, eewe
+        call    TWODUP
+        rcall   ECSTORE
+        adiw    tosl, 1
+        ldd     t0, Y+1
+        std     y+0, t0
+        rjmp    ECSTORE
 
-ESTORE1:
-        sbic    eecr, eewe
-        rjmp    ESTORE1
-
-        in      tosl, eearl
-        inc     tosl
-        out     eearl, tosl
-
-        out     eedr, tosh
-        sbi     eecr, eemwe
-        sbi     eecr, eewe
-
-        poptos
-        ret
 LOCKEDQ:
         sbrs    FLAGS1, fLOCK
         ret
@@ -5643,37 +5647,16 @@ EFETCH:
         out     eearl, tosl
         out     eearh, tosh
         sbi     eecr, eere
-        in      tosl, eedr
-        in      tosh, eearl
-        inc     tosh
-        out     eearl, tosh
+        in      t0, eedr
+        inc     tosl
+        out     eearl, tosl
         sbi     eecr, eere
         in      tosh, eedr
+        mov     tosl, t0
         ret
 
 ICFETCH:
-        movw    z, tosl
-        sub_pflash_z
-.ifdef RAMPZ
-	lds     t0, ibaseu
-	cpi     t0, RAMPZV
-	brne    IICFETCH
-.endif
-        cpse    zh, ibaseh
-        rjmp    IICFETCH
-        mov     t0, zl
-        andi    t0, ~(PAGESIZEB-1)
-        cp      t0, ibasel
-        brne    IICFETCH
-        ldi     xl, low(ibuf)
-        ldi     xh, high(ibuf)
-        andi    zl, (PAGESIZEB-1)
-        add     xl, zl
-        ld      tosl, x+
-        clr     tosh
-        ret
-IICFETCH:
-        lpm_    tosl, z+     ; Fetch from Flash directly
+        rcall   IFETCH
         clr     tosh
         ret
 
@@ -5692,18 +5675,11 @@ CFETCH1:
         cpi     tosh, high(OFLASH)
         brcc    ICFETCH
 ECFETCH:
-        sbic    eecr, eewe
-        rjmp    ECFETCH
-        subi    tosh, high(PEEPROM)
-        out     eearl, tosl
-        out     eearh, tosh
-        sbi     eecr, eere
-        in      tosl, eedr
+        rcall   EFETCH
         clr     tosh
         ret
 
 ICSTORE:
-        rcall   LOCKEDQ
         rcall   IUPDATEBUF
         poptos
         ldi     xl, low(ibuf)
@@ -5712,9 +5688,9 @@ ICSTORE:
         andi    t0, (PAGESIZEB-1)
         add     xl, t0
         st      x+, tosl
-        poptos
+ICSTORE_POP:
         sbr     FLAGS1, (1<<idirty)
-        ret
+        rjmp    CSTORE_POP
 
         fdw     CFETCH_L
 CSTORE_L:
@@ -5725,14 +5701,15 @@ CSTORE:
 CSTORE_RAM:
         movw zl, tosl
         poptos
-        std Z+0, tosl
+        st      Z, tosl
+CSTORE_POP:
         poptos
         ret
 CSTORE1:
+        rcall   LOCKEDQ
         cpi     tosh, high(OFLASH)
         brcc    ICSTORE
 ECSTORE:
-        rcall   LOCKEDQ
         sbic    eecr, eewe
         rjmp    ECSTORE
         subi    tosh, high(PEEPROM)
@@ -5742,8 +5719,7 @@ ECSTORE:
         out     eedr, tosl
         sbi     eecr, eemwe
         sbi     eecr, eewe
-        poptos
-        ret
+        rjmp    CSTORE_POP
 
 ;;; Disable writes to flash and eeprom
         fdw     CSTORE_L
@@ -5935,6 +5911,62 @@ umstar0:
         pop t2
         ret
 
+;***********************************************************
+; unsigned 32/16 -> 16/16 division
+umslashmod0:
+        clt
+        tst  tosl
+        brne umslashmodstart
+        tst  tosh
+        brne umslashmodstart
+        set  ; Set T flag
+        jmp  WARM_
+umslashmodstart:
+        movw t4, tosl
+
+        ld t3, Y+
+        ld t6, Y+
+
+        ld tosl, Y+
+        ld tosh, Y+
+
+; unsigned 32/16 -> 16/16 division
+        ; set loop counter
+        ldi t0,$10 ;6
+
+umslashmod1:
+        ; shift left, saving high bit
+        clr t7
+        lsl tosl
+        rol tosh
+        rol t3
+        rol t6
+        rol t7
+
+        ; try subtracting divisor
+        cp  t3, t4
+        cpc t6, t5
+        cpc t7,zero
+
+        brcs umslashmod2
+
+        ; dividend is large enough
+        ; do the subtraction for real
+        ; and set lowest bit
+        inc tosl
+        sub t3, t4
+        sbc t6, t5
+
+umslashmod2:
+        dec  t0
+        brne umslashmod1 ;16=17=272
+
+umslashmod3:
+        ; put remainder on stack
+        st -Y,t6
+        st -Y,t3
+        ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
+        ret
 ;;; *************************************
 ;;; EMPTY dictionary data
 ; *******************************************************************
