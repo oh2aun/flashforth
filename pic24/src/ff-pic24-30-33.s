@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          25.10.2016                                        *
+;    Date:          07.01.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -543,6 +543,7 @@ fill_buffer_from_imem2:
         dec      W4, W4
         bra      nz, fill_buffer_from_imem1
         bclr     iflags, #fwritten
+        clr      TBLPAG
         return
 
 wait_silence:
@@ -668,6 +669,7 @@ wbtil6:
         bclr      iflags, #idirty
         setm      ibasel       ; Now the flash row has been verified
         setm      ibaseh       ; Now the flash row has been verified
+        clr       TBLPAG
         return
 
 verify_imem_2:
@@ -1138,7 +1140,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 25.10.2016\r\n"
+        .ascii  " FlashForth 5 PIC24 07.01.2017\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1732,7 +1734,7 @@ PCFETCH1:
         return
 
 ICFETCH:
-        clr      TBLPAG
+;        clr     TBLPAG
         rcall   IFETCH_INIT
         cp      W1, W2
         bra     NZ, PCFETCH1
@@ -1750,7 +1752,7 @@ PFETCH1:
         return
 
 IFETCH:
-        clr      TBLPAG
+;        clr      TBLPAG
         rcall    IFETCH_INIT
         cp       W1, W2
         bra      NZ, PFETCH1
@@ -2757,11 +2759,9 @@ EXIT:
         .ascii  "(,)"
         .align  2
 DOCOMMAXT:
-         pop    W1
-         pop    W0
+         pop.d  W0
          tblrdl [W0++], [++W14]
-         push   W0
-         push   W1
+         push.d W0
          goto   COMMAXT
 
         .pword  paddr(9b)+PFLASH
@@ -2771,13 +2771,13 @@ DOCOMMAXT:
         .align  2
 DOCREATE:
         mov.w   [W15-4], W0
-        clr     TBLPAG
+;        clr     TBLPAG
         tblrdl  [W0], [++W14]
         sub     #4, W15
         return
 DOEMIT:
         mov.w   [W15-4], W0
-        clr     TBLPAG
+;        clr     TBLPAG
         tblrdl  [W0++], [++W14]
         mov.w   W0, [W15-4]
         goto    EMIT
@@ -2788,12 +2788,10 @@ DOEMIT:
         .ascii  "(d)"
         .align  2
 DODOES:
-        pop     W0
-        pop     W0
-        pop     W1
-        pop     W1
-        clr     TBLPAG
-        tblrdl  [W1], [++W14]
+        pop.d   W0
+        pop.d   W2
+;        clr     TBLPAG
+        tblrdl  [W2], [++W14]
         goto    W0
 
         .pword  paddr(9b)+PFLASH
@@ -3511,9 +3509,8 @@ USER:
         rcall   CONSTANT
         rcall   XDOES
 DOUSER:
-        pop     W0
-        pop     W0
-        clr     TBLPAG
+        pop.d   W0
+;        clr     TBLPAG
         tblrdl  [W0], W0
         add     upcurr, WREG
         mov     W0, [++W14]
@@ -3798,8 +3795,7 @@ ALIGN:
         .align  2
 ALIGNED:
         inc     [W14], [W14]
-        mov     #0xfffe, W0
-        and     W0, [W14], [W14]
+        bclr    [W14], #0
         return
 
         .pword  paddr(9b)+PFLASH
@@ -4133,18 +4129,28 @@ TYPE2:
         .ascii ")"
         .align  2
 XSQUOTE:
+.if 0
         pop     W0
-        pop     [++W14]
-        mov     #PFLASH, W0
-        add     W0, [W14],[W14]
+        mov     #PFLASH, W7
+        add     W7, [--W15],[++W14]
         rcall   CFETCHPP
         rcall   TWODUP
         rcall   PLUS
         rcall   ALIGNED
         mov     [W14--], W0
-        mov     #PFLASH, W1
-        sub     W0, W1, W0
+        sub     W0, W7, W0
         goto    W0
+.endif
+        pop     W0
+        pop     W0
+        mov     #PFLASH+1, W2
+        add     W2, W0, [++W14]
+        clr     [++W14]
+        tblrdl.b  [W0++], [W14]
+        add     W0, [W14], W1
+        inc     W1, W1
+        bclr    W1, #0
+        goto    W1
 
 ; S"      --            compile in-line string to flash
         .pword  paddr(9b)+PFLASH
@@ -6104,9 +6110,8 @@ XDOES_L:
         .align  2
 XDOES:
         pop     W0
-        pop     W0
         mov     #PFLASH, W1
-        add     W0, W1, [++W14]     ; a
+        add     W1, [--W15], [++W14]     ; a
         rcall   LATEST      ; a a
         rcall   FETCH       ; a nfa
         rcall   NFATOCFA    ; a cfa
