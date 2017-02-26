@@ -31,8 +31,8 @@ USB mode
 --------
 For operation with the USB CDC serial emulation as the OPERATOR
 interface, define a MPLAB or MPLABX project which compiles
-ff-pic18.asm and P18F_USB_REG.asm and links FF_USB_xxxx.lib
-The predefined MPLAB and MPLABX projects can also be used,
+ff-pic18.asm and links FF_USB_xxxx.lib
+The predefined MPLABX projects can also be used,
 
 Define USB_CDC in the configuration file.
 p18f14k50.cfg, p18f2455-2550-4455-4550.cfg, p18f2458-2553-4458-4553.cfg.

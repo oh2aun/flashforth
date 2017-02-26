@@ -67,12 +67,16 @@ hex ram
         then then then then
         cr ;
 
-: see ( "word" -- ) 
-  ' cr 
+: dis ( addr -- )
+  cr
   begin
     (see) dup 0=
   until
   drop
 ;
+: see ( "word" -- )
+  ' dis
+;
+
 hex ram
 
