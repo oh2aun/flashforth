@@ -5,8 +5,8 @@
 ;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
-.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
-;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+;.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
 
@@ -62,7 +62,7 @@
 
 ;;; USER AREA sizes for the OPERATOR task
 .equ RETURN_STACK_SIZE = 64          ; 48 cells return stack
-.equ PARAMETER_STACK_SIZE = 64       ; 32 cells parameter stack
+.equ PARAMETER_STACK_SIZE = 96       ; 32 cells parameter stack
 .equ TIB_SIZE = 90                   ; 80 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART

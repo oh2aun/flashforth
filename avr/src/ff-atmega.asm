@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          07.01.2017                                        *
+;    Date:          07.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,13 +34,13 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "07.01.2017"
+#define DATE "07.03.2017"
 
 
 ; Register definitions
   .def upl = r2         ; not in interrupt 
   .def uph = r3         ; not in interrupt
-  .def zero = r5        ; read only zero
+  .def r_zero = r5      ; read only zero
   .def r_one = r6       ; read only one
   .def r_two = r7       ; read only two
   .def t8 = r8          ; Not in interrupt
@@ -250,7 +250,7 @@
 #define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
 #define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
 
-.if FREQ_OSC < 16384000 ;Hz
+.if FREQ_OSC < 16384000 ; Hz
 .equ ms_value_tmr0 = ((FREQ_OSC/1000/64) - 1)
 .equ ms_value_tmr1 = ((FREQ_OSC/1000) - 1)
 .equ ms_value_tmr2 = ((FREQ_OSC/1000/64) - 1)
@@ -336,7 +336,7 @@
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 52 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
-.equ KERNEL_SIZE=0x0d00
+.equ KERNEL_SIZE=0x0e00
 .else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
@@ -429,6 +429,7 @@ rbuf1:       .byte RX1_BUF_SIZE
 
 litbuf0:    .byte 1
 litbuf1:    .byte 1
+
 dpSTART:    .byte 2
 dpFLASH:    .byte 2 ; DP's and LATEST in RAM
 dpEEPROM:   .byte 2
@@ -466,7 +467,7 @@ dpdata:     .byte   2
 ;*******************************************************************
 .cseg
 .if (FLASHEND == 0x1ffff)
-.org 0x17f00
+.org 0x17e80
 .else
 .org KERNEL_START
 .endif
@@ -484,8 +485,9 @@ CMP2:
         call    XNEXT
         brcc    CMP1
         jmp     TWODROPNZ
+
 .if (FLASHEND == 0x1ffff)
-.org KERNEL_START
+.org KERNEL_START+0xe0
 .endif
 ;;; *************************************************
 ;;; WARM user area data
@@ -520,6 +522,48 @@ MEMQ:
         .dw     NFAmask
         jmp     AND_
 
+.if (FLASHEND == 0x1ffff)
+        fdw     PAUSE_L
+WDON_L:
+        .db     NFA|3,"wd+"
+WDON:
+        cli
+        wdr
+        lds     tosh, WDTCSR
+        ori     tosh, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, tosh
+        andi    tosl, 7
+        ori     tosl, (1<<WDE)
+        sts     WDTCSR, tosl
+        sei
+        jmp     DROP
+
+; WD- ( -- )    stop the watchdog
+        fdw     WDON_L
+WDOFF_L:
+        .db     NFA|3,"wd-"
+WDOFF:
+        cli
+        wdr
+.ifdef MCUSR
+        out     MCUSR, r_zero
+.else
+        out     MCUCSR, r_zero
+.endif
+        ldi     t0, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, t0
+        sts     WDTCSR, r_zero
+        sei
+        ret
+
+; WDR ( -- )    kick the dog
+        fdw     WDOFF_L
+CWD_L:
+        .db     NFA|INLINE|3,"cwd"
+CWD:
+        wdr
+        ret
+.endif
 ;*********************************************************************
 ; EXIT --   Compile a return
 ;        variable link
@@ -975,7 +1019,7 @@ FLASH_L:
 ROM_N:  
         .db     NFA|5,"flash"
 ROM_:
-        sts     cse, zero
+        sts     cse, r_zero
         ret
 
 ; EEPROM -- sets the data section to EEPROM data memory
@@ -1539,29 +1583,36 @@ MINUS:
         sbc     t1, tosh
         movw    tosl, t0
         ret
+
+FROM_LITBUF:
+        lds     r0, litbuf0
+        lds     r1, litbuf1
+        ret
 PLUSC_:
-        lds     zl, litbuf0
-        lds     zh, litbuf1
-        com     zl
-        com     zh
-        adiw    zl, 1
-        sts     litbuf0, zl
-        sts     litbuf1, zh
-MINUSC_:
+        rcall   FROM_LITBUF
+        com     r0
+        com     r1
+        add     r0, r_one
+        adc     r1, r_zero
         rcall   ANDIC1
+        rjmp    MINUSC_1
+MINUSC_:
+        rcall   ANDIC0
+MINUSC_1:
         ori     tosh, 0x50
         rcall   ICOMMA_
         rcall   DUP
-        lds     tosl, litbuf1
+        mov     tosl, r1
         rcall   ANDIC2
         ori     tosl, 0x90
         ori     tosh, 0x40
         rjmp    ICOMMA_
-
+ANDIC0:
+        rcall   FROM_LITBUF
 ANDIC1:
         rcall   IDPMINUS
         rcall   IDPMINUS
-        lds     tosl, litbuf0
+        mov     tosl, r0
 ANDIC2:
         mov     tosh, tosl
         swap    tosh
@@ -1570,21 +1621,21 @@ ANDIC2:
         ori     tosl, 0x80
         ret
 ANDIC_:
-        rcall   ANDIC1
+        rcall   ANDIC0
         ori     tosh, 0x70
         rcall   ICOMMA_
         rcall   DUP
-        lds     tosl, litbuf1
+        mov     tosl, r1
         rcall   ANDIC2
         ori     tosl, 0x90
         ori     tosh, 0x70
         rjmp    ICOMMA_
 ORIC_:
-        rcall   ANDIC1
+        rcall   ANDIC0
         ori     tosh, 0x60
         rcall   ICOMMA_
         rcall   DUP
-        lds     tosl, litbuf1
+        mov     tosl, r1
         rcall   ANDIC2
         ori     tosl, 0x90
         ori     tosh, 0x60
@@ -1810,7 +1861,7 @@ PPLUS_L:
         .db     NFA|INLINE|2,"p+",0
 PPLUS:
         add     pl, r_one
-        adc     ph, zero
+        adc     ph, r_zero
         ret   
 
         fdw     PPLUS_L
@@ -2191,7 +2242,7 @@ USER:
         rcall   CELL
         rcall   NEGATE
         rcall   IALLOT
-        call    ICOMMA
+        rcall   ICOMMA_
         rcall   XDOES
 DOUSER:
         m_pop_zh
@@ -2247,8 +2298,8 @@ PARSE:
         rcall   TOIN            ; c c a u a
         rcall   FETCH_A         ; c c a u n
         rcall   SLASHSTRING     ; c c a u   new tib addr/len
-        rcall   DUP             ; c c a u u
-        rcall   TOR             ; c c a u                  R: u (new tib len
+        push    tosl
+        push    tosh            ; c c a u                  R: u (new tib len
         rcall   ROT             ; c a u c
         rcall   SKIP            ; c a u        
         rcall   OVER            ; c a u a
@@ -2392,7 +2443,6 @@ findi2:
         rcall   OR_
 findi3: 
         ret
-;        jmp     PAUSE
 
 ; IMMED?    nfa -- f        fetch immediate flag
         fdw     BRACFIND_L
@@ -2428,20 +2478,20 @@ FIND1:
 DIGITQ_L:
         .db     NFA|6,"digit?",0
 DIGITQ:
-                                ; 1 = 31    A = 41
+                                ; 1 = 0x31    a = 0x61
         cpi     tosl, 0x40
         brlt    DIGITQ1
         sbiw    tosl, 0x27
 DIGITQ1:        
         sbiw    tosl, 0x30      ; 1
+        brpl    DIGITQ2
+        rjmp    FALSE_
+DIGITQ2:
         rcall   DUP             ; 1 1
         rcall   BASE            ; 1 1 base
         rcall   FETCH_A         ; 1 1 10
-        rcall   LESS            ; 1 ffff
-        rcall   OVER            ; 1 ffff 1
-        rcall   ZEROLESS        ; 1 ffff 0
-        rcall   INVERT
-        jmp     AND_
+        jmp     LESS            ; 1 ffff
+
 
 ; SIGN?   adr n -- adr' n' f   get optional sign
 ; + leaves $0000 flag
@@ -2452,28 +2502,31 @@ SIGNQ_L:
 SIGNQ:
         rcall   OVER
         rcall   CFETCH_A
-        sbiw    tosl, ','
-        rcall   DUP
-        rcall   ABS_
+        mov     t0, tosl
+        rcall   DROP
+        cpi     t0, '-'
+        breq    SIGNQMINUS
+        cpi     t0, '+'
+        breq    SIGNQPLUS
+        rjmp    SIGNQEND
+SIGNQMINUS:
+        rcall   SLASHONE
+        rjmp    TRUE_
+SIGNQPLUS:
+        rcall   SLASHONE
+SIGNQEND:
+        jmp     FALSE_
+SLASHONE:
         rcall   ONE
-        rcall   EQUAL
-        rcall   AND_
-        rcall   DUPZEROSENSE
-        breq    QSIGN1
-        rcall   ONEPLUS
-        rcall   TOR
-        rcall   ONE
-        rcall   SLASHSTRING
-        rcall   RFROM
-QSIGN1: ret
+        jmp     SLASHSTRING
 
 ; UD*  ud u -- ud
         fdw     SIGNQ_L
 UDSTAR_L:
         .db     NFA|3,"ud*"
 UDSTAR:
-        rcall   DUP
-        rcall   TOR
+        push    tosl
+        push    tosh
         rcall   UMSTAR
         rcall   DROP
         rcall   SWOP
@@ -2503,13 +2556,16 @@ UDSLASHMOD:
 TONUMBER_L:
         .db     NFA|7,">number"
 TONUMBER:
+        ldi     al, 1
 TONUM1:
         rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         breq    TONUM3
         rcall   TOR
-        rcall   DUP
-        rcall   TOR             ; ud.l ud.h adr
+        push    tosl             ; dup >r
+        push    tosh             ; ud.l ud.h adr
         rcall   CFETCH_A
+        cpi     tosl, '.'
+        breq    TONUM_SKIP
         rcall   DIGITQ          ; ud.l ud.h digit flag
         rcall   ZEROSENSE
         brne    TONUM2
@@ -2524,20 +2580,18 @@ TONUM2:
         rcall   UDSTAR
         rcall   RFROM
         rcall   MPLUS
+        ldi     al, 0
+        rjmp    TONUM_CONT
+TONUM_SKIP:
+        rcall   DROP
+TONUM_CONT:
         rcall   RFROM
         rcall   RFROM
-        
-        rcall   ONE
-        rcall   SLASHSTRING
+        rcall   SLASHONE
         rjmp    TONUM1
-TONUM3: 
+TONUM3:
+        add     tosl, al
         ret
-
-BASEQV:   
-        fdw     DECIMAL
-        fdw     HEX
-        fdw     BIN
-
 
 ; NUMBER?  c-addr -- n 1
 ;                 -- dl dh 2
@@ -2571,8 +2625,7 @@ NUMBERQ:
         rcall   PLUS
         rcall   FEXECUTE
 
-        rcall   ONE
-        rcall   SLASHSTRING
+        rcall   SLASHONE
         rjmp    BASEQ2
 BASEQ1:
         rcall   DROP
@@ -2581,45 +2634,33 @@ BASEQ2:                         ; a 0 0 a' u
         rcall   RFROM           ; a ud.l ud.h  a' u oldbase
         rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
         rcall   STORE_A         ; a ud.l ud.h  a' u
-
-        rcall   DUP
-        rcall   TWOMINUS
-        rcall   ZEROLESS        ; a ud.l ud.h  a' u f
         rcall   ZEROSENSE       ; a ud.l ud.h  a' u
-        brne    QNUMD
+        breq    QNUMD
 QNUM_ERR:                       ; Not a number
         rcall   RFROM           ; a ud.l ud.h a' u sign
-        rcall   DROP
         rcall   TWODROP
-QNUM_ERR1:      
         rcall   TWODROP
         rcall   FALSE_          ; a 0           Not a number
         rjmp    QNUM3
-QNUMD:                          ; Double number
-                                ; a ud.l ud.h a' u
-        rcall   TWOSWAP         ; a a' u ud.l ud.h 
+QNUMD:                          ; Single or Double number
+                                ; a ud.l ud.h a'
+        sbiw    tosl, 1
+        rcall   CFETCH_A        ; a ud.l ud.h c
+        call    TO_A
         rcall   RFROM           ; a a' u ud.l ud.d sign
         rcall   ZEROSENSE
         breq    QNUMD1
         rcall   DNEGATE
-QNUMD1: 
-        rcall   TWOSWAP         ; a d.l d.h a' u
-        rcall   ZEROSENSE       ; a d.l d.h a'
-        breq    QNUM1
-        call    CFETCH
-        rcall   DOLIT
-        .dw     '.'
-        rcall   MINUS
-        rcall   ZEROSENSE       ; a d.l d.h
-        brne    QNUM_ERR1
+QNUMD1:
+        cpi     al, '.'         ; a d.l d.h
+        brne    QNUM1
         rcall   ROT             ; d.l d.h a
-        rcall   DROP            ; d.l d.h
-        rcall   DOLIT         ; 
-        .dw     2               ; d.l ud.h 2    Double number
+        ldi     tosl, 2
+        ldi     tosh, 0         ; d.l d.h 2    Double number
         rjmp    QNUM3
 QNUM1:                          ; single precision dumber
-                                ; a ud.l ud.h  a'
-        rcall   TWODROP         ; a n
+                                ; a d.l d.h
+        rcall   DROP            ; a n
         rcall   NIP             ; n
         rcall   ONE             ; n 1           Single number
 QNUM3:  
@@ -2698,6 +2739,7 @@ INTERPRET:
         rcall   TOIN
         rcall   STORE_A
 IPARSEWORD:
+        rcall   INIT_012
         rcall   BL
         rcall   WORD
 
@@ -2819,6 +2861,7 @@ IUNKNOWN:
         rcall   FALSE_
         rcall   QABORTQ         ; Never returns & resets the stacks
 INOWORD: 
+        rcall   INIT_012
         jmp     DROP
 
         .db     NFA|1,"@"
@@ -3182,9 +3225,14 @@ CREATE:
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
+        rcall   IHERE
+        rcall   ALIGNED
+        rcall   IDP             ; Align the flash DP.
+        rcall   STORE_A
+
         rcall   LATEST_
         rcall   FETCH_A
-        call    ICOMMA          ; Link field
+        rcall   ICOMMA_          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
         rcall   DUP             
@@ -3227,7 +3275,7 @@ POSTPONE:
         breq    POSTPONE1
         rcall   DOCOMMAXT
         fdw     DOCOMMAXT
-        jmp     ICOMMA
+        rjmp    ICOMMA_
 POSTPONE1:
         jmp     COMMAXT
 
@@ -3279,7 +3327,7 @@ DOES:   rcall   DOCOMMAXT
 LEFTBRACKET_L:
         .db     NFA|IMMED|1,"["
 LEFTBRACKET:
-        sts     state, zero
+        sts     state, r_zero
         ret
 
 
@@ -3357,17 +3405,18 @@ RCALL_TO_JMP:
 .else
         .dw     0x940c      ; jmp:0x940c
 .endif
-        call    ICOMMA
+        rcall   ICOMMA__
         sub_pflash_tos
         rampv_to_c
         ror     tosh
         ror     tosl
-        jmp     ICOMMA
+        rjmp    ICOMMA__
 ADD_RETURN:
         rcall   TWODROP
 ADD_RETURN_1:
         rcall   DOLIT   ; Compile a ret
         .dw     0x9508
+ICOMMA__:
         jmp    ICOMMA
 
 
@@ -3596,7 +3645,7 @@ DOTS_L:
         .db     NFA|2,".s",0
 DOTS:
         rcall   SPACE_
-        rcall   DUP          ; push tosl:tosh to memory
+        rcall   DUP
         call    SPFETCH
         rcall   S0
         rcall   FETCH_A
@@ -3692,7 +3741,7 @@ X_TO_R:
 .ifdef EIND
         st      -z, r_one
 .endif
-        st      -z, zero
+        st      -z, r_zero
         movw    tosl, zl
         ret
 ;***************************************************************
@@ -3755,13 +3804,13 @@ RJMPC:
         rcall   TWOSLASH
         andi    tosh, 0x0f
         ori     tosh, 0xc0
-        jmp     ICOMMA
+        rjmp    ICOMMA__
 
 
 BRCCC:
         rcall   DOLIT
         .dw     0xf008      ; brcc pc+2
-        jmp     ICOMMA
+        rjmp    ICOMMA__
 ;BREQC:
 ;        rcall   DOLIT
 ;        .dw     0xf009      ; breq pc+2
@@ -3773,7 +3822,7 @@ BRNEC:
         .dw     0xf409      ; brne pc+2
         sbrc    FLAGS1, izeroeq
         andi    tosh, ~4
-        jmp     ICOMMA
+        rjmp    ICOMMA__
 
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
@@ -3951,8 +4000,8 @@ LEAVE:
         pop     zl
         pop     t1
         pop     t0
-        push    zero
-        push    zero
+        push    r_zero
+        push    r_zero
         mijmp
 ;***************************************************
 ; RDROP compile a pop
@@ -4127,8 +4176,8 @@ UDDOT_L:
 DDOT_L:
         .db     NFA|2,"d.",0
         rcall   LESSNUM
-        call    DUP
-        call    TOR
+        push    tosl     ; dup >r
+        push    tosh
         rcall   DABS
         rcall   NUMS
         call    RFROM
@@ -4203,7 +4252,7 @@ kernellink:
         .db     NFA|INLINE|3,"p2+" ; ( n -- ) Add 2 to p
 PTWOPLUS:
         add     pl, r_two
-        adc     ph, zero
+        adc     ph, r_zero
         ret
 
 ;***************************************************
@@ -4337,7 +4386,7 @@ RX1_:
         ldi     zh, high(rbuf1)
         lds     xl, rbuf1_rd
         add     zl, xl
-        adc     zh, zero
+        adc     zh, r_zero
         ld      tosl, z
         clr     tosh
         in_     t0, SREG
@@ -4357,7 +4406,7 @@ RX1Q_L:
         .db     NFA|4,"rx1?",0
 RX1Q:
         lds     xl, rbuf1_lv
-        cpse    xl, zero
+        cpse    xl, r_zero
         jmp     TRUE_
 .if U1FC_TYPE == 1
         rcall   XXON_TX1
@@ -4373,7 +4422,7 @@ RX1_ISRR:
         ldi     zh, high(rbuf1)
         lds     xl, rbuf1_wr
         add     zl, xl
-        adc     zh, zero
+        adc     zh, r_zero
         in_     xh, UDR1
 .if OPERATOR_UART == 1
 .if CTRL_O_WARM_RESET == 1
@@ -4484,15 +4533,15 @@ LOAD_LED_END:
         out_    MCUCR, t0
 .endif
 .if CPU_LOAD == 1
-        out_    TCCR1B, zero    ; Stop load counter
+        out_    TCCR1B, r_zero    ; Stop load counter
 .endif
         sleep               ; IDLE mode
 .ifdef SMCR
-        out_    SMCR, zero
+        out_    SMCR, r_zero
 .else
         in_     t0, MCUCR
         cbr     t0, (1<<SE)
-        out_    MCUCR, zero
+        out_    MCUCR, r_zero
 .endif
 IDLE_LOAD1:
 .if CPU_LOAD_LED == 1
@@ -4817,17 +4866,17 @@ MS_TIMER_ISR:
         st      -y, xh
         st      -y, xl
         add     ms_count,  r_one
-        adc     ms_count1, zero
+        adc     ms_count1, r_zero
 .if CPU_LOAD == 1
 LOAD_ADD:
         in_     xl, TCNT1L
         in_     xh, TCNT1H
-        out_    TCNT1H, zero
+        out_    TCNT1H, r_zero
         out_    TCNT1L, r_two
 
         add     loadreg0, xl
         adc     loadreg1, xh
-        adc     loadreg2, zero
+        adc     loadreg2, r_zero
 
         tst     ms_count
         brne    LOAD_ADD_END
@@ -4841,7 +4890,7 @@ RX0_ISR:
         ldi     zh, high(rbuf0)
         lds     xl, rbuf0_wr
         add     zl, xl
-        adc     zh, zero
+        adc     zh, r_zero
         in_     xh, UDR0_
 .if OPERATOR_UART == 0
 .if CTRL_O_WARM_RESET == 1
@@ -4954,7 +5003,7 @@ RX0_:
         ldi     zh, high(rbuf0)
         lds     xl, rbuf0_rd
         add     zl, xl
-        adc     zh, zero
+        adc     zh, r_zero
         ld      tosl, z
         clr     tosh
         in_     t0, SREG
@@ -4974,7 +5023,7 @@ RX0Q_L:
         .db     NFA|4,"rx0?",0
 RX0Q:
         lds     xl, rbuf0_lv
-        cpse    xl, zero
+        cpse    xl, r_zero
         jmp     TRUE_
 .if U0FC_TYPE == 1
         rcall   XXON_TX0
@@ -5018,7 +5067,7 @@ XUPDATEBUF:
         cpi     tosh, high(FLASH_HI-PFLASH+1) ; Dont allow kernel writes
         brcc    ISTORERR
 XUPDATEBUF2:	
-	lds     t0, iaddrl
+        lds     t0, iaddrl
         andi    t0, ~(PAGESIZEB-1)
         cpse    t0, ibasel
         rjmp    IFILL_BUFFER
@@ -5027,7 +5076,7 @@ XUPDATEBUF2:
         rjmp    IFILL_BUFFER
 .ifdef RAMPZ
         lds     t0, iaddru
-	lds     t1, ibaseu
+        lds     t1, ibaseu
         cpse    t0, t1
         rjmp    IFILL_BUFFER
 .endif
@@ -5182,8 +5231,51 @@ DO_SPM:
         out_    SPMCSR, t1
         spm
         ret
-
+; WD+ ( n -- )  n < 8 start watchdog timer
+.if (FLASHEND < 0x1ffff)
         fdw     PAUSE_L
+WDON_L:
+        .db     NFA|3,"wd+"
+WDON:
+        cli
+        wdr
+        lds     tosh, WDTCSR
+        ori     tosh, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, tosh
+        andi    tosl, 7
+        ori     tosl, (1<<WDE)
+        sts     WDTCSR, tosl
+        sei
+        jmp     DROP
+
+; WD- ( -- )    stop the watchdog 
+        fdw     WDON_L
+WDOFF_L:
+        .db     NFA|3,"wd-"
+WDOFF:
+        cli
+        wdr
+.ifdef MCUSR
+        out     MCUSR, r_zero
+.else
+        out     MCUCSR, r_zero
+.endif
+        ldi     t0, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, t0
+        sts     WDTCSR, r_zero
+        sei
+        ret
+
+; WDR ( -- )    kick the dog
+        fdw     WDOFF_L
+CWD_L:
+        .db     NFA|INLINE|3,"cwd"
+CWD:
+        wdr
+        ret
+
+.endif
+        fdw     CWD_L
 IFLUSH_L:
         .db     NFA|6,"iflush",0
 IFLUSH:
@@ -5208,7 +5300,14 @@ EMPTY:
         .dw     coldlitsize
         call    CMOVE
         jmp     DP_TO_RAM
-        
+
+; Init constant registers
+INIT_012:
+        clr     r_zero
+        ldi     zl, 1
+        ldi     zh, 2
+        movw    r_one, zl
+        ret
 ;*******************************************************
         fdw     EMPTY_L
 WARM_L:
@@ -5228,29 +5327,24 @@ WARM_1:
         in_     t3, SREG
 .ifdef MCUCSR
         in_     t2, MCUCSR
-        sts     MCUCSR, zero
+        sts     MCUCSR, r_zero
 .endif
 .ifdef MCUSR
         in_     t2, MCUSR
-        sts     MCUSR, zero
+        sts     MCUSR, r_zero
 .endif
         ldi     xl, 0x1C  ; clear ram from y register upwards
 WARM_2:
-        st      x+, zero
+        st      x+, r_zero
         cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
         brne    WARM_2
 
 ; Init empty flash buffer
-	dec     ibaseh
+	    dec     ibaseh
 .ifdef RAMPZ
 	sts     ibaseu, ibaseh
 .endif
 
-; Init constant registers
-        ldi     yl, 1
-        mov     r_one, yl
-        ldi     yl, 2
-        mov     r_two, yl
 ; Init Stack pointer
         ldi     yl, low(utibbuf-4)
         ldi     yh, high(utibbuf-4)
@@ -5260,6 +5354,10 @@ WARM_2:
         ldi     t1, high(usbuf-1)
         out     spl, t0
         out     sph, t1
+
+        rcall   INIT_012
+        call    WDOFF
+
 ; Init user pointer
         ldi     t0, low(up0)
         ldi     t1, high(up0)
@@ -5293,8 +5391,7 @@ WARM_3:
 ; Move interrupts to boot flash section
         out_    MCUCR, r_one   ; (1<<IVCE)
         out_    MCUCR, r_two   ; (1<<IVSEL)
-
-
+; Start watchdog timer
 .if MS_TIMER == 0
 .ifdef TIMSK0
         out_    TCCR0A, r_two  ; CTC
@@ -5361,7 +5458,7 @@ WARM_3:
 .endif
         rcall   STORE
 ;;;     Set baud rate
-;        out_    UBRR0H, zero
+;        out_    UBRR0H, r_zero
         ldi     t0, ubrr0val
         out_    UBRR0L, t0
         ; Enable receiver and transmitter, rx1 interrupts
@@ -5385,7 +5482,7 @@ WARM_3:
         .dw     URXC1addr+ivec
         rcall   STORE
         ; Set baud rate
-;        out_    UBRR1H, zero
+;        out_    UBRR1H, r_zero
         ldi     t0, ubrr1val
         out_    UBRR1L, t0
         ; Enable receiver and transmitter, rx1 interrupts
@@ -5616,6 +5713,7 @@ IIFETCH:
         fdw     STORE_L
 A_FROM_L:
         .db     NFA|2, "a>",0
+A_FROM:
         pushtos
         mov     tosl, al
         mov     tosh, ah
@@ -5807,6 +5905,7 @@ PAUSE:
 .endif
         in_     t1, SREG
         cli
+        wdr               ; watchdog reset
         push    yh        ; SP
         push    yl
         push    tosh      ; TOS
@@ -5896,11 +5995,11 @@ umstar0:
         mul tosh, t0
         add t5, r0
         adc t6, r1
-        adc t7, zero
+        adc t7, r_zero
         mul tosl, t1
         add t5, r0
         adc t6, r1
-        adc t7, zero
+        adc t7, r_zero
         mul tosh, t1
         add t6, r0
         adc t7, r1
@@ -5946,7 +6045,7 @@ umslashmod1:
         ; try subtracting divisor
         cp  t3, t4
         cpc t6, t5
-        cpc t7,zero
+        cpc t7,r_zero
 
         brcs umslashmod2
 
@@ -5967,6 +6066,12 @@ umslashmod3:
         st -Y,t3
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
         ret
+BASEQV:
+        fdw     DECIMAL
+        fdw     HEX
+        fdw     BIN
+
+
 ;;; *************************************
 ;;; EMPTY dictionary data
 ; *******************************************************************
