@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          07.03.2017                                        *
+;    Date:          08.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2016  Mikael Nordman
+; Copyright (C) 2017  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "07.03.2017"
+#define DATE "08.03.2017"
 
 
 ; Register definitions
@@ -336,7 +336,7 @@
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 52 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
-.equ KERNEL_SIZE=0x0e00
+.equ KERNEL_SIZE=0x0d80
 .else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
@@ -487,7 +487,7 @@ CMP2:
         jmp     TWODROPNZ
 
 .if (FLASHEND == 0x1ffff)
-.org KERNEL_START+0xe0
+.org KERNEL_START+0x0
 .endif
 ;;; *************************************************
 ;;; WARM user area data
