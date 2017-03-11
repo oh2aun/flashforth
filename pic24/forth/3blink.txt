@@ -22,9 +22,9 @@ $4 user delay      \ The delay time in milliseconds
   bitmask @ trisb mclr
   begin
     delay @ ms
-    bitmask @ portb mset
+    bitmask @ inline portb inline mset
     delay @ ms
-    bitmask @ portb mclr
+    bitmask @ inline portb inline mclr
   again
 ;
 
@@ -55,5 +55,5 @@ flash $0 $30 $30 $4 task: tblink2
 ; 
 
 \ Make 3blink start after reset.
-\ ' 3blink is turnkey
+' 3blink is turnkey
 warm

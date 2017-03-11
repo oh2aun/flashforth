@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          07.01.2017                                        *
+;    Date:          11.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1140,7 +1140,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 07.01.2017\r\n"
+        .ascii  " FlashForth 5 PIC24 11.03.2017\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -5195,21 +5195,23 @@ SIGNQ_L:
 SIGNQ:
         rcall   OVER
         rcall   CFETCH
-        mlit    ','
-        rcall   MINUS
-        mov     [W14++], [W14]      ; dup
-        rcall   ABS
-        rcall   ONE
-        rcall   EQUAL
-        rcall   AND
-        cp0     [W14]
-        bra     z, QSIGN1
-        inc     [W14], [W14]
-        push    [W14--]
-        rcall   ONE
-        rcall   SLASHSTRING
-        pop     [++W14]
-QSIGN1: return
+        mov     [W14--], W0
+        sub     #'+', W0
+        bra     z, SIGNQPLUS
+        sub     #2, W0
+        bra     z, SIGNQMINUS
+        bra     SIGNQEND
+SIGNQMINUS:
+        rcall   SLASHONE
+        bra     TRUE_
+SIGNQPLUS:
+        rcall   SLASHONE
+SIGNQEND:
+        goto    FALSE_
+SLASHONE:
+        inc     [--W14],[W14++]
+        dec     [W14], [W14]
+        return
 
 ; >NUMBER  0 0  adr u -- ud.l ud.h  adr' u'
 ;                       convert string to number
@@ -5219,8 +5221,7 @@ TONUMBER_L:
         .ascii  ">number"
         .align  2
 TONUMBER:
-        rcall   ONE
-        rcall   TO_A
+        mov     #1, W11         ; W11 = A register
 TONUM1:
         cp0     [W14]           ; ud.l ud.h  adr u
         bra     z, TONUM3
@@ -5247,17 +5248,14 @@ TONUM2:
         rcall   UDSTAR
         pop     [++W14]
         rcall   MPLUS
-        rcall   FALSE_
-        rcall   TO_A
+        clr     W11
 TONUM_SKIP:
         pop     [++W14]
         pop     [++W14]  
-        rcall   ONE
-        rcall   SLASHSTRING
+        rcall   SLASHONE
         bra     TONUM1
 TONUM3:
-        rcall   A_FROM
-        rcall   PLUS
+        add     W11, [W14], [W14]
         return
 
 BASEQV:   
@@ -5296,8 +5294,7 @@ NUMBERQ:
         mlit    handle(BASEQV)+PFLASH
         rcall   PLUS
         rcall   FEXECUTE
-        rcall   ONE
-        rcall   SLASHSTRING
+        rcall   SLASHONE
         bra     BASEQ2
 BASEQ1:
         sub     W14, #2, W14
@@ -5307,7 +5304,7 @@ BASEQ2:
         rcall   BASE            ; a ud.l ud.h  a' u oldbase addr
         rcall   STORE           ; a ud.l ud.h  a' u
         
-        cp0     [W14--]         ; a ud.l ud.h  a' u
+        cp0     [W14--]         ; a ud.l ud.h  a'
         bra     z, QNUMD
         
 QNUM_ERR:                       ; Not a number
@@ -6051,6 +6048,10 @@ CREATE:
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
+        rcall   IHERE
+        rcall   ALIGNED
+        rcall   IDP             ; Align the flash DP.
+        rcall   STORE
         rcall   LATEST
         rcall   FETCH
         rcall   ICOMMA          ; Link field
