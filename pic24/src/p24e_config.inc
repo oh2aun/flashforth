@@ -8,8 +8,8 @@
 ;;; So for example on PIC24EP256GP202 the FLASH_SIZE is set to 0x2b000 - 0x00800.
 
 .equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x8000  ; Ram size in bytes
+                              ; See program memory size in the device datasheet.
+.equ RAM_SIZE,       0x8000   ; 0x8000  ; Ram size in bytes
 
 .ifndecl IOL1WAY_OFF
 .equ IOL1WAY_OFF, 0xffff
@@ -176,7 +176,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -186,7 +186,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*3))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 

@@ -140,7 +140,7 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > 0x10000 - PFLASH + (IBUFSIZEL*4)
+.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -150,7 +150,7 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*3))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          11.03.2017                                        *
+;    Date:          14.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -174,9 +174,11 @@ rbuf2:       .space RX2_BUF_SIZE+1
 
 index:      .space 2
 ibasel:     .space 2
-ibaseh:     .space 2
 iaddrl:     .space 2
+.if WANT_X == 1
+ibaseh:     .space 2
 iaddrh:     .space 2
+.endif
 iflags:     .space 2
 status:     .space 2        ; 0 = allow CPU idle 
 load_acc:   .space 4
@@ -511,9 +513,11 @@ iupdatebuf:
 ;   fillbuffer_from_imem
 ;   ibase = iaddr&ibufmask
 ;endif
+.if WANT_X == 1
         mov     iaddrh, W0
         cp      ibaseh
         bra     nz, iupdatebuf0
+.endif
         mov     iaddrl, W0
         mov     #IBUFMASK, W1
         and     W0, W1, W0
@@ -527,9 +531,11 @@ iupdatebuf0:
         mov     #IBUFMASK, W1
         and     W0, W1, W0
         mov     W0, ibasel
+.if WANT_X == 1
         mov     iaddrh, W0
         mov     W0, ibaseh
         mov     W0, TBLPAG
+.endif
 fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
@@ -590,8 +596,10 @@ wbti_init:
         mov.w   W0, NVMCON
         mov.w   #ibufl, W0 ; Low word flash buffer in ram
         mov.w   #ibufh, W1 ; High byte buffer
+.if WANT_X == 1
         mov.w   ibaseh, W2
         mov.w   W2, TBLPAG
+.endif
         mov.w   ibasel, W2
         mov.w   #IBUFLEN2, W4
         tblwtl  W2, [W2]          ; Set page address
@@ -668,7 +676,9 @@ wbtil6:
         bra       nz, wbtil5
         bclr      iflags, #idirty
         setm      ibasel       ; Now the flash row has been verified
+.if WANT_X == 1
         setm      ibaseh       ; Now the flash row has been verified
+.endif
         clr       TBLPAG
         return
 
@@ -849,7 +859,9 @@ FILL_RAM:
         bra     nz, FILL_RAM
         mov     #usbuf0, W14
         setm    ibasel
+.if WANT_X == 1
         setm    ibaseh
+.endif
         clr     iflags
 .ifndef PAIVT
 .ifdecl INTTREG
@@ -1140,7 +1152,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 11.03.2017\r\n"
+        .ascii  " FlashForth 5 PIC24 14.03.2017\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -1656,7 +1668,9 @@ ICSTORE:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
+.if WANT_X == 1
         clr     iaddrh
+.endif
         rcall   ISTORE_SUB
         mov.b   W1, [W0]
         return
@@ -1673,7 +1687,9 @@ ISTORE_RAW:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
+.if WANT_X == 1
         clr     iaddrh
+.endif
         rcall   ISTORE_SUB
         mov     W1, [W0]
 ISTORE1:
@@ -1719,10 +1735,6 @@ SET_EEPROM_W_TMO:
 .endif
 ISTORE_ADDRCHK:
         mov     #handle(KERNEL_END)+PFLASH, W1
-        mov     #IBUFSIZEL, W2
-        add     W1, W2, W1
-        mov     #IBUFMASK,W2
-        and     W1, W2, W1
         cp      W0, W1
         bra     LTU, ISTORE_ADDRERR
         return
@@ -1886,10 +1898,6 @@ EEREAD1:
         return
 EECHECK:
         mov     #handle(DPS_BASE), W0
-.if DPS_LOW == 1
-        mov     #IBUFMASK, W1
-        and     W0, W1, W0
-.endif
         mov     #DPS_PAGE, W1
         mov     W1, TBLPAG
         tblrdl  [W0], W1
@@ -5659,10 +5667,6 @@ FFLASH_A:
         mov     #handle(DPS_BASE) + IBUFSIZEL*3, W0
 DPS_ALIGN:
         mov     W0, [++W14]
-.if DPS_LOW  == 1
-        mov     #IBUFMASK, W0
-        and     W0, [W14],[W14]
-.endif
         return
 
 ; dp0 ( -- ) Initialize turnkey, DPs and latest in flash
@@ -5684,10 +5688,6 @@ DP_COLD:
         rcall   EEINIT
 
         rcall   FETCH
-        mov     #IBUFSIZEL, W0
-        add     W0, [W14], [W14]
-        mov     #IBUFMASK,W0
-        and     W0, [W14], [W14]
         rcall   FFLASH_A
         bra     EEINIT
 .endif
@@ -7025,6 +7025,7 @@ MARKER_DOES:
         mlit    MARKER_LENGTH
         goto    WMOVE
 
+.palign IBUFSIZEL, 0xff
 .ifndef PEEPROM
 .if DPS_LOW == 1
 .pspace IBUFSIZEL*6, 0xff

@@ -122,7 +122,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ IBUFLEN2,     0x0001   ; Outer write loop
 .equ IBUFMASK,     0xffc0
 
-.if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
+.if (0x10000 - PFLASH) < FLASH_SIZE
 .equ WANT_X, 1
 .else
 .equ WANT_X, 0
