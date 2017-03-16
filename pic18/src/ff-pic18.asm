@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          16.02.2017                                        *
+;    Date:          16.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2467,7 +2467,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 26.02.2017\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 16.03.2017\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -5385,9 +5385,9 @@ INI:
 L_TICKS:
         db      NFA|5,"ticks"
 TICKS:
-        lfsr    Tptr, ms_count;&h'fff' ; Tp points to ms_count
         bcf     INTCON, GIE, A
-        call    FETCH2
+        movff   ms_count, plusS
+        movff   ms_count+1, plusS
         bsf     INTCON, GIE, A
         return
         
@@ -5416,7 +5416,7 @@ MS1:
         goto    DROP
 
 CFETCHPP_A: bra CFETCHPP
-;  .id ( nfa -- ) 
+;  .id ( nfa -- )
         dw      L_MS
 L_DOTID:
         db      NFA|3,".id"
@@ -5425,7 +5425,7 @@ DOTID:
         rcall   LIT_A
         dw      h'0f'
         call    AND
-        rcall    TOR_A
+        rcall   TOR_A
         bra     DOTID3
 DOTID1:
         rcall   CFETCHPP
