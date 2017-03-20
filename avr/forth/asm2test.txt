@@ -23,10 +23,10 @@ marker -asmtest
   as:   mul r16 r16
   as:   cp  r0  r24
   as:   cpc r1  r25
-  as:   if  cs
+  as:   if  sh
   as:     eor r16 r17
   as:   then
   as:   lsr r17
-  as: until ne
+  as: until eq
   as: movw  r24 r16
 ;

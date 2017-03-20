@@ -14,7 +14,6 @@ marker -as
 hex
 : ar: ( n "name" -- ) create does> swap 2* 2* + ;
 : ri! ( index n -- ) here swap - dup c@ rot 4 lshift or swap c! ;
-: ri@ ( addr -- index ) c@ 4 rshift ;
 
 flash ar: rules
 \ d mask.shift, r mask.shift
@@ -83,15 +82,10 @@ flash create opcodes
 [ 2400 , ," eor"     c 4 ri! ]
 [ 2800 , ," or"      c 4 ri! ]
 [ 2c00 , ," mov"     c 4 ri! ]
-[ 0200 , ," muls"    d 6 ri! ]
-[ 0300 , ," mulsu"   d 6 ri! ]
-[ 0308 , ," fmul"    d 6 ri! ]
-[ 0380 , ," fmuls"   d 6 ri! ]
-[ 0388 , ," fmulsu"  d 8 ri! ]
-[ f800 , ," bld"     e 4 ri! ]
-[ fa00 , ," bst"     e 4 ri! ]
-[ fc00 , ," sbrc"    e 6 ri! ]
-[ fe00 , ," sbrs"    e 6 ri! ]
+[ f800 , ," bld"     d 4 ri! ]
+[ fa00 , ," bst"     d 4 ri! ]
+[ fc00 , ," sbrc"    d 6 ri! ]
+[ fe00 , ," sbrs"    d 6 ri! ]
 [ 0000 , ," if"      f 4 ri! ]
 [ 0002 , ," then"    f 6 ri! ]
 [ 0004 , ," begin"   f 6 ri! ]
@@ -109,22 +103,24 @@ hex
 ram
 
 flash create sy2
-[ f000 , ," cs" ]
-[ f001 , ," eq" ]
-[ f002 , ," mi" ]
-[ f003 , ," vs" ]
-[ f004 , ," lt" ]
-[ f005 , ," hs" ]
-[ f006 , ," ts" ]
-[ f007 , ," ie" ]
-[ f400 , ," cc" ]
-[ f401 , ," ne" ]
-[ f402 , ," pl" ]
+[ f400 , ," cs" ]
+[ f400 , ," lo" ]
+[ f401 , ," eq" ]
+[ f402 , ," mi" ]
 [ f403 , ," vs" ]
-[ f404 , ," ge" ]
-[ f405 , ," hc" ]
-[ f406 , ," tc" ]
-[ f407 , ," id" ]
+[ f404 , ," lt" ]
+[ f405 , ," hs" ]
+[ f406 , ," ts" ]
+[ f407 , ," ie" ]
+[ f000 , ," cc" ]
+[ f000 , ," sh" ]
+[ f001 , ," ne" ]
+[ f002 , ," pl" ]
+[ f003 , ," vc" ]
+[ f004 , ," ge" ]
+[ f005 , ," hc" ]
+[ f006 , ," tc" ]
+[ f007 , ," id" ]
 [ ffff ,
 ram
 hex
@@ -151,7 +147,7 @@ hex
   repeat
   drop c@+ type ." ?" abort ;
 
-: op? ( word table -- opc index ) sy? dup @ swap 2+ ri@ ;
+: op? ( word table -- opc index ) sy? dup @ swap 2+ c@ 4 rshift ;
 
 : bw bl word ;
 : N# number? 1- 0= abort" ?" ;
