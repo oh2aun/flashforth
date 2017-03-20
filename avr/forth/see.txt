@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      see.txt                                           *
-\    Date:          07.01.2017                                        *
+\    Date:          20.03.2017                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
@@ -67,13 +67,11 @@ hex ram
   then then then then
   cr ;
 
-: see ( "word" -- ) 
-  hex
-  ' cr 
-  begin
-    (see) dup 0=
-  until
-  drop
-;
+: dis ( addr -- )
+  hex cr
+  begin (see) dup 0=
+  until drop ;
+
+: see ( "word" -- )  ' dis ;
 hex ram
 
