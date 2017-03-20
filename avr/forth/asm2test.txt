@@ -1,0 +1,15 @@
+
+-asmtest
+marker -asmtest
+
+: qq
+  as: if eq
+  as: nop
+  as: then
+;
+
+: ww
+  as: begin
+  as: nop
+  as: until eq
+;
