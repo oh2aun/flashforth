@@ -30,12 +30,11 @@ flash ar: rules
 [ 1f0.4 , 000.0 , ] \ 09 xxxx.xxxd.dddd.xxxx pop push com neg
                     \                        swap inc asr lsr ror dec
 [ 0f0.4 , f0f.4 , ] \ 0a xxxx.kkkk.dddd.kkkk cpi sbci subi ori andi ldi
-[ 1f0.4 , 20f.5 , ] \ 0b xxxx.xxrd.dddd.rrrr cpc cp sbc sub add adc cpse
+[ 0f0.4 , 00f.0 , ] \ 0b xxxx.xxxx.dddd.rrrr movw
+[ 1f0.4 , 20f.5 , ] \ 0c xxxx.xxrd.dddd.rrrr cpc cp sbc sub add adc cpse
                     \                        and eor or mov mul
                     \                        ( rol lsl tst clr ser )
-[ 0f0.4 , 00f.0 , ] \ 0c xxxx.xxxx.dddd.rrrr movw muls
-[ 070.4 , 007.0 , ] \ 0d xxxx.xxxx.xddd.xrrr mulsu fmul fmuls fmulsu
-[ 1f0.4 , 007.0 ,   \ 0e xxxx.xxxd.dddd.0rrr bld bst sbrc sbrs
+[ 1f0.4 , 007.0 ,   \ 0d xxxx.xxxd.dddd.0rrr bld bst sbrc sbrs
 \ 000.0 , 000.0 ,   \ 0f if then begin until again
 
 \ 126 opcodes opcode name ruleindex namelen
@@ -71,19 +70,19 @@ flash create opcodes
 [ 6000 , ," ori"     a 4 ri! ]
 [ 7000 , ," andi"    a 6 ri! ]
 [ e000 , ," ldi"     a 4 ri! ]
-[ 9c00 , ," mul"     b 4 ri! ]
-[ 0400 , ," cpc"     b 4 ri! ]
-[ 0800 , ," sbc"     b 4 ri! ]
-[ 0c00 , ," add"     b 4 ri! ]
-[ 1000 , ," cpse"    b 6 ri! ]
-[ 1400 , ," cp"      b 4 ri! ]
-[ 1800 , ," sub"     b 4 ri! ]
-[ 1c00 , ," adc"     b 4 ri! ]
-[ 2000 , ," and"     b 4 ri! ]
-[ 2400 , ," eor"     b 4 ri! ]
-[ 2800 , ," or"      b 4 ri! ]
+[ 0100 , ," movw"    b 6 ri! ]
+[ 9c00 , ," mul"     c 4 ri! ]
+[ 0400 , ," cpc"     c 4 ri! ]
+[ 0800 , ," sbc"     c 4 ri! ]
+[ 0c00 , ," add"     c 4 ri! ]
+[ 1000 , ," cpse"    c 6 ri! ]
+[ 1400 , ," cp"      c 4 ri! ]
+[ 1800 , ," sub"     c 4 ri! ]
+[ 1c00 , ," adc"     c 4 ri! ]
+[ 2000 , ," and"     c 4 ri! ]
+[ 2400 , ," eor"     c 4 ri! ]
+[ 2800 , ," or"      c 4 ri! ]
 [ 2c00 , ," mov"     c 4 ri! ]
-[ 0100 , ," movw"    c 6 ri! ]
 [ 0200 , ," muls"    d 6 ri! ]
 [ 0300 , ," mulsu"   d 6 ri! ]
 [ 0308 , ," fmul"    d 6 ri! ]
@@ -169,6 +168,7 @@ hex
 :noname c# i, ihere 2- ;                  \ if
 flash create ask , , , , , ram
 
+:noname r# 2/ r# 2/ asm ;           \ movw
 :noname r# n# asm ;
 :noname r# false asm ;              \ one param
 :noname n# >r r# false asm i, r> ;  \ sts
@@ -180,14 +180,14 @@ flash create ask , , , , , ram
 :noname d# r# swap asm ;            \ st
 :noname r# d# asm ;                 \ ld
 :noname drop ;                      \ no params
-flash create ass , , , , , , , , , , , ram
+flash create ass , , , , , , , , , , , , ram
 
 : as: ( -- )
   bw opcodes op?
   dup f - 0= 
   if drop ask + @ex            \ handle flow control
   else
-    dup b <
+    dup $c <
     if   dup 2* ass + @ex
     else r# r# asm             \ two params
     then i,
