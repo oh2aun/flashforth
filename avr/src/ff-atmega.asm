@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          08.03.2017                                        *
+;    Date:          20.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "08.03.2017"
+#define DATE "20.03.2017"
 
 
 ; Register definitions
@@ -3158,15 +3158,15 @@ PAREN:
 
 ; IHERE    -- a-addr    ret Code dictionary ptr
 ;   IDP @ ;
-;;;         .dw     link
-;;; link    set     $
+        fdw     PAREN_L
+IHERE_L:
         .db     NFA|5,"ihere"
 IHERE:
         rcall   IDP
         rjmp    FETCH_A
 
 ; [CHAR]   --          compile character DOLITeral
-        fdw     PAREN_L
+        fdw     IHERE_L
 BRACCHAR_L:
         .db     NFA|IMMED|COMPILE|6,"[char]",0
 BRACCHAR:
@@ -6009,7 +6009,6 @@ umstar0:
         pop t3
         pop t2
         ret
-
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
