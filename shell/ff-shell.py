@@ -27,6 +27,7 @@ import rlcompleter
 import atexit
 import logging
 import signal
+import string
 from thread import start_new_thread, allocate_lock
 from time import *
 
@@ -148,9 +149,13 @@ def main():
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
-          sys.stdout.write("> ") 
+          sys.stdout.write("> ")
+ 
       if line[:6] == "#send ":
         pathfile = line[6:]
+
+        if pathfile.endswith(".txt") == False:
+          pathfile = pathfile + ".txt"
         line = ""
         try:
           file = open(pathfile, "r")
