@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.30  avr/src/ff-atmega.asm Mon Mar 20 20:18:07 2017
+AVRASM ver. 2.1.30  avr/src/ff-atmega.asm Wed Mar 22 22:08:36 2017
 
 avr/src/ff-atmega.asm(34): Including file 'avr/src/config.inc'
 avr/src/config.inc(9): Including file 'avrasm2/inc\m328def.inc'
@@ -14,7 +14,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  
                  ;                                                                     *
                  ;    Filename:      FlashForth.asm                                    *
-                 ;    Date:          20.03.2017                                        *
+                 ;    Date:          22.03.2017                                        *
                  ;    File Version:  5.0                                               *
                  ;    MCU:           Atmega                                            *
                  ;    Copyright:     Mikael Nordman                                    *
@@ -1130,7 +1130,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  
                  
                  ; Define the FF version date string
-                 #define DATE "20.03.2017"
+                 #define DATE "22.03.2017"
                  
                  
                  ; Register definitions
@@ -1557,7 +1557,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  MEMQ:
 002fa0 940e 3147         call    CSE_
 002fa2 940e 37d8         call    DOLIT
-002fa4 feba              fdw     MEMQADDR_N
+002fa4 fec2              fdw     MEMQADDR_N
 002fa5 940e 32de         call    PLUS
 002fa7 940e 3719         call    FETCH_A
 002fa9 940e 3581         call    CFETCHPP
@@ -1584,7 +1584,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 002fb5 910f              pop     t0
 002fb6 9508              ret
                  
-002fb7 fa9c              fdw     IFLUSH_L
+002fb7 faa4              fdw     IFLUSH_L
                  OPERATOR_L:
 002fb8 6f88
 002fb9 6570
@@ -1625,7 +1625,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  ; : mset ( mask addr -- )
                  ;   dup >r c@ swap or r> c!
                  ; ;
-002fd1 fe84              fdw     ICCOMMA_L
+002fd1 fe8c              fdw     ICCOMMA_L
                  MSET_L:
 002fd2 6d84
 002fd3 6573
@@ -1966,7 +1966,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0030ca 0074              .db     NFA|8,"constant",0
                  CONSTANT_:
 0030cb d7d6              rcall   COLON
-0030cc 940e 3e19         call    LITERAL
+0030cc 940e 3e1d         call    LITERAL
 0030ce 940c 38b0         jmp     SEMICOLON
                  
 0030d0 e18c              fdw     CONSTANT_L
@@ -1979,8 +1979,8 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  TWOCONSTANT_:
 0030d6 d1c8              rcall   SWOP
 0030d7 d7ca              rcall   COLON
-0030d8 940e 3e19         call    LITERAL
-0030da 940e 3e19         call    LITERAL
+0030d8 940e 3e1d         call    LITERAL
+0030da 940e 3e1d         call    LITERAL
 0030dc 940c 38b0         jmp     SEMICOLON
                  
                  ; DOCREATE, code action of CREATE
@@ -2160,7 +2160,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003150 0065              .db     NFA|4,"here",0
                  HERE:
 003151 dfef              rcall   DP
-003152 940c 3e82         jmp     FETCH
+003152 940c 3e86         jmp     FETCH
                  
                  ; ,   x --             append cell to current data space
                  ;   HERE ! CELL ALLOT ;
@@ -2209,7 +2209,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003170 dfe0              rcall   HERE
 003171 d008              rcall   ALIGNED
 003172 dfce              rcall   DP
-003173 940c 3e48         jmp     STORE
+003173 940c 3e4c         jmp     STORE
                  
                  ; ALIGNED  addr -- a-addr       align given addr
 003175 e2da              fdw     ALIGN_L
@@ -2284,7 +2284,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  .else
 0031a2 940e              .dw     0x940E  ; call jmp:0x940d
                  .endif
-0031a3 940e 3f3a         call    ICOMMA
+0031a3 940e 3f3e         call    ICOMMA
 0031a5 5890              sub_pflash_tos
 0031a6 9488              rampv_to_c
 0031a7 9597              ror     tosh
@@ -2299,7 +2299,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0031ae 709f              andi    tosh, 0x0f
 0031af 6d90              ori     tosh, 0xd0
                  STORECF2:
-0031b0 940c 3f3a         jmp    ICOMMA
+0031b0 940c 3f3e         jmp    ICOMMA
                  
                  
                  ; !COLON   --       change code field to docolon
@@ -2340,7 +2340,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0031c5 d0e3              rcall   OVER
 0031c6 dfba              rcall   CELLPLUS
 0031c7 d3c7              rcall   STORE_A
-0031c8 940c 3e48         jmp     STORE
+0031c8 940c 3e4c         jmp     STORE
                  
                  ; 2DROP  x1 x2 --                   drop 2 cells
                  ;   DROP DROP ;
@@ -2801,7 +2801,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00331f 6980              ori     tosl, 0x90
 003320 6690              ori     tosh, 0x60
                  ICOMMA_:
-003321 940c 3f3a         jmp     ICOMMA
+003321 940c 3f3e         jmp     ICOMMA
                  
 003323 e5d4              fdw     MINUS_L
                  AND_L:
@@ -2920,7 +2920,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003372 d3a6              rcall   FETCH_A
 003373 df6a              rcall   PLUS
 003374 df2a              rcall   SWOP
-003375 940c 3e48         jmp     STORE
+003375 940c 3e4c         jmp     STORE
                  
 003377 e6dc              fdw     PLUSSTORE_L
                  WITHIN_L:
@@ -3030,7 +3030,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0033c3 939a
 0033c4 938a              pushtos
 0033c5 01ca              movw    tosl, pl
-0033c6 940c 3e82         jmp     FETCH
+0033c6 940c 3e86         jmp     FETCH
                  
 0033c8 e782              fdw     PFETCH_L
                  PSTORE_L:
@@ -3040,7 +3040,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0033cb 939a
 0033cc 938a              pushtos
 0033cd 01ca              movw    tosl, pl
-0033ce 940c 3e48         jmp     STORE
+0033ce 940c 3e4c         jmp     STORE
                  
 0033d0 e792              fdw     PSTORE_L
                  PCSTORE_L:
@@ -3050,7 +3050,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0033d3 939a
 0033d4 938a              pushtos
 0033d5 01ca              movw    tosl, pl
-0033d6 940c 3eb7         jmp     CSTORE
+0033d6 940c 3ebb         jmp     CSTORE
                  
 0033d8 e7a2              fdw     PCSTORE_L
                  PPLUS_L:
@@ -3118,7 +3118,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003403 7583
 003404 2a6d              .db     NFA|3,"um*"
                  UMSTAR:
-003405 940c 3f60         jmp     umstar0
+003405 940c 3f64         jmp     umstar0
                  
 003407 e806              fdw     UMSTAR_L
                  UMSLASHMOD_L:
@@ -3127,7 +3127,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00340a 6f6d
 00340b 0064              .db     NFA|6,"um/mod",0
                  UMSLASHMOD:
-00340c 940c 3f79         jmp     umslashmod0
+00340c 940c 3f7d         jmp     umslashmod0
                  
                  
 00340e e810              fdw     UMSLASHMOD_L
@@ -3138,7 +3138,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  USLASHMOD:
 003412 d367              rcall   FALSE_
 003413 de8b              rcall   SWOP
-003414 940c 3f79         jmp     umslashmod0
+003414 940c 3f7d         jmp     umslashmod0
                  
 003416 e81e              fdw     USLASHMOD_L
                  STAR_L:
@@ -3234,12 +3234,12 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00345b 6382
 00345c 0040              .db     NFA|2,"c@",0
                  CFETCH_A:       
-00345d 940c 3e9d         jmp     CFETCH
+00345d 940c 3ea1         jmp     CFETCH
                  
 00345f 6382
 003460 0021              .db     NFA|2,"c!",0
                  CSTORE_A:       
-003461 940c 3eb7         jmp     CSTORE
+003461 940c 3ebb         jmp     CSTORE
                  
 003463 e8ac              fdw     MIN_L
                  UPTR_L:
@@ -3258,7 +3258,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00346e df01              rcall   PLUSSTORE
 00346f d090              rcall   HP
 003470 d2a8              rcall   FETCH_A
-003471 940c 3eb7         jmp     CSTORE
+003471 940c 3ebb         jmp     CSTORE
                  
                  ; <#    --              begin numeric conversion
                  ;   PAD HP ! ;          (initialize Hold Pointer)
@@ -3269,7 +3269,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  LESSNUM: 
 003476 d08e              rcall   PAD
 003477 d088              rcall   HP
-003478 940c 3e48         jmp     STORE
+003478 940c 3e4c         jmp     STORE
                  
                  ; digit   n -- c            convert to 0..9a..z
 00347a e8e8              fdw     LESSNUM_L
@@ -3406,7 +3406,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  DECIMAL: 
 0034d8 d279              rcall   TEN
 0034d9 d033              rcall   BASE
-0034da 940c 3e48         jmp     STORE
+0034da 940c 3e4c         jmp     STORE
                  
                  ; HEX     --              set number base to hex
                  ;   #16 BASE ! ;
@@ -3418,7 +3418,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0034df d2f8              rcall   DOLIT
 0034e0 0010              .dw     16
 0034e1 d02b              rcall   BASE
-0034e2 940c 3e48         jmp     STORE
+0034e2 940c 3e4c         jmp     STORE
                  
                  ; BIN     --              set number base to binary
                  ;   #2 BASE ! ;
@@ -3428,7 +3428,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0034e6 6e69              .db     NFA|3,"bin"
 0034e7 dc7f      BIN:    rcall   CELL
 0034e8 d024              rcall   BASE
-0034e9 940c 3e48         jmp     STORE
+0034e9 940c 3e4c         jmp     STORE
                  
                  ; RSAVE   -- a-addr     Saved return stack pointer
 0034eb e9ca              fdw     BIN_L
@@ -3595,7 +3595,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00355d dd41              rcall   SWOP
 00355e ddf5              rcall   ONEMINUS
 00355f dee2              rcall   TUCK
-003560 940c 3eb7         jmp     CSTORE          ; Write the length into the TIB ! 
+003560 940c 3ebb         jmp     CSTORE          ; Write the length into the TIB ! 
                  
                  ; CMOVE  src dst u --  copy u bytes from src to dst
                  ; cmove swap !p for c@+ pc! p+ next drop ;
@@ -3644,7 +3644,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003581 d25f              rcall   DUP
 003582 ddcc              rcall   ONEPLUS
 003583 dd1b              rcall   SWOP
-003584 940c 3e9d         jmp     CFETCH
+003584 940c 3ea1         jmp     CFETCH
                  
                  ; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
 003586 eafe              fdw     CFETCHPP_L
@@ -3655,11 +3655,11 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003589 d257              rcall   DUP
 00358a ddce              rcall   TWOPLUS
 00358b dd13              rcall   SWOP
-00358c 940c 3e82         jmp     FETCH
+00358c 940c 3e86         jmp     FETCH
                  
 00358e 2181              .db     NFA|1,"!"
                  STORE_A:        
-00358f 940c 3e48         jmp     STORE
+00358f 940c 3e4c         jmp     STORE
                  
                  ; N>C   nfa -- cfa    name adr -> code field
 003591 eb0e              fdw    FETCHPP_L
@@ -3681,7 +3681,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00359c d34e              rcall   TWOMINUS
 00359d d243              rcall   DUP
 00359e debe              rcall   CFETCH_A
-00359f 940e 3e41         call    TO_A
+00359f 940e 3e45         call    TO_A
 0035a1 ff27              sbrs    al, 7
 0035a2 f3c9              breq    CFATONFA
 0035a3 9508              ret
@@ -3917,7 +3917,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  
 00364c db3a              rcall   CELLS
 00364d d18a              rcall   DOLIT
-00364e ff32              fdw     BASEQV
+00364e ff3a              fdw     BASEQV
 00364f dc8e              rcall   PLUS
 003650 da5a              rcall   FEXECUTE
                  
@@ -3942,7 +3942,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                                                  ; a ud.l ud.h a'
 00365f 9701              sbiw    tosl, 1
 003660 ddfc              rcall   CFETCH_A        ; a ud.l ud.h c
-003661 940e 3e41         call    TO_A
+003661 940e 3e45         call    TO_A
 003663 dc5f              rcall   RFROM           ; a a' u ud.l ud.d sign
 003664 dd95              rcall   ZEROSENSE
 003665 f009              breq    QNUMD1
@@ -3979,7 +3979,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003679 de81              rcall   TASK
 00367a d09e              rcall   FETCH_A
 00367b 9608              adiw    tosl, 8
-00367c 940c 3e82         jmp     FETCH
+00367c 940c 3e86         jmp     FETCH
                  
                  ; TIB     -- a-addr        Terminal Input Buffer
 00367e ecee              fdw     TIBSIZE_L
@@ -3988,7 +3988,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003680 6269              .db     NFA|3,"tib"
                  TIB:
 003681 d005              rcall   TIU
-003682 940c 3e82         jmp     FETCH
+003682 940c 3e86         jmp     FETCH
                          
                  ; TIU     -- a-addr        Terminal Input Buffer user variable 
 003684 ecfe              fdw     TIB_L
@@ -4048,7 +4048,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0036a7 dfe4              rcall   TOIN
 0036a8 dee6              rcall   STORE_A
                  IPARSEWORD:
-0036a9 d6b9              rcall   INIT_012
+0036a9 d6bd              rcall   INIT_012
 0036aa d245              rcall   BL
 0036ab deb0              rcall   WORD
                  
@@ -4160,9 +4160,9 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003706 c003              rjmp    ISINGLE
                  IDOUBLE:
 003707 df6c              rcall   SWOP_A
-003708 940e 3e19         call    LITERAL
+003708 940e 3e1d         call    LITERAL
                  ISINGLE:        
-00370a 940e 3e19         call    LITERAL
+00370a 940e 3e1d         call    LITERAL
 00370c cf9c              rjmp    IPARSEWORD
                  
                  INUMBER1:
@@ -4177,12 +4177,12 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003713 d066              rcall   FALSE_
 003714 d0a6              rcall   QABORTQ         ; Never returns & resets the stacks
                  INOWORD: 
-003715 d64d              rcall   INIT_012
+003715 d651              rcall   INIT_012
 003716 940c 3298         jmp     DROP
                  
 003718 4081              .db     NFA|1,"@"
                  FETCH_A:        
-003719 940c 3e82         jmp     FETCH
+003719 940c 3e86         jmp     FETCH
                  
                  ;;;    bitmask -- 
 00371b ed3e              fdw     INTERPRET_L
@@ -4197,7 +4197,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003722 db8e              rcall   ROT
 003723 dc0a              rcall   OR_
 003724 df4f              rcall   SWOP_A
-003725 940c 3eb7         jmp     CSTORE
+003725 940c 3ebb         jmp     CSTORE
                          
 003727 ee38              fdw     SHB_L
                  IMMEDIATE_L:
@@ -4234,7 +4234,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00373d d09a              rcall   DOLIT
 00373e 003c              .dw     '<'
 00373f d94b              rcall   EMIT
-003740 940e 3f4c         call    DOTBASE
+003740 940e 3f50         call    DOTBASE
 003742 d948              rcall   EMIT
 003743 d094              rcall   DOLIT
 003744 002c              .dw     ','
@@ -4355,7 +4355,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003799 d15d              rcall   STATE_
 00379a dc5f              rcall   ZEROSENSE
 00379b f7a1              brne    QUIT1
-00379c d5b5              rcall   IFLUSH
+00379c d5b9              rcall   IFLUSH
 00379d dfc0              rcall   DP_TO_EEPROM
                           
 00379e dabd              rcall    XSQUOTE
@@ -4373,7 +4373,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0037a8 706d
 0037a9 0074              .db     NFA|6,"prompt",0
                  PROMPT_:
-0037aa 940e 3eef         call    DEFER_DOES
+0037aa 940e 3ef3         call    DEFER_DOES
 0037ac 090a              .dw     prompt
                  
                  ; ABORT    i*x --   R: j*x --   clear stk & QUIT
@@ -4498,7 +4498,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0037fd d0f2              rcall   BL
 0037fe dd40              rcall   PARSE
 0037ff da98              rcall   DROP
-003800 940c 3e9d         jmp     CFETCH
+003800 940c 3ea1         jmp     CFETCH
                  
                  ; (    --                     skip input until )
 003802 eff4              fdw     CHAR_L
@@ -4531,7 +4531,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003814 005d              .db     NFA|IMMED|COMPILE|6,"[char]",0
                  BRACCHAR:
 003815 dfe7              rcall   CHAR
-003816 940c 3e19         jmp     LITERAL
+003816 940c 3e1d         jmp     LITERAL
                  
                  ; COMPILE,  xt --         append codefield
 003818 6383
@@ -4629,7 +4629,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 00385e f409              brne    CREATE2
 00385f daf9              rcall   TWOPLUS
                  CREATE2:
-003860 940c 3f3a         jmp     ICOMMA          ; dp now points to a free cell
+003860 940c 3f3e         jmp     ICOMMA          ; dp now points to a free cell
                  
                  ;***************************************************************
                  ; POSTPONE
@@ -4687,7 +4687,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003888 d918              rcall   STORECFF1 ; Always stores a 4 byte call
 003889 da39              rcall   RFROM
 00388a dfec              rcall   IDP
-00388b 940c 3e48         jmp     STORE
+00388b 940c 3e4c         jmp     STORE
                  
                  
                  ; DOES>    --      change action of latest def'n
@@ -4771,7 +4771,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  .endif
 0038c0 e994              ldi     tosh, 0x94
 0038c1 d9dd              rcall   SWOP
-0038c2 940c 3e48         jmp     STORE
+0038c2 940c 3e4c         jmp     STORE
                  RCALL_TO_JMP:
 0038c4 db76              rcall   NIP
 0038c5 709f              andi    tosh, 0x0f
@@ -4800,7 +4800,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0038d7 df00              rcall   DOLIT   ; Compile a ret
 0038d8 9508              .dw     0x9508
                  ICOMMA__:
-0038d9 940c 3f3a         jmp    ICOMMA
+0038d9 940c 3f3e         jmp    ICOMMA
                  
                  
                  
@@ -4811,7 +4811,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  MINUS_FETCH:
 0038de d00c              rcall   TWOMINUS
 0038df df01              rcall   DUP
-0038e0 940c 3e82         jmp     FETCH
+0038e0 940c 3e86         jmp     FETCH
                  
                  ; [']  --         find word & compile as DOLITeral
 0038e2 f1b8              fdw     MINUS_FETCH_L
@@ -4820,7 +4820,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 0038e4 5d27              .db     NFA|IMMED|COMPILE|3,"[']"
                  BRACTICK:
 0038e5 df0e              rcall   TICK       ; get xt of 'xxx'
-0038e6 940c 3e19         jmp     LITERAL
+0038e6 940c 3e1d         jmp     LITERAL
                  
                  ; 2-    n -- n-2
 0038e8 f1c6              fdw     BRACTICK_L
@@ -4925,7 +4925,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003924 dff4              rcall   TICKS
 003925 d9b8              rcall   PLUS
                  MS1:    
-003926 d5f2              rcall   PAUSE
+003926 d5f6              rcall   PAUSE
 003927 deb9              rcall   DUP
 003928 dff0              rcall   TICKS
 003929 d9c1              rcall   MINUS
@@ -5287,7 +5287,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003a2f c000              .dw     0xc000      ;  back-addr mask 
 003a30 d8fd              rcall   OR_
 003a31 dc42              rcall   SWOP_A
-003a32 940c 3e48         jmp     STORE
+003a32 940c 3e4c         jmp     STORE
                  
                  ; BEGIN    -- adrs        target for bwd. branch
 003a34 f44a              fdw     THEN_L
@@ -5373,7 +5373,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003a70 d915              rcall   NOTEQUAL
 003a71 d988              rcall   ZEROSENSE
 003a72 f011              breq    INLINE1
-003a73 d4c6              rcall   ICOMMA
+003a73 d4ca              rcall   ICOMMA
 003a74 cff7              rjmp    INLINE0
                  INLINE1:
 003a75 940c 31ce         jmp     TWODROP
@@ -5663,7 +5663,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003b59 f6c0              fdw     FLASHHI
 003b5a 940e 3147         call    CSE_
 003b5c 940e 32de         call    PLUS
-003b5e 940c 3e82         jmp     FETCH
+003b5e 940c 3e86         jmp     FETCH
                  FLASHHI:
 003b60 deff              .dw      FLASH_HI
 003b61 0cff              .dw      EEPROM_HI
@@ -5696,7 +5696,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003b6d 939a
 003b6e 938a              pushtos
 003b6f 01ca              movw    tosl, pl
-003b70 940c 3e9d         jmp     CFETCH
+003b70 940c 3ea1         jmp     CFETCH
                  ;***************************************************
 003b72 f6d6              fdw      L_PCFETCH
                  L_PTWOPLUS:
@@ -5876,7 +5876,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  ;********************************************************** 
                  .cseg
                  .org BOOT_START
-003c00 940c 3d6c RESET_:     jmp  WARM_
+003c00 940c 3d70 RESET_:     jmp  WARM_
                  .org BOOT_START + 0x02
 003c02 d03b                  rcall FF_ISR
                  .org BOOT_START + 0x04
@@ -6162,7 +6162,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003c7b f091              breq    XXOFF_TX0_TOS
                  .endif
                  TX0_LOOP:
-003c7c d29c              rcall   PAUSE
+003c7c d2a0              rcall   PAUSE
 003c7d 9100 00c0         in_     t0, UCSR0A
 003c7f ff05              sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
 003c80 cffb              rjmp    TX0_LOOP
@@ -6208,7 +6208,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003c9d 7283
 003c9e 3078              .db     NFA|3,"rx0"
                  RX0_:
-003c9f d279              rcall   PAUSE
+003c9f d27d              rcall   PAUSE
 003ca0 d01e              rcall   RX0Q
 003ca1 940e 33fa         call    ZEROSENSE
 003ca3 f3d9              breq    RX0_
@@ -6292,7 +6292,7 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
 003cdf 9508              ret
                  
                  IFILL_BUFFER:
-003ce0 d071              rcall   IFLUSH
+003ce0 d075              rcall   IFLUSH
 003ce1 9100 01e3         lds     t0, iaddrl
 003ce3 7800              andi    t0, ~(PAGESIZEB-1)
 003ce4 2ea0              mov     ibasel, t0
@@ -6337,56 +6337,60 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  .ifdef RAMPZ
                  .endif
 003cf9 e013              ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
-003cfa d029              rcall   DO_SPM
+003cfa d02d              rcall   DO_SPM
 003cfb e111              ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
-003cfc d027              rcall   DO_SPM
+003cfc d02b              rcall   DO_SPM
                  
                          ; transfer data from RAM to Flash page buffer
 003cfd e800              ldi     t0, low(PAGESIZEB);init loop variable
 003cfe e0a0              ldi     xl, low(ibuf)
 003cff e0b1              ldi     xh, high(ibuf)
+003d00 920f              push    r0
+003d01 921f              push    r1
                  IWRITE_BUFFER1:
-003d00 900d              ld      r0, x+
-003d01 901d              ld      r1, x+
-003d02 e011              ldi     t1, (1<<SPMEN)
-003d03 d020              rcall   DO_SPM
-003d04 9632              adiw    zl, 2
-003d05 5002              subi    t0, 2
-003d06 f7c9              brne    IWRITE_BUFFER1
+003d02 900d              ld      r0, x+
+003d03 901d              ld      r1, x+
+003d04 e011              ldi     t1, (1<<SPMEN)
+003d05 d022              rcall   DO_SPM
+003d06 9632              adiw    zl, 2
+003d07 5002              subi    t0, 2
+003d08 f7c9              brne    IWRITE_BUFFER1
                  
                          ; execute page write
-003d07 58e0              subi    zl, low(PAGESIZEB) ;restore pointer
-003d08 40f0              sbci    zh, high(PAGESIZEB)
-003d09 e015              ldi     t1, (1<<PGWRT) | (1<<SPMEN)
-003d0a d019              rcall   DO_SPM
+003d09 58e0              subi    zl, low(PAGESIZEB) ;restore pointer
+003d0a 40f0              sbci    zh, high(PAGESIZEB)
+003d0b e015              ldi     t1, (1<<PGWRT) | (1<<SPMEN)
+003d0c d01b              rcall   DO_SPM
                          ; re-enable the RWW section
-003d0b d012              rcall   IWRITE_BUFFER3
+003d0d d014              rcall   IWRITE_BUFFER3
                  
                          ; read back and check, optional
-003d0c e800              ldi     t0, low(PAGESIZEB);init loop variable
-003d0d 58a0              subi    xl, low(PAGESIZEB) ;restore pointer
-003d0e 40b0              sbci    xh, high(PAGESIZEB)
+003d0e e800              ldi     t0, low(PAGESIZEB);init loop variable
+003d0f 58a0              subi    xl, low(PAGESIZEB) ;restore pointer
+003d10 40b0              sbci    xh, high(PAGESIZEB)
                  IWRITE_BUFFER2:
-003d0f 9005              lpm_    r0, z+
-003d10 901d              ld      r1, x+
-003d11 1001              cpse    r0, r1
-003d12 c059              rjmp    WARM_     ; reset
-003d13 5001              subi    t0, 1
-003d14 f7d1              brne    IWRITE_BUFFER2
-003d15 ef0f      	ser     t0
-003d16 2eb0      	mov     ibaseh, t0
+003d11 9005              lpm_    r0, z+
+003d12 901d              ld      r1, x+
+003d13 1001              cpse    r0, r1
+003d14 c05b              rjmp    WARM_     ; reset
+003d15 5001              subi    t0, 1
+003d16 f7d1              brne    IWRITE_BUFFER2
+003d17 901f              pop     r1
+003d18 900f              pop     r0
+003d19 ef0f      	ser     t0
+003d1a 2eb0      	mov     ibaseh, t0
                  .ifdef RAMPZ
                  .endif
                  .ifdef RAMPZ
                  .endif
-003d17 7f6e              cbr     FLAGS1, (1<<idirty)
+003d1b 7f6e              cbr     FLAGS1, (1<<idirty)
                          // reenable interrupts
-003d18 9478              sei
+003d1c 9478              sei
                  .if OPERATOR_UART == 0
                  .if U0FC_TYPE == 1
-003d19 dabe              rcall   DOLIT
-003d1a 0011              .dw     XON
-003d1b 940e 308b         call    EMIT
+003d1d daba              rcall   DOLIT
+003d1e 0011              .dw     XON
+003d1f 940e 308b         call    EMIT
                  .endif
                  .if U0FC_TYPE == 2
                  .endif
@@ -6398,196 +6402,196 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  .endif
                  .if DEBUG_FLASH == 1
                  .endif
-003d1d 9508               ret
+003d21 9508               ret
                          ; ret to RWW section
                          ; verify that RWW section is safe to read
                  IWRITE_BUFFER3:
-003d1e b687              in_     t8, SPMCSR
-003d1f fe86              sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
-003d20 9508              ret
+003d22 b687              in_     t8, SPMCSR
+003d23 fe86              sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+003d24 9508              ret
                          ; re-enable the RWW section
-003d21 e111              ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
-003d22 d001              rcall   DO_SPM
-003d23 cffa              rjmp    IWRITE_BUFFER3
+003d25 e111              ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
+003d26 d001              rcall   DO_SPM
+003d27 cffa              rjmp    IWRITE_BUFFER3
                  
                  DO_SPM:
-003d24 b687              in_     t8, SPMCSR
-003d25 fc80              sbrc    t8, SPMEN
-003d26 cffd              rjmp    DO_SPM       ; Wait for previous write to complete
-003d27 bf17              out_    SPMCSR, t1
-003d28 95e8              spm
-003d29 9508              ret
+003d28 b687              in_     t8, SPMCSR
+003d29 fc80              sbrc    t8, SPMEN
+003d2a cffd              rjmp    DO_SPM       ; Wait for previous write to complete
+003d2b bf17              out_    SPMCSR, t1
+003d2c 95e8              spm
+003d2d 9508              ret
                  ; WD+ ( n -- )  n < 8 start watchdog timer
                  .if (FLASHEND < 0x1ffff)
-003d2a fe2c              fdw     PAUSE_L
+003d2e fe34              fdw     PAUSE_L
                  WDON_L:
-003d2b 7783
-003d2c 2b64              .db     NFA|3,"wd+"
+003d2f 7783
+003d30 2b64              .db     NFA|3,"wd+"
                  WDON:
-003d2d 94f8              cli
-003d2e 95a8              wdr
-003d2f 9190 0060         lds     tosh, WDTCSR
-003d31 6198              ori     tosh, (1<<WDCE)|(1<<WDE)
-003d32 9390 0060         sts     WDTCSR, tosh
-003d34 7087              andi    tosl, 7
-003d35 6088              ori     tosl, (1<<WDE)
-003d36 9380 0060         sts     WDTCSR, tosl
-003d38 9478              sei
-003d39 940c 3298         jmp     DROP
+003d31 94f8              cli
+003d32 95a8              wdr
+003d33 9190 0060         lds     tosh, WDTCSR
+003d35 6198              ori     tosh, (1<<WDCE)|(1<<WDE)
+003d36 9390 0060         sts     WDTCSR, tosh
+003d38 7087              andi    tosl, 7
+003d39 6088              ori     tosl, (1<<WDE)
+003d3a 9380 0060         sts     WDTCSR, tosl
+003d3c 9478              sei
+003d3d 940c 3298         jmp     DROP
                  
                  ; WD- ( -- )    stop the watchdog 
-003d3b fa56              fdw     WDON_L
+003d3f fa5e              fdw     WDON_L
                  WDOFF_L:
-003d3c 7783
-003d3d 2d64              .db     NFA|3,"wd-"
+003d40 7783
+003d41 2d64              .db     NFA|3,"wd-"
                  WDOFF:
-003d3e 94f8              cli
-003d3f 95a8              wdr
+003d42 94f8              cli
+003d43 95a8              wdr
                  .ifdef MCUSR
-003d40 be54              out     MCUSR, r_zero
+003d44 be54              out     MCUSR, r_zero
                  .else
                  .endif
-003d41 e108              ldi     t0, (1<<WDCE)|(1<<WDE)
-003d42 9300 0060         sts     WDTCSR, t0
-003d44 9250 0060         sts     WDTCSR, r_zero
-003d46 9478              sei
-003d47 9508              ret
+003d45 e108              ldi     t0, (1<<WDCE)|(1<<WDE)
+003d46 9300 0060         sts     WDTCSR, t0
+003d48 9250 0060         sts     WDTCSR, r_zero
+003d4a 9478              sei
+003d4b 9508              ret
                  
                  ; WDR ( -- )    kick the dog
-003d48 fa78              fdw     WDOFF_L
+003d4c fa80              fdw     WDOFF_L
                  CWD_L:
-003d49 63a3
-003d4a 6477              .db     NFA|INLINE|3,"cwd"
+003d4d 63a3
+003d4e 6477              .db     NFA|INLINE|3,"cwd"
                  CWD:
-003d4b 95a8              wdr
-003d4c 9508              ret
+003d4f 95a8              wdr
+003d50 9508              ret
                  
                  .endif
-003d4d fa92              fdw     CWD_L
+003d51 fa9a              fdw     CWD_L
                  IFLUSH_L:
-003d4e 6986
-003d4f 6c66
-003d50 7375
-003d51 0068              .db     NFA|6,"iflush",0
+003d52 6986
+003d53 6c66
+003d54 7375
+003d55 0068              .db     NFA|6,"iflush",0
                  IFLUSH:
-003d52 fd60              sbrc    FLAGS1, idirty
-003d53 cf9c              rjmp    IWRITE_BUFFER
-003d54 9508              ret
+003d56 fd60              sbrc    FLAGS1, idirty
+003d57 cf98              rjmp    IWRITE_BUFFER
+003d58 9508              ret
                  
                  ;***************************************************
                  .ifdef UCSR1A
                  .else
-003d55 f978              fdw     RX0Q_L
+003d59 f978              fdw     RX0Q_L
                  .endif
                  EMPTY_L:
-003d56 6585
-003d57 706d
-003d58 7974              .db     NFA|5,"empty"
+003d5a 6585
+003d5b 706d
+003d5c 7974              .db     NFA|5,"empty"
                  EMPTY:
-003d59 da7e              rcall   DOLIT
-003d5a ff38              fdw     COLDLIT
-003d5b da7c              rcall   DOLIT
-003d5c 0900              .dw     dp_start
 003d5d da7a              rcall   DOLIT
-003d5e 000c              .dw     coldlitsize
-003d5f 940e 3566         call    CMOVE
-003d61 940c 3756         jmp     DP_TO_RAM
+003d5e ff40              fdw     COLDLIT
+003d5f da78              rcall   DOLIT
+003d60 0900              .dw     dp_start
+003d61 da76              rcall   DOLIT
+003d62 000c              .dw     coldlitsize
+003d63 940e 3566         call    CMOVE
+003d65 940c 3756         jmp     DP_TO_RAM
                  
                  ; Init constant registers
                  INIT_012:
-003d63 2455              clr     r_zero
-003d64 e0e1              ldi     zl, 1
-003d65 e0f2              ldi     zh, 2
-003d66 013f              movw    r_one, zl
-003d67 9508              ret
+003d67 2455              clr     r_zero
+003d68 e0e1              ldi     zl, 1
+003d69 e0f2              ldi     zh, 2
+003d6a 013f              movw    r_one, zl
+003d6b 9508              ret
                  ;*******************************************************
-003d68 faac              fdw     EMPTY_L
+003d6c fab4              fdw     EMPTY_L
                  WARM_L:
-003d69 7784
-003d6a 7261
-003d6b 006d              .db     NFA|4,"warm",0
+003d6d 7784
+003d6e 7261
+003d6f 006d              .db     NFA|4,"warm",0
                  WARM_:
                  ; Zero memory
-003d6c 94f8              cli           ; Disable interrupts
-003d6d 27aa              clr     xl
-003d6e 27bb              clr     xh
-003d6f e1c9              ldi     yl, 25
-003d70 e0d0              ldi     yh, 0
+003d70 94f8              cli           ; Disable interrupts
+003d71 27aa              clr     xl
+003d72 27bb              clr     xh
+003d73 e1c9              ldi     yl, 25
+003d74 e0d0              ldi     yh, 0
                  WARM_1:
-003d71 93dd              st      x+, yh
-003d72 50c1              subi    yl, 1
-003d73 f7e9              brne    WARM_1
+003d75 93dd              st      x+, yh
+003d76 50c1              subi    yl, 1
+003d77 f7e9              brne    WARM_1
                  
-003d74 b61f              in_     t3, SREG
+003d78 b61f              in_     t3, SREG
                  .ifdef MCUCSR
                  .endif
                  .ifdef MCUSR
-003d75 b604              in_     t2, MCUSR
-003d76 9250 0034         sts     MCUSR, r_zero
+003d79 b604              in_     t2, MCUSR
+003d7a 9250 0034         sts     MCUSR, r_zero
                  .endif
-003d78 e1ac              ldi     xl, 0x1C  ; clear ram from y register upwards
+003d7c e1ac              ldi     xl, 0x1C  ; clear ram from y register upwards
                  WARM_2:
-003d79 925d              st      x+, r_zero
-003d7a 31b0              cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
-003d7b f7e9              brne    WARM_2
+003d7d 925d              st      x+, r_zero
+003d7e 31b0              cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
+003d7f f7e9              brne    WARM_2
                  
                  ; Init empty flash buffer
-003d7c 94ba      	    dec     ibaseh
+003d80 94ba      	    dec     ibaseh
                  .ifdef RAMPZ
                  .endif
                  
                  ; Init Stack pointer
-003d7d eac1              ldi     yl, low(utibbuf-4)
-003d7e e0d2              ldi     yh, high(utibbuf-4)
+003d81 eac1              ldi     yl, low(utibbuf-4)
+003d82 e0d2              ldi     yh, high(utibbuf-4)
                  
                  ; Init Return stack pointer
-003d7f e404              ldi     t0, low(usbuf-1)
-003d80 e012              ldi     t1, high(usbuf-1)
-003d81 bf0d              out     spl, t0
-003d82 bf1e              out     sph, t1
+003d83 e404              ldi     t0, low(usbuf-1)
+003d84 e012              ldi     t1, high(usbuf-1)
+003d85 bf0d              out     spl, t0
+003d86 bf1e              out     sph, t1
                  
-003d83 dfdf              rcall   INIT_012
-003d84 940e 3d3e         call    WDOFF
+003d87 dfdf              rcall   INIT_012
+003d88 940e 3d42         call    WDOFF
                  
                  ; Init user pointer
-003d86 e003              ldi     t0, low(up0)
-003d87 e012              ldi     t1, high(up0)
-003d88 0118              movw    upl, t0
+003d8a e003              ldi     t0, low(up0)
+003d8b e012              ldi     t1, high(up0)
+003d8c 0118              movw    upl, t0
                  ; Set RAMPZ for correct flash addressing
                  .ifdef RAMPZ
                  .endif
                  .ifdef EIND
                  .endif
                  ; init warm literals
-003d89 da4e              rcall   DOLIT
-003d8a df22              fdw     WARMLIT
-003d8b da4c              rcall   DOLIT
-003d8c 01e5              .dw     cse
 003d8d da4a              rcall   DOLIT
-003d8e 001c              .dw     warmlitsize
-003d8f 940e 3566         call    CMOVE
-                 ; init cold data to eeprom
+003d8e df22              fdw     WARMLIT
+003d8f da48              rcall   DOLIT
+003d90 01e5              .dw     cse
 003d91 da46              rcall   DOLIT
-003d92 0900              .dw     dp_start
-003d93 d0ee              rcall   FETCH
-003d94 d9ee              rcall   TRUE_
-003d95 940e 338b         call    EQUAL
-003d97 940e 33fa         call    ZEROSENSE
-003d99 f009              breq    WARM_3  
-003d9a dfbe              rcall   EMPTY
+003d92 001c              .dw     warmlitsize
+003d93 940e 3566         call    CMOVE
+                 ; init cold data to eeprom
+003d95 da42              rcall   DOLIT
+003d96 0900              .dw     dp_start
+003d97 d0ee              rcall   FETCH
+003d98 d9ea              rcall   TRUE_
+003d99 940e 338b         call    EQUAL
+003d9b 940e 33fa         call    ZEROSENSE
+003d9d f009              breq    WARM_3  
+003d9e dfbe              rcall   EMPTY
                  WARM_3:
                  ; Move interrupts to boot flash section
-003d9b be65              out_    MCUCR, r_one   ; (1<<IVCE)
-003d9c be75              out_    MCUCR, r_two   ; (1<<IVSEL)
+003d9f be65              out_    MCUCR, r_one   ; (1<<IVCE)
+003da0 be75              out_    MCUCR, r_two   ; (1<<IVSEL)
                  ; Start watchdog timer
                  .if MS_TIMER == 0
                  .ifdef TIMSK0
-003d9d bc74              out_    TCCR0A, r_two  ; CTC
-003d9e e003              ldi     t0, ms_pre_tmr0
-003d9f bd05              out_    TCCR0B, t0
-003da0 ef09              ldi     t0, ms_value_tmr0
-003da1 bd07              out_    OCR0A, t0
-003da2 9270 006e         out_    TIMSK0, r_two ; (1<<OCIE0A)
+003da1 bc74              out_    TCCR0A, r_two  ; CTC
+003da2 e003              ldi     t0, ms_pre_tmr0
+003da3 bd05              out_    TCCR0B, t0
+003da4 ef09              ldi     t0, ms_value_tmr0
+003da5 bd07              out_    OCR0A, t0
+003da6 9270 006e         out_    TIMSK0, r_two ; (1<<OCIE0A)
                  .endif
                  .ifdef TIMSK
                  .endif
@@ -6607,26 +6611,26 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  
                  ; Init UART 0
                  .ifdef UBRR0L
-003da4 da33              rcall   DOLIT
-003da5 3c57              .dw     RX0_ISR
-003da6 da31              rcall   DOLIT
+003da8 da2f              rcall   DOLIT
+003da9 3c57              .dw     RX0_ISR
+003daa da2d              rcall   DOLIT
                  .ifdef URXC0addr
                  .else
-003da7 01a4              .dw     URXCaddr+ivec
+003dab 01a4              .dw     URXCaddr+ivec
                  .endif
-003da8 d09f              rcall   STORE
+003dac d09f              rcall   STORE
                  ;;;     Set baud rate
                  ;        out_    UBRR0H, r_zero
-003da9 e607              ldi     t0, ubrr0val
-003daa 9300 00c4         out_    UBRR0L, t0
+003dad e607              ldi     t0, ubrr0val
+003dae 9300 00c4         out_    UBRR0L, t0
                          ; Enable receiver and transmitter, rx1 interrupts
-003dac e908              ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
-003dad 9300 00c1         out_    UCSR0B,t0
+003db0 e908              ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
+003db1 9300 00c1         out_    UCSR0B,t0
                          ; Set frame format: 8data, 1stop bit
-003daf e006              ldi     t0, (3<<UCSZ00)|URSEL_
-003db0 9300 00c2         out_    UCSR0C,t0
+003db3 e006              ldi     t0, (3<<UCSZ00)|URSEL_
+003db4 9300 00c2         out_    UCSR0C,t0
                  .if U0FC_TYPE == 1
-003db2 6071              sbr     FLAGS2, (1<<ixoff_tx0)
+003db6 6071              sbr     FLAGS2, (1<<ixoff_tx0)
                  .endif
                  .if U0FC_TYPE == 2
                  .endif
@@ -6638,624 +6642,624 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  .if U1FC_TYPE == 2
                  .endif
                  .endif
-003db3 d9a2              rcall   DP_TO_RAM
-003db4 9478              sei
+003db7 d99e              rcall   DP_TO_RAM
+003db8 9478              sei
                  
-003db5 ddea              rcall   RQ_EMIT
-003db6 d023              rcall   VER
+003db9 dde6              rcall   RQ_EMIT
+003dba d023              rcall   VER
                  ; Turnkey ?
-003db7 d15a              rcall   TURNKEY
-003db8 940e 33fa         call    ZEROSENSE
-003dba f0d1              breq    STARTQ2
-003dbb 940e 325c         call    XSQUOTE
-003dbd 4503
-003dbe 4353              .db     3,"ESC"
-003dbf 940e 324f         call    TYPE
-003dc1 da16              rcall   DOLIT
-003dc2 07d0              .dw     TURNKEY_DELAY
-003dc3 db60              rcall   MS
-003dc4 940e 3098         call    KEYQ
-003dc6 940e 33fa         call    ZEROSENSE
-003dc8 f049              breq    STARTQ1
-003dc9 940e 3091         call    KEY
-003dcb da0c              rcall   DOLIT
-003dcc 001b              .dw     0x1b
-003dcd 940e 338b         call    EQUAL
-003dcf 940e 33fa         call    ZEROSENSE
-003dd1 f419              brne    STARTQ2
+003dbb d15a              rcall   TURNKEY
+003dbc 940e 33fa         call    ZEROSENSE
+003dbe f0d1              breq    STARTQ2
+003dbf 940e 325c         call    XSQUOTE
+003dc1 4503
+003dc2 4353              .db     3,"ESC"
+003dc3 940e 324f         call    TYPE
+003dc5 da12              rcall   DOLIT
+003dc6 07d0              .dw     TURNKEY_DELAY
+003dc7 db5c              rcall   MS
+003dc8 940e 3098         call    KEYQ
+003dca 940e 33fa         call    ZEROSENSE
+003dcc f049              breq    STARTQ1
+003dcd 940e 3091         call    KEY
+003dcf da08              rcall   DOLIT
+003dd0 001b              .dw     0x1b
+003dd1 940e 338b         call    EQUAL
+003dd3 940e 33fa         call    ZEROSENSE
+003dd5 f419              brne    STARTQ2
                  STARTQ1:
-003dd2 d13f              rcall   TURNKEY
-003dd3 940e 30a0         call    EXECUTE
+003dd6 d13f              rcall   TURNKEY
+003dd7 940e 30a0         call    EXECUTE
                  STARTQ2:
-003dd5 940c 37b1         jmp     ABORT
+003dd9 940c 37b1         jmp     ABORT
                  
                  .equ partlen = strlen(partstring)
                  .equ datelen = strlen(DATE)
                  
-003dd7 fad2              fdw     WARM_L
+003ddb fada              fdw     WARM_L
                  VER_L:
-003dd8 7683
-003dd9 7265              .db     NFA|3,"ver"
+003ddc 7683
+003ddd 7265              .db     NFA|3,"ver"
                  VER:
-003dda 940e 325c         call    XSQUOTE
+003dde 940e 325c         call    XSQUOTE
                           ;      1234567890123456789012345678901234567890
                          ;.db 34,"FlashForth Atmega 5.0 ",DATE,0xd,0xa,0
-003ddc 4623
-003ddd 616c
-003dde 6873
-003ddf 6f46
-003de0 7472
-003de1 2068
-003de2 2035
-003de3 5441
-003de4 656d
-003de5 6167
-003de6 3233
-003de7 2038
-003de8 3032
-003de9 302e
-003dea 2e33
-003deb 3032
-003dec 3731
-003ded 0a0d              .db     partlen+datelen+16,"FlashForth 5 ",partstring," ", DATE,0xd,0xa
-003dee 940c 324f         jmp     TYPE
+003de0 4623
+003de1 616c
+003de2 6873
+003de3 6f46
+003de4 7472
+003de5 2068
+003de6 2035
+003de7 5441
+003de8 656d
+003de9 6167
+003dea 3233
+003deb 2038
+003dec 3232
+003ded 302e
+003dee 2e33
+003def 3032
+003df0 3731
+003df1 0a0d              .db     partlen+datelen+16,"FlashForth 5 ",partstring," ", DATE,0xd,0xa
+003df2 940c 324f         jmp     TYPE
                  
                  ; ei  ( -- )    Enable interrupts
-003df0 fbb0              fdw     VER_L
+003df4 fbb8              fdw     VER_L
                  EI_L:
-003df1 65a2
-003df2 0069              .db     NFA|INLINE|2,"ei",0
-003df3 9478              sei
-003df4 9508              ret
+003df5 65a2
+003df6 0069              .db     NFA|INLINE|2,"ei",0
+003df7 9478              sei
+003df8 9508              ret
                          
                  ; di  ( -- )    Disable interrupts
-003df5 fbe2              fdw     EI_L
+003df9 fbea              fdw     EI_L
                  DI_L:
-003df6 64a2
-003df7 0069              .db     NFA|INLINE|2,"di",0
-003df8 94f8              cli
-003df9 9508              ret
+003dfa 64a2
+003dfb 0069              .db     NFA|INLINE|2,"di",0
+003dfc 94f8              cli
+003dfd 9508              ret
                  ;*******************************************************
                  ; ;i  ( -- )    End definition of user interrupt routine
-003dfa fbec              fdw     DI_L
+003dfe fbf4              fdw     DI_L
                  IRQ_SEMI_L:
-003dfb 3bc2
-003dfc 0069              .db     NFA|IMMED|2,";i",0
+003dff 3bc2
+003e00 0069              .db     NFA|IMMED|2,";i",0
                  IRQ_SEMI:
-003dfd d9da              rcall   DOLIT
+003e01 d9d6              rcall   DOLIT
                  .ifdef EIND
                  .else
-003dfe 940c              .dw     0x940C     ; jmp
+003e02 940c              .dw     0x940C     ; jmp
                  .endif
-003dff d13a              rcall   ICOMMA
-003e00 d9d7              rcall   DOLIT
-003e01 3c33              .dw     FF_ISR_EXIT
-003e02 d137              rcall   ICOMMA
-003e03 940c 3898         jmp     LEFTBRACKET
+003e03 d13a              rcall   ICOMMA
+003e04 d9d3              rcall   DOLIT
+003e05 3c33              .dw     FF_ISR_EXIT
+003e06 d137              rcall   ICOMMA
+003e07 940c 3898         jmp     LEFTBRACKET
                  
                  
                  ; int!  ( addr n  --  )   store to interrupt vector number
-003e05 fbf6              fdw     IRQ_SEMI_L
+003e09 fbfe              fdw     IRQ_SEMI_L
                  IRQ_V_L:
-003e06 6984
-003e07 746e
-003e08 0021              .db     NFA|4,"int!",0
+003e0a 6984
+003e0b 746e
+003e0c 0021              .db     NFA|4,"int!",0
                  IRQ_V:
-003e09 01fc              movw    zl, tosl
-003e0a 9731              sbiw    zl, 1
-003e0b 0fee              lsl     zl
+003e0d 01fc              movw    zl, tosl
+003e0e 9731              sbiw    zl, 1
+003e0f 0fee              lsl     zl
                  .if low(ivec) == 0x80
-003e0c e8f0              ldi     zh, low(ivec)
-003e0d 0fef              add     zl,  zh
+003e10 e8f0              ldi     zh, low(ivec)
+003e11 0fef              add     zl,  zh
                  .endif
-003e0e e0f1              ldi     zh, high(ivec)
-003e0f 9189
-003e10 9199              poptos
-003e11 dbc8              rcall   TO_XA
-003e12 940c 3e4d         jmp     STORE_RAM_2
+003e12 e0f1              ldi     zh, high(ivec)
+003e13 9189
+003e14 9199              poptos
+003e15 dbc4              rcall   TO_XA
+003e16 940c 3e51         jmp     STORE_RAM_2
                  
                  ; DOLITERAL  x --           compile DOLITeral x as native code
-003e14 fc0c              fdw     IRQ_V_L
+003e18 fc14              fdw     IRQ_V_L
                  LITERAL_L:
-003e15 6cc7
-003e16 7469
-003e17 7265
-003e18 6c61              .db     NFA|IMMED|7,"literal"
+003e19 6cc7
+003e1a 7469
+003e1b 7265
+003e1c 6c61              .db     NFA|IMMED|7,"literal"
                  LITERAL:
-003e19 d9be              rcall   DOLIT
-003e1a efc2              fdw     DUP
-003e1b dc50              rcall   INLINE0
-003e1c 9380 01d7         sts     litbuf0, tosl
-003e1e 9390 01d8         sts     litbuf1, tosh
-003e20 6860              sbr     FLAGS1, (1<<fLIT)
-003e21 940e 37e1         call    DUP
-003e23 2f98              mov     tosh, tosl
-003e24 9592              swap    tosh
-003e25 709f              andi    tosh, 0xf
-003e26 708f              andi    tosl, 0xf
-003e27 6e90              ori     tosh, 0xe0
-003e28 6880              ori     tosl, 0x80
-003e29 d110              rcall   ICOMMA
-003e2a 2f89              mov     tosl, tosh
-003e2b 9592              swap    tosh
-003e2c 709f              andi    tosh, 0xf
-003e2d 708f              andi    tosl, 0xf
-003e2e 6e90              ori     tosh, 0xe0
-003e2f 6980              ori     tosl, 0x90
-003e30 940c 3f3a         jmp     ICOMMA
+003e1d d9ba              rcall   DOLIT
+003e1e efc2              fdw     DUP
+003e1f dc4c              rcall   INLINE0
+003e20 9380 01d7         sts     litbuf0, tosl
+003e22 9390 01d8         sts     litbuf1, tosh
+003e24 6860              sbr     FLAGS1, (1<<fLIT)
+003e25 940e 37e1         call    DUP
+003e27 2f98              mov     tosh, tosl
+003e28 9592              swap    tosh
+003e29 709f              andi    tosh, 0xf
+003e2a 708f              andi    tosl, 0xf
+003e2b 6e90              ori     tosh, 0xe0
+003e2c 6880              ori     tosl, 0x80
+003e2d d110              rcall   ICOMMA
+003e2e 2f89              mov     tosl, tosh
+003e2f 9592              swap    tosh
+003e30 709f              andi    tosh, 0xf
+003e31 708f              andi    tosl, 0xf
+003e32 6e90              ori     tosh, 0xe0
+003e33 6980              ori     tosl, 0x90
+003e34 940c 3f3e         jmp     ICOMMA
                  
                  #if 0
                  #endif
                  
                  ;*****************************************************************
                  ISTORE:
-003e32 de9c              rcall   IUPDATEBUF
+003e36 de98              rcall   IUPDATEBUF
                  ISTORE1:
-003e33 9189
-003e34 9199              poptos
-003e35 e0a0              ldi     xl, low(ibuf)
-003e36 e0b1              ldi     xh, high(ibuf)
-003e37 9100 01e3         lds     t0, iaddrl
-003e39 770f              andi    t0, (PAGESIZEB-1)
-003e3a 0fa0              add     xl, t0
-003e3b 938d              st      x+, tosl
-003e3c 939d              st      x+, tosh
-003e3d c074              rjmp    ICSTORE_POP
+003e37 9189
+003e38 9199              poptos
+003e39 e0a0              ldi     xl, low(ibuf)
+003e3a e0b1              ldi     xh, high(ibuf)
+003e3b 9100 01e3         lds     t0, iaddrl
+003e3d 770f              andi    t0, (PAGESIZEB-1)
+003e3e 0fa0              add     xl, t0
+003e3f 938d              st      x+, tosl
+003e40 939d              st      x+, tosh
+003e41 c074              rjmp    ICSTORE_POP
                  
-003e3e fc2a              fdw     LITERAL_L
+003e42 fc32              fdw     LITERAL_L
                  TO_A_L:
-003e3f 3e82
-003e40 0061              .db     NFA|2, ">a",0
+003e43 3e82
+003e44 0061              .db     NFA|2, ">a",0
                  TO_A:
-003e41 2f28              mov     al, tosl
-003e42 2f39              mov     ah, tosh
-003e43 9189
-003e44 9199              poptos
-003e45 9508              ret
+003e45 2f28              mov     al, tosl
+003e46 2f39              mov     ah, tosh
+003e47 9189
+003e48 9199              poptos
+003e49 9508              ret
                  
-003e46 fc7e              fdw     TO_A_L
+003e4a fc86              fdw     TO_A_L
                  STORE_L:
-003e47 2181              .db     NFA|1, "!"
+003e4b 2181              .db     NFA|1, "!"
                  STORE:
-003e48 3099              cpi     tosh, high(PEEPROM)
-003e49 f440              brcc    STORE1
+003e4c 3099              cpi     tosh, high(PEEPROM)
+003e4d f440              brcc    STORE1
                  STORE_RAM:
-003e4a 01fc              movw    zl, tosl
-003e4b 9189
-003e4c 9199              poptos
-                 STORE_RAM_2:
-003e4d 8391              std     Z+1, tosh
-003e4e 8380              std     Z+0, tosl
+003e4e 01fc              movw    zl, tosl
 003e4f 9189
 003e50 9199              poptos
-003e51 9508              ret
+                 STORE_RAM_2:
+003e51 8391              std     Z+1, tosh
+003e52 8380              std     Z+0, tosl
+003e53 9189
+003e54 9199              poptos
+003e55 9508              ret
                  STORE1:
-003e52 d009              rcall   LOCKEDQ
-003e53 3890              cpi     tosh, high(OFLASH)
-003e54 f6e8              brcc    ISTORE
+003e56 d009              rcall   LOCKEDQ
+003e57 3890              cpi     tosh, high(OFLASH)
+003e58 f6e8              brcc    ISTORE
                  ESTORE:
-003e55 940e 31d5         call    TWODUP
-003e57 d06b              rcall   ECSTORE
-003e58 9601              adiw    tosl, 1
-003e59 8109              ldd     t0, Y+1
-003e5a 8308              std     y+0, t0
-003e5b c067              rjmp    ECSTORE
+003e59 940e 31d5         call    TWODUP
+003e5b d06b              rcall   ECSTORE
+003e5c 9601              adiw    tosl, 1
+003e5d 8109              ldd     t0, Y+1
+003e5e 8308              std     y+0, t0
+003e5f c067              rjmp    ECSTORE
                  
                  LOCKEDQ:
-003e5c ff62              sbrs    FLAGS1, fLOCK
-003e5d 9508              ret
-003e5e db27              rcall   DOTS
-003e5f 940e 325c         call    XSQUOTE
-003e61 4103
-003e62 3f44              .db     3,"AD?"
-003e63 940e 324f         call    TYPE
-003e65 cf6f              rjmp    STARTQ2        ; goto    ABORT
+003e60 ff62              sbrs    FLAGS1, fLOCK
+003e61 9508              ret
+003e62 db23              rcall   DOTS
+003e63 940e 325c         call    XSQUOTE
+003e65 4103
+003e66 3f44              .db     3,"AD?"
+003e67 940e 324f         call    TYPE
+003e69 cf6f              rjmp    STARTQ2        ; goto    ABORT
                          
                  ;***********************************************************
                  IFETCH:
-003e66 01fc              movw    z, tosl
-003e67 58f0              sub_pflash_z
+003e6a 01fc              movw    z, tosl
+003e6b 58f0              sub_pflash_z
                  .ifdef RAMPZ
                  .endif
-003e68 11fb              cpse    zh, ibaseh
-003e69 c00b              rjmp    IIFETCH
-003e6a 2f0e              mov     t0, zl
-003e6b 7800              andi    t0, ~(PAGESIZEB-1)
-003e6c 150a              cp      t0, ibasel
-003e6d f439              brne    IIFETCH
-003e6e e0a0              ldi     xl, low(ibuf)
-003e6f e0b1              ldi     xh, high(ibuf)
-003e70 77ef              andi    zl, (PAGESIZEB-1)
-003e71 0fae              add     xl, zl
-003e72 918d              ld      tosl, x+
-003e73 919d              ld      tosh, x+
-003e74 9508              ret
+003e6c 11fb              cpse    zh, ibaseh
+003e6d c00b              rjmp    IIFETCH
+003e6e 2f0e              mov     t0, zl
+003e6f 7800              andi    t0, ~(PAGESIZEB-1)
+003e70 150a              cp      t0, ibasel
+003e71 f439              brne    IIFETCH
+003e72 e0a0              ldi     xl, low(ibuf)
+003e73 e0b1              ldi     xh, high(ibuf)
+003e74 77ef              andi    zl, (PAGESIZEB-1)
+003e75 0fae              add     xl, zl
+003e76 918d              ld      tosl, x+
+003e77 919d              ld      tosh, x+
+003e78 9508              ret
                  IIFETCH:
-003e75 9185              lpm_    tosl, z+     ; Fetch from Flash directly
-003e76 9195              lpm_    tosh, z+
-003e77 9508              ret
+003e79 9185              lpm_    tosl, z+     ; Fetch from Flash directly
+003e7a 9195              lpm_    tosh, z+
+003e7b 9508              ret
                                  
-003e78 fc8e              fdw     STORE_L
+003e7c fc96              fdw     STORE_L
                  A_FROM_L:
-003e79 6182
-003e7a 003e              .db     NFA|2, "a>",0
+003e7d 6182
+003e7e 003e              .db     NFA|2, "a>",0
                  A_FROM:
-003e7b 939a
-003e7c 938a              pushtos
-003e7d 2f82              mov     tosl, al
-003e7e 2f93              mov     tosh, ah
-003e7f 9508              ret
+003e7f 939a
+003e80 938a              pushtos
+003e81 2f82              mov     tosl, al
+003e82 2f93              mov     tosh, ah
+003e83 9508              ret
                  
                  .if FLASHEND > 0x3fff
                  .else
-003e80 fcf2              fdw     A_FROM_L
+003e84 fcfa              fdw     A_FROM_L
                  .endif
                  FETCH_L:
-003e81 4081              .db     NFA|1, "@"
+003e85 4081              .db     NFA|1, "@"
                  FETCH:
-003e82 3099              cpi     tosh, high(PEEPROM)
-003e83 f420              brcc    FETCH1
+003e86 3099              cpi     tosh, high(PEEPROM)
+003e87 f420              brcc    FETCH1
                  FETCH_RAM:
-003e84 01fc              movw    zl, tosl
+003e88 01fc              movw    zl, tosl
                  FETCH_RAM_2:
-003e85 9181              ld      tosl, z+
-003e86 9191              ld      tosh, z+
-003e87 9508              ret
+003e89 9181              ld      tosl, z+
+003e8a 9191              ld      tosh, z+
+003e8b 9508              ret
                  FETCH1:
-003e88 3890              cpi     tosh, high(OFLASH)
-003e89 f6e0              brcc    IFETCH
+003e8c 3890              cpi     tosh, high(OFLASH)
+003e8d f6e0              brcc    IFETCH
                  EFETCH:
-003e8a 99f9              sbic    eecr, eewe
-003e8b cffe              rjmp    EFETCH
-003e8c 5099              subi    tosh, high(PEEPROM)
-003e8d bd81              out     eearl, tosl
-003e8e bd92              out     eearh, tosh
-003e8f 9af8              sbi     eecr, eere
-003e90 b500              in      t0, eedr
-003e91 9583              inc     tosl
-003e92 bd81              out     eearl, tosl
+003e8e 99f9              sbic    eecr, eewe
+003e8f cffe              rjmp    EFETCH
+003e90 5099              subi    tosh, high(PEEPROM)
+003e91 bd81              out     eearl, tosl
+003e92 bd92              out     eearh, tosh
 003e93 9af8              sbi     eecr, eere
-003e94 b590              in      tosh, eedr
-003e95 2f80              mov     tosl, t0
-003e96 9508              ret
+003e94 b500              in      t0, eedr
+003e95 9583              inc     tosl
+003e96 bd81              out     eearl, tosl
+003e97 9af8              sbi     eecr, eere
+003e98 b590              in      tosh, eedr
+003e99 2f80              mov     tosl, t0
+003e9a 9508              ret
                  
                  ICFETCH:
-003e97 dfce              rcall   IFETCH
-003e98 2799              clr     tosh
-003e99 9508              ret
+003e9b dfce              rcall   IFETCH
+003e9c 2799              clr     tosh
+003e9d 9508              ret
                  
-003e9a fd02              fdw     FETCH_L
+003e9e fd0a              fdw     FETCH_L
                  CFETCH_L:
-003e9b 6382
-003e9c 0040              .db     NFA|2, "c@",0
+003e9f 6382
+003ea0 0040              .db     NFA|2, "c@",0
                  CFETCH:
-003e9d 3099              cpi     tosh, high(PEEPROM)
-003e9e f420              brcc    CFETCH1
+003ea1 3099              cpi     tosh, high(PEEPROM)
+003ea2 f420              brcc    CFETCH1
                  CFETCH_RAM:
-003e9f 01fc              movw    zl, tosl
-003ea0 9181              ld      tosl, z+
-003ea1 2799              clr     tosh
-003ea2 9508              ret
+003ea3 01fc              movw    zl, tosl
+003ea4 9181              ld      tosl, z+
+003ea5 2799              clr     tosh
+003ea6 9508              ret
                  CFETCH1:
-003ea3 3890              cpi     tosh, high(OFLASH)
-003ea4 f790              brcc    ICFETCH
+003ea7 3890              cpi     tosh, high(OFLASH)
+003ea8 f790              brcc    ICFETCH
                  ECFETCH:
-003ea5 dfe4              rcall   EFETCH
-003ea6 2799              clr     tosh
-003ea7 9508              ret
+003ea9 dfe4              rcall   EFETCH
+003eaa 2799              clr     tosh
+003eab 9508              ret
                  
                  ICSTORE:
-003ea8 de26              rcall   IUPDATEBUF
-003ea9 9189
-003eaa 9199              poptos
-003eab e0a0              ldi     xl, low(ibuf)
-003eac e0b1              ldi     xh, high(ibuf)
-003ead 9100 01e3         lds     t0, iaddrl
-003eaf 770f              andi    t0, (PAGESIZEB-1)
-003eb0 0fa0              add     xl, t0
-003eb1 938d              st      x+, tosl
+003eac de22              rcall   IUPDATEBUF
+003ead 9189
+003eae 9199              poptos
+003eaf e0a0              ldi     xl, low(ibuf)
+003eb0 e0b1              ldi     xh, high(ibuf)
+003eb1 9100 01e3         lds     t0, iaddrl
+003eb3 770f              andi    t0, (PAGESIZEB-1)
+003eb4 0fa0              add     xl, t0
+003eb5 938d              st      x+, tosl
                  ICSTORE_POP:
-003eb2 6061              sbr     FLAGS1, (1<<idirty)
-003eb3 c009              rjmp    CSTORE_POP
+003eb6 6061              sbr     FLAGS1, (1<<idirty)
+003eb7 c009              rjmp    CSTORE_POP
                  
-003eb4 fd36              fdw     CFETCH_L
+003eb8 fd3e              fdw     CFETCH_L
                  CSTORE_L:
-003eb5 6382
-003eb6 0021              .db     NFA|2, "c!",0
+003eb9 6382
+003eba 0021              .db     NFA|2, "c!",0
                  CSTORE:
-003eb7 3099              cpi     tosh, high(PEEPROM)
-003eb8 f438              brcc    CSTORE1
+003ebb 3099              cpi     tosh, high(PEEPROM)
+003ebc f438              brcc    CSTORE1
                  CSTORE_RAM:
-003eb9 01fc              movw zl, tosl
-003eba 9189
-003ebb 9199              poptos
-003ebc 8380              st      Z, tosl
+003ebd 01fc              movw zl, tosl
+003ebe 9189
+003ebf 9199              poptos
+003ec0 8380              st      Z, tosl
                  CSTORE_POP:
-003ebd 9189
-003ebe 9199              poptos
-003ebf 9508              ret
+003ec1 9189
+003ec2 9199              poptos
+003ec3 9508              ret
                  CSTORE1:
-003ec0 df9b              rcall   LOCKEDQ
-003ec1 3890              cpi     tosh, high(OFLASH)
-003ec2 f728              brcc    ICSTORE
+003ec4 df9b              rcall   LOCKEDQ
+003ec5 3890              cpi     tosh, high(OFLASH)
+003ec6 f728              brcc    ICSTORE
                  ECSTORE:
-003ec3 99f9              sbic    eecr, eewe
-003ec4 cffe              rjmp    ECSTORE
-003ec5 5099              subi    tosh, high(PEEPROM)
-003ec6 bd81              out     eearl, tosl
-003ec7 bd92              out     eearh, tosh
-003ec8 9189
-003ec9 9199              poptos
-003eca bd80              out     eedr, tosl
-003ecb 9afa              sbi     eecr, eemwe
-003ecc 9af9              sbi     eecr, eewe
-003ecd cfef              rjmp    CSTORE_POP
+003ec7 99f9              sbic    eecr, eewe
+003ec8 cffe              rjmp    ECSTORE
+003ec9 5099              subi    tosh, high(PEEPROM)
+003eca bd81              out     eearl, tosl
+003ecb bd92              out     eearh, tosh
+003ecc 9189
+003ecd 9199              poptos
+003ece bd80              out     eedr, tosl
+003ecf 9afa              sbi     eecr, eemwe
+003ed0 9af9              sbi     eecr, eewe
+003ed1 cfef              rjmp    CSTORE_POP
                  
                  ;;; Disable writes to flash and eeprom
-003ece fd6a              fdw     CSTORE_L
+003ed2 fd72              fdw     CSTORE_L
                  
                  FLOCK_L:
-003ecf 6683
-003ed0 2d6c              .db     NFA|3,"fl-"
-003ed1 6064              sbr     FLAGS1, (1<<fLOCK)
-003ed2 9508              ret
+003ed3 6683
+003ed4 2d6c              .db     NFA|3,"fl-"
+003ed5 6064              sbr     FLAGS1, (1<<fLOCK)
+003ed6 9508              ret
                  
                  ;;; Enable writes to flash and eeprom
-003ed3 fd9e              fdw     FLOCK_L
+003ed7 fda6              fdw     FLOCK_L
                  FUNLOCK_L:
-003ed4 6683
-003ed5 2b6c              .db     NFA|3,"fl+"
-003ed6 7f6b              cbr     FLAGS1, (1<<fLOCK)
-003ed7 9508              ret
+003ed8 6683
+003ed9 2b6c              .db     NFA|3,"fl+"
+003eda 7f6b              cbr     FLAGS1, (1<<fLOCK)
+003edb 9508              ret
                  
                  
                  
-003ed8 fda8              fdw     FUNLOCK_L
+003edc fdb0              fdw     FUNLOCK_L
                  VALUE_L:
-003ed9 7685
-003eda 6c61
-003edb 6575              .db     NFA|5,"value"
+003edd 7685
+003ede 6c61
+003edf 6575              .db     NFA|5,"value"
                  VALUE:
-003edc d94e              rcall   CREATE
-003edd 940e 3156         call    COMMA
-003edf d99d              rcall   XDOES
+003ee0 d94a              rcall   CREATE
+003ee1 940e 3156         call    COMMA
+003ee3 d999              rcall   XDOES
                  VALUE_DOES:
-003ee0 940e 30e8         call    DODOES
-003ee2 940c 3e82         jmp     FETCH
+003ee4 940e 30e8         call    DODOES
+003ee6 940c 3e86         jmp     FETCH
                  
-003ee4 fdb2              fdw     VALUE_L
+003ee8 fdba              fdw     VALUE_L
                  DEFER_L:
-003ee5 6485
-003ee6 6665
-003ee7 7265              .db     NFA|5,"defer"
+003ee9 6485
+003eea 6665
+003eeb 7265              .db     NFA|5,"defer"
                  DEFER:
-003ee8 d942              rcall   CREATE
-003ee9 940e 37d8         call    DOLIT
-003eeb ef62              fdw     ABORT
-003eec 940e 3156         call    COMMA
-003eee d98e              rcall   XDOES
+003eec d93e              rcall   CREATE
+003eed 940e 37d8         call    DOLIT
+003eef ef62              fdw     ABORT
+003ef0 940e 3156         call    COMMA
+003ef2 d98a              rcall   XDOES
                  DEFER_DOES:
-003eef 940e 30e8         call    DODOES
-003ef1 940c 30ab         jmp     FEXECUTE
+003ef3 940e 30e8         call    DODOES
+003ef5 940c 30ab         jmp     FEXECUTE
                  
-003ef3 fdca              fdw     DEFER_L
+003ef7 fdd2              fdw     DEFER_L
                  IS_L:
-003ef4 69c2
-003ef5 0073              .db     NFA|IMMED|2,"is",0
+003ef8 69c2
+003ef9 0073              .db     NFA|IMMED|2,"is",0
                  IS:
-003ef6 940e 37f4         call    TICK
-003ef8 940e 3359         call    TWOPLUS
-003efa 940e 3359         call    TWOPLUS
-003efc df85              rcall   FETCH
-003efd d9f9              rcall   STATE_
-003efe 940e 33fa         call    ZEROSENSE
-003f00 f029              breq    IS1
-003f01 df17              rcall   LITERAL
-003f02 940e 30f8         call    DOCOMMAXT
-003f04 fc90              fdw     STORE
-003f05 c001              rjmp    IS2
+003efa 940e 37f4         call    TICK
+003efc 940e 3359         call    TWOPLUS
+003efe 940e 3359         call    TWOPLUS
+003f00 df85              rcall   FETCH
+003f01 d9f5              rcall   STATE_
+003f02 940e 33fa         call    ZEROSENSE
+003f04 f029              breq    IS1
+003f05 df17              rcall   LITERAL
+003f06 940e 30f8         call    DOCOMMAXT
+003f08 fc98              fdw     STORE
+003f09 c001              rjmp    IS2
                  IS1:
-003f06 df41              rcall   STORE
+003f0a df41              rcall   STORE
                  IS2:
-003f07 9508              ret
+003f0b 9508              ret
                  
-003f08 fde8              fdw     IS_L
+003f0c fdf0              fdw     IS_L
                  TO_L:
-003f09 74c2
-003f0a 006f              .db     NFA|IMMED|2,"to",0
+003f0d 74c2
+003f0e 006f              .db     NFA|IMMED|2,"to",0
                  TO:
-003f0b 940c 3ef6         jmp     IS
+003f0f 940c 3efa         jmp     IS
                  
-003f0d fe12              fdw     TO_L
+003f11 fe1a              fdw     TO_L
                  TURNKEY_L:
-003f0e 7487
-003f0f 7275
-003f10 6b6e
-003f11 7965              .db     NFA|7,"turnkey"
+003f12 7487
+003f13 7275
+003f14 6b6e
+003f15 7965              .db     NFA|7,"turnkey"
                  TURNKEY:
-003f12 940e 3ee0         call    VALUE_DOES      ; Must be call for IS to work.
-003f14 01d9              .dw     dpSTART
+003f16 940e 3ee4         call    VALUE_DOES      ; Must be call for IS to work.
+003f18 01d9              .dw     dpSTART
                  
                  
                  ;;; *******************************************************
                  ; PAUSE  --     switch task
-003f15 fe1c              fdw     TURNKEY_L
+003f19 fe24              fdw     TURNKEY_L
                  PAUSE_L:
-003f16 7085
-003f17 7561
-003f18 6573              .db     NFA|5,"pause"
+003f1a 7085
+003f1b 7561
+003f1c 6573              .db     NFA|5,"pause"
                  PAUSE:
                  .if IDLE_MODE == 1
-003f19 dca1              rcall   IDLE_LOAD
+003f1d dc9d              rcall   IDLE_LOAD
                  .endif
-003f1a b71f              in_     t1, SREG
-003f1b 94f8              cli
-003f1c 95a8              wdr               ; watchdog reset
-003f1d 93df              push    yh        ; SP
-003f1e 93cf              push    yl
-003f1f 939f              push    tosh      ; TOS
-003f20 938f              push    tosl
-003f21 935f              push    ph        ; P
-003f22 934f              push    pl
-003f23 01f1              movw    zl, upl
-003f24 b70e              in      t0, sph
-003f25 9302              st      -z, t0
-003f26 b70d              in      t0, spl
-003f27 9302              st      -z, t0
-003f28 91b2              ld      xh, -z     ; UP
-003f29 91a2              ld      xl, -z
-003f2a 011d              movw    upl, xl
-003f2b 910e              ld      t0, -x
-003f2c bf0e              out     sph, t0
-003f2d 910e              ld      t0, -x
-003f2e bf0d              out     spl, t0
-003f2f 914f              pop     pl
-003f30 915f              pop     ph
-003f31 918f              pop     tosl
-003f32 919f              pop     tosh
-003f33 91cf              pop     yl
-003f34 91df              pop     yh
-003f35 bf1f              out_    SREG, t1
-003f36 9508              ret
+003f1e b71f              in_     t1, SREG
+003f1f 94f8              cli
+003f20 95a8              wdr               ; watchdog reset
+003f21 93df              push    yh        ; SP
+003f22 93cf              push    yl
+003f23 939f              push    tosh      ; TOS
+003f24 938f              push    tosl
+003f25 935f              push    ph        ; P
+003f26 934f              push    pl
+003f27 01f1              movw    zl, upl
+003f28 b70e              in      t0, sph
+003f29 9302              st      -z, t0
+003f2a b70d              in      t0, spl
+003f2b 9302              st      -z, t0
+003f2c 91b2              ld      xh, -z     ; UP
+003f2d 91a2              ld      xl, -z
+003f2e 011d              movw    upl, xl
+003f2f 910e              ld      t0, -x
+003f30 bf0e              out     sph, t0
+003f31 910e              ld      t0, -x
+003f32 bf0d              out     spl, t0
+003f33 914f              pop     pl
+003f34 915f              pop     ph
+003f35 918f              pop     tosl
+003f36 919f              pop     tosh
+003f37 91cf              pop     yl
+003f38 91df              pop     yh
+003f39 bf1f              out_    SREG, t1
+003f3a 9508              ret
                  
                  
-003f37 df70              fdw     OPERATOR_L
+003f3b df70              fdw     OPERATOR_L
                  ICOMMA_L:
-003f38 6982
-003f39 002c              .db     NFA|2, "i,",0
+003f3c 6982
+003f3d 002c              .db     NFA|2, "i,",0
                  ICOMMA:
-003f3a 940e 380e         call    IHERE
-003f3c df0b              rcall   STORE
-003f3d 940e 3167         call    CELL
-003f3f 940c 39c7         jmp     IALLOT
+003f3e 940e 380e         call    IHERE
+003f40 df0b              rcall   STORE
+003f41 940e 3167         call    CELL
+003f43 940c 39c7         jmp     IALLOT
                  
                  
                  ;   IHERE ! 1 CHARS IALLOT ;
-003f41 fe70              fdw     ICOMMA_L
+003f45 fe78              fdw     ICOMMA_L
                  ICCOMMA_L:
-003f42 6983
-003f43 2c63              .db     NFA|3,"ic,"
+003f46 6983
+003f47 2c63              .db     NFA|3,"ic,"
                  ICCOMMA:
-003f44 940e 380e         call    IHERE
-003f46 df70              rcall   CSTORE
-003f47 940e 3208         call    ONE
-003f49 940c 39c7         jmp     IALLOT
+003f48 940e 380e         call    IHERE
+003f4a df70              rcall   CSTORE
+003f4b 940e 3208         call    ONE
+003f4d 940c 39c7         jmp     IALLOT
                  
                  L_DOTBASE:
-003f4b 2081              .db      NFA|1," "
+003f4f 2081              .db      NFA|1," "
                  DOTBASE:
-003f4c 940e 350d         call    BASE
-003f4e df33              rcall   FETCH
-003f4f 3180              cpi     tosl, 0x10
-003f50 f411              brne    DOTBASE1
-003f51 e284              ldi     tosl,'$'
-003f52 c009              rjmp    DOTBASEEND
+003f50 940e 350d         call    BASE
+003f52 df33              rcall   FETCH
+003f53 3180              cpi     tosl, 0x10
+003f54 f411              brne    DOTBASE1
+003f55 e284              ldi     tosl,'$'
+003f56 c009              rjmp    DOTBASEEND
                  DOTBASE1:
-003f53 308a              cpi     tosl, 0xa
-003f54 f411              brne    DOTBASE2
-003f55 e283              ldi     tosl, '#'
-003f56 c005              rjmp    DOTBASEEND
+003f57 308a              cpi     tosl, 0xa
+003f58 f411              brne    DOTBASE2
+003f59 e283              ldi     tosl, '#'
+003f5a c005              rjmp    DOTBASEEND
                  DOTBASE2:
-003f57 3082              cpi     tosl, 0x2
-003f58 f411              brne    DOTBASE3
-003f59 e285              ldi     tosl, '%'
-003f5a c001              rjmp    DOTBASEEND
+003f5b 3082              cpi     tosl, 0x2
+003f5c f411              brne    DOTBASE3
+003f5d e285              ldi     tosl, '%'
+003f5e c001              rjmp    DOTBASEEND
                  DOTBASE3:
-003f5b e38f              ldi     tosl, '?'
+003f5f e38f              ldi     tosl, '?'
                  DOTBASEEND:
-003f5c 9508              ret
+003f60 9508              ret
                  
                  MEMQADDR_N:
-003f5d e252              fdw     ROM_N
-003f5e e260              fdw     EROM_N
-003f5f e270              fdw     FRAM_N
+003f61 e252              fdw     ROM_N
+003f62 e260              fdw     EROM_N
+003f63 e270              fdw     FRAM_N
                  ;*******************************************************
                  umstar0:
-003f60 920f              push t2
-003f61 921f              push t3
-003f62 9109              ld  t0, Y+
-003f63 9119              ld  t1, Y+
-003f64 9f80              mul tosl,t0
-003f65 01d0              movw t4, r0 ; r0=t2, r1=t3
-003f66 27ee              clr t6
-003f67 27ff              clr t7
-003f68 9f90              mul tosh, t0
-003f69 0db0              add t5, r0
-003f6a 1de1              adc t6, r1
-003f6b 1df5              adc t7, r_zero
-003f6c 9f81              mul tosl, t1
+003f64 920f              push t2
+003f65 921f              push t3
+003f66 9109              ld  t0, Y+
+003f67 9119              ld  t1, Y+
+003f68 9f80              mul tosl,t0
+003f69 01d0              movw t4, r0 ; r0=t2, r1=t3
+003f6a 27ee              clr t6
+003f6b 27ff              clr t7
+003f6c 9f90              mul tosh, t0
 003f6d 0db0              add t5, r0
 003f6e 1de1              adc t6, r1
 003f6f 1df5              adc t7, r_zero
-003f70 9f91              mul tosh, t1
-003f71 0de0              add t6, r0
-003f72 1df1              adc t7, r1
-003f73 93ba              st -Y, t5
-003f74 93aa              st -Y, t4
-003f75 01cf              movw tosl, t6
-003f76 901f              pop t3
-003f77 900f              pop t2
-003f78 9508              ret
+003f70 9f81              mul tosl, t1
+003f71 0db0              add t5, r0
+003f72 1de1              adc t6, r1
+003f73 1df5              adc t7, r_zero
+003f74 9f91              mul tosh, t1
+003f75 0de0              add t6, r0
+003f76 1df1              adc t7, r1
+003f77 93ba              st -Y, t5
+003f78 93aa              st -Y, t4
+003f79 01cf              movw tosl, t6
+003f7a 901f              pop t3
+003f7b 900f              pop t2
+003f7c 9508              ret
                  ;***********************************************************
                  ; unsigned 32/16 -> 16/16 division
                  umslashmod0:
-003f79 94e8              clt
-003f7a 2388              tst  tosl
-003f7b f429              brne umslashmodstart
-003f7c 2399              tst  tosh
-003f7d f419              brne umslashmodstart
-003f7e 9468              set  ; Set T flag
-003f7f 940c 3d6c         jmp  WARM_
+003f7d 94e8              clt
+003f7e 2388              tst  tosl
+003f7f f429              brne umslashmodstart
+003f80 2399              tst  tosh
+003f81 f419              brne umslashmodstart
+003f82 9468              set  ; Set T flag
+003f83 940c 3d70         jmp  WARM_
                  umslashmodstart:
-003f81 01dc              movw t4, tosl
+003f85 01dc              movw t4, tosl
                  
-003f82 9019              ld t3, Y+
-003f83 91e9              ld t6, Y+
+003f86 9019              ld t3, Y+
+003f87 91e9              ld t6, Y+
                  
-003f84 9189              ld tosl, Y+
-003f85 9199              ld tosh, Y+
+003f88 9189              ld tosl, Y+
+003f89 9199              ld tosh, Y+
                  
                  ; unsigned 32/16 -> 16/16 division
                          ; set loop counter
-003f86 e100              ldi t0,$10 ;6
+003f8a e100              ldi t0,$10 ;6
                  
                  umslashmod1:
                          ; shift left, saving high bit
-003f87 27ff              clr t7
-003f88 0f88              lsl tosl
-003f89 1f99              rol tosh
-003f8a 1c11              rol t3
-003f8b 1fee              rol t6
-003f8c 1fff              rol t7
+003f8b 27ff              clr t7
+003f8c 0f88              lsl tosl
+003f8d 1f99              rol tosh
+003f8e 1c11              rol t3
+003f8f 1fee              rol t6
+003f90 1fff              rol t7
                  
                          ; try subtracting divisor
-003f8d 161a              cp  t3, t4
-003f8e 07eb              cpc t6, t5
-003f8f 05f5              cpc t7,r_zero
+003f91 161a              cp  t3, t4
+003f92 07eb              cpc t6, t5
+003f93 05f5              cpc t7,r_zero
                  
-003f90 f018              brcs umslashmod2
+003f94 f018              brcs umslashmod2
                  
                          ; dividend is large enough
                          ; do the subtraction for real
                          ; and set lowest bit
-003f91 9583              inc tosl
-003f92 1a1a              sub t3, t4
-003f93 0beb              sbc t6, t5
+003f95 9583              inc tosl
+003f96 1a1a              sub t3, t4
+003f97 0beb              sbc t6, t5
                  
                  umslashmod2:
-003f94 950a              dec  t0
-003f95 f789              brne umslashmod1 ;16=17=272
+003f98 950a              dec  t0
+003f99 f789              brne umslashmod1 ;16=17=272
                  
                  umslashmod3:
                          ; put remainder on stack
-003f96 93ea              st -Y,t6
-003f97 921a              st -Y,t3
+003f9a 93ea              st -Y,t6
+003f9b 921a              st -Y,t3
                          ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
-003f98 9508              ret
+003f9c 9508              ret
                  BASEQV:
-003f99 e9b0              fdw     DECIMAL
-003f9a e9be              fdw     HEX
-003f9b e9ce              fdw     BIN
+003f9d e9b0              fdw     DECIMAL
+003f9e e9be              fdw     HEX
+003f9f e9ce              fdw     BIN
                  
                  
                  ;;; *************************************
@@ -7263,12 +7267,12 @@ avr/src/ff-atmega.asm(246): warning: Use of undefined or forward referenced symb
                  ; *******************************************************************
                  .equ coldlitsize=12
                  COLDLIT:
-003f9c 0000      STARTV: .dw      0
-003f9d 8000      DPC:    .dw      OFLASH
-003f9e 090c      DPE:    .dw      ehere
-003f9f 02ff      DPD:    .dw      dpdata
-003fa0 f6f2      LW:     fdw      lastword
-003fa1 ee7a      STAT:   fdw      DOTSTATUS
+003fa0 0000      STARTV: .dw      0
+003fa1 8000      DPC:    .dw      OFLASH
+003fa2 090c      DPE:    .dw      ehere
+003fa3 02ff      DPD:    .dw      dpdata
+003fa4 f6f2      LW:     fdw      lastword
+003fa5 ee7a      STAT:   fdw      DOTSTATUS
                  ;*******************************************************************
                  ; BOOT sector END **************************************************
                  
@@ -7290,7 +7294,7 @@ counted separately from r26..r31 here.
 .dseg memory usage only counts static data declared with .byte
 
 ATmega328 register use summary:
-r0 :  18 r1 :  21 r2 :   5 r3 :   1 r4 :   0 r5 :  21 r6 :   6 r7 :   5 
+r0 :  20 r1 :  23 r2 :   5 r3 :   1 r4 :   0 r5 :  21 r6 :   6 r7 :   5 
 r8 :   4 r9 :   4 r10:   5 r11:   5 r12:   0 r13:   0 r14:   2 r15:   2 
 r16: 133 r17:  55 r18:   7 r19:   2 r20:  14 r21:   7 r22:  35 r23:  12 
 r24: 244 r25: 188 r26:  55 r27:  40 r28:   5 r29:   5 r30:  77 r31:  52 
@@ -7310,8 +7314,8 @@ cpi   :  31 cpse  :   5 dec   :   4 eor   :   2 fmul  :   0 fmuls :   0
 fmulsu:   0 icall :   0 ijmp  :  15 in    :  15 inc   :   5 jmp   : 161 
 ld    : 117 ldd   :   3 ldi   :  65 lds   :  20 lpm   :   7 lsl   :  11 
 lsr   :   1 mov   :  24 movw  :  39 mul   :   4 muls  :   0 mulsu :   0 
-neg   :   0 nop   :   0 or    :   6 ori   :  19 out   :  25 pop   :  86 
-push  :  34 rcall : 952 ret   : 130 reti  :   1 rjmp  : 110 rol   :  14 
+neg   :   0 nop   :   0 or    :   6 ori   :  19 out   :  25 pop   :  88 
+push  :  36 rcall : 952 ret   : 130 reti  :   1 rjmp  : 110 rol   :  14 
 ror   :  21 sbc   :   8 sbci  :   3 sbi   :   6 sbic  :   2 sbis  :   0 
 sbiw  :  14 sbr   :  15 sbrc  :  12 sbrs  :  18 sec   :   0 seh   :   0 
 sei   :   5 sen   :   0 ser   :   5 ses   :   0 set   :   1 sev   :   0 
@@ -7322,7 +7326,7 @@ Instructions used: 76 out of 113 (67.3%)
 ATmega328 memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x005f00 0x007f44   5628   2478   8106   32768  24.7%
+[.cseg] 0x005f00 0x007f4c   5636   2478   8114   32768  24.8%
 [.dseg] 0x000100 0x000301      0    513    513    2048  25.0%
 [.eseg] 0x000000 0x000002      0      2      2    1024   0.2%
 

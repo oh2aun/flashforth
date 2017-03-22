@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          20.03.2017                                        *
+;    Date:          22.03.2017                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "20.03.2017"
+#define DATE "22.03.2017"
 
 
 ; Register definitions
@@ -5148,6 +5148,8 @@ IWRITE_BUFFER:
         ldi     t0, low(PAGESIZEB);init loop variable
         ldi     xl, low(ibuf)
         ldi     xh, high(ibuf)
+        push    r0
+        push    r1
 IWRITE_BUFFER1:
         ld      r0, x+
         ld      r1, x+
@@ -5176,6 +5178,8 @@ IWRITE_BUFFER2:
         rjmp    WARM_     ; reset
         subi    t0, 1
         brne    IWRITE_BUFFER2
+        pop     r1
+        pop     r0
 	ser     t0
 	mov     ibaseh, t0
 .ifdef RAMPZ
