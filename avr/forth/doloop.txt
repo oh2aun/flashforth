@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      doloop.txt                                        *
-\    Date:          03.02.2014                                        *
+\    Date:          11.04.2017                                        *
 \    File Version:  5.0                                               *
 \    MCU:           Atmega (not 256)                                  *
 \    Copyright:     Mikael Nordman                                    *
@@ -15,7 +15,7 @@ marker -doloop
 
 : compileonly $10 shb ;
 
-#18 constant ind inlined   \ R18:R19 are unused by the kernel
+#20 constant ind inlined   \ R18:R19 are unused by the kernel
 
 : (do)  ( limit index -- R: leave oldindex xfaxtor ) 
   r>
@@ -35,8 +35,8 @@ marker -doloop
 ; compileonly
 
 : (+loop) ( n -- )
-  [ $0f28 i, ]   \ add r18, tosl
-  [ $1f39 i, ]   \ add r19, tosh
+  [ $0f48 i, ]   \ add r20, tosl
+  [ $1f59 i, ]   \ add r21, tosh
   inline drop
 ; compileonly
 
@@ -74,7 +74,7 @@ marker -doloop
 
 
 : loop
-  $0d26 i, $1d35 i, \ add 1 to r18:r19
+  $0d46 i, $1d55 i, \ add 1 to r20:r21
 \  postpone (loop)
   $f00b i,               \ bra +2 if overflow
   postpone again
