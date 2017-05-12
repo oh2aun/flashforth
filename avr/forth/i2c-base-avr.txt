@@ -5,6 +5,7 @@
 \ i2c_base.txt for FlashForth on PIC18
 \ and the Atmel datasheet, of course.
 \ Peter J.  2014-10-27
+\ Watchdog added Mikael Nordman @ 11.5.2017
 
 -i2c-base
 marker -i2c-base
@@ -34,7 +35,8 @@ $bc constant TWCR
 : i2c.wait ( -- ) \ Wait for operation to complete
   \ When TWI operations are done, the hardware sets 
   \ the TWINT interrupt flag, which we will poll.
-  begin TWCR c@ mTWINT and until 
+  \ Watchdog timeout
+  7 wd+ begin TWCR c@ mTWINT and until cwd 
 ;
 
 : i2c.start ( -- ) \ Send start condition
@@ -57,9 +59,9 @@ $bc constant TWCR
   [ mTWINT mTWEN or ] literal TWCR c!
   i2c.wait
   \ Test for arrival of an ACK depending on what was sent.
-  TWSR c@ $f8 and $18 xor 0= if 0 exit then \ SLA+W
-  TWSR c@ $f8 and $28 xor 0= if 0 exit then \ data byte
-  TWSR c@ $f8 and $40 xor 0= if 0 exit then \ SLA+R
+  TWSR c@ $f8 and $18 = if 0 exit then \ SLA+W
+  TWSR c@ $f8 and $28 = if 0 exit then \ data byte
+  TWSR c@ $f8 and $40 = if 0 exit then \ SLA+R
   -1 \ Something other than an ACK resulted
 ;
 
@@ -79,19 +81,19 @@ $bc constant TWCR
 
 \ Address slave for writing, leaving true if slave ready.
 : i2c.addr.write ( 7-bit-addr -- )
-  1 lshift 1 invert and \ Build full byte with write-bit as 0
+  2*            \ Build full byte with write-bit as 0
   i2c.start i2c.c! if false else true then
 ;
 
 \ Address slave for reading, leaving true if slave ready.
 : i2c.addr.read ( 7-bit-addr -- )
-  1 lshift 1 or \ Build full byte with read-bit as 1
+  2* 1+         \ Build full byte with read-bit as 1
   i2c.start i2c.c! if false else true then
 ;
 
 \ Detect presence of device, leaving true if slave responded.
 \ If the slave ACKs the read request, fetch one byte only.
 : i2c.ping? ( 7-bit-addr -- f )
-  1 lshift 1 or \ Build full byte with read-bit as 1
+  2* 1+  \ Build full byte with read-bit as 1
   i2c.start i2c.c! 0= if i2c.c@.nack drop true else false then
 ;
