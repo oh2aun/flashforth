@@ -14,6 +14,7 @@ marker -i2c-detect
 : i2c.7bitaddr? ( a -- f)  $7 $78 within ;
 
 : i2c.detect   ( -- )
+    i2c.init
     base @ hex
     \ header line
     cr 5 spaces $10 0 do i 2 u.r loop
@@ -31,12 +32,13 @@ marker -i2c-detect
          ."    "
       then
     loop 
+    i2c.stop
     cr base !
 ;
 
 \ With a lone Microchip TC74A0 sitting on the bus,
 \ the output looks like
-\ i2c.init  ok<$,ram> 
+\ ok<$,ram>
 \ i2c.detect 
 \      00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 
 \ 00 :                      -- -- -- -- -- -- -- -- -- 
