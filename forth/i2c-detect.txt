@@ -4,9 +4,9 @@
 \
 \ Copied from amForth distribution (lib/hardware/)
 \ and lightly edited to suit FlashForth 5.0 on AVR.
-\ Builds upon i2c-base.txt and doloop.txt.
+\ Builds upon i2c-base.
 \ Peter J. 2014-10-27
-
+\ Mikael N. 2017-5-12 for..next instead of do..loop
 -i2c-detect
 marker -i2c-detect
 
@@ -17,21 +17,22 @@ marker -i2c-detect
     i2c.init
     base @ hex
     \ header line
-    cr 5 spaces $10 0 do i 2 u.r loop
-    $80 0 do
-      i $0f and 0= if
-        cr i 2 u.r [char] : emit space
+    cr 5 spaces 0 $10 for dup 2 u.r  1+ next drop
+    0 $80 for
+      dup $0f and 0= if
+        cr dup 2 u.r [char] : emit space
       then
-      i i2c.7bitaddr? if
-        i i2c.ping? if \ does device respond?
-            i 2 u.r
+      dup i2c.7bitaddr? if
+        dup i2c.ping? if \ does device respond?
+            dup 2 u.r
           else
             ." -- " 
         then
       else
          ."    "
       then
-    loop 
+      1+
+    next drop 
     i2c.stop
     cr base !
 ;
@@ -50,4 +51,4 @@ marker -i2c-detect
 \ 60 : -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 \ 70 : -- -- -- -- -- -- -- --                         
 \  ok<$,ram> 
-\ i2c.stop  ok<$,ram> 
+

@@ -36,7 +36,7 @@ $bc constant TWCR
   \ When TWI operations are done, the hardware sets 
   \ the TWINT interrupt flag, which we will poll.
   \ Watchdog timeout
-  7 wd+ begin TWCR c@ mTWINT and until cwd 
+  7 wd+ begin TWCR c@ mTWINT and until wd-
 ;
 
 : i2c.start ( -- ) \ Send start condition
