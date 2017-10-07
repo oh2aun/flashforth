@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          16.03.2017                                        *
+;    Date:          07.10.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -39,28 +39,21 @@
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
 #else
-#define OPERATOR_TX  TX1
-#define OPERATOR_RX  RX1
+#define OPERATOR_TX  TX1_
+#define OPERATOR_RX  RX1_
 #define OPERATOR_RXQ RX1Q
 #endif
 
 #undefine IDLE_MODE      ; Not supported for USB
-#define IDLE_MODE DISABLE 
+#define IDLE_MODE DISABLE
 
-        extern _stack
-        extern USBCheckBusStatus
         extern USBDriverService
         extern cdc_data_tx
         extern cdc_data_rx
         extern cdc_notice
         extern usb_device_state
-        extern ep3Bi
-        extern ep3Bo
-        global device_dsc
-        global sd001
-        global sd002
-        global FLAGS2          ; Bit 7 used by USB lib 
-
+        extern ep3istat
+        extern ep3ostat
 #else ; Normal UART
 
 #define OPERATOR_TX  TX1_
@@ -195,15 +188,15 @@ state    res 1       ; State value. Can only be changed by []
 wflags   res 1       ; Word flags from word header
 status   res 1       ; if zero, cpu idle is allowed (f054)
 irq_v    res 2       ; Interrupt vector
+areg     res 1       ; A register
+aregh    res 1
+
 #ifdef USB_CDC
 TX0cnt   res 1       ; Number of characters in USB TX buffer
 TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
 #else
 load_acc res 3       ; (f059)
-ihpclath res 1
-ihtablat res 1
 #endif
-;not_used res 1      ; One byte of free access bank is needed by the USB library.
 
 IRQ_STACK udata
 irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
@@ -241,11 +234,8 @@ SPIE2       res 1       ; Save PIE2 before disabling interrupts
 load_res    res 3       ; 256 ms load result
 #endif
 ;;; Interrupt high priority save variables
-#ifdef USB_CDC
 ihpclath    res 1
 ihtablat    res 1
-#endif
-
 ihtp        res 1
 ihtbank     res 1
 ihtblptrl   res 1
@@ -257,18 +247,11 @@ ihprodh     res 1
 ihap        res 1
 ihabank     res 1
 
-areg        res 1       ; A register
-aregh       res 1
 
 iaddr_lo    res 1       ; Instruction Memory access address
 iaddr_hi    res 1       ; Instruction Memory access address
 #if XSTORE == ENABLE
 iaddr_up    res 1       ; Instruction Memory access address
-#endif
-
-#ifdef USB_CDC
-SpF         res 1       ; Save Forth Sp during C context
-SbankF      res 1       ; 
 #endif
 
 ;;; FORTH variables
@@ -369,7 +352,7 @@ dpeeprom    equ beeprom + h'000c'
 ; Code **********************************************
 FF_RESET code
         nop                      ; 18f252/18f258 ERRATA
-        goto    main 
+        goto    main
 ;;***************************************************
 ;; Interrupt routines
 ;; 1 millisecond tick counter
@@ -618,36 +601,6 @@ WARMLIT:
         dw      0              ; ustatus & uflg
 ;;; **************************************
 
-#ifdef USB_CDC
-device_dsc:
-        dw      0x0112    ; Size of this descriptor in bytes 
-                          ; DEVICE descriptor type
-        dw      0x0200    ; USB Spec Release Number in BCD format
-        dw      0x0002;   ; Class Code CDC device
-                          ; Subclass code = 00
-        dw      0x0800    ; Protocol code = 00
-                          ; EP0 packet size = 8
-        dw      U_VID     ; Vendor ID
-        dw      U_PID     ; Product ID
-        dw      0x0000    ; Device release Number in BCD
-        dw      0x0201    ; Manufacturer string index
-                          ; Product string Index
-        dw      0x0100    ; Device serial number string index
-                          ; Number of possible configurations
-
-; Manufacturer string
-sd001:
-        dw      0x0304    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        dw      'F'
-
-; Product string
-sd002:
-        dw      0x030a    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        dw      'F','F','5','0'
-#endif
-
 ;;; EMPTY dictionary data
 STARTV: dw      h'0000'
 DPC:    dw      dpcode     ; dp_user_dictionary
@@ -666,24 +619,8 @@ EXIT:
         pop
         return
 
-        dw      L_EXIT
-L_TO_A:
-        db      NFA|2,">a"
-TO_A:
-        movff   Sminus, areg+1
-        movff   Sminus, areg+0
-        return
-
-        dw      L_TO_A
-L_A_FROM:
-        db      NFA|2,"a>"
-A_FROM:
-        movff   areg+0, plusS
-        movff   areg+1, plusS
-        return
-
 ; idle
-        dw      L_A_FROM
+        dw      L_EXIT
 #if IDLE_MODE == ENABLE
 L_IDLE:
         db      NFA|4,"idle"
@@ -891,7 +828,7 @@ RX1Q2:
 ;;; TBLPTRH TBLPTRL PCLATH TABLAT TOSL TOSH PRODL PRODH
 ;;; 42 clock cycles
 umstar0:
-        rcall   SETTBLPTR
+        rcall   TOTBLP
         movff   Sminus, PCLATH
         movff   Sminus, TABLAT
         movf    TBLPTRL, W, A
@@ -944,7 +881,7 @@ umstar0:
 #define DCNT            Tbank   ; NOTE 4-bit counter
 
 umslashmod0:
-        rcall   SETTBLPTR     ; DIVISOR_1, DIVISOR_0
+        rcall   TOTBLP     ; DIVISOR_1, DIVISOR_0
         tstfsz  TBLPTRL, A
         bra     umslashmod3
         tstfsz  TBLPTRH, A
@@ -1166,7 +1103,7 @@ L_NEQUAL:
 NEQUAL:
         movf    Sminus, W, A        ; count_hi
         movff   Sminus, PCLATH      ; count_lo
-        rcall   SETTBLPTR
+        rcall   TOTBLP
 ;        movff   Sminus, TBLPTRH     ; NOTE! Incremented by IC@ 
 ;        movff   Sminus, TBLPTRL     ; c-addr2 in program rom
         movff   Sminus, Abank       ; 
@@ -1198,9 +1135,7 @@ NEQUAL2:
 L_SKIP:
         db      NFA|4,"skip"
 SKIP:
-        rcall   SETTBLPTR
-;        movf    Sminus, W, A
-;        movff   Sminus, TBLPTRL ; c character
+        rcall   TOTBLP          ; c character
         movf    Sminus, W, A    ; skip count_hi
         movf    Sminus, W, A
         movwf   PCLATH, A       ; count_lo
@@ -1244,9 +1179,7 @@ SKIP4:
 L_SCAN:
         db      NFA|4,"scan"
 SCAN:
-        rcall   SETTBLPTR
-;        movf    Sminus, W, A
-;        movff   Sminus, TBLPTRL     ; c character
+        rcall   TOTBLP              ; c character
         movf    Sminus, W, A        ; count_hi
         movf    Sminus, W, A        ; count_lo
         movwf   PCLATH, A
@@ -1401,7 +1334,11 @@ ICSTORE1:
         bsf     FLAGS1, idirty, A
         return
 
-SETTBLPTR:
+; >TBLP  x --
+        dw      L_LITERAL
+L_TOTBLP:
+        db      NFA|5,">tblp"
+TOTBLP:
         movf    Sminus, W, A    ; W is used later in IFETCH
         movwf   TBLPTRH
         movff   Sminus, TBLPTRL
@@ -1410,7 +1347,7 @@ SETTBLPTR:
 ; 25 cycles when fetching from buffer
 ; 18-22 cycles when pfetching directly from flash
 IFETCH:
-        rcall   SETTBLPTR
+        rcall   TOTBLP
         cpfseq  ibase_hi
         bra     pfetch0
         movlw   h'c0'
@@ -1426,7 +1363,7 @@ IFETCH:
 
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
-        rcall   SETTBLPTR
+        rcall   TOTBLP
 ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W, A
         cpfseq  ibase_hi
@@ -1536,7 +1473,7 @@ asmecfetch:
         return
 
 ;;; Disable writes to flash and eeprom
-        dw      L_LITERAL
+        dw      L_TOTBLP
 L_FLOCK:
         db      NFA|3,"fl-"
         bsf     FLAGS1, fLOCK
@@ -1639,17 +1576,7 @@ L_PAUSE:
 PAUSE:
         clrwdt
 #ifdef USB_CDC
-        movff   Sp, SpF             ; Save Forth stack pointer
-        movff   Sbank, SbankF
-;        lfsr    Tptr, _stack        ; CSTACK not used by USB LIB
-;        lfsr    Aptr, _stack        ; Initialize C stack pointer
-
-        call    USBCheckBusStatus
         call    USBDriverService
-;        clrf    TRISC
-;        movff   usb_device_state, LATC
-        movff   SpF, Sp
-        movff   SbankF, Sbank       ; Restore Forth stack pointer
         movf    TX0cnt, W, A        ; Nothing to send, timeout not active
         bz      PAUSE0
         movf    ms_count, W, A
@@ -1786,8 +1713,8 @@ TX0:
         movlw   d'15'                ; IN end point buffer size - 1 = 15
         subwf   TX0cnt, W, A         ; TX0cnt - W
         bnn     TX0                  ; PAUSE if there is no space in buffer
-        banksel ep3Bi
-        btfsc   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
+        banksel ep3istat
+        btfsc   ep3istat, 7, BANKED     ; BD3.STAT.UOWN
         bra     TX0                  ; Skip sending if UB TX is not ready
 TX0_0:
         lfsr    Tptr, cdc_data_tx
@@ -1799,16 +1726,16 @@ TX0_0:
         subwf   TX0cnt, W, A         ; TX0cnt - W
         bnz     TX0_2                ; Skip sending if there is space in buffer
 TX0_SEND:                            ; Called from PAUSE in case of timeout
-        banksel ep3Bi
-        btfsc   ep3Bi, 7, BANKED     ; BD3.STAT.UOWN
+        banksel ep3istat
+        btfsc   ep3istat, 7, BANKED     ; BD3.STAT.UOWN
         bra     TX0_2                ; Skip sending if UB TX is not ready
         movf    TX0cnt, W, A
-        movwf   ep3Bi+1, BANKED      ; BD3.COUNTER
+        movwf   ep3istat+1, BANKED      ; BD3.COUNTER
         movlw   0x40
-        andwf   ep3Bi, F, BANKED     ; BD3.STAT
-        btg     ep3Bi, 0x6, BANKED
+        andwf   ep3istat, F, BANKED     ; BD3.STAT
+        btg     ep3istat, 0x6, BANKED
         movlw   0x88
-        iorwf   ep3Bi, F, BANKED     ; BD3.STAT
+        iorwf   ep3istat, F, BANKED     ; BD3.STAT
         clrf    TX0cnt, A
         return
 TX0_1:
@@ -1827,18 +1754,18 @@ L_RX0:
         db      NFA|3,"rxu"
 RX0:
         rcall   PAUSE
-        movlb   ep3Bo
-        btfsc   ep3Bo, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+        movlb   ep3ostat
+        btfsc   ep3ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
         bra     RX0
-        btfss   ep3Bo+1, 0, BANKED ; CDC_BULK_BD_OUT.CNT == 1
+        btfss   ep3ostat+1, 0, BANKED ; CDC_BULK_BD_OUT.CNT == 1
         bra     RX0
 RX0_2:
         movff   cdc_data_rx, plusS
         movlw   h'40'
-        andwf   ep3Bo, F, BANKED
-        btg     ep3Bo, 6, BANKED
+        andwf   ep3ostat, F, BANKED
+        btg     ep3ostat, 6, BANKED
         movlw   h'88'
-        iorwf   ep3Bo, F, BANKED
+        iorwf   ep3ostat, F, BANKED
 #if CTRL_O_WARM_RESET == ENABLE
         movlw   0xf
         subwf   Srw, W, A
@@ -1854,11 +1781,11 @@ RX0_3:
 L_RX0Q:
         db      NFA|4,"rxu?"
 RX0Q:
-        movlb   ep3Bo
-        btfsc   ep3Bo, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+        movlb   ep3ostat
+        btfsc   ep3ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
         goto    FALSE_
         clrf    plusS, A
-        movff   ep3Bo+1, plusS ; CDC_BULK_BD_OUT.CNT
+        movff   ep3ostat+1, plusS ; CDC_BULK_BD_OUT.CNT
         return
 #endif
 ; ***************************************************
@@ -2231,7 +2158,7 @@ L_WARM:
         db      NFA|4,"warm"
 WARM_:  
 #ifdef USB_CDC
-        goto    WARM
+        goto    main
 #else
         reset                   ; Perform a reset, jumps to h'0000' and resets stuff
 #endif
@@ -2412,6 +2339,8 @@ WARM_ZERO_1:
         rcall   STORE
 #endif
         rcall   FRAM
+        clrf    TRISC, A
+        clrf    LATC, A
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
         bsf     INTCON, GIE, A
@@ -2467,7 +2396,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 16.03.2017\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 07.10.2017\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -4347,14 +4276,10 @@ NFATOCFA:
 L_CTON:
         db      NFA|3,"c>n"
 CFATONFA:
-        rcall   TWOMINUS
-        rcall   DUP
-        rcall   CFETCH_A
-        rcall   LIT_A
-        dw      h'007F'
-        rcall   GREATER
-        rcall   ZEROSENSE
-        bz      CFATONFA
+        rcall   MINUS_FETCH
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        bnn     CFATONFA
         return
 
 ; findi   c-addr nfa -- c-addr 0   if not found
@@ -4507,17 +4432,33 @@ UDSLASHMOD:
         rcall   UMSLASHMOD      ; q.h r.l q.l
 ROT_A:
         goto    ROT             ; r.l q.l q.h
+
+        dw      L_UDSLASHMOD
+L_TO_A:
+        db      NFA|2,">a"
+TO_A:
+        movff   Sminus, areg+1
+        movff   Sminus, areg+0
+        return
+
+        dw      L_TO_A
+L_A_FROM:
+        db      NFA|2,"a>"
+A_FROM:
+        movff   areg+0, plusS
+        movff   areg+1, plusS
+        return
+
         
 ; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
 ;                       convert string to number
-        dw      L_UDSLASHMOD
+        dw      L_A_FROM
 L_TONUMBER:
         db      NFA|7,">number"
 TONUMBER:
-        movlb   areg
-        clrf    areg, BANKED
-        clrf    areg+1, BANKED
-        incf    areg, BANKED
+        clrf    areg, A
+        clrf    areg+1, A
+        incf    areg, A
 TONUM1:
         rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
@@ -4543,8 +4484,7 @@ TONUM2:
         rcall   UDSTAR
         rcall   RFROM           ; ud.l ud.h digit
         rcall   MPLUS           ; ud.l ud.h
-        movlb   areg
-        clrf    areg, BANKED
+        clrf    areg, A
         bra     TONUM_CONT
 TONUM_SKIP:
         rcall   DROP
@@ -4554,7 +4494,7 @@ TONUM_CONT:
         rcall   SLASHONE
         bra     TONUM1
 TONUM3:
-        call    A_FROM
+        rcall   A_FROM
         goto    PLUS
 
 BASEQV:   
@@ -4624,13 +4564,13 @@ QNUMD:                          ; Single or double Double number
                                 ; a ud.l ud.h a'
         rcall   ONEMINUS
         call    CFETCH          ; a ud.l ud.h c
-        call    TO_A            ; a ud.l ud.h 
+        rcall   TO_A            ; a ud.l ud.h
         rcall   RFROM           ; a ud.l ud.d sign
         rcall   ZEROSENSE
         bz      QNUMD1
         call    DNEGATE
 QNUMD1: 
-        call    A_FROM          ; a ud.l ud.h c
+        rcall   A_FROM          ; a ud.l ud.h c
         rcall   LIT_A
         dw      '.'
         rcall   MINUS

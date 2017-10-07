@@ -118,13 +118,13 @@ $ffcb constant ssp1con3
 
 \ Address slave for writing, leaves true if slave ready.
 : i2c.addr.write ( 7-bit-addr -- f )
-  1 lshift 1 invert and \ Build full byte with write-bit as 0
+  2*           \ Build full byte with write-bit as 0
   i2c.start i2c.c! 0=
 ;
 
 \ Address slave for reading, leaves true if slave ready.
 : i2c.addr.read ( 7-bit-addr -- f )
-  1 lshift 1 or \ Build full byte with read-bit as 1
+  2* 1+ \ Build full byte with read-bit as 1
   i2c.start i2c.c! 0=
 ;
 

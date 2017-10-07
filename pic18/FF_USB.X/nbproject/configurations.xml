@@ -8,12 +8,13 @@
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
                    projectFiles="true">
-      <itemPath>../lkr/FF_USB_0000.lkr</itemPath>
+      <itemPath>../lkr/FF_USB_0000_p18f14k50.lkr</itemPath>
     </logicalFolder>
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
       <itemPath>../src/ff-pic18.asm</itemPath>
+      <itemPath>../src/usbcdc.asm</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -44,7 +45,6 @@
       <compileType>
         <linkerTool>
           <linkerLibItems>
-            <linkerLibFileItem>../lib/FF_USB_18F2550.lib</linkerLibFileItem>
           </linkerLibItems>
         </linkerTool>
         <archiverTool>
@@ -77,6 +77,7 @@
         <property key="extra-lib-directories" value=""/>
         <property key="hex-output-format" value="INHX32"/>
         <property key="map-file" value="${DISTDIR}/${PROJECTNAME}.${IMAGE_TYPE}.map"/>
+        <appendMe value="-v"/>
       </MPASMWIN-LD>
       <PICkit3PlatformTool>
         <property key="AutoSelectMemRanges" value="auto"/>

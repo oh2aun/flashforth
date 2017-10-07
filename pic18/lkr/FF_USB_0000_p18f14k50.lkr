@@ -4,9 +4,9 @@ LIBPATH .
 
 // No bootloader  Application start at 0x0000
 CODEPAGE   NAME=coder      START=0x0000         END=0x00007
-CODEPAGE   NAME=codei      START=0x0008         END=0x027D7
-CODEPAGE   NAME=code1      START=0x27D8         END=0x027FF        PROTECTED
-CODEPAGE   NAME=code2      START=0x2800         END=0xFFFFF        PROTECTED
+CODEPAGE   NAME=codei      START=0x0008         END=0x025D7
+CODEPAGE   NAME=code1      START=0x25D8         END=0x025FF        PROTECTED
+CODEPAGE   NAME=code2      START=0x2600         END=0xFFFFF        PROTECTED
 
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
@@ -14,8 +14,7 @@ CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
 CODEPAGE   NAME=eedata     START=0xF00000       END=0xF000FF       PROTECTED
 
 ACCESSBANK NAME=flashbuf   START=0x0            END=0x3F           PROTECTED
-ACCESSBANK NAME=acs_lib    START=0x40           END=0x45
-ACCESSBANK NAME=acs_ram    START=0x46           END=0x5F
+ACCESSBANK NAME=acs_ram    START=0x40           END=0x5F
 DATABANK   NAME=userarea   START=0x60           END=0x1FF          PROTECTED
 // DATABANK   NAME=ram_dp     START=0x182          END=0x1FF          PROTECTED
 DATABANK   NAME=usbep      START=0x200          END=0x22F          PROTECTED
