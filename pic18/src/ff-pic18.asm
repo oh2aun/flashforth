@@ -4456,7 +4456,7 @@ L_TONUMBER:
 TONUMBER:
         clrf    areg, A
         clrf    areg+1, A
-        incf    areg, A
+        incf    areg, F, A
 TONUM1:
         rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
