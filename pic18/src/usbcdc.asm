@@ -98,7 +98,7 @@ endif
 #define DEFAULT_STATE           3
 #define ADR_PENDING_STATE       4
 #define ADDRESS_STATE           5
-#define CONFIGURED_STATE        6
+#define CONFIGURED_STATE        8
 
 #define CDC_INT_EP_SIZE         8
 #define CDC_BULK_OUT_EP_SIZE    1
@@ -295,8 +295,6 @@ USBProtocolResetHandler_1:
 
 ;*******************************************************************************
 USBCtrlEPService:
-        clrf TRISC, A
-        movff usb_device_state, LATC
         MOVF USTAT, W, ACCESS
         BNZ USBCtrlEPService_3
         MOVF ep0ostat, W, BANKED

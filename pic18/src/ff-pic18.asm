@@ -140,7 +140,6 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fMEM    equ 7           ; ctrl_trf_mem _RAM _ROM
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
 
@@ -1706,9 +1705,8 @@ L_TX0:
 TX0:
         rcall   PAUSE
         movlb   usb_device_state
-        movf    usb_device_state, W, BANKED
-        sublw   h'6'                 ;discard char if USB not in CONFIGURED_STATE
-        bnz     TX0_1
+        btfss   usb_device_state, 3, BANKED
+        bra     TX0_1         ;discard char if USB not in CONFIGURED_STATE(8)
 
         movlw   d'15'                ; IN end point buffer size - 1 = 15
         subwf   TX0cnt, W, A         ; TX0cnt - W
