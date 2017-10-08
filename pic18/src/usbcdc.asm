@@ -210,9 +210,9 @@ USB_CFG:
 
 ;*******************************************************************************
 USBDriverService:
-        movlb   usb_device_state
+        movlb   ep0ostat
 USBCheckBusStatus:
-        BTFSC   UCON, USBEN, ACCESS
+        BTFSC UCON, USBEN, ACCESS
         BRA USBCheckBusStatus_1
         CLRF UCON, ACCESS
         CLRF UIE, ACCESS
@@ -257,27 +257,33 @@ USBDriverService_2:
         return
 ;*******************************************************************************
 USBStallHandler:
-        BTFSS UEP0, EPSTALL, ACCESS
+        movlb high(UEP0)
+        BTFSS UEP0, EPSTALL, BANKED
         BRA USBStallHandler_1
+        movlb ep0ostat
         rcall USBPrepareForNextSetupTrf
-        BCF UEP0, EPSTALL, ACCESS
+        movlb high(UEP0)
+        BCF UEP0, EPSTALL, BANKED
 USBStallHandler_1:
         BCF UIR, STALLIF, ACCESS
+        movlb ep0ostat
         return
 ;*******************************************************************************
 USBProtocolResetHandler:
-        CLRF UEIR, ACCESS
+        movlb high(UEIR)
+        CLRF UEIR, BANKED
         CLRF UIR, ACCESS
         MOVLW 0x9F
-        MOVWF UEIE, ACCESS
+        MOVWF UEIE, BANKED
         MOVLW 0x7B
         MOVWF UIE, ACCESS
-        CLRF UADDR, ACCESS
-        CLRF UEP1, ACCESS
-        CLRF UEP2, ACCESS
-        CLRF UEP3, ACCESS
+        CLRF UADDR, BANKED
+        CLRF UEP1, BANKED
+        CLRF UEP2, BANKED
+        CLRF UEP3, BANKED
         MOVLW 0x16
-        MOVWF UEP0, ACCESS
+        MOVWF UEP0, BANKED
+        movlb ep0ostat
 USBProtocolResetHandler_1:
         BTFSC UIR, TRNIF, ACCESS
         BRA USBProtocolResetHandler_1
@@ -289,6 +295,8 @@ USBProtocolResetHandler_1:
 
 ;*******************************************************************************
 USBCtrlEPService:
+        clrf TRISC, A
+        movff usb_device_state, LATC
         MOVF USTAT, W, ACCESS
         BNZ USBCtrlEPService_3
         MOVF ep0ostat, W, BANKED
@@ -328,10 +336,12 @@ USBCtrlTrfInHandler:
         SUBWF   usb_device_state, W, BANKED
         BNZ     USBCtrlTrfInHandler_2
         MOVF    setupPkt+2, W, BANKED
-        movwf   UADDR, A
+        movlb   high(UADDR)
+        movwf   UADDR, BANKED
         MOVLW   DEFAULT_STATE
         BTFSS   STATUS, Z, A
         MOVLW   ADDRESS_STATE
+        movlb   ep0ostat
         MOVWF   usb_device_state, BANKED
 USBCtrlTrfInHandler_2:
         DECF    ctrl_trf_state, W, BANKED
@@ -449,19 +459,23 @@ GET_DSC:
 SET_CFG:
 ;*******************************************************************************
 SetCfg:
-        CLRF UEP1, ACCESS
-        CLRF UEP2, ACCESS
-        CLRF UEP3, ACCESS
+        movlb high(UEP1)
+        CLRF UEP1, BANKED
+        CLRF UEP2, BANKED
+        CLRF UEP3, BANKED
+        movlb ep0ostat
         MOVLW ADDRESS_STATE
         TSTFSZ setupPkt+2, BANKED ; USB ACTIVE CFG != 0
         MOVLW CONFIGURED_STATE
         MOVWF usb_device_state, BANKED
 ;*******************************************************************************
 CDCInitEP:
+        movlb high(UEP2)
         MOVLW 0x1A
-        MOVWF UEP2, ACCESS
+        MOVWF UEP2, BANKED
         MOVLW 0x1E
-        MOVWF UEP3, ACCESS
+        MOVWF UEP3, BANKED
+        movlb ep0ostat
 
         MOVLW low(cdc_notice)
         MOVWF ep2iadr, BANKED
