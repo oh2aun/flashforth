@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      asm2.txt                                          *
-\    Date:          20.03.2017                                        *
+\    Date:          16.10.2017                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
@@ -21,7 +21,7 @@ flash ar: rules
 [ 1f0.4 , 00f.0 , ] \ 01 xxxx.xxxd.dddd.rrrr ld x+ -x y+ -y z+ -z
 [ 1f0.4 , 00f.0 , ] \ 02 xxxx.xxxd.dddd.rrrr st x+ -x y+ -y z+ -z
 [ 030.4 , 0cf.2 , ] \ 03 xxxx.xxxx.kkpp.kkkk adiw sbiw
-[ 1f0.4 , 007.0 , ] \ 04 xxxx.xxxd.dddd.0bbb cbi sbi sbic sbis
+[ 0f8.3 , 007.0 , ] \ 04 xxxx.xxxx.aaaa.abbb cbi sbi sbic sbis
 [ 1f0.4 , 60f.5 , ] \ 05 xxxx.xaad.dddd.aaaa in
 [ 1f0.4 , 60f.5 , ] \ 06 xxxx.xaad.dddd.aaaa out
 [ 1f0.4 , 000.0 , ] \ 07 xxxx.xxxd.dddd.xxxx lds
