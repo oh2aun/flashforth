@@ -102,7 +102,7 @@ endif
 
 #define CDC_INT_EP_SIZE         8
 #define CDC_BULK_OUT_EP_SIZE    1
-#define CDC_BULK_IN_EP_SIZE     0x10
+#define CDC_BULK_IN_EP_SIZE     1
 
 #define MUID_NULL               0
 #define MUID_USB9               1
@@ -113,6 +113,7 @@ endif
         global cdc_notice
         global usb_device_state
         global ep3istat
+        global ep3icnt
         global ep3ostat
 
 USB_EP udata
@@ -491,6 +492,8 @@ CDCInitEP:
         MOVLW _USIE|_DTSEN ;0x88
         MOVWF ep3ostat, BANKED
 
+        MOVLW 1
+        MOVWF ep3icnt, BANKED
         MOVLW low(cdc_data_tx)
         MOVWF ep3iadr, BANKED
         MOVLW high(cdc_data_tx)

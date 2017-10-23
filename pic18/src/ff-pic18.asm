@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          07.10.2017                                        *
+;    Date:          23.10.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -53,6 +53,7 @@
         extern cdc_notice
         extern usb_device_state
         extern ep3istat
+        extern ep3icnt
         extern ep3ostat
 #else ; Normal UART
 
@@ -190,10 +191,7 @@ irq_v    res 2       ; Interrupt vector
 areg     res 1       ; A register
 aregh    res 1
 
-#ifdef USB_CDC
-TX0cnt   res 1       ; Number of characters in USB TX buffer
-TX0tmr   res 1       ; Timestamp  for the last char into the USB TX buffer
-#else
+#ifndef USB_CDC
 load_acc res 3       ; (f059)
 #endif
 
@@ -1576,12 +1574,6 @@ PAUSE:
         clrwdt
 #ifdef USB_CDC
         call    USBDriverService
-        movf    TX0cnt, W, A        ; Nothing to send, timeout not active
-        bz      PAUSE0
-        movf    ms_count, W, A
-        subwf   TX0tmr, W, A        ; W = TX0tmr - ms_count
-        bnn     PAUSE0
-        rcall   TX0_SEND
 PAUSE0:
 #endif
 #ifdef IDLEN
@@ -1704,46 +1696,19 @@ L_TX0:
         db      NFA|3,"txu"
 TX0:
         rcall   PAUSE
-        movlb   usb_device_state
+        movlb   ep3istat
         btfss   usb_device_state, 3, BANKED
-        bra     TX0_1         ;discard char if USB not in CONFIGURED_STATE(8)
-
-        movlw   d'15'                ; IN end point buffer size - 1 = 15
-        subwf   TX0cnt, W, A         ; TX0cnt - W
-        bnn     TX0                  ; PAUSE if there is no space in buffer
-        banksel ep3istat
+        goto    DROP          ;discard char if USB not in CONFIGURED_STATE(8)
         btfsc   ep3istat, 7, BANKED     ; BD3.STAT.UOWN
-        bra     TX0                  ; Skip sending if UB TX is not ready
+        bra     TX0                     ; Pause if USB TX is not ready
 TX0_0:
-        lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
-        movf    TX0cnt, W, A
-        movff   Sminus, TWrw
-        incf    TX0cnt, F, A
-        movlw   d'15'                ; IN end point buffer size - 1 = 15
-        subwf   TX0cnt, W, A         ; TX0cnt - W
-        bnz     TX0_2                ; Skip sending if there is space in buffer
-TX0_SEND:                            ; Called from PAUSE in case of timeout
-        banksel ep3istat
-        btfsc   ep3istat, 7, BANKED     ; BD3.STAT.UOWN
-        bra     TX0_2                ; Skip sending if UB TX is not ready
-        movf    TX0cnt, W, A
-        movwf   ep3istat+1, BANKED      ; BD3.COUNTER
+        movff   Sminus, cdc_data_tx
         movlw   0x40
-        andwf   ep3istat, F, BANKED     ; BD3.STAT
+        andwf   ep3istat, F, BANKED
         btg     ep3istat, 0x6, BANKED
         movlw   0x88
-        iorwf   ep3istat, F, BANKED     ; BD3.STAT
-        clrf    TX0cnt, A
-        return
-TX0_1:
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-        return
-TX0_2:
-        movf    ms_count, W, A
-        addlw   h'3'
-        movwf   TX0tmr, A
+        iorwf   ep3istat, F, BANKED
         return
 ;***************************************************
 ; KEY   -- c    get character from the USB line
@@ -2394,7 +2359,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 07.10.2017\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 23.10.2017\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
