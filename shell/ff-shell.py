@@ -42,13 +42,13 @@ class Config(object):
   def __init__(self):
     self.serial_port  = '/dev/ttyACM0'
     self.rate = '38400'
-    self.rtscts = False
-    self.xonxoff = False
+    self.hw = False
+    self.sw = False
 
 def serial_open(config):
-  print "Port:"+config.port+" Speed:"+config.rate+" rtscts:"+str(config.rtscts)+" xonxoff:"+str(config.xonxoff)
+  print "Port:"+config.port+" Speed:"+config.rate+" hw:"+str(config.hw)+" sw:"+str(config.sw)
   try:
-    config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.rtscts, xonxoff=config.xonxoff)
+    config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
     print("Could not open serial port '{}': {}".format(com_port, e))
     raise e
@@ -89,18 +89,17 @@ def parse_arg(config):
            epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename. Warm start with #warm.""")
   parser.add_argument("--port", "-p", action="store",
          type=str, default="/dev/ttyACM0", help="Serial port name")
-  parser.add_argument("--rtscts", action="store_true",
+  parser.add_argument("--hw", action="store_true",
          default=False, help="Serial port RTS/CTS enable")
-  parser.add_argument("--xonxoff", action="store_true",
+  parser.add_argument("--sw", action="store_true",
          default=False, help="Serial port XON/XOFF enable")
   parser.add_argument("--speed", "-s", action="store",
          type=str, default=38400, help="Serial port speed")
   arg = parser.parse_args()
   config.port = arg.port
-  config.rtscts = arg.rtscts
-  config.xonxoff = arg.xonxoff
+  config.hw = arg.hw
+  config.sw = arg.sw
   config.rate = arg.speed
-  print arg.speed
 
 #main loop for sending and receiving
 def main():
@@ -164,6 +163,8 @@ def main():
           print "\nFile not found: "+pathfile
       if line[:5] == "#warm":
         line = '\017'           # CTRL-O
+      if line[:5] == "#esc":
+        line = '\033'           # CTRL-O
       THR_LOCK.acquire()
       try:
         waitForNL = 10

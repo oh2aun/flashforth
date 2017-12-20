@@ -11,6 +11,7 @@
 \
 \ Test tasks and the character bit manipulation words
 \
+single
 -3blink
 marker -3blink
 ram hex
@@ -58,4 +59,4 @@ flash $0 $10 $10 $4 task: tblink2
 
 \ Make 3blink start after reset.
 ' 3blink is turnkey
-warm
+ warm

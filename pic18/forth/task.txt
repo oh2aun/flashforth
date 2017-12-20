@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task.txt                                          *
-\    Date:          07.06.2015                                        *
+\    Date:          03.12.2017                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -37,7 +37,7 @@
 \ Do not use user variables as task specific variables
 \ User variables are needed by _words_common_to_several_tasks_
 \ which need some task specific data storage.
-
+single
 -task
 marker -task
 hex ram
@@ -74,8 +74,8 @@ hex ram
 : tinit \ taskloop-addr task-addr -- 
   \ use task user area
   @+ up!                            \ a t+2
-  ul@ if                 \ ? Already running
-    2drop
+  ul@ if 
+    2drop                           \ Already running
   else
     dup 2- task !        \ Pointer to task area
     \ save area = uarea+cell+addsize
@@ -89,7 +89,7 @@ hex ram
     p! p2+         \ taskloop-addr to save area
     1 pc!          \ return stack size to save area
     @p up@ !       \ end of save area to restore pointer
-    0 ul!          \ no link yet
+    false ul!      \ no link yet
     decimal        \ Set the base to decimal
     r>p
   then
@@ -100,32 +100,32 @@ hex ram
 \ May only be executed from the operator task
 \ task-addr -- 
 : run
-  @ up! ul@ 0= if              \ Already running
-    up@                        \ task-uarea
-    op! ul@                    \ task-uarea operator-ulink
-    over ul!      
-    swap up! ul! 
+  @ up! ul@ 0= if    \ t Already running ?
+    up@              \ t t-up
+    op! ul@          \ o t-up o-ul
+    over up! dup     \ t t-up o-ul o-ul
+    if   ul!
+    else drop op@ ul!
+    then op! ul!
   then
-  op!                          \ run operator task
+  op!                \ run operator task
 ;
 
 \ End a task by linking it out from the linked list
 \ May only be executed from the operator task
 : end ( task-addr -- )  
   @ up! ul@ if
-    up@
-    op!
-    begin                     \ find the uarea in the linked list
-      dup ul@ <>              \ uarea flag
+    ul@ up@             \ t t-ul t-up
+    false ul!
+    op!                 \ o t-ul t-up
+    begin               \ find the uarea in the linked list
+      dup ul@ <>        \ t t-ul t-up flag
     while
-      ul@ up!                 \ uarea
+      ul@ up!           \ t' t-ul t-up
     repeat
-    up@                       \ uarea prev-uarea
-    swap up!                  \ prev-uarea
-    ul@                       \ prev-uarea next-uarea
-    0 ul!                     \ ulink of a ended task is zero
-    swap up!                  \ next-uarea
-    ul!                       \ 
+    drop dup op@ =
+    if   drop false     \ Only operator task left
+    then ul!
   then
   op!
 ;
@@ -133,33 +133,27 @@ hex ram
 \ End all tasks except the operator task
 \ May only be executed from the operator task
 : single ( -- )
-  ul@ op@ <> if             \ Are there any running tasks
-    ul@ op@ ul!             \ link operator to himself
-    up!                     \ move to next user area
-    begin
-      ul@ op@ <>            \ is this the last linked user area
-    while
-      ul@ 0 ul!             \ write zero to ulink
-      up!                   \ and move to next user area
-    repeat
-    0 ul!
-    op!
-  then
+  begin
+    ul@            \ is this the last linked user area
+  while
+    ul@ false ul!  \ write zero to ulink
+    up!            \ and move to next user area
+  repeat
+  op!
 ;
 
 \ List all running tasks
 : tasks ( -- )
-  up@ op!
   begin
-    up@ 
-    task @ 6 - c>n op! .id space 
+    up@
+      task @ 6 - c>n
+      op! .id space
     up!
-    ul@ op@ -
+    ul@ op@ <> ul@ and
   while
     ul@ up!
   repeat
-  up!
+  op!
 ;
 
 hex ram
-

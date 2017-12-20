@@ -20,7 +20,7 @@
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
-.equ BAUDRATE0 = 9600               ; Serial baudrate UART0
+.equ BAUDRATE0 = 38400              ; Serial baudrate UART0
 .equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd

@@ -1,82 +1,219 @@
-\ *********************************************************************
-\                                                                     *
-\    Filename:      see.txt                                           *
-\    Date:          06.01.2014                                        *
-\    FF Version:    5.0                                               *
-\    MCU:           PIC18                                             *
-\    Copyright:     Mikael Nordman                                    *
-\    Author:        Mikael Nordman                                    *
-\ *********************************************************************
-\    FlashForth is licensed acording to the GNU General Public License*
-\ *********************************************************************
-
--see 
+\ PIC18 disassembler
+-see
 marker -see
-hex ram
+
+flash create symfc
+[ $fc00 , #21 ,                       ]
+[ %0010.0100.0000.0000 , ," addwf"    ]
+[ %0010.0000.0000.0000 , ," addwfc"   ]
+[ %0001.0100.0000.0000 , ," andwf"    ]
+[ %0001.1100.0000.0000 , ," comf"     ]
+[ %0000.0100.0000.0000 , ," decf"     ]
+[ %0010.1100.0000.0000 , ," decfsz"   ]
+[ %0100.1100.0000.0000 , ," dcfsnz"   ]
+[ %0010.1000.0000.0000 , ," incf"     ]
+[ %0011.1100.0000.0000 , ," incfsz"   ]
+[ %0100.1000.0000.0000 , ," infsnz"   ]
+[ %0001.0000.0000.0000 , ," iorwf"    ]
+[ %0101.0000.0000.0000 , ," movf"     ]
+[ %0011.0100.0000.0000 , ," rlcf"     ]
+[ %0100.0100.0000.0000 , ," rlncf"    ]
+[ %0011.0000.0000.0000 , ," rrcf"     ]
+[ %0100.0000.0000.0000 , ," rrncf"    ]
+[ %0101.0100.0000.0000 , ," subfwb"   ]
+[ %0101.1100.0000.0000 , ," subwf"    ]
+[ %0101.1000.0000.0000 , ," subwfb"   ]
+[ %0011.1000.0000.0000 , ," swapf"    ]
+[ %0001.1000.0000.0000 , ," xorwf"
+
+flash create symfe
+[ $fe00 , #9 ,                        ]
+[ %0110.1010.0000.0000 , ," clrf"     ]
+[ %0110.0010.0000.0000 , ," cpfseq"   ]
+[ %0110.0100.0000.0000 , ," cpfsgt"   ]
+[ %0110.0000.0000.0000 , ," cpfslt"   ]
+[ %0110.1110.0000.0000 , ," movwf"    ]
+[ %0110.0010.0000.0000 , ," mulwf"    ]
+[ %0110.1100.0000.0000 , ," negf"     ]
+[ %0110.1000.0000.0000 , ," setf"     ]
+[ %0110.0110.0000.0000 , ," tstfsz"
+
+flash create symf0
+[ $f000 , #6 ,                        ]
+[ %1100.0000.0000.0000 , ," movff"    ]
+[ %1001.0000.0000.0000 , ," bcf"      ]
+[ %1000.0000.0000.0000 , ," bsf"      ]
+[ %1011.0000.0000.0000 , ," btfsc"    ]
+[ %1010.0000.0000.0000 , ," btfss"    ]
+[ %0111.0000.0000.0000 , ," btg"
+
+flash create braff
+[ $ff00 , #8 ,                        ]
+[ %1110.0010.0000.0000 , ," bc"       ]
+[ %1110.0110.0000.0000 , ," bn"       ]
+[ %1110.0011.0000.0000 , ," bnc"      ]
+[ %1110.0111.0000.0000 , ," bnn"      ]
+[ %1110.0101.0000.0000 , ," bnov"     ]
+[ %1110.0001.0000.0000 , ," bnz"      ]
+[ %1110.0100.0000.0000 , ," bov"      ]
+[ %1110.0000.0000.0000 , ," bz"
+
+flash create litff
+[ $ff00 , #9 ,                         ]
+[ %0000.1111.0000.0000 , ," addlw"     ]
+[ %0000.1011.0000.0000 , ," andlw"     ]
+[ %0000.1001.0000.0000 , ," iorlw"     ]
+[ %0000.1110.0000.0000 , ," movlw"     ]
+[ %0000.1101.0000.0000 , ," mullw"     ]
+[ %0000.1100.0000.0000 , ," retlw"     ]
+[ %0000.1000.0000.0000 , ," sublw"     ]
+[ %0000.0001.0000.0000 , ," movlb"     ]
+[ %0000.1010.0000.0000 , ," xorlw"
+
+flash create opcffff
+[ $ffff , #5 ,                         ]
+[ %0000.0000.0000.0100 , ," clrwdt"    ]
+[ %0000.0000.0000.0110 , ," pop"       ]
+[ %0000.0000.0000.0101 , ," push"      ]
+[ %0000.0000.0001.0010 , ," return"    ]
+[ %0000.0000.0000.0011 , ," sleep"
+
+flash create braf8
+[ $f800 , #2 ,                         ]
+[ %1101.1000.0000.0000 , ," rcall"     ]
+[ %1101.0000.0000.0000 , ," bra"
+
+flash create braffff
+[ $ff00 , #2 ,                         ]
+[ %1110.1100.0000.0000 , ," call"      ]
+[ %1110.1111.0000.0000 , ," goto"
+
+flash create regs
+[ $d9 , ," rpl" ]
+[ $da , ," rph" ]
+[ $db , ," (rp+w)" ]
+[ $dc , ," (+rp)" ]
+[ $dd , ," (rp-)" ]
+[ $de , ," (rp+)" ]
+[ $df , ," (rp)" ]
+[ $e1 , ," tpl" ]
+[ $e2 , ," tph" ]
+[ $e3 , ," (tp+w)" ]
+[ $e4 , ," (+tp)" ]
+[ $e5 , ," (tp-)" ]
+[ $e6 , ," (tp+)" ]
+[ $e7 , ," (tp)"  ]
+[ $e9 , ," spl" ]
+[ $ea , ," sph" ]
+[ $eb , ," (sp+w)" ]
+[ $ec , ," (+sp)" ]
+[ $ed , ," (sp-)" ]
+[ $ee , ," (sp+)" ]
+[ $ef , ," (sp)" ]
+[ $f9 , ," pcl" ]
+[ $fa , ," pclath" ]
+[ $fd , ," tosl" ]
+[ $fe , ," tosh" 0 ,
+
+ram variable dis.tbl.cnt
+
 : *@ dup @ ;
-: u.4 4 u.r ;
-: *@+ dup cell+ @ u.4 ;
-: 5sp 5 spaces ;
-: @braddr ( addr -- addr xt-addr )
-    *@ 7ff and dup 400 and 
-    if f800 or then 2* over +  cell+ ;
-: @xtaddr ( addr -- addr xt-addr )
-    dup dup c@ swap 2+ @ 8 lshift + 2* ;
-: .dw ( addr -- addr+2 ) *@ u.4 cell+ ;
-: .bra ( addr -- addr+2 ) @braddr u.4 cell+ ;
-: .bz  ( addr -- addr+2 )
-    *@ ff and dup 80 and
-    if ff00 or then 2* over + cell+ u.4 cell+ ;
-: .lit ( addr -- addr+6 ) @xtaddr c>n .id cell+ cell+ .dw ;
-: .bit ( addr -- addr+2 ) dup @ fff and 9 rshift u.4 cell+ ;
-: .reg ( addr -- addr ) space dup @ ff and u.4 ;
-: ?call ( addr -- addr f ) *@ fe00 and ec00 = ;
-: ?ret ( addr -- addr f ) *@ 0012 = ;
-: ?goto  ( addr -- addr f ) *@ ff00 and ef00 = ;
-: ?bra ( addr -- addr f ) *@ f800 and d000 = ;
-: ?bz ( addr --  addr f ) *@ ff00 and e000 = ;
-: ?bnz ( addr --  addr f ) *@ ff00 and e100 = ;
-: ?bov ( addr --  addr f ) *@ ff00 and e400 = ;
-: ?bnov ( addr --  addr f ) *@ ff00 and e500 = ;
-: ?bc ( addr -- addr f ) *@ ff00 and e200 = ;
-: ?rcall ( addr -- addr f ) *@ f800 and d800 = ;
-: ?bcf ( addr -- addr f ) *@ f000 and 9000 = ;
-: ?bsf ( addr -- addr f ) *@ f000 and 8000 = ;
-: ?btfsc ( addr -- addr f ) *@ f000 and b000 = ;
-: ?btfss ( addr -- addr f ) *@ f000 and a000 = ;
-: (see) ( addr -- addr' | false )
-        dup u.4
-        *@ u.4
-        ?call if *@+ ." call  " @xtaddr c>n .id cell+ cell+ else 
-        ?rcall if 5sp ." rcall " @braddr c>n .id cell+ else
-        ?bz if 5sp ." bz    " .bz else
-        ?bnz if 5sp ." bnz   " .bz else
-        ?bov if 5sp ." bov   " .bz else
-        ?bnov if 5sp ." bnov  " .bz else
-        ?bc if 5sp ." bc    " .bz else 
-        ?bra if 5sp ." bra   " .bra else
-        ?ret if 5sp ." return" drop false else
-        ?goto if *@+ ." goto  " @xtaddr c>n .id cell+ drop false else
-        ?bcf if 5sp ." bcf  " .reg .bit else
-        ?bsf if 5sp ." bsf  " .reg .bit else
-        ?btfsc if 5sp ." btfsc" .reg .bit else
-        ?btfss if 5sp ." btfss" .reg .bit else
-        cell+
-        then then then then then 
-        then then then then then 
-        then then then then
-        cr ;
-
-: dis ( addr -- )
-  cr
+: dist ( a symtab -- a' flag) 
+  over @ !p>r
+  @+ >r @+ dis.tbl.cnt !
   begin
-    (see) dup 0=
-  until
-  drop
+    dup @ dis.tbl.cnt @  
+  while
+    r@ and dup @p r@ and <>
+  while
+    drop 2+ c@+ + aligned -1 dis.tbl.cnt +!
+  repeat
+  then 
+  @p r@ and  = 
+  if   2+ c@+ type space
+  else drop
+  then dis.tbl.cnt @ rdrop r>p
 ;
-: see ( "word" -- )
-  ' dis
+: u.2 $ff and 2 u.r ;
+: u.4 4 u.r ;
+: dis.a ( opc -- ) $0100 and if [char] b else [char] a then emit ;
+: dis.d ( opc -- ) $0200 and if [char] f else [char] w then emit space ;
+: dis.b ( opc -- ) $0e00 and 9 rshift u. ;
+
+: dis.r ( opc -- opc ) 
+  !p>r regs
+  begin
+    @+ dup
+  while
+    @p $1ff and <>
+  while
+    c@+ + aligned
+  repeat
+    true
+  then
+  if   c@+ type space
+  else drop @p u.2
+  then @p r>p
 ;
+: disfc ( a -- a' )
+  symfc dist if *@ dis.r dup dis.d dis.a then ;
+: disfe ( a -- a' flag )
+  symfe dist dup >r if @+ dis.r dis.a then r> ;
+: dis.0 $fff and dup $f5f > if $ff and dis.r drop else u.4 then ;
+: disbit
+  symf0 dist 
+  if   dis.tbl.cnt @ 6 = 
+       if   @+ dis.0 *@ dis.0
+       else *@ dup u.2 dup dis.b dis.a
+       then
+  then ;
+ 
+: disco
+  braff dist 
+  if *@ $ff and dup 80 and
+     if   $ff00 or
+     then 2* over + 2+ u.4
+  then ;
+: dislit litff dist if *@ u.2 then ;
 
-hex ram
+: disend ( n -- ) dis.tbl.cnt @ = if cr abort then ;
 
+: disffff opcffff dist drop 2 disend ;
+: disbra
+  braf8 dist 
+  if   *@ $7ff and dup 400 and 
+       if   $f800 or 
+       then 2* over + 2+ 
+       dis.tbl.cnt @ 2 = 
+       if   c>n .id
+       else u.4
+       then 
+  then ;
+: disgoto
+  braffff dist
+  if @+ $ff and over @ 8 lshift or 2* dup >r c>n .id
+     2+ r> 
+     dis.tbl.cnt @ 2 = 
+     if   ['] (s" = 
+          if   c@+ 2dup space type + aligned
+          then 
+     else drop
+     then
+  else 2+
+  then 1 disend ;
+
+: ?again dup postpone until ; immediate
+
+: see
+  hex '
+  begin
+    cr dup u.4 dup @ u.4
+    disfe 0= ?again
+    disfc
+    disbit
+    disco
+    dislit
+    disffff
+    disbra
+    disgoto
+  again ;
