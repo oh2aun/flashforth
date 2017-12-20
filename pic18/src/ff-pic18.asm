@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          23.10.2017                                        *
+;    Date:          20.12.2017                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2302,8 +2302,6 @@ WARM_ZERO_1:
         rcall   STORE
 #endif
         rcall   FRAM
-        clrf    TRISC, A
-        clrf    LATC, A
         clrf    INTCON, A
         bsf     INTCON, PEIE, A
         bsf     INTCON, GIE, A
@@ -2359,7 +2357,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 23.10.2017\r\n"
+        db d'37'," FlashForth 5 ",PICTYPE," 20.12.2017\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
