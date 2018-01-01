@@ -44,6 +44,6 @@ $0 $10 $20 $4 task: tblink
 : blink1 tblink-init tblink run ; 
 
 \ Make blink1 start after reset.
- ' blink1 is turnkey
+' blink1 is turnkey
 
 warm

@@ -74,8 +74,8 @@ FIXDEPS=fixDeps
 .build-conf:  ${BUILD_SUBPROJECTS}
 	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/FF_USB.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
-MP_PROCESSOR_OPTION=18f14k50
-MP_LINKER_DEBUG_OPTION=-r=ROM@0x3E00:0x3FFF 
+MP_PROCESSOR_OPTION=18f2550
+MP_LINKER_DEBUG_OPTION=-r=ROM@0x7DC0:0x7FFF -r=RAM@GPR:0x3F4:0x3FF
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)

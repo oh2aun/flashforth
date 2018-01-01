@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          20.12.2017                                        *
+;    Date:          01.01.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -61,7 +61,7 @@
 #define OPERATOR_TX  TX1_
 #define OPERATOR_RX  RX1_
 #define OPERATOR_RXQ RX1Q
-
+#define OPERATOR_RX_IS_UART
 #endif
 
 RX_FULL_BIT macro buf_size
@@ -252,34 +252,6 @@ USER_AREA udata
 upcurr      res 2       ; Current USER area pointer
 
 ;;; USER AREA for the OPERATOR task
-;;; User variables and area 
-#if MULTITASKING == DISABLE
-
-ursize      equ d'20'          ; No return stack storage, just some parameter stack underrun protection
-
-us0         equ -d'22'        ; Start of parameter stack
-uemit       equ -d'20'
-ukey        equ -d'18'
-ukeyq       equ -d'16'
-utask       equ -d'14'
-ubase       equ -d'12'
-utib        equ -d'10'
-uflg        equ -d'8'            ; ACCEPT: true =  CR has been received  
-ustatus     equ -d'7'
-uhp         equ -d'6'
-usource     equ -d'4'            ; Two cells
-utoin       equ -d'0'
-uvars       res -us0
-u0          res 2 + UADDSIZE
-urbuf       res ursize
-#ifndef USBUF_DEFINED
-usbuf       res ussize
-#endif
-#ifndef TIB_DEFINED
-utibbuf     res utibsize
-#endif
-#else  ; Support multi tasking
-
 ursize      equ  RETURN_STACK_SAVE_SIZE
 ; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 
@@ -305,7 +277,6 @@ usbuf       res ussize
 #endif
 #ifndef TIB_DEFINED
 utibbuf     res utibsize
-#endif
 #endif
 
 ;;; Start of free ram
@@ -492,7 +463,7 @@ irq_async_rx_3:
         incf    RXcnt, F, A
         RX_FULL_BIT RX_BUF_SIZE         ;  Buffer full ?
         bra     irq_async_rx_4
-        movlw   '|'                     ;  Buffer overflow 
+        movlw   '|'                     ;  Buffer overflow
         rcall   asmemit
         decf    RXcnt, F, A
         decf    RXhead, F, A
@@ -509,11 +480,7 @@ irq_end:
         retfie  1               ; Restore WREG, BSR, STATUS regs
 ; *******************************************************************
 ;;; WARM user area data
-#if MULTITASKING == ENABLE
 warmlitsize equ d'30'
-#else
-warmlitsize equ d'18'
-#endif
 WARMLIT:
         dw      u0+h'f000'     ; UP
         dw      usbuf+h'efff'  ; S0
@@ -524,12 +491,9 @@ WARMLIT:
         dw      DEFAULT_BASE   ; BASE
         dw      utibbuf+h'f000'; TIB
         dw      0              ; ustatus & uflg
-#if MULTITASKING == ENABLE
         dw      0,0,0,0
         dw      0; u0+h'f000'  ; ulink
         dw      urbuf+h'f000'  ; urptr
-#endif
-
 
 ;;; **************************************
 
@@ -1209,19 +1173,18 @@ ISTORE_SETUP:
         movff   Sminus, iaddr_hi
         movff   Sminus, iaddr_lo
         rcall   iupdatebuf
-;write_cell_to_buffer
+; set write address
         movf    iaddr_lo, W, A
         andlw   0x3f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         return
-        
+
 ; I!       x a-addr --    store cell in Code mem
 ISTORE:
         rcall   ISTORE_SETUP
-        movff   Sminus, plusT
-        swapf   Tminus, W, A
-
+        movf    Tplus, W
+        movff   Sminus, Tminus
         bra     ICSTORE1
 
 ; IC!       x addr --    store byte in Code mem
@@ -1489,8 +1452,9 @@ PAUSE_IDLE0:
         banksel upcurr
         movf    upcurr, W, BANKED
         sublw   low(u0)        ; Sleep only in operator task
-        bnz     PAUSE_IDLE1    ; Prevents execution delay when many tasks are running
+        bnz     PAUSE000       ; Prevents execution delay when many tasks are running
 #if CPU_LOAD_LED == ENABLE
+        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
@@ -1504,7 +1468,6 @@ PAUSE_IDLE0:
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
-        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, A
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #else
@@ -1515,7 +1478,6 @@ PAUSE_IDLE1:
 #endif
 
 PAUSE000:
-#if MULTITASKING == ENABLE
         ; Set user pointer in Tp, Tbank (FSR1)
         movff   upcurr, Tp
         movff   (upcurr+1), Tbank
@@ -1587,7 +1549,6 @@ pause2:
         movff   Rminus, Sbank
         movff   Rminus, Sp
 PAUSE_RET:
-#endif
         return
 
 #ifdef USB_CDC
@@ -2245,8 +2206,8 @@ L_VER:
                 db              NFA|3,"ver"
 VER:
         rcall   XSQUOTE
-         ;        12345678901234 +   11  + 012345678901234567890
-        db d'37'," FlashForth 5 ",PICTYPE," 20.12.2017\r\n"
+         ;        12345678901234 +   11  + 12345678901234567890
+        db d'38'," FlashForth 5 ",PICTYPE," 01.01.2018\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -3243,9 +3204,8 @@ XOR:
 L_INVERT:
         db      NFA|6,"invert"
 INVERT:
-        movlw   h'ff'
-        xorwf   Sminus, F, A
-        xorwf   Splus, F, A
+        comf   Sminus, F, A
+        comf   Splus, F, A
         return
 
 ;   NEGATE
@@ -3867,7 +3827,6 @@ BIN:    rcall   CELL
         rcall   BASE
         goto    STORE
 
-#if MULTITASKING == ENABLE
 ; ULINK   -- a-addr     link to next task
         dw      L_BIN
 L_ULINK:
@@ -3878,9 +3837,6 @@ ULINK:  rcall   DOUSER
 
 ; TASK       -- a-addr              TASK pointer
         dw      L_ULINK
-#else
-                dw              L_BIN
-#endif
 L_TASK:
         db      NFA|4,"task"
 TASK:   rcall   DOUSER
@@ -5139,12 +5095,15 @@ MS:
         call    PLUS
 MS1:
         call    PAUSE
-        rcall   DUP_A
-        rcall   TICKS
-        call    MINUS
-        movf    Sminus, W, A
-        movwf   Sminus, A
-        bnn     MS1
+        swapf   Sminus, W, A    ; timeout_hi
+        movwf   Tp, A
+        movf    Splus, W, A     ; timeout_lo
+        bcf     INTCON, GIE, A
+        subwf   ms_count, W, A  ; ticks_lo - timeout_lo
+        swapf   Tp, W, A
+        subwfb  ms_count+1, W, A ; ticks_hi - timeout_hi
+        bsf     INTCON, GIE, A
+        bn      MS1
         goto    DROP
 
 CFETCHPP_A: bra CFETCHPP

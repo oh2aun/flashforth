@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configurationDescriptor version="62">
   <logicalFolder name="root" displayName="root" projectFiles="true">
+    <logicalFolder name="f1" displayName="Configuration" projectFiles="true">
+      <itemPath>../src/p18f-main.cfg</itemPath>
+      <itemPath>../src/p18f2455-2550-4455-4550.cfg</itemPath>
+      <itemPath>../src/p18f2458-2553-4458-4553.cfg</itemPath>
+      <itemPath>../src/p18f24k50-25k50-45k50.cfg</itemPath>
+      <itemPath>../install.txt</itemPath>
+    </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
@@ -22,7 +29,6 @@
       <itemPath>Makefile</itemPath>
     </logicalFolder>
     <logicalFolder name="OtherFiles" displayName="Other Files" projectFiles="false">
-      <itemPath>../install.txt</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
@@ -34,7 +40,7 @@
     <conf name="default" type="2">
       <toolsSet>
         <developmentServer>localhost</developmentServer>
-        <targetDevice>PIC18F14K50</targetDevice>
+        <targetDevice>PIC18F2550</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
         <platformTool>PICkit3PlatformTool</platformTool>
@@ -86,7 +92,6 @@
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UseLatestFirmware" value="true"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>

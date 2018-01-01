@@ -27,15 +27,15 @@ $48 as3 infsnz,         ( f d a -- )
   4 lshift over 8 rshift $f and or $ee00 or i, $ff and $f000 or i, ;  
 1 constant f,     \ Destination File
 
-1     constant Treg
-$ffe6 constant Tplus   \ Treg (FSR1) is interrupt safe
+1     constant tp
+$ffe6 constant (tp+)  \ Treg (FSR1) is interrupt safe
 ram variable icnt
 
 \ Interrupt routine written in assembly
 : irq_asm
-  [ icnt Treg lfsr,     ]
-  [ Tplus f, a, infsnz, ]
-  [ Tplus f, a, incf,   ]
+  [ icnt tp lfsr,     ]
+  [ (tp+) f, a, infsnz, ]
+  [ (tp+) f, a, incf,   ]
 ;i
 
 ' irq_asm 0 int!

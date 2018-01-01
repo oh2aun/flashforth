@@ -89,50 +89,53 @@ flash create braffff
 [ %1110.1111.0000.0000 , ," goto"
 
 flash create regs
-[ $d9 , ," rpl" ]
-[ $da , ," rph" ]
-[ $db , ," (rp+w)" ]
-[ $dc , ," (+rp)" ]
-[ $dd , ," (rp-)" ]
-[ $de , ," (rp+)" ]
-[ $df , ," (rp)" ]
-[ $e1 , ," tpl" ]
-[ $e2 , ," tph" ]
-[ $e3 , ," (tp+w)" ]
-[ $e4 , ," (+tp)" ]
-[ $e5 , ," (tp-)" ]
-[ $e6 , ," (tp+)" ]
-[ $e7 , ," (tp)"  ]
-[ $e9 , ," spl" ]
-[ $ea , ," sph" ]
-[ $eb , ," (sp+w)" ]
-[ $ec , ," (+sp)" ]
-[ $ed , ," (sp-)" ]
-[ $ee , ," (sp+)" ]
-[ $ef , ," (sp)" ]
-[ $f9 , ," pcl" ]
-[ $fa , ," pclath" ]
-[ $fd , ," tosl" ]
-[ $fe , ," tosh" 0 ,
+[ $d9 c, ," rpl" ]
+[ $da c, ," rph" ]
+[ $db c, ," (rp+w)" ]
+[ $dc c, ," (+rp)" ]
+[ $dd c, ," (rp-)" ]
+[ $de c, ," (rp+)" ]
+[ $df c, ," (rp)" ]
+[ $e1 c, ," tpl" ]
+[ $e2 c, ," tph" ]
+[ $e3 c, ," (tp+w)" ]
+[ $e4 c, ," (+tp)" ]
+[ $e5 c, ," (tp-)" ]
+[ $e6 c, ," (tp+)" ]
+[ $e7 c, ," (tp)"  ]
+[ $e9 c, ," spl" ]
+[ $ea c, ," sph" ]
+[ $eb c, ," (sp+w)" ]
+[ $ec c, ," (+sp)" ]
+[ $ed c, ," (sp-)" ]
+[ $ee c, ," (sp+)" ]
+[ $ef c, ," (sp)" ]
+[ $f9 c, ," pcl" ]
+[ $fa c, ," pclath" ]
+[ $fd c, ," tosl" ]
+[ $fe c, ," tosh" 0 ,
 
-ram variable dis.tbl.cnt
+ram 0 value sym.cnt
+: to.dc to sym.cnt ;
 
 : *@ dup @ ;
+: .str c@+ type space ;
+: nxt c@+ + aligned ;
 : dist ( a symtab -- a' flag) 
   over @ !p>r
-  @+ >r @+ dis.tbl.cnt !
+  @+ >r @+ to.dc
   begin
-    dup @ dis.tbl.cnt @  
+    @+ sym.cnt  
   while
     r@ and dup @p r@ and <>
   while
-    drop 2+ c@+ + aligned -1 dis.tbl.cnt +!
+    drop nxt sym.cnt 1- to.dc 
   repeat
   then 
   @p r@ and  = 
-  if   2+ c@+ type space
+  if   .str
   else drop
-  then dis.tbl.cnt @ rdrop r>p
+  then sym.cnt rdrop r>p
 ;
 : u.2 $ff and 2 u.r ;
 : u.4 4 u.r ;
@@ -141,20 +144,20 @@ ram variable dis.tbl.cnt
 : dis.b ( opc -- ) $0e00 and 9 rshift u. ;
 
 : dis.r ( opc -- opc ) 
-  !p>r regs
+  >r regs
   begin
-    @+ dup
+    c@+ dup
   while
-    @p $1ff and <>
+    r@ $1ff and <>
   while
-    c@+ + aligned
+    nxt
   repeat
-    true
+    .str true
   then
-  if   c@+ type space
-  else drop @p u.2
-  then @p r>p
+  0= if drop r@ u.2
+  then r>
 ;
+
 : disfc ( a -- a' )
   symfc dist if *@ dis.r dup dis.d dis.a then ;
 : disfe ( a -- a' flag )
@@ -162,7 +165,7 @@ ram variable dis.tbl.cnt
 : dis.0 $fff and dup $f5f > if $ff and dis.r drop else u.4 then ;
 : disbit
   symf0 dist 
-  if   dis.tbl.cnt @ 6 = 
+  if   sym.cnt 6 = 
        if   @+ dis.0 *@ dis.0
        else *@ dup u.2 dup dis.b dis.a
        then
@@ -174,32 +177,33 @@ ram variable dis.tbl.cnt
      if   $ff00 or
      then 2* over + 2+ u.4
   then ;
+
 : dislit litff dist if *@ u.2 then ;
 
-: disend ( n -- ) dis.tbl.cnt @ = if cr abort then ;
+: disend ( n -- ) sym.cnt = if cr abort then ;
 
 : disffff opcffff dist drop 2 disend ;
+
+: .(s ['] (s" = if   space 2+ c@+ 2dup type + aligned then ;
+
 : disbra
   braf8 dist 
-  if   *@ $7ff and dup 400 and 
+  if   *@ $7ff and dup $400 and
        if   $f800 or 
        then 2* over + 2+ 
-       dis.tbl.cnt @ 2 = 
-       if   c>n .id
+       sym.cnt 2 = 
+       if   dup c>n .id .(s
        else u.4
        then 
   then ;
+
 : disgoto
   braffff dist
-  if @+ $ff and over @ 8 lshift or 2* dup >r c>n .id
-     2+ r> 
-     dis.tbl.cnt @ 2 = 
-     if   ['] (s" = 
-          if   c@+ 2dup space type + aligned
-          then 
+  if @+ $ff and over @ 8 lshift or 2* dup c>n .id
+     sym.cnt 2 = 
+     if   .(s  
      else drop
      then
-  else 2+
   then 1 disend ;
 
 : ?again dup postpone until ; immediate
@@ -213,7 +217,8 @@ ram variable dis.tbl.cnt
     disbit
     disco
     dislit
-    disffff
     disbra
     disgoto
-  again ;
+    disffff
+    2+
+ again ;

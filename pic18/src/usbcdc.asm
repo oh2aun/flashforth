@@ -118,7 +118,6 @@ endif
         global ep3istat
         global ep3icnt
         global ep3ostat
-        extern asmemit
 
 USB_EP udata
 ep0ostat	res 1

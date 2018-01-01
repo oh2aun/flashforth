@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Assembler for FlashForth                                         *
 \    Filename:      asm.txt                                           *
-\    Date:          05.05.2016                                        *
+\    Date:          31.12.2017                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -38,13 +38,13 @@ hex ram
 
 \ registers for parameter stack handling
 $0000 constant Sreg     \ For lfsr
-$ffed constant Sminus
-$ffec constant plusS
+$ffed constant (sp-)
+$ffec constant (+sp)
 
 \ Temporary pointer
 $0001 constant Treg     \ For lfsr
-$ffe5 constant Tminus
-$ffe4 constant plusT
+$ffe5 constant (tp-)
+$ffe4 constant (+tp)
 
 : as0 ( opcode "name" -- ) ( -- )
   co:

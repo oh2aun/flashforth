@@ -2,7 +2,7 @@ Compiling FlashForth 5.0
 ------------------------
 
 FlashForth 5.0 (FF) can be compiled
-with the USB library and without.
+with the USB support and without.
 
 FF may also be compiled for installation via
 a device programmer (e.g. PicKit2) or a bootloader.
@@ -17,7 +17,6 @@ UART mode
 ---------
 For operation with the UART as the OPERATOR interface,
 define a MPLAB or MPLABX project which compiles ff-pic18.asm.
-The predefined MPLAB and MPLABX projects can also be used,
 
 Undefine USB_CDC in the configuration file.
 
@@ -32,7 +31,6 @@ USB mode
 For operation with the USB CDC serial emulation as the OPERATOR
 interface, define a MPLAB or MPLABX project which compiles
 ff-pic18.asm and usbcdc.asm
-The predefined MPLABX projects can also be used,
 
 Define USB_CDC in the configuration file.
 p18f14k50.cfg, p18f2455-2550-4455-4550.cfg,
