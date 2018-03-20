@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          14.03.2017                                        *
+;    Date:          20.03.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -897,8 +897,14 @@ WARM_FILL_IVEC:
 .ifdef ANSELC
         clr      ANSELC
 .endif
+.ifdef ANSELD
+        clr      ANSELD
+.endif
 .ifdef ANSELE
         clr      ANSELE
+.endif
+.ifdef ANSELG
+        clr      ANSELG
 .endif
 .ifdecl ANSB
         clr     ANSB
@@ -1152,7 +1158,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 14.03.2017\r\n"
+        .ascii  " FlashForth 5 PIC24 20.03.2018\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
