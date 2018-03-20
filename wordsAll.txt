@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0 07.03.2017
+Dictionary of FlashForth 5.0 20.03.2018
 
 !          ( x addr -- )
            Store x to addr
@@ -167,9 +167,6 @@ Dictionary of FlashForth 5.0 07.03.2017
 >body      ( xt -- a-addr )
            Leave the parameter field address of 
            a created word
-
->digit     ( n -- c )
-           Convert n to ascii character value
 
 >in        ( -- a-addr )      User Variable
            Holds offset into tib
@@ -401,6 +398,9 @@ defer      ( "name -- )
 
 di         ( -- )
            Disable interrupts
+
+digit      ( n -- c )
+           Convert n to ascii character value
 
 digit?     ( c -- n flag )
            Convert char to a digit according to base

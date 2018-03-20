@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          01.01.2018                                        *
+;    Date:          20.03.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1876,7 +1876,9 @@ BR3:
 BR3_DOES:
         rcall   DODOES          ; abs-addr opcode
         rcall   TOR             ; abs-addr
-        call    TWOSLASH        ; abs-addr
+        rcall   LIT
+        dw      h'01'
+        rcall   RSHIFT          ; abs-addr
         rcall   DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      h'ff'
@@ -2207,7 +2209,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 01.01.2018\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 20.03.2018\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -5750,11 +5752,10 @@ DTWOSTAR:
 L_DINVERT:
         db      NFA|7,"dinvert"
 DINVERT:
-        movlw   h'ff'
-        xorwf   Sminus, F, A
-        xorwf   Sminus, F, A
-        xorwf   Sminus, F, A
-        xorwf   Splus, F, A
+        comf    Sminus, F, A
+        comf    Sminus, F, A
+        comf    Sminus, F, A
+        comf    Splus, F, A
         movf    Splus, W, A
         movf    Splus, W, A
         return        
