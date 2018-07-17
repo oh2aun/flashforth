@@ -38,6 +38,18 @@ DEBUGGABLE_SUFFIX=cof
 FINAL_IMAGE=dist/${CND_CONF}/${IMAGE_TYPE}/FF_UART.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 endif
 
+ifeq ($(COMPARE_BUILD), true)
+COMPARISON_BUILD=
+else
+COMPARISON_BUILD=
+endif
+
+ifdef SUB_IMAGE_ADDRESS
+
+else
+SUB_IMAGE_ADDRESS_COMMAND=
+endif
+
 # Object Directory
 OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 
@@ -72,6 +84,9 @@ LDLIBSOPTIONS=
 FIXDEPS=fixDeps
 
 .build-conf:  ${BUILD_SUBPROJECTS}
+ifneq ($(INFORMATION_MESSAGE), )
+	@echo $(INFORMATION_MESSAGE)
+endif
 	${MAKE}  -f nbproject/Makefile-default.mk dist/${CND_CONF}/${IMAGE_TYPE}/FF_UART.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
 MP_PROCESSOR_OPTION=18f14k50
@@ -80,19 +95,19 @@ MP_LINKER_DEBUG_OPTION=-r=ROM@0x3E00:0x3FFF
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 ${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o.d 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff-pic18.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PK3=1 -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.o\\\" \\\"../src/ff-pic18.asm\\\" 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff-pic18.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_PK3=1 -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.err\\\" $(ASM_OPTIONS)    -o\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.o\\\" \\\"../src/ff-pic18.asm\\\" 
 	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/ff-pic18.o"
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff-pic18.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 else
 ${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} ${OBJECTDIR}/_ext/1360937237 
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o.d 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff-pic18.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.err\\\" $(ASM_OPTIONS)   -o\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.o\\\" \\\"../src/ff-pic18.asm\\\" 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1360937237/ff-pic18.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION) -u  -l\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.lst\\\" -e\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.err\\\" $(ASM_OPTIONS)    -o\\\"${OBJECTDIR}/_ext/1360937237/ff-pic18.o\\\" \\\"../src/ff-pic18.asm\\\" 
 	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1360937237/ff-pic18.o"
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1360937237/ff-pic18.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
