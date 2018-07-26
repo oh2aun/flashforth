@@ -10,3 +10,5 @@
 *.o
 *.out
 
+/pic18/FF_UART.X/build/default/
+/pic18/FF_UART.X/dist/default/

@@ -40,13 +40,13 @@ uploadMode = 0
 
 class Config(object):
   def __init__(self):
-    self.serial_port  = '/dev/ttyACM0'
+    self.serial_port  = '/dev/ttyUSB0'
     self.rate = '38400'
     self.hw = False
     self.sw = False
 
 def serial_open(config):
-  print "Port:"+config.port+" Speed:"+config.rate+" hw:"+str(config.hw)+" sw:"+str(config.sw)
+  #print "Port:"+config.port+" Speed:"+config.rate+" hw:"+str(config.hw)+" sw:"+str(config.sw)
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
@@ -88,7 +88,7 @@ def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
            epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename. Warm start with #warm.""")
   parser.add_argument("--port", "-p", action="store",
-         type=str, default="/dev/ttyACM0", help="Serial port name")
+         type=str, default="/dev/ttyUSB0", help="Serial port name")
   parser.add_argument("--hw", action="store_true",
          default=False, help="Serial port RTS/CTS enable")
   parser.add_argument("--sw", action="store_true",
@@ -185,7 +185,8 @@ def main():
   config.ser.close()
   print "Exiting ff-shell.py, goodbye..."
 
-try:
-  sys.exit(main())
-except Exception as e:
-  print "sys.exit {0}".format(e)
+#try:
+#  sys.exit(main())
+#except Exception as e:
+#  print "sys.exit {0}".format(e)
+main()
