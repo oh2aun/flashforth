@@ -209,7 +209,7 @@ ms_count res 2       ; millisecond counter 2 bytes
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
 state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
-status   res 1       ; if zero, cpu idle is allowed
+c_status res 1       ; if zero, cpu idle is allowed
 irq_v    res 2       ; Interrupt vector
 areg     res 1       ; A register
 aregh    res 1
@@ -217,7 +217,13 @@ aregh    res 1
 #ifndef USB_CDC
 load_acc res 3       ;
 #endif
- 
+
+; Writes to Instruction memory can only be done in blocks. 
+; The 128 bytes reserved here allows values to be modified in RAM before being
+; written to Instruction memory. 
+; Other PIC18s have a block size of 64bytes, this was previously kept in Access
+; RAM. 
+; We had to move it out for the K42 as it no longer fits there. 
 FLASH_BUF udata
 flash_buf res 0x80
 
@@ -589,7 +595,7 @@ EXIT:
 L_IDLE:
         db      NFA|4,"idle"
 IDLE:
-        bsf    status, 7, A
+        bsf    c_status, 7, A
         return
         
 ; busy
@@ -597,7 +603,7 @@ IDLE:
 L_BUSY:
         db      NFA|4,"busy"
 BUSY:
-        clrf    status, A
+        clrf    c_status, A
         return
 
 ; load -- n
@@ -820,7 +826,7 @@ umslashmod0:
         bra     umslashmod3
         tstfsz  TBLPTRH, A
         bra     umslashmod3
-        bsf     status, 0, A  ; Signal divide by zero error
+        bsf     c_status, 0, A  ; Signal divide by zero error
         bra     WARM
 umslashmod3:
         movff   Sminus, DIVIDEND_3
@@ -1516,7 +1522,7 @@ PAUSE0:
 #if CPU_LOAD == ENABLE
 PAUSE_IDLE0:
 #endif
-        movf    status, W, A   ; idle allowed ?
+        movf    c_status, W, A   ; idle allowed ?
         bz      PAUSE_IDLE1
         banksel upcurr
         movf    upcurr, W, BANKED
@@ -2072,7 +2078,7 @@ main:
 WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
         movff   RCON, 1         ; Save reset reasons
-        movff   status, 2
+        movff   c_status, 2
         clrf    STKPTR, A       ; Clear return stack
         movlw   h'1f'
         movwf   RCON, A
