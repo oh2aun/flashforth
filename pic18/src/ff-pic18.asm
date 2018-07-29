@@ -139,8 +139,8 @@ plusR   equ PREINC2
 RWrw    equ PLUSW2      ; Offset to Rp in W
 
 ;;; For Flow Control
-XON     equ h'11'
-XOFF    equ h'13'
+FC_XON     equ h'11'
+FC_XOFF    equ h'13'
 
 CR_     equ h'0d'
 LF_     equ h'0a'
@@ -155,7 +155,7 @@ NFAmask equ 0x0f
 
 ;;; FLAGS2
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
-ixoff   equ 0           ; 1=XOFF has been sent
+ixoff   equ 0           ; 1=FC_XOFF has been sent
 
 ;;; FLAGS1
 noclear equ 6           ; dont clear optimisation flags         
@@ -1682,14 +1682,14 @@ XXOFF:
         return
 XXXOFF: 
         bsf     FLAGS2, ixoff, A
-        movlw   XOFF
+        movlw   FC_XOFF
         bra     asmemit
 XXON:
         btfss   FLAGS2, ixoff, A
         return
 XXXON:  
         bcf     FLAGS2, ixoff, A
-        movlw   XON
+        movlw   FC_XON
         bra     asmemit
 #endif
 ;****************************************************
