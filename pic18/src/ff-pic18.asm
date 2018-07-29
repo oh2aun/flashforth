@@ -387,15 +387,17 @@ FFCODE:
 #endif
 irq_ms:
 #if MS_TMR == 1  ;****************************
-        btfss   PIR1, TMR1IF, A
+	banksel PIR4
+	btfss   PIR4, TMR1IF, BANKED
         bra     irq_ms_end
-        bcf     T1CON, TMR1ON
+        bcf     T1CON, TMR1ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR1L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR1H, F, A
-        bsf     T1CON, TMR1ON
-        bcf     PIR1, TMR1IF, A
+        bsf     T1CON, TMR1ON, A
+	banksel PIR4
+        bcf     PIR4, TMR1IF, BANKED
 #else
 #if MS_TMR == 2 ;******************************
         btfss   PIR1, TMR2IF, A
