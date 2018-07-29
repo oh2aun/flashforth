@@ -186,8 +186,6 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;****************************************************
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
-FLASH_BUF udata_acs
-flash_buf res 0x40
 
 FORTH_VARS  udata_acs   ; Variables in Access Ram
 p_lo     res 1       ; P and DO LOOP INDEX
@@ -215,10 +213,13 @@ status   res 1       ; if zero, cpu idle is allowed
 irq_v    res 2       ; Interrupt vector
 areg     res 1       ; A register
 aregh    res 1
-
+    
 #ifndef USB_CDC
 load_acc res 3       ;
 #endif
+ 
+FLASH_BUF udata
+flash_buf res 0x80
 
 IRQ_STACK udata
 irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
