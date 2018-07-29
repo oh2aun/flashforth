@@ -614,9 +614,9 @@ BUSY:
 L_LOAD:
         db      NFA|4,"load"
 LOAD:
-        movff   load_res, plusS
-        movff   load_res+1, plusS
-        movff   load_res+2, plusS
+        movffl   load_res, plusS
+        movffl   load_res+1, plusS
+        movffl   load_res+2, plusS
         clrf    plusS, A
         call    LIT
         dw      CPU_LOAD_VAL
@@ -659,13 +659,13 @@ ANDLW_:
         dw      L_ANDLW_
 L_LI:
         db      NFA|INLINE|COMPILE|2,"[i"
-        movff   PRODL, ihprodl
-        movff   PRODH, ihprodh
-        movff   TBLPTRL, ihtblptrl
-        movff   TBLPTRH, ihtblptrh
-        movff   TABLAT, ihtablat
-        movff   Sp, ihsp
-        movff   Sbank, ihsbank 
+        movffl   PRODL, ihprodl
+        movffl   PRODH, ihprodh
+        movffl   TBLPTRL, ihtblptrl
+        movffl   TBLPTRH, ihtblptrh
+        movffl   TABLAT, ihtablat
+        movffl   Sp, ihsp
+        movffl   Sbank, ihsbank 
         lfsr    Sptr, irq_s0 - 1  ; 0xf05f
         return
 
@@ -674,13 +674,13 @@ L_LI:
         dw      L_LI
 L_IR:
         db      NFA|INLINE|COMPILE|2,"i]"
-        movff   ihsbank, Sbank
-        movff   ihsp, Sp
-        movff   ihtablat, TABLAT
-        movff   ihtblptrl, TBLPTRL
-        movff   ihtblptrh, TBLPTRH
-        movff   ihprodl, PRODL
-        movff   ihprodh, PRODH
+        movffl   ihsbank, Sbank
+        movffl   ihsp, Sp
+        movffl   ihtablat, TABLAT
+        movffl   ihtblptrl, TBLPTRL
+        movffl   ihtblptrh, TBLPTRH
+        movffl   ihprodl, PRODL
+        movffl   ihprodh, PRODH
         return
 
 ;***************************************************
