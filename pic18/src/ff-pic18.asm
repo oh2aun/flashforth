@@ -487,7 +487,8 @@ irq_user_skip:
 ;;; from the serial line
 irq_async_rx:
 #if UART == 1
-        btfss   PIR1, RCIF, A
+	banksel PIR3
+        btfss   PIR3, U1RXIF, BANKED
 #else
         btfss   PIR3, RC2IF, A
 #endif
@@ -512,7 +513,7 @@ irq_async_rx_2:
         lfsr    Tptr, RXbuf
         movf    RXhead, W, A
 #if UART == 1
-        movff   RCREG, TWrw
+        movffl  U1RXB, TWrw
 #else
         movff   RCREG2, TWrw
 #endif
@@ -543,8 +544,8 @@ irq_async_rx_4:
 irq_async_rx_end:
 ;;; *****************************************************************
 ;; Restore Tp and Tbank
-        movff   ihtbank, Tbank
-        movff   ihtp, Tp
+        movffl   ihtbank, Tbank
+        movffl   ihtp, Tp
 irq_end:
         retfie  1               ; Restore WREG, BSR, STATUS regs
 ; *******************************************************************
