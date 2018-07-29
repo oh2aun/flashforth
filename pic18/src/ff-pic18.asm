@@ -147,9 +147,18 @@ LF_     equ h'0a'
 BS_     equ h'08'
 
 ;;; Flags for the Name Field
+; Forth stores it's Words in a Dictionary
+; The Dictionary is a Linked List, and each Word is a node. 
+; Each node contains a Name Field, which contains the name of the Word. 
+; In addition there are a number of flags stored, which effect how the Word is
+; used. 
 COMPILE equ 0x10
+; The Word will not be threaded, but compiled into the definition of the Word
+; calling it
 INLINE  equ 0x20
+; The Word will be execuated as soon as it is encounted during compiliation. 
 IMMED   equ 0x40
+; Name Field Address: the location of the name of the Word
 NFA     equ 0x80
 NFAmask equ 0x0f
 
