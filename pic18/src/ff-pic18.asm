@@ -691,7 +691,8 @@ L_TX1_:
 TX1_:
         rcall   PAUSE
 #if UART == 1
-        btfss   PIR1, TXIF, A
+	banksel PIR3
+        btfss   PIR3, U1TXIF, BANKED
 #else
         btfss   PIR3, TX2IF, A
 #endif
@@ -703,7 +704,8 @@ TX1_SEND:
         andlw   h'7f'
 #endif
 #if UART == 1
-        movwf   TXREG, A
+	banksel U1TXB
+        movwf   U1TXB, A
 #else
         banksel TXREG2
         movwf   TXREG2, BANKED
