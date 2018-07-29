@@ -469,17 +469,17 @@ irq_ms:
 irq_ms_end:
 ;;; *************************************************        
 ;;; Save Tp and Tbank and PCLATH
-        movff   Tp, ihtp
-        movff   Tbank, ihtbank
+        movffl   Tp, ihtp
+        movffl   Tbank, ihtbank
 irq_user:
         movf    irq_v+1, W, A
         bz      irq_user_skip
-        movff   PCLATH, ihpclath
-        movwf   PCLATH
+        movffl  PCLATH, ihpclath
+        movwf   PCLATH, A
         movf    irq_v, W, A
-        movwf   PCL              ; Now the interrupt routine is executing
+        movwf   PCL, A           ; Now the interrupt routine is executing
 irq_user_end:                    ; The user interrupt must jump to here.
-        movff   ihpclath, PCLATH ; Restore PCLATH
+        movffl  ihpclath, PCLATH ; Restore PCLATH
 irq_user_skip:
 ;;; ************************************************
 ;;; UART RX interrupt routine
