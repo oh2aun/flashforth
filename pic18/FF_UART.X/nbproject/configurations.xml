@@ -40,6 +40,7 @@
       <itemPath>../src/p18fxx2xx8.cfg</itemPath>
       <itemPath>../src/p18fxxxx.cfg</itemPath>
       <itemPath>../src/p18fxxxx2.cfg</itemPath>
+      <itemPath>../src/p18f26k42.cfg</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
@@ -50,7 +51,7 @@
     <conf name="default" type="2">
       <toolsSet>
         <developmentServer>localhost</developmentServer>
-        <targetDevice>PIC18F26K22</targetDevice>
+        <targetDevice>PIC18F26K42</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
         <platformTool>PICkit3PlatformTool</platformTool>
@@ -103,7 +104,6 @@
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UseLatestFirmware" value="true"/>
-        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>
