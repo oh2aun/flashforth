@@ -1256,12 +1256,12 @@ ISTORE_SETUP:
 ; check that writes are not to the kernel code
         rcall   ISTORECHK
 ;check if program memory row is already in buffer
-        movff   Sminus, iaddr_hi
-        movff   Sminus, iaddr_lo
+        movffl   Sminus, iaddr_hi
+        movffl   Sminus, iaddr_lo
         rcall   iupdatebuf
 ;write_cell_to_buffer
         movf    iaddr_lo, W, A
-        andlw   0x3f
+        andlw   0x7f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         return
