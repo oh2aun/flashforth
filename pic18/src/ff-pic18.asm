@@ -744,9 +744,10 @@ L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
 #if UART == 1
-        btfsc   RCSTA, OERR, A
-        bcf     RCSTA, CREN, A ; Restart RX on case of RX overrun
-        bsf     RCSTA, CREN, A
+	banksel U1ERRIR
+        btfsc   U1ERRIR, RXFOIF, BANKED
+        bcf     U1ERRIR, RXFOIF, BANKED ; Restart RX on case of RX overrun
+        bsf     U1ERRIR, RXFOIF, BANKED
 #else
         banksel RCSTA2
         btfsc   RCSTA2, OERR2, BANKED
@@ -754,7 +755,7 @@ RX1Q:
         bsf     RCSTA2, CREN2, BANKED
 #endif
         movf    RXcnt, W, A
-        movwf   plusS
+        movwf   plusS, A
         bnz     RX1Q2
 #if FC_TYPE_SW == ENABLE
         btfss   FLAGS2, fFC, A
@@ -764,7 +765,7 @@ RX1Q:
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
 RX1Q2:
-        clrf    plusS
+        clrf    plusS, A
         return
 
 ;*******************************************************
@@ -1589,27 +1590,27 @@ pause1:
         bra     pause1
 
         ; Save the return stack counter
-        movff   TBLPTRL, plusR
+        movffl  TBLPTRL, plusR
 
         ; Save the saved return stack pointer urptr
-        movff   Rp, Tplus
-        movff   Rbank, Tminus
+        movffl  Rp, Tplus
+        movffl  Rbank, Tminus
 
         ; Move to the next user area
         movf    Tminus, W, A
-        movff   Tminus, (upcurr+1)
-        movff   Tminus, (upcurr)
+        movffl  Tminus, (upcurr+1)
+        movffl  Tminus, (upcurr)
 
         ; Put new user pointer in Tp, Tbank
-        movff   upcurr, Tp
-        movff   (upcurr+1), Tbank
+        movffl  upcurr, Tp
+        movffl  (upcurr+1), Tbank
 
         ; Set the return stack restore pointer  in Ap
-        movff   Tplus, Rp
-        movff   Tminus, Rbank
+        movffl  Tplus, Rp
+        movffl  Tminus, Rbank
 
         ; Set the return stack counter
-        movff   Rminus, TBLPTRL
+        movffl  Rminus, TBLPTRL
 
         ; Restore the return stack
 pause2:
@@ -1623,12 +1624,12 @@ pause2:
         bra     pause2
 
         ; Restore the P pointer
-        movff   Rminus, p_hi
-        movff   Rminus, p_lo
+        movffl  Rminus, p_hi
+        movffl  Rminus, p_lo
 
         ; Restore the parameter stack pointer
-        movff   Rminus, Sbank
-        movff   Rminus, Sp
+        movffl  Rminus, Sbank
+        movffl  Rminus, Sp
 PAUSE_RET:
 #endif
         return
