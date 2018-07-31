@@ -1269,7 +1269,7 @@ ISTORE_SETUP:
 ; I!       x a-addr --    store cell in Code mem
 ISTORE:
         rcall   ISTORE_SETUP
-        movff   Sminus, plusT
+        movffl  Sminus, plusT
         swapf   Tminus, W, A
 
         bra     ICSTORE1
@@ -1279,7 +1279,7 @@ ICSTORE:
         rcall   ISTORE_SETUP
         swapf   Sminus, W, A
 ICSTORE1:
-        movff   Sminus, Trw
+        movffl  Sminus, Trw
 ;mark_buffer_dirty
         bsf     FLAGS1, idirty, A
         return
@@ -1290,8 +1290,8 @@ L_TOTBLP:
         db      NFA|5,">tblp"
 TOTBLP:
         movf    Sminus, W, A    ; W is used later in IFETCH
-        movwf   TBLPTRH
-        movff   Sminus, TBLPTRL
+        movwf   TBLPTRH, A
+        movffl  Sminus, TBLPTRL
         return
 ; I@       a-addr -- x  fetch cell from Code mem
 ; 25 cycles when fetching from buffer
@@ -1300,13 +1300,13 @@ IFETCH:
         rcall   TOTBLP
         cpfseq  ibase_hi
         bra     pfetch0
-        movlw   h'c0'
+        movlw   h'80'
         andwf   TBLPTRL, W, A
         cpfseq  ibase_lo, A
         bra     pfetch0
 ;read_cell_from_buffer
         movf    TBLPTRL, W, A
-        andlw   0x3f
+        andlw   0x7f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         bra     FETCH2
