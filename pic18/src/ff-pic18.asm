@@ -724,17 +724,17 @@ RX1_:
         bz      RX1_
         lfsr    Tptr, RXbuf
         movf    RXtail, W, A
-        movffl   TWrw, plusS    ;  Take a char from the buffer
+        movffl  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
 
-        bcf     INTCON, GIE, A
+        bcf     INTCON0, GIE, A
 
         incf    RXtail, F, A
         movlw   RXbufmask
         andwf   RXtail, F, A
         decf    RXcnt, F, A
 
-        bsf     INTCON, GIE, A
+        bsf     INTCON0, GIE, A
         return
 
 ;***************************************************
