@@ -724,7 +724,7 @@ RX1_:
         bz      RX1_
         lfsr    Tptr, RXbuf
         movf    RXtail, W, A
-        movff   TWrw, plusS    ;  Take a char from the buffer
+        movffl   TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
 
         bcf     INTCON, GIE, A
@@ -1560,8 +1560,8 @@ PAUSE_IDLE1:
 PAUSE000:
 #if MULTITASKING == ENABLE
         ; Set user pointer in Tp, Tbank (FSR1)
-        movff   upcurr, Tp
-        movff   (upcurr+1), Tbank
+        movffl   upcurr, Tp
+        movffl   (upcurr+1), Tbank
 
 ;; Switch tasks only if background tasks are running
         movf    Tminus, W, A
@@ -1569,22 +1569,22 @@ PAUSE000:
         bnn     PAUSE_RET
 
         ; Save parameter stack pointer
-        movff   Sp, plusR
-        movff   Sbank, plusR
+        movffl   Sp, plusR
+        movffl   Sbank, plusR
 
         ; Save P pointer
-        movff   p_lo, plusR
-        movff   p_hi, plusR
+        movffl   p_lo, plusR
+        movffl   p_hi, plusR
 
         ; Remember the return stack counter
-        movff   STKPTR, TBLPTRL
+        movffl   STKPTR, TBLPTRL
 
         ; Save the return stack
 pause1:
-        movf    TOSL, W
-        movwf   plusR
-        movf    TOSH, W
-        movwf   plusR
+        movf    TOSL, W, A
+        movwf   plusR, A
+        movf    TOSH, W, A
+        movwf   plusR, A
         decfsz  STKPTR, F, A
         bra     pause1
 
