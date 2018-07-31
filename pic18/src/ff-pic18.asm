@@ -1029,9 +1029,11 @@ magic:
 ;***************************************************
 asmemit:
 #if UART == 1
-        btfss   PIR1, TXIF, A
+	banksel PIR3
+        btfss   PIR3, U1TXIF, BANKED
         bra     asmemit
-        movwf   TXREG, A
+	banksel U1TXB
+        movwf   U1TXB, BANKED
 #else
         btfss   PIR3, TX2IF, A
         bra     asmemit
