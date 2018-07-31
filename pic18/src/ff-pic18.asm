@@ -871,12 +871,12 @@ UMSLASHMOD2:
         movff   DIVIDEND_1, plusS
         return                  ; 11 cycles 
 ; *******************************************************************
-;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
+;if (ibaselo != (iaddrlo&0x80))&& (ibasehi != iaddrhi)
 ;   if (idirty)
 ;       writebuffer_to_imem
 ;   endif
 ;   fillbuffer_from_imem
-;   ibaselo = iaddrlo&0xc0
+;   ibaselo = iaddrlo&0x80
 ;   ibasehi = iaddrhi
 ;endif
 iupdatebuf:
@@ -888,7 +888,7 @@ iupdatebuf:
         movf    iaddr_hi, W, A
         cpfseq  ibase_hi
         bra     iupdatebuf0
-        movlw   h'c0'
+        movlw   h'80'
         andwf   iaddr_lo, W, A
         cpfseq  ibase_lo, A
         bra     iupdatebuf0
@@ -896,20 +896,20 @@ iupdatebuf:
 
 iupdatebuf0:
         rcall   IFLUSH
-        movlw   h'c0'
+        movlw   h'80'
         andwf   iaddr_lo, W, A
         movwf   ibase_lo, A
-        movff   iaddr_hi, ibase_hi
+        movffl  iaddr_hi, ibase_hi
 #if XSTORE == ENABLE
         movff   iaddr_up, ibase_up
 #endif
 fill_buffer_from_imem:
-        movlw   d'64'
+        movlw   d'128'
         movwf   PCLATH, A
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
 fill_buffer_from_imem_1:
         tblrd*+
-        movff   TABLAT, Tplus
+        movffl  TABLAT, Tplus
         decfsz  PCLATH, F, A
         bra     fill_buffer_from_imem_1
 #if XSTORE == ENABLE
@@ -945,7 +945,7 @@ wbtil2:
         decfsz  Tbank, F, A
         bra     wbtil1             ; 20 ms @ 64 MHz XTAL @ write_delay = 255
 #endif
-        bcf     INTCON, GIE, A  ; Disable Interrupts
+        bcf     INTCON0, GIE, A  ; Disable Interrupts
 
 #ifdef p18fxx2xx8_fix_1
         movff   PIE1, SPIE1
@@ -956,10 +956,11 @@ wbtil2:
         clrf    PIE2, A
 #endif
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
-        bsf     EECON1, EEPGD, A      ; Erase the flash block
-        bcf     EECON1, CFGS, A
-        bsf     EECON1, WREN, A
-        bsf     EECON1, FREE, A
+	banksel NVMCON1
+        bsf     NVMCON1, REG1, BANKED      ; Erase the flash block
+        bcf     NVMCON1, REG0, BANKED
+        bsf     NVMCON1, WREN, BANKED
+        bsf     NVMCON1, FREE, BANKED
 
         rcall   magic
 
@@ -979,16 +980,17 @@ write_buffer_to_imem_2:
         rcall   magic
         decfsz  PRODH, F, A
         bra     write_buffer_to_imem_1
-        bcf     EECON1, WREN, A
+	banksel NVMCON1
+        bcf     NVMCON1, WREN, BANKED
 
 #ifdef p18fxx2xx8_fix_1
         movff   SPIE2, PIE2
         movff   SPIE1, PIE1
         movff   SINTCON, INTCON
 #endif
-        bsf     INTCON, GIE, A        
+        bsf     INTCON0, GIE, A        
 verify_imem:
-        movlw   d'64'
+        movlw   d'128'
         movwf   PCLATH, A
         rcall   init_ptrs
 verify_imem_1:
@@ -1008,18 +1010,20 @@ verify_imem_1:
         return
 init_ptrs:
         lfsr    Tptr, flash_buf
-        movff   ibase_lo, TBLPTRL
-        movff   ibase_hi, TBLPTRH
+        movffl   ibase_lo, TBLPTRL
+        movffl   ibase_hi, TBLPTRH
 #if XSTORE == ENABLE
         movff   ibase_up, TBLPTRU
 #endif
         return
 magic:
+	banksel NVMCON2
         movlw   h'55'
-        movwf   EECON2, A
+        movwf   NVMCON2, BANKED
         movlw   h'aa'
-        movwf   EECON2, A
-        bsf     EECON1, WR, A
+        movwf   NVMCON2, BANKED
+	banksel NVMCON1
+        bsf     NVMCON1, WR, BANKED
         return
 
 ;***************************************************
