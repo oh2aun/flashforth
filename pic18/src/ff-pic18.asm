@@ -1052,7 +1052,7 @@ L_NEQUAL:
         db      NFA|2,"n="
 NEQUAL:
         movf    Sminus, W, A        ; count_hi
-        movff   Sminus, PCLATH      ; count_lo
+        movffl  Sminus, PCLATH      ; count_lo
         rcall   TOTBLP
         call    CFETCHPP
         rcall   ICFETCH1            ; ICFETCH1 uses Tp, Tbank (=FSR1)
@@ -1090,8 +1090,8 @@ SKIP:
         movf    Sminus, W, A    ; skip count_hi
         movf    Sminus, W, A
         movwf   PCLATH, A       ; count_lo
-        movff   Sminus, Tbank
-        movff   Sminus, Tp      ; c-addr
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp      ; c-addr
         bz      SKIP4           ; zero flag comes from the previous movf
 SKIP0:
         movlw   0x9             ; SKIP TAB
@@ -1110,11 +1110,11 @@ SKIP1:                          ; check next character
 SKIP4:
                                 ; found start of word
                                 ; restore the stack
-        movff   Tp, plusS
+        movffl  Tp, plusS
         movf    Tbank, W, A
         iorlw   h'f0'
         movwf   plusS, A
-        movff   PCLATH, plusS
+        movffl  PCLATH, plusS
         clrf    plusS, W
         return
 
@@ -1135,8 +1135,8 @@ SCAN:
         movf    Sminus, W, A        ; count_lo
         movwf   PCLATH, A
         bz      SCAN4
-        movff   Sminus, Tbank
-        movff   Sminus, Tp          ; c-addr
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp          ; c-addr
 SCAN0:
         movf    Trw, W, A
         subwf   TBLPTRL, W, A
@@ -1151,12 +1151,12 @@ SCAN2:
         bra     SCAN0
 SCAN3:                              ; found start of word
                                     ; restore the stack
-        movff   Tp, plusS
+        movffl  Tp, plusS
         movf    Tbank, W, A
         iorlw   h'f0'
         movwf   plusS, A
 SCAN4:
-        movff   PCLATH, plusS
+        movffl  PCLATH, plusS
         clrf    plusS, A
         return
 
@@ -1164,14 +1164,14 @@ SCAN4:
         dw      L_SCAN
 L_EI:
         db      NFA|INLINE|2,"ei"
-        bsf     INTCON, GIE, A
+        bsf     INTCON0, GIE, A
         return
         
 ; di  ( -- )    Disable interrupts
         dw      L_EI
 L_DI:
         db      NFA|INLINE|2,"di"
-        bcf     INTCON, GIE, A
+        bcf     INTCON0, GIE, A
         return
         
 ; ;i  ( -- )    End definition of user interrupt routine
@@ -1191,7 +1191,7 @@ L_INT:
 INT:
         call    DROP
         movf    Sminus, W, A
-        movff	Sminus, irq_v
+        movffl	Sminus, irq_v
         movwf   irq_v+1, A
         return
 
@@ -1201,9 +1201,9 @@ L_LITERAL:
         db      NFA|IMMED|7,"literal"
 LITERAL:
         movf    Sminus, W, A
-        movff   Srw, Tp
+        movffl  Srw, Tp
         movwf   Srw, A
-        movff   Tp, plusS
+        movffl  Tp, plusS
         rcall   LITER0
 LITER0:
         movf    Srw, W
