@@ -1789,8 +1789,8 @@ RQ_END:
 L_MSET:
         db      NFA|4,"mset"
 MSET:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
         movf    Sminus, W, A
         movf    Sminus, W, A
         iorwf   Trw, F, A
@@ -1803,8 +1803,8 @@ MSET:
 L_MCLR:
         db      NFA|4,"mclr"
 MCLR_:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
         movf    Sminus, W, A
         comf    Srw, F, A
         movf    Sminus, W, A
