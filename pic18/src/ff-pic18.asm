@@ -1386,33 +1386,34 @@ ECSTORE2:
 ; E@       a-addr -- x  fetch cell from data EEPROM
 EFETCH:
         movf    Sminus, W, A
-#ifdef EEADRH
-        movwf   EEADRH, A
-#endif
-        movff   Sminus, EEADR
+	banksel NVMADRH
+        movwf   NVMADRH, BANKED
+        movffl  Sminus, NVMADRL
         rcall   asmecfetch
-        incf    EEADR,F,A
+	banksel NVMADRL
+        incf    NVMADRL,F, BANKED
         bra     asmecfetch
 
 ; EC@      addr -- c  fetch char from data EEPROM
 ECFETCH:
         movf    Sminus, W, A
-#ifdef EEADRH
-        movwf   EEADRH, A
-#endif
-        movff   Sminus, EEADR
+	banksel NVMADRH
+        movwf   NVMADRH, BANKED
+        movffl  Sminus, NVMADRL
         rcall   asmecfetch
         clrf    plusS, A
         return
 asmecfetch:
 #ifdef p18fxx2xx8_fix_1
         bcf     INTCON, GIE, A          ; 18f252 ERRATA
-#endif
-        bcf     EECON1, EEPGD, A
-        bcf     EECON1, CFGS, A
-        bsf     EECON1, RD, A
-        movf    EEDATA, W
-        movwf   plusS
+#endif	
+	banksel NVMCON1
+        bcf     NVMCON1, REG1, BANKED
+        bcf     NVMCON1, REG0, BANKED
+        bsf     NVMCON1, RD, BANKED
+	banksel NVMDAT
+        movf    NVMDAT, W, BANKED
+        movwf   plusS, A
 #ifdef p18fxx2xx8_fix_1
         bsf     INTCON, GIE, A          ; 18f252 ERRATA
 #endif
