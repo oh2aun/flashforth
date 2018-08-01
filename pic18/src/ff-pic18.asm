@@ -1318,13 +1318,13 @@ ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W, A
         cpfseq  ibase_hi
         bra     pcfetch0
-        movlw   h'c0'
+        movlw   h'80'
         andwf   TBLPTRL, W, A
         cpfseq  ibase_lo, A
         bra     pcfetch0
 ;read_byte_from_buffer
         movf    TBLPTRL, W, A
-        andlw   0x3f
+        andlw   0x7f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         tblrd*+                 ; To satisfy optimisation in N=
@@ -1334,56 +1334,52 @@ ICFETCH1:                       ; Called directly by N=
 ESTORE:
         rcall   LOCKED
         movf    Sminus, W, A
-#ifdef EEADRH
-        movwf   EEADRH, A
-#endif
-        movff   Sminus, EEADR
-        incf    EEADR, F, A
-        movff   Sminus, EEDATA
+	banksel NVMADRH
+        movwf   NVMADRH, BANKED
+        movffl   Sminus, NVMADRL
+	banksel NVMADRL
+        incf    NVMADRL, F, BANKED 
+        movffl  Sminus, NVMDAT
         rcall   ECSTORE1
-        decf    EEADR, F, A
-        movff   Sminus, EEDATA
+	banksel NVMADRL
+        decf    NVMADRL, F, BANKED
+        movffl  Sminus, NVMDAT
         bra     ECSTORE1
 
 ; EC!       c addr --    store char in data EEPROM
 ECSTORE:
         rcall   LOCKED
         movf    Sminus, W, A
-#ifdef EEADRH
-        movwf   EEADRH, A
-#endif
-        movff   Sminus, EEADR
+	banksel NVMADRH
+        movwf   NVMADRH, BANKED
+        movffl  Sminus, NVMADRL
         movf    Sminus, W, A
-        movff   Sminus, EEDATA
+        movffl  Sminus, NVMDAT
 ECSTORE1:
-        bcf     EECON1, EEPGD, A
-        bcf     EECON1, CFGS, A
-#ifdef PIR6
-        bcf     PIR6, EEIF, A
-#else
-        bcf     PIR2, EEIF, A
-#endif
-        bsf     EECON1, WREN, A
-        bcf     INTCON, GIE, A
+	banksel NVMCON1
+        bcf     NVMCON1, REG1, BANKED
+        bcf     NVMCON1, REG0, BANKED
+	banksel PIR0
+	bcf	PIR0, NVMIF, BANKED
+	banksel NVMCON1
+        bsf     NVMCON1, WREN, BANKED
+        bcf     INTCON0, GIE, A
         movlw   h'55'
-        movwf   EECON2, A
+	banksel NVMCON2
+        movwf   NVMCON2, BANKED
         movlw   h'aa'
-        movwf   EECON2, A
-        bsf     EECON1, WR, A
-        bsf     INTCON, GIE, A
+        movwf   NVMCON2, BANKED
+	banksel NVMCON1
+        bsf     NVMCON1, WR, BANKED
+        bsf     INTCON0, GIE, A
 ECSTORE2:
-#ifdef PIR6
-        btfss   PIR6, EEIF, A
-#else
-        btfss   PIR2, EEIF, A
-#endif
+	banksel PIR0
+	btfss   PIR0, NVMIF, BANKED
         bra     ECSTORE2
-        bcf     EECON1, WREN, A
-#ifdef PIR6
-        bcf     PIR6, EEIF, A
-#else
-        bcf     PIR2, EEIF, A
-#endif
+	banksel NVMCON1
+        bcf     NVMCON1, WREN, BANKED
+	banksel PIR0
+	bcf     PIR0, NVMIF, BANKED
         return
 
 
