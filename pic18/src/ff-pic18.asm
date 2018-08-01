@@ -207,7 +207,7 @@ RXtail   res 1       ; Tail of serial RX interrupt buffer
 RXcnt    res 1       ; Number of characters in the RX fifo
 ms_count res 2       ; millisecond counter 2 bytes
 cse      res 1       ; Current data section 0=flash, 2=eeprom, 4=ram 
-state    res 1       ; State value. Can only be changed by []        
+c_state    res 1       ; State value. Can only be changed by []        
 wflags   res 1       ; Word flags from word header
 c_status res 1       ; if zero, cpu idle is allowed
 irq_v    res 2       ; Interrupt vector
@@ -1423,28 +1423,28 @@ asmecfetch:
         dw      L_TOTBLP
 L_FLOCK:
         db      NFA|3,"fl-"
-        bsf     FLAGS1, fLOCK
+        bsf     FLAGS1, fLOCK, A
         return
 
 ;;; Enable writes to flash and eeprom
         dw      L_FLOCK
 L_FUNLOCK:
         db      NFA|3,"fl+"
-        bcf     FLAGS1, fLOCK
+        bcf     FLAGS1, fLOCK, A
         return
 
 ;;; Enable flow control
         dw      L_FUNLOCK
 L_FCON:
         db      NFA|3,"u1+"
-        bcf     FLAGS2, fFC
+        bcf     FLAGS2, fFC, A
         return
 
 ;;; Disable flow control
         dw      L_FCON
 L_FCOFF:
         db      NFA|3,"u1-"
-        bsf     FLAGS2, fFC
+        bsf     FLAGS2, fFC, A
         return
 
 ;;; Clear watchdog timer
@@ -1495,7 +1495,7 @@ IS:
         call    TICK
         call    TOBODY
         rcall   FETCH
-        movf    state, W, A
+        movf    c_state, W, A
         bz      IS1
         rcall   LITERAL
         rcall   DOCOMMAXT
@@ -4510,7 +4510,7 @@ IPARSEWORD:
         bz      INUMBER
         addlw   1
         bnz     IEXEC           ; Immediate word
-        addwf   state, W, A     ; 0 or ff
+        addwf   c_state, W, A     ; 0 or ff
         bn      ICOMPILE_1
 IEXEC:                          ; Execute a word
                                 ; immediate&compiling or interpreting
@@ -4565,7 +4565,7 @@ INUMBER:
         movf    Sminus, W, A
         movf    Sminus, W, A
         bz      IUNKNOWN
-        movf    state, F, A
+        movf    c_state, F, A
         bz      INUMBER1
         sublw   1
         bz      ISINGLE
@@ -4747,7 +4747,7 @@ QUIT1:
         call    ACCEPT
         call    SPACE_
         rcall   INTERPRET
-        movf    state, W, A
+        movf    c_state, W, A
         bnz     QUIT1
         call    IFLUSH
         rcall   DP_TO_EEPROM
@@ -5015,7 +5015,7 @@ LAST:
 L_LEFTBRACKET:
         db      NFA|IMMED|1,"["
 LEFTBRACKET:
-        clrf    state, A
+        clrf    c_state, A
         return
 
 
@@ -5024,7 +5024,7 @@ LEFTBRACKET:
 L_RIGHTBRACKET:
         db      NFA|1,"]"
 RIGHTBRACKET:
-        setf    state, A
+        setf    c_state, A
         return
 
 ; :        --           begin a colon definition
@@ -5130,7 +5130,7 @@ BL:
 L_STATE:
         db      NFA|5,"state"
 STATE:
-        movf    state, W, A
+        movf    c_state, W, A
         movwf   plusS
         movwf   plusS
         return
