@@ -2070,13 +2070,10 @@ WARM_:
         reset                   ; Perform a reset, jumps to h'0000' and resets stuff
 #endif
 main:
-        movlw   0xf
-        iorwf   ADCON1, F, A
-        clrf    TBLPTRU, A
-#ifdef OSCCON
-        movlw   0x70            ; Use full internal OSC frequency
-        movwf   OSCCON, A
-#endif
+	banksel ADREF
+	clrf	ADREF		; VREF+ = AVDD , VREF- = AVSS
+        clrf    TBLPTRU, A	; TBLPTRU is not used when reading or writing
+
 #ifdef PLL
 #if PLL == ENABLE
         movlw   0x40
