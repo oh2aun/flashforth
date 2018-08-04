@@ -2103,30 +2103,38 @@ WARM_ZERO_3:
         bnz     WARM_ZERO_3
 #else
 WARM_ZERO_1:
-        clrf    Splus, A
-        movf    Sbank, W, A
-        sublw   h'0f'
-        bnz     WARM_ZERO_1
+        clrf    Splus, A	; Zero the byte pointed to, then increment
+        movf    Sbank, W, A	; Move the HIGH byte of the ram pointer to working
+        sublw   h'0f'		; Subtract 0Fh to find out if HIGH byte is 0Fh
+        bnz     WARM_ZERO_1	; Means will clear from 0003h -> 0EFFh 
 #endif
 
-        setf    ibase_hi, A     ; Mark flash buffer empty
-
+        setf    ibase_hi, A     ; Mark flash buffer empty ( Making it all one
+				; ensures never equal to iaddrhi )
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
         lfsr    Rptr, urbuf
-        clrf    PIE1, A         ; Disable all peripheral interrupts
-        clrf    PIE2, A
-#ifdef PIE3
-        clrf    PIE3, A
-#endif
-#ifdef PIE4
-        clrf    PIE4, A
-#endif
-#ifdef PIE5
-        clrf    PIE5, A
-#endif
-#ifdef PIE6
-        clrf    PIE6, A
-#endif
+	banksel PIE0		; Disable all peripheral interrupts
+	clrf	PIE0, BANKED
+	banksel PIE1		
+	clrf	PIE1, BANKED
+	banksel PIE2		
+	clrf	PIE2, BANKED
+	banksel PIE3		
+	clrf	PIE3, BANKED
+	banksel PIE4		
+	clrf	PIE4, BANKED
+	banksel PIE5		
+	clrf	PIE5, BANKED
+	banksel PIE6		
+	clrf	PIE6, BANKED
+	banksel PIE7		
+	clrf	PIE7, BANKED
+	banksel PIE8		
+	clrf	PIE8, BANKED
+	banksel PIE9		
+	clrf	PIE9, BANKED
+	banksel PIE10		
+	clrf	PIE10, BANKED
         banksel Sp  ; Select register bank ($0f00)
 #if UART == 1 ; ----------------------------------------------
         movlw   spbrgval
