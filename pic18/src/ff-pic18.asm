@@ -2083,11 +2083,11 @@ main:
                                 ; Clear ram
 WARM:
         movff   STKPTR, 0       ; Save return stack reset reasons
-        movff   RCON, 1         ; Save reset reasons
-        movff   c_status, 2
-        clrf    STKPTR, A       ; Clear return stack
-        movlw   h'1f'
-        movwf   RCON, A
+        movffl  PCON0, 1        ; Save reset reasons
+        movffl  c_status, 2	; Divide by zero sets a flag then jumps to WARM
+        clrf    STKPTR, A       ; Clear return stack (should be zero on RESET )
+        movlw   h'3f'
+        movwf   PCON0, A
         lfsr    Sptr, 3         ; Zero ram from 3 upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
