@@ -5203,10 +5203,10 @@ INI:
 L_TICKS:
         db      NFA|5,"ticks"
 TICKS:
-        bcf     INTCON, GIE, A
+        bcf     INTCON0, GIE, A
         movffl  ms_count, plusS
         movffl  ms_count+1, plusS
-        bsf     INTCON, GIE, A
+        bsf     INTCON0, GIE, A
         return
         
 ; ms  +n --      Pause for n millisconds
@@ -5222,14 +5222,14 @@ L_MS:
 MS:
         rcall   TICKS
         call    PLUS
-MS1:
+FF_MS1:
         call    PAUSE
         rcall   DUP_A
         rcall   TICKS
         call    MINUS
         movf    Sminus, W, A
         movwf   Sminus, A
-        bnn     MS1
+        bnn     FF_MS1
         goto    DROP
 
 CFETCHPP_A: bra CFETCHPP
@@ -5679,7 +5679,7 @@ WHILE_:
         dw      L_WHILE
 L_REPEAT:
         db      NFA|IMMED|COMPILE|6,"repeat"
-REPEAT:
+FF_REPEAT:
         rcall   AGAIN
         goto    THEN_
 
