@@ -2188,19 +2188,10 @@ WARM_ZERO_1:
         movwf   RCSTA, A        ; USB warm start does not reset the chip
 #endif
 ; RX enable
-        movlw   b'10010000'
-        movwf   RCSTA, A
-        bsf     PIE1, RCIE, A
-#ifdef ANSELH
-#ifdef ANS11
-        bcf     ANSELH, ANS11, A ; Enable digital RB5 for RX
-#endif
-#endif
-#ifdef ANSELC
-#ifdef ANSC7
-        bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
-#endif
-#endif
+	banksel	PIE3
+        bsf     PIE3, U1RXIE, BANKED	; enable RX interupt	
+	banksel	TRISC
+	bsf	TRISC, TRISC7, BANKED	; configure C7 as an input
 #else  ; UART == 2 ---------------------------------------
         movlw   spbrgval
         movwf   SPBRG2, BANKED
