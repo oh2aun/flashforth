@@ -457,9 +457,9 @@ irq_ms:
         addwfc  load_acc+2, F, A
         movf    ms_count, W, A
         bnz     irq_ms_end
-        movff   load_acc, load_res
-        movff   load_acc+1, load_res+1
-        movff   load_acc+2, load_res+2
+        movffl  load_acc, load_res
+        movffl  load_acc+1, load_res+1
+        movffl  load_acc+2, load_res+2
         clrf    load_acc, A
         clrf    load_acc+1, A
         clrf    load_acc+2, A
@@ -515,7 +515,7 @@ irq_async_rx_2:
 #if UART == 1
         movffl  U1RXB, TWrw
 #else
-        movff   RCREG2, TWrw
+        movffl  RCREG2, TWrw
 #endif
         movf    TWrw, W, A
                 
@@ -2082,7 +2082,7 @@ main:
 #endif
                                 ; Clear ram
 WARM:
-        movff   STKPTR, 0       ; Save return stack reset reasons
+        movffl  STKPTR, 0       ; Save return stack reset reasons
         movffl  PCON0, 1        ; Save reset reasons
         movffl  c_status, 2	; Divide by zero sets a flag then jumps to WARM
         clrf    STKPTR, A       ; Clear return stack (should be zero on RESET )
@@ -2545,9 +2545,9 @@ DOCOMMAXT:
 L_SPFETCH:
         db      NFA|3,"sp@"
 SPFETCH:
-        movff   Sp, Tp
+        movffl  Sp, Tp
         movf    Sbank, W, A
-        movff   Tp, plusS
+        movffl  Tp, plusS
         iorlw   h'f0'
         movwf   plusS, A
         return
@@ -2559,10 +2559,10 @@ SPFETCH:
 ;;; link    set     $
         db      NFA|3,"sp!"
 SPSTORE:
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         movf    Sminus, W, A 
         movwf   Sp, A
-        movff   Tp, Sbank
+        movffl  Tp, Sbank
         return
 
 
@@ -2594,7 +2594,7 @@ ISTORERR:
 L_XSTORE:
         db      NFA|2,"x!"
         movf    Sminus, W, A
-        movff   Sminus, iaddr_up
+        movffl  Sminus, iaddr_up
         call    ISTORE
         clrf    iaddr_up, A
         return
@@ -2614,11 +2614,11 @@ STORE:
         bra     ESTORE
         bra     ISTORE
 STORE1:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
         swapf   Tplus, W, A
-        movff   Sminus, Tminus
-        movff   Sminus, Trw
+        movffl  Sminus, Tminus
+        movffl  Sminus, Trw
 return1:
         return
 
@@ -2636,10 +2636,10 @@ CSTORE:
         bra     ECSTORE
         bra     ICSTORE
 CSTORE1:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
         movf    Sminus, W, A
-        movff   Sminus, Trw
+        movffl  Sminus, Trw
         return
  
 ;   @       addr -- x    fetch cell from memory
@@ -2657,11 +2657,11 @@ FETCH:
         bra     EFETCH
         bra     IFETCH
 FETCH1:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
 FETCH2:
-        movff   Tplus, plusS
-        movff   Tplus, plusS
+        movffl  Tplus, plusS
+        movffl  Tplus, plusS
         return
 
 
@@ -2679,10 +2679,10 @@ CFETCH:
         bra     ECFETCH
         bra     ICFETCH
 CFETCH1:
-        movff   Sminus, Tbank
-        movff   Sminus, Tp
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
 CFETCH2:
-        movff   Trw, plusS
+        movffl  Trw, plusS
         clrf    plusS, A
         return
 
@@ -2693,9 +2693,9 @@ L_XFETCH:
         db      NFA|2,"x@"
 XFETCH:
         movf    Sminus, W, A
-        movff   Sminus, TBLPTRU
-        movff   Sminus, TBLPTRH
-        movff   Sminus, TBLPTRL
+        movffl  Sminus, TBLPTRU
+        movffl  Sminus, TBLPTRH
+        movffl  Sminus, TBLPTRL
         call    pfetch0
         clrf    TBLPTRU, A
         return
@@ -2745,7 +2745,7 @@ DP:
 ;;; 
         db      NFA|3,"cse"
 CSE:
-        movff   cse, plusS
+        movffl  cse, plusS
         clrf    plusS
         return
 
@@ -3173,12 +3173,12 @@ L_SWOP:
         db      NFA|4,"swap"
 SWOP:
         movlw   -2
-        movff   SWrw, Tp
-        movff   Srw, SWrw
-        movff   Tp, Sminus
-        movff   SWrw, Tp
-        movff   Srw, SWrw
-        movff   Tp, Splus
+        movffl  SWrw, Tp
+        movffl  Srw, SWrw
+        movffl  Tp, Sminus
+        movffl  SWrw, Tp
+        movffl  Srw, SWrw
+        movffl  Tp, Splus
         return
 
 ; OVER  x1 x2 -- x1 x2 x1           OVER
@@ -3188,8 +3188,8 @@ L_OVER:
         db      NFA|4,"over"
 OVER:
         movlw   -3
-        movff   SWrw, plusS
-        movff   SWrw, plusS
+        movffl  SWrw, plusS
+        movffl  SWrw, plusS
         return
 
 ;   ROT x1 x2 x3 -- x2 x3 x1        ROT
@@ -3208,8 +3208,8 @@ ROT:
 L_TOR:
         db      NFA|2,">r"
 TOR:
-        movff   Sminus, plusR
-        movff   Sminus, plusR
+        movffl  Sminus, plusR
+        movffl  Sminus, plusR
         return
 
 ;   R> -- x R: x --             pop from R stack
@@ -3218,8 +3218,8 @@ TOR:
 L_RFROM:
         db      NFA|2,"r>"
 RFROM:
-        movff   Rminus, plusS
-        movff   Rminus, plusS
+        movffl  Rminus, plusS
+        movffl  Rminus, plusS
         return
 ;  R@  -- x  R: x -- x         fetch from R stack
 ;  4 cycles 
@@ -3228,8 +3228,8 @@ L_RFETCH:
         db      NFA|2,"r@"
 RFETCH:
 
-        movff   Rminus, plusS
-        movff   Rplus,  plusS
+        movffl  Rminus, plusS
+        movffl  Rplus,  plusS
         return
 
 ;   DUP x -- x x    duplicate top of stack cell
@@ -3239,8 +3239,8 @@ L_DUP:
         db      NFA|3,"dup"
 DUP:
         movlw   -1
-        movff   SWrw, plusS
-        movff   SWrw, plusS
+        movffl  SWrw, plusS
+        movffl  SWrw, plusS
         return
 
 ;***********************************************************
@@ -3257,7 +3257,7 @@ ABS:
 L_PLUS:
         db      NFA|1,"+"
 PLUS:
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         movf    Sminus, W, A
         movf    Sminus, F, A
         addwf   Srw, F, A
@@ -3293,7 +3293,7 @@ L_AND:
         db      NFA|3,"and"
 AND:
         movf    Sminus, W, A
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         andwf   Sminus, F, A
         movf    Tp, W, A
         andwf   Splus, F, A
@@ -3305,7 +3305,7 @@ L_OR:
         db      NFA|2,"or"
 OR:
         movf    Sminus, W, A
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         iorwf   Sminus, F, A
         movf    Tp, W, A
         iorwf   Splus, F, A
@@ -3317,7 +3317,7 @@ L_XOR
         db      NFA|3,"xor"
 XOR:
         movf    Sminus, W, A
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         xorwf   Sminus, F, A
         movf    Tp, W, A
         xorwf   Splus, F, A
@@ -3523,8 +3523,8 @@ UGREATER:
 L_STORE_P:
         db      NFA|2,"!p"
 STORE_P:
-        movff   Sminus, p_hi
-        movff   Sminus, p_lo
+        movffl  Sminus, p_hi
+        movffl  Sminus, p_lo
         return
 
 ;***************************************************
@@ -3532,40 +3532,40 @@ STORE_P:
 L_STORE_P_TO_R:
         db      NFA|4,"!p>r"
 STORE_P_TO_R:
-        movff   p_hi, plusR
-        movff   p_lo, plusR
+        movffl  p_hi, plusR
+        movffl  p_lo, plusR
         goto    STORE_P           ; Set the new pointer
 ;***************************************************
         dw      L_STORE_P_TO_R
 L_R_TO_P:
         db      NFA|3,"r>p"
 R_TO_P:
-        movff   Rminus, p_lo
-        movff   Rminus, p_hi
+        movffl  Rminus, p_lo
+        movffl  Rminus, p_hi
         return
 ;***************************************************
         dw      L_R_TO_P
 L_PFETCH:
         db      NFA|2,"p@" ; ( -- u ) Fetch cell from pointer
 PFETCH:
-        movff   p_lo, plusS
-        movff   p_hi, plusS
+        movffl  p_lo, plusS
+        movffl  p_hi, plusS
         goto    FETCH
 ;***************************************************    
         dw      L_PFETCH
 L_PSTORE:
         db      NFA|2,"p!"  ; store cell to pointer
 PSTORE:
-        movff   p_lo, plusS
-        movff   p_hi, plusS
+        movffl  p_lo, plusS
+        movffl  p_hi, plusS
         goto    STORE
 ;***************************************************    
         dw      L_PSTORE
 L_PCSTORE:
         db      NFA|3,"pc!" ; store char to pointer
 PCSTORE:
-        movff   p_lo, plusS
-        movff   p_hi, plusS
+        movffl  p_lo, plusS
+        movffl  p_hi, plusS
         goto    CSTORE
 ;***************************************************    
         dw      L_PCSTORE
@@ -4011,11 +4011,11 @@ DOUSER:
         movwf   TBLPTRH, A
         tblrd*+
         movf    TABLAT, W, A
-        movff   upcurr, plusS
+        movffl  upcurr, plusS
         addwf   Srw, F, A
         tblrd*+
         movf    TABLAT, W, A       ; 
-        movff   (upcurr+1), plusS
+        movffl  (upcurr+1), plusS
         addwfc  Srw, F, A
         pop                         ; return to the callers caller
         return  
@@ -4226,7 +4226,7 @@ L_IMMEDQ:
 IMMEDQ: 
         rcall   CFETCH_A
         movf    Sminus, W, A
-        movff   Splus, wflags   ; COMPILE and INLINE flags for the compiler
+        movffl  Splus, wflags   ; COMPILE and INLINE flags for the compiler
         rcall   LIT_A
         dw      IMMED
         goto    AND
@@ -4335,16 +4335,16 @@ ROT_A:
 L_TO_A:
         db      NFA|2,">a"
 TO_A:
-        movff   Sminus, areg+1
-        movff   Sminus, areg+0
+        movffl  Sminus, areg+1
+        movffl  Sminus, areg+0
         return
 
         dw      L_TO_A
 L_A_FROM:
         db      NFA|2,"a>"
 A_FROM:
-        movff   areg+0, plusS
-        movff   areg+1, plusS
+        movffl  areg+0, plusS
+        movffl  areg+1, plusS
         return
 
         
@@ -5204,8 +5204,8 @@ L_TICKS:
         db      NFA|5,"ticks"
 TICKS:
         bcf     INTCON, GIE, A
-        movff   ms_count, plusS
-        movff   ms_count+1, plusS
+        movffl  ms_count, plusS
+        movffl  ms_count+1, plusS
         bsf     INTCON, GIE, A
         return
         
@@ -5983,23 +5983,23 @@ FLASHHI:
 L_FETCH_P:
         db      NFA|2,"@p"
 FETCH_P:
-        movff   p_lo, plusS
-        movff   p_hi, plusS
+        movffl  p_lo, plusS
+        movffl  p_hi, plusS
         return
 ;***************************************************
         dw      L_FETCH_P
 L_PCFETCH:
         db      NFA|3,"pc@" ; ( -- c ) Fetch char from pointer
 PCFETCH:
-        movff   p_lo, plusS
-        movff   p_hi, plusS
+        movffl  p_lo, plusS
+        movffl  p_hi, plusS
         goto    CFETCH
 ;***************************************************
         dw      L_PCFETCH
 L_PNPLUS:
         db      NFA|3,"p++" ; ( n -- ) Add n to p
 PNPLUS:
-        movff   Sminus, Tp
+        movffl  Sminus, Tp
         movf    Sminus, W, A
         addwf   p_lo, F, A
         movf    Tp, W, A
