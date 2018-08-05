@@ -1743,13 +1743,13 @@ RQ_DIVZERO:
         db      d'1',"M"
         rcall   TYPE
 RQ_STKFUL:
-        btfss   0, STKFUL, A
+        btfss   1, STKOVF, A
         bra     RQ_STKUNF
         rcall   XSQUOTE
         db      d'1',"O"
         rcall   TYPE
 RQ_STKUNF:
-        btfss   0, STKUNF, A
+        btfss   1, STKUNF, A
         bra     RQ_BOR
         rcall   XSQUOTE
         db      d'1',"U"
@@ -1767,7 +1767,7 @@ RQ_POR:
         db      d'1',"P"
         rcall   TYPE
 RQ_TO:
-        btfsc   1, TO
+        btfsc   1, RWDT
         bra     RQ_RI
         rcall   XSQUOTE
         db      d'1',"W"
