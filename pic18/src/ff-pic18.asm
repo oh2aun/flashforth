@@ -3002,7 +3002,7 @@ ACCEPT:
         rcall   OVER
         rcall   PLUS
         rcall   OVER
-ACC1:
+FF_ACC1:
         rcall   KEY
 
         movf    Sminus, W, A
@@ -3014,23 +3014,23 @@ ACC1:
         rcall   FCR
         rcall   CSTORE
         rcall   DROP            ; CR
-        bra     ACC6            ; CR END OF LINE
+        bra     FF_ACC6            ; CR END OF LINE
 ACC_LF:
         movf    Sminus, W, A
         movlw   LF_
         subwf   Splus, W, A
-        bnz     ACC2
+        bnz     FF_ACC2
         rcall   DROP            ; LF
 
         rcall   FCR
         rcall   CFETCH
         rcall   ZEROSENSE
-        bz      ACC6            ; LF END OF LINE, CR has not been received
+        bz      FF_ACC6            ; LF END OF LINE, CR has not been received
         call    FALSE_
         rcall   FCR
         rcall   CSTORE
-        bra     ACC1            ; CR has been received
-ACC2:                   	; NOT CR, NOT LF
+        bra     FF_ACC1            ; CR has been received
+FF_ACC2:                   	; NOT CR, NOT LF
         call    FALSE_
         rcall   FCR
         rcall   CSTORE
@@ -3041,7 +3041,7 @@ ACC2:                   	; NOT CR, NOT LF
         movf    Sminus, W, A
         movlw   BS_
         subwf   Splus, W, A
-        bnz     ACC3
+        bnz     FF_ACC3
 
         rcall   DROP
         rcall   ONEMINUS
@@ -3049,8 +3049,8 @@ ACC2:                   	; NOT CR, NOT LF
         rcall   OVER
         rcall   RFROM
         rcall   UMAX
-        bra     ACC1
-ACC3:
+        bra     FF_ACC1
+FF_ACC3:
         rcall   OVER
         rcall   CSTORE
         rcall   ONEPLUS
@@ -3059,8 +3059,8 @@ ACC3:
         rcall   TWODUP
         rcall   XOR; NOTEQUAL
         rcall   ZEROSENSE
-        bnz     ACC1
-ACC6:
+        bnz     FF_ACC1
+FF_ACC6:
         rcall   NIP
         rcall   SWOP
         goto    MINUS
