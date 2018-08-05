@@ -4554,7 +4554,7 @@ IEXEC:                          ; Execute a word
                                 ; immediate&compiling or interpreting
         btfss   wflags, 4, A    ; Compile only check
         bra     IEXECUTE        ; Not a compile only word
-        rcall   STATE           ; Compile only word check
+        rcall   FF_STATE        ; Compile only word check
         call    XSQUOTE
         db      d'12',"COMPILE ONLY"
         rcall   QABORT
@@ -5167,7 +5167,7 @@ BL:
         dw      L_BL
 L_STATE:
         db      NFA|5,"state"
-STATE:
+FF_STATE:
         movf    c_state, W, A
         movwf   plusS
         movwf   plusS
