@@ -114,7 +114,7 @@ Sptr    equ 0           ; Only for lfsr
 Sp      equ FSR0L       ; current parameter stack pointer points 
                         ; to the MS byte of the 16 bit value
 Sbank   equ FSR0H
-Srw     equ INDF0       ; read/write TOS
+Srw     equ INDF0	; read/write TOS
 Sminus  equ POSTDEC0    ; pop one byte
 Splus   equ POSTINC0    ; 
 plusS   equ PREINC0     ; push one byte
@@ -2086,7 +2086,7 @@ WARM:
         movffl  PCON0, 1        ; Save reset reasons
         movffl  c_status, 2	; Divide by zero sets a flag then jumps to WARM
         clrf    STKPTR, A       ; Clear return stack (should be zero on RESET )
-        movlw   h'3f'
+        movlw   h'3f'		; Clearing the flags in PCON0
         movwf   PCON0, A
         lfsr    Sptr, 3         ; Zero ram from 3 upwards
 #ifdef USB_CDC
@@ -2137,11 +2137,52 @@ WARM_ZERO_1:
 	clrf	PIE10, BANKED
         banksel Sp  ; Select register bank ($0f00)
 #if UART == 1 ; ----------------------------------------------
-        movlw   spbrgval
-        movwf   SPBRG, A
+; PPS configure pins for RX and TX
+	banksel ANSELC
+	clrf	ANSELC		; disable analogue on PORTC so TXRX can function
+; Unlock the PPS
+	bcf INTCON0, GIE, A	; disable interupts	
+	banksel PPSLOCK		; required sequence
+	movlw h'55'
+	movwf PPSLOCK, BANKED
+	movlw h'AA'
+	movwf PPSLOCK, BANKED	
+	bcf PPSLOCK, PPSLOCKED, BANKED	; disable the pps lock	
+	bsf INTCON0, GIE, A	; re-enable interupts
+; Set the pins	
+	banksel	U1RXPPS		; configure the RX pin to C7
+	movlw	b'00010111'
+	movwf	U1RXPPS, BANKED
+	
+	banksel U1CTSPPS	; clear so always enabled
+	movlw	b'00000000'
+	movwf	U1CTSPPS, BANKED
+	
+	banksel RC6PPS		; configure TX pin to C6
+	movlw	b'00010011'
+	movwf	RC6PPS, BANKED
+
+; Re-lock the PPS
+	bcf INTCON0, GIE, A	; disable interupts	
+	banksel PPSLOCK		; required sequence
+	movlw h'55'
+	movwf PPSLOCK, BANKED
+	movlw h'AA'
+	movwf PPSLOCK, BANKED	
+	bsf PPSLOCK, PPSLOCKED, BANKED	; enable the pps lock	
+	bsf INTCON0, GIE, A	; re-enable interupts
+
+; Set the Baud Rate
+        movlw   spbrgval	; ((clock/baud)/d'16') - 1
+	banksel U1BRGL
+        movwf   U1BRGL, BANKED
 ; TX enable
-        movlw   b'00100100'
-        movwf   TXSTA, A
+	banksel	U1CON0
+	movlw	b'10110000'	; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+				; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
+        movwf   U1CON0, BANKED
+	banksel U1CON1
+	bsf	U1CON1, ON_U1CON1, BANKED ; turn on TX	
 #ifdef USB_CDC
         movlw   b'00000000'     ; Reset the UART since
         movwf   RCSTA, A        ; USB warm start does not reset the chip
