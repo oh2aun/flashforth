@@ -2270,6 +2270,7 @@ WARM_ZERO_1:
         CLRF    UIR, ACCESS
         CLRF    usb_device_state, BANKED
 #endif
+	banksel Sp  ; Select register bank ($0f00) (put this back in down here)
         rcall   LIT
         dw      WARMLIT
         call    UPTR
@@ -2278,9 +2279,9 @@ WARM_ZERO_1:
         call    CMOVE
         
         rcall   FRAM
-        clrf    INTCON, A
-        bsf     INTCON, PEIE, A
-        bsf     INTCON, GIE, A
+        ;clrf    INTCON, A
+        ;bsf     INTCON, PEIE, A
+        bsf     INTCON0, GIE, A
 
         rcall   LIT
         dw      dp_start
