@@ -2148,7 +2148,6 @@ WARM_ZERO_1:
 	movlw h'AA'
 	movwf PPSLOCK, BANKED	
 	bcf PPSLOCK, PPSLOCKED, BANKED	; disable the pps lock	
-	bsf INTCON0, GIE, A	; re-enable interupts
 ; Set the pins	
 	banksel	U1RXPPS		; configure the RX pin to C7
 	movlw	b'00010111'
@@ -2162,15 +2161,13 @@ WARM_ZERO_1:
 	movlw	b'00010011'
 	movwf	RC6PPS, BANKED
 
-; Re-lock the PPS
-	bcf INTCON0, GIE, A	; disable interupts	
+; Re-lock the PPS	
 	banksel PPSLOCK		; required sequence
 	movlw h'55'
 	movwf PPSLOCK, BANKED
 	movlw h'AA'
 	movwf PPSLOCK, BANKED	
 	bsf PPSLOCK, PPSLOCKED, BANKED	; enable the pps lock	
-	bsf INTCON0, GIE, A	; re-enable interupts
 
 ; Set the Baud Rate
         movlw   spbrgval	; ((clock/baud)/d'16') - 1
