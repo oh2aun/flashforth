@@ -2211,10 +2211,13 @@ WARM_ZERO_1:
 #endif
 #if MS_TMR == 1
         ;; Timer 1 for 1 ms system tick
-        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
+        movlw   h'01'           ; prescale = 1 / 8-bit write
         movwf   T1CON, A
+	movlw	h'01'		; fosc/4
+	movwf	T1CLK, A
         setf    TMR1H, A
-        bsf     PIE1,TMR1IE, A
+	banksel	PIE4
+        bsf     PIE4,TMR1IE, BANKED
 #else
 #if MS_TMR == 2
         ;; Timer 2 for 1 ms system tick
