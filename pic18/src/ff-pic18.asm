@@ -775,14 +775,14 @@ RX1Q2:
 ;;; 42 clock cycles
 umstar0:
         rcall   TOTBLP
-        movff   Sminus, PCLATH
-        movff   Sminus, TABLAT
+        movffl  Sminus, PCLATH
+        movffl  Sminus, TABLAT
         movf    TBLPTRL, W, A
         
         push
         mulwf   TABLAT, A       ; ARG1L * ARG2L ->  PRODH:PRODL
-        movff   PRODL, plusS
-        movff   PRODH, plusS
+        movffl  PRODL, plusS
+        movffl  PRODH, plusS
 
         movf    TBLPTRH, W, A
         mulwf   PCLATH, A       ; ARG1H * ARG2H -> PRODH:PRODL
@@ -809,8 +809,8 @@ umstar0:
         clrf    WREG, A
         addwfc  TOSH, F, A
 
-        movff   TOSL, plusS
-        movff   TOSH, plusS
+        movffl  TOSL, plusS
+        movffl  TOSH, plusS
         pop
         return
 
@@ -835,12 +835,14 @@ umslashmod0:
         bsf     c_status, 0, A  ; Signal divide by zero error
         bra     WARM
 umslashmod3:
-        movff   Sminus, DIVIDEND_3
-        movff   Sminus, DIVIDEND_2
-        movff   Sminus, DIVIDEND_1
-        movff   Sminus, DIVIDEND_0
+        movffl  Sminus, DIVIDEND_3
+        movffl  Sminus, DIVIDEND_2
+        movffl  Sminus, DIVIDEND_1
+        movffl  Sminus, DIVIDEND_0
         clrf    DCNT, A             ; count to 16; 19
 UMSLASHMOD1:
+	movlw	h'0f'		    ; have the possibility of a 6 bit counter
+	andwf   DCNT, F, A
         clrf    Tp, A
         bcf     STATUS, C, A
         rlcf    DIVIDEND_0, F, A
@@ -865,10 +867,10 @@ UMSLASHMOD1:
 UMSLASHMOD2:
         decfsz  DCNT, F, A
         bra     UMSLASHMOD1        ; 16*(18-22) = ~320
-        movff   DIVIDEND_2, plusS  ; remainder
-        movff   DIVIDEND_3, plusS
-        movff   DIVIDEND_0, plusS  ; quotient
-        movff   DIVIDEND_1, plusS
+        movffl  DIVIDEND_2, plusS  ; remainder
+        movffl  DIVIDEND_3, plusS
+        movffl  DIVIDEND_0, plusS  ; quotient
+        movffl  DIVIDEND_1, plusS
         return                  ; 11 cycles 
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0x80))&& (ibasehi != iaddrhi)
@@ -1739,45 +1741,45 @@ RQ:
 RQ_DIVZERO:
         btfss   2, 0, A
         bra     RQ_STKFUL
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"M"
-        rcall   TYPE
+        call   TYPE
 RQ_STKFUL:
         btfss   1, STKOVF, A
         bra     RQ_STKUNF
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"O"
-        rcall   TYPE
+        call   TYPE
 RQ_STKUNF:
         btfss   1, STKUNF, A
         bra     RQ_BOR
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"U"
-        rcall   TYPE
+        call   TYPE
 RQ_BOR:
         btfsc   1, BOR
         bra     RQ_POR
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"B"
-        rcall   TYPE
+        call   TYPE
 RQ_POR: 
         btfsc   1, POR
         bra     RQ_TO
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"P"
-        rcall   TYPE
+        call   TYPE
 RQ_TO:
         btfsc   1, RWDT
         bra     RQ_RI
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"W"
-        rcall   TYPE
+        call   TYPE
 RQ_RI:
         btfsc   1, RI
         bra     RQ_END
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"S"
-        rcall   TYPE
+        call   TYPE
 RQ_END:
         return
 ; *********************************************
@@ -1966,7 +1968,7 @@ BR3_DOES:
         rcall   DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      h'ff'
-        rcall   AND
+        call    AND
         rcall   RFROM
         rcall   OR_A
         rcall   ICOMMA
@@ -2269,17 +2271,16 @@ WARM_ZERO_1:
 #endif
 	banksel Sp  ; Select register bank ($0f00) (put this back in down here)
         rcall   LIT
-        dw      WARMLIT
-        call    UPTR
+        dw      WARMLIT	    ; puts address of warm lit on the stack
+        call    UPTR	    ; puts address of uptr on the stack
         rcall   LIT
-        dw      warmlitsize
-        call    CMOVE
+        dw      warmlitsize ; puts size of warmlit on stack
+        call    CMOVE	    ; copies warmlit to uptr
         
         rcall   FRAM
         ;clrf    INTCON, A
         ;bsf     INTCON, PEIE, A
         bsf     INTCON0, GIE, A
-
         rcall   LIT
         dw      dp_start
         rcall   FETCH
@@ -2305,7 +2306,7 @@ WARM_2:
         bz      STARTQ2
         rcall   XSQUOTE
         db      d'3',"ESC"
-        rcall   TYPE
+        call    TYPE
         rcall   LIT
         dw      TURNKEY_DELAY
         call    MS
@@ -2615,6 +2616,8 @@ STORE:
         bra     ISTORE
 STORE1:
         movffl  Sminus, Tbank
+	movlw	h'0f'
+	andwf   Tbank, F, A
         movffl  Sminus, Tp
         swapf   Tplus, W, A
         movffl  Sminus, Tminus
@@ -2637,6 +2640,8 @@ CSTORE:
         bra     ICSTORE
 CSTORE1:
         movffl  Sminus, Tbank
+	movlw	h'0f'
+	andwf   Tbank, F, A
         movffl  Sminus, Tp
         movf    Sminus, W, A
         movffl  Sminus, Trw
@@ -2658,6 +2663,8 @@ FETCH:
         bra     IFETCH
 FETCH1:
         movffl  Sminus, Tbank
+	movlw	h'0f'
+	andwf   Tbank, F, A
         movffl  Sminus, Tp
 FETCH2:
         movffl  Tplus, plusS
@@ -2680,6 +2687,8 @@ CFETCH:
         bra     ICFETCH
 CFETCH1:
         movffl  Sminus, Tbank
+	movlw	h'0f'
+	andwf   Tbank, F, A
         movffl  Sminus, Tp
 CFETCH2:
         movffl  Trw, plusS
@@ -3880,7 +3889,7 @@ UDOT:
         rcall   FALSE_
         rcall   NUMS
         rcall   NUMGREATER
-        rcall   TYPE
+        call	TYPE
         goto    SPACE_
 
 ; U.R    u +n --      display u unsigned in field of n. 1<n<=255 
@@ -3903,7 +3912,7 @@ UDOTR2:
         movwf   Rminus, A      ; UNNEXT
         rcall   NUMS
         rcall   NUMGREATER
-        rcall   TYPE
+        call	TYPE
         goto    SPACE_
 
 ; .     n --                    display n signed
@@ -3919,7 +3928,7 @@ DOT:    rcall   LESSNUM
         rcall   ROT
         rcall   SIGN
         rcall   NUMGREATER
-        rcall   TYPE
+        call    TYPE
         goto    SPACE_
 
 ; DECIMAL  --         set number base to decimal
@@ -4193,7 +4202,7 @@ L_BRACFIND:
 findi:
 findi1:
 FIND_1: 
-        rcall   TWODUP
+        call    TWODUP
         rcall   OVER
         rcall   CFETCH_A
         call    NEQUAL
@@ -6083,7 +6092,7 @@ end_of_dict:
 FF_DP code
 dpcode:
 ;****************************************************
-        org h'f00000'
+        org h'310000'
         de  h'ff', h'ff'
 ;        de  dp_user_dictionary&0xff, (dp_user_dictionary>>8)&0xff
 ;        de  dpeeprom&0xff, (dpeeprom>>8)&0xff
