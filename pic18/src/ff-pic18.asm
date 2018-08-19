@@ -470,14 +470,8 @@ irq_ms:
 irq_ms_end:
 ;;; *************************************************        
 ;;; Save Tp and Tbank and PCLATH
-	movf	Tp, W, A
-	banksel ihtp
-	movwf	ihtp, BANKED
-        ;movff   Tp, ihtp
-        ;movff   Tbank, ihtbank
-	movf	Tbank, W, A
-	banksel ihtbank
-	movwf	ihtbank, BANKED
+        movffl   Tp, ihtp
+        movffl   Tbank, ihtbank
 irq_user:
         movf    irq_v+1, W, A
         bz      irq_user_skip
@@ -551,13 +545,8 @@ irq_async_rx_4:
 irq_async_rx_end:
 ;;; *****************************************************************
 ;; Restore Tp and Tbank
-	banksel ihtbank
-	movf	ihtbank, W, BANKED
-	movwf	Tbank, A
-        ;movffl   ihtbank, Tbank
-        ;movffl   ihtp, Tp
-	movf	ihtp, W, BANKED
-	movwf	Tp, A
+        movffl   ihtbank, Tbank
+        movffl   ihtp, Tp
 irq_end:
         retfie  1               ; Restore WREG, BSR, STATUS regs
 ; *******************************************************************
@@ -1574,13 +1563,8 @@ PAUSE_IDLE1:
 PAUSE000:
 #if MULTITASKING == ENABLE
         ; Set user pointer in Tp, Tbank (FSR1)
-	banksel	upcurr
-	movf	upcurr, W, BANKED
-	movwf	Tp, A
-	movf	(upcurr+1), W, BANKED
-	movwf	Tbank, A
-        ;movffl   upcurr, Tp
-        ;movffl   (upcurr+1), Tbank
+        movffl   upcurr, Tp
+        movffl   (upcurr+1), Tbank
 
 ;; Switch tasks only if background tasks are running
         movf    Tminus, W, A
@@ -1592,12 +1576,8 @@ PAUSE000:
         movffl   Sbank, plusR
 
         ; Save P pointer
-	movf	p_lo, A
-	movwf	plusR, A
-	movf	p_hi, A
-	movwf	plusR, A
-        ;movffl   p_lo, plusR
-        ;movffl   p_hi, plusR
+        movffl   p_lo, plusR
+        movffl   p_hi, plusR
 
         ; Remember the return stack counter
         movffl   STKPTR, TBLPTRL
@@ -2103,7 +2083,7 @@ main:
 WARM:
         movffl  STKPTR, 0       ; Save return stack reset reasons
         movffl  PCON0, 1        ; Save reset reasons
-        movff   c_status, 2	; Divide by zero sets a flag then jumps to WARM
+        movffl  c_status, 2	; Divide by zero sets a flag then jumps to WARM
         clrf    STKPTR, A       ; Clear return stack (should be zero on RESET )
         movlw   h'3f'		; Clearing the flags in PCON0
         movwf   PCON0, A
@@ -2781,9 +2761,7 @@ DP:
 ;;; 
         db      NFA|3,"cse"
 CSE:
-        ;movffl  cse, plusS
-	movf	cse, W, A
-	movwf	plusS, A
+        movffl  cse, plusS
         clrf    plusS
         return
 
@@ -3561,12 +3539,8 @@ UGREATER:
 L_STORE_P:
         db      NFA|2,"!p"
 STORE_P:
-        ;movff Sminus, p_hi
-	movf  Sminus, W, A
-	movwf	p_hi, A	
-        ;movff Sminus, p_lo
-	movf  Sminus, W, A
-	movwf	p_lo, A
+        movffl Sminus, p_hi
+        movffl Sminus, p_lo
         return
 
 ;***************************************************
@@ -3574,60 +3548,40 @@ STORE_P:
 L_STORE_P_TO_R:
         db      NFA|4,"!p>r"
 STORE_P_TO_R:
-        ;movff  p_hi, plusR
-        movf	p_hi, W, A
-	movwf	plusR, A
-	;movff  p_lo, plusR
-	movf	p_lo, W, A
-	movwf	plusR, A
+        movffl  p_hi, plusR
+	movffl  p_lo, plusR
         goto    STORE_P           ; Set the new pointer
 ;***************************************************
         dw      L_STORE_P_TO_R
 L_R_TO_P:
         db      NFA|3,"r>p"
 R_TO_P:
-        ;movffl  Rminus, p_lo
-	movf	Rminus, W, A
-	movwf	p_lo, A
-        ;movffl  Rminus, p_hi
-	movf	Rminus, W, A
-	movwf	p_hi, A
+        movffl  Rminus, p_lo
+        movffl  Rminus, p_hi
         return
 ;***************************************************
         dw      L_R_TO_P
 L_PFETCH:
         db      NFA|2,"p@" ; ( -- u ) Fetch cell from pointer
 PFETCH:
-        ;movff   p_lo, plusS
-        movf	p_lo, W, A
-	movwf	plusS, A
-	;movff  p_hi, plusS
-	movf	p_hi, W, A
-	movwf	plusS, A
+        movffl   p_lo, plusS
+	movffl  p_hi, plusS
         goto    FETCH
 ;***************************************************    
         dw      L_PFETCH
 L_PSTORE:
         db      NFA|2,"p!"  ; store cell to pointer
 PSTORE:
-        ;movff   p_lo, plusS
-	movf	p_lo, W, A
-	movwf	plusS, A
-        ;movff   p_hi, plusS
-	movf	p_hi, W, A
-	movwf	plusS, A
+        movffl   p_lo, plusS
+        movffl   p_hi, plusS
         goto    STORE
 ;***************************************************    
         dw      L_PSTORE
 L_PCSTORE:
         db      NFA|3,"pc!" ; store char to pointer
 PCSTORE:
-        ;movff   p_lo, plusS
-	movf	p_lo, W, A
-	movwf	plusS, A
-        ;movff   p_hi, plusS
-	movf	p_hi, W, A
-	movwf	plusS, A
+        movffl   p_lo, plusS
+        movffl   p_hi, plusS
         goto    CSTORE
 ;***************************************************    
         dw      L_PCSTORE
@@ -4072,17 +4026,12 @@ DOUSER:
         movf    TOSH, W, A
         movwf   TBLPTRH, A
         tblrd*+
-	banksel upcurr
-        movf	upcurr, W, BANKED
-	movwf	plusS, A
-        ;movff  upcurr, plusS
 	movf    TABLAT, W, A
+        movffl  upcurr, plusS
         addwf   Srw, F, A
         tblrd*+
-	movf	(upcurr+1), W, BANKED
-	movwf	plusS, A
         movf    TABLAT, W, A       ; 
-        ;movff  (upcurr+1), plusS
+        movffl  (upcurr+1), plusS
         addwfc  Srw, F, A
         pop                         ; return to the callers caller
         return  
@@ -4293,9 +4242,7 @@ L_IMMEDQ:
 IMMEDQ: 
         rcall   CFETCH_A
         movf    Sminus, W, A
-        ;movffl  Splus, wflags   ; COMPILE and INLINE flags for the compiler
-	movf    Splus, W, A   ; COMPILE and INLINE flags for the compiler
-	movwf	wflags, A
+        movffl  Splus, wflags   ; COMPILE and INLINE flags for the compiler
         rcall   LIT_A
         dw      IMMED
         goto    AND
@@ -4404,24 +4351,16 @@ ROT_A:
 L_TO_A:
         db      NFA|2,">a"
 TO_A:
-        ;movffl  Sminus, areg+1
-        ;movffl  Sminus, areg+0
-	movf	Sminus, W, A
-	movwf	areg+1, A
-	movf	Sminus, W, A
-	movwf	areg+0, A
+        movffl  Sminus, areg+1
+        movffl  Sminus, areg+0
         return
 
         dw      L_TO_A
 L_A_FROM:
         db      NFA|2,"a>"
-A_FROM:
-	movf	areg+0, W, A
-	movwf	plusS, A
-	movf	areg+1, W, A
-	movwf	plusS, A	
-        ;movffl  areg+0, plusS
-        ;movffl  areg+1, plusS
+A_FROM:	
+        movffl  areg+0, plusS
+        movffl  areg+1, plusS
         return
 
         
