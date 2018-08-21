@@ -1094,7 +1094,10 @@ SKIP:
         movf    Sminus, W, A
         movwf   PCLATH, A       ; count_lo
         movffl  Sminus, Tbank
+	movlw	h'0f'		; 14 bit address width needs this
+	andwf   Tbank, F, A
         movffl  Sminus, Tp      ; c-addr
+	movf	PCLATH, F, A	; with the addition of the andwf, need this again
         bz      SKIP4           ; zero flag comes from the previous movf
 SKIP0:
         movlw   0x9             ; SKIP TAB
@@ -1139,6 +1142,8 @@ SCAN:
         movwf   PCLATH, A
         bz      SCAN4
         movffl  Sminus, Tbank
+	movlw	h'0f'
+	andwf   Tbank, F, A
         movffl  Sminus, Tp          ; c-addr
 SCAN0:
         movf    Trw, W, A
@@ -3015,9 +3020,9 @@ WTOS:
 L_ACCEPT:
         db      NFA|6,"accept"
 ACCEPT:
-        rcall   OVER
-        rcall   PLUS
-        rcall   OVER
+        rcall   OVER		; c-addr +n c-addr
+        rcall   PLUS		; c-addr (n + c-addr)
+        rcall   OVER		; c-addr (n + c-addr) c-addr
 FF_ACC1:
         rcall   KEY
 
