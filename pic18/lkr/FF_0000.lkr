@@ -6,21 +6,20 @@ LIBPATH .
 CODEPAGE   NAME=coder      START=0x0000         END=0x00007
 CODEPAGE   NAME=codeih     START=0x0008         END=0x0000B
 CODEPAGE   NAME=codef      START=0x000C         END=0x23D1
-CODEPAGE   NAME=code1      START=0x23D2       END=0x23F9     PROTECTED
-CODEPAGE   NAME=code2      START=0x23FA      END=0xFFFFF        PROTECTED
+CODEPAGE   NAME=code1      START=0x23D2         END=0x23F9         PROTECTED
+CODEPAGE   NAME=code2      START=0x23FA         END=0xFFFFF        PROTECTED
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x20000F       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x300009       PROTECTED
 CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
-CODEPAGE   NAME=eedata     START=0x310000          END=0x3103FF       PROTECTED
+CODEPAGE   NAME=eedata     START=0x310000       END=0x3103FF       PROTECTED
 
 
 
-//ACCESSBANK NAME=flashbuf   START=0x0            END=0x3F           PROTECTED
-ACCESSBANK NAME=acs_ram    START=0x10           END=0x5F           PROTECTED
-DATABANK   NAME=flashbuf   START=0x60           END=0xDF           PROTECTED
-DATABANK   NAME=irqstack   START=0xE0           END=0x1FF          PROTECTED
-DATABANK   NAME=cstack     START=0x3E0          END=0x3FF          PROTECTED
-ACCESSBANK NAME=accesssfr  START=0xF60          END=0xFFF          PROTECTED
+ACCESSBANK NAME=acs_ram    START=0x10              END=0x5F           PROTECTED
+DATABANK   NAME=flashbuf   START=0x60              END=0xDF           PROTECTED
+DATABANK   NAME=irqstack   START=0xE0              END=0x1FF          PROTECTED
+DATABANK   NAME=cstack     START=0x3E0             END=0x3FF          PROTECTED
+ACCESSBANK NAME=accesssfr  START=0xF60             END=0xFFF          PROTECTED
 DATABANK   NAME=sfr56      START=0x3800            END=0x38FF         PROTECTED
 DATABANK   NAME=sfr57      START=0x3900            END=0x39FF         PROTECTED
 DATABANK   NAME=sfr58      START=0x3A00            END=0x3AFF         PROTECTED
