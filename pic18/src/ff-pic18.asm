@@ -980,6 +980,8 @@ write_buffer_to_imem_2:
         tblwt+*
         decfsz  PRODL, F, A
         bra     write_buffer_to_imem_2
+        banksel NVMCON1
+        bcf     NVMCON1, FREE, BANKED     
         rcall   magic
         decfsz  PRODH, F, A
         bra     write_buffer_to_imem_1
@@ -1000,7 +1002,7 @@ verify_imem_1:
         tblrd*+
         movf    TABLAT, W
         cpfseq  Tplus, A
-        nop;reset
+        reset
         decfsz  PCLATH, F, A
         bra     verify_imem_1
 
@@ -1025,7 +1027,7 @@ magic:
         movwf   NVMCON2, BANKED
         movlw   h'aa'
         movwf   NVMCON2, BANKED
-        banksel NVMCON1
+        ;banksel NVMCON1
         bsf     NVMCON1, WR, BANKED
         return
 
@@ -2299,7 +2301,7 @@ WARM_2:
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
         rcall   RQ
-        rcall   VER
+        rcall   VER     
         
         rcall   TURNKEY
         call    ZEROSENSE
@@ -4943,7 +4945,7 @@ CREATE:
         rcall   BL
         rcall   WORD            ; Parse a word
 
-        rcall   DUP_A           ; Remember parsed word at rhere
+        rcall   DUP_A           ; Remember parsed word at here
         rcall   FIND
         call    NIP
         call    ZEROEQUAL
@@ -4959,7 +4961,7 @@ CREATE:
         rcall   QABORTQ          ; Abort if there is no name for create
         rcall   IHERE
         call    ALIGNED
-        rcall   IDP             ; Align the flash DP.
+        rcall   IDP             
         rcall   STORE_A
         rcall   LAST
         call    ICOMMA          ; Link field
@@ -4968,12 +4970,12 @@ CREATE:
         rcall   DUP_A             
         rcall   LATEST          ; new 'latest' link
         rcall   STORE_A         ; str len ihere
-        rcall   PLACE           ; 
-        rcall   IHERE           ; ihere
+        rcall   PLACE           ; place as counted str
+        rcall   IHERE           ; ( dictionary-ptr ) 
         call    CFETCH_A
         rcall   LIT_A
         dw      NFA
-        rcall   SHB
+        rcall   SHB             ; Set header bit
         call    ONEPLUS
         call    ALIGNED
         rcall   IALLOT          ; The header has now been created
