@@ -2160,6 +2160,8 @@ WARM_ZERO_1:
         movlw   spbrgval        ; ((clock/baud)/d'16') - 1
         banksel U1BRGL
         movwf   U1BRGL, BANKED
+        movlw   high(spbrgval)
+        movwf   U1BRGH, BANKED
 
 ; TX enable
         banksel U1CON0
@@ -2213,6 +2215,8 @@ WARM_ZERO_1:
         movlw   spbrgval        ; ((clock/baud)/d'16') - 1
         banksel U2BRGL
         movwf   U2BRGL, BANKED
+        movlw   high(spbrgval)
+        movwf   U2BRGH, BANKED
 
 ; TX enable
         banksel U2CON0
