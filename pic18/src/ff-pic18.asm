@@ -491,7 +491,8 @@ irq_async_rx:
         banksel PIR3
         btfss   PIR3, U1RXIF, BANKED
 #else
-        btfss   PIR3, RC2IF, A
+        banksel PIR6
+        btfss   PIR6, U2RXIF, BANKED
 #endif
         bra     irq_async_rx_end
 
@@ -516,7 +517,7 @@ irq_async_rx_2:
 #if UART == 1
         movffl  U1RXB, TWrw
 #else
-        movffl  RCREG2, TWrw
+        movffl  U2RXB, TWrw
 #endif
         movf    TWrw, W, A
                 
@@ -695,7 +696,8 @@ TX1_:
         banksel U1ERRIR
         btfss   U1ERRIR, U1TXMTIF, BANKED
 #else
-        btfss   PIR3, TX2IF, A
+        banksel U2ERRIR
+        btfss   U2ERRIR, U2TXMTIF, BANKED
 #endif
         bra     TX1_
 TX1_SEND:
@@ -708,8 +710,8 @@ TX1_SEND:
         banksel U1TXB
         movwf   U1TXB, BANKED
 #else
-        banksel TXREG2
-        movwf   TXREG2, BANKED
+        banksel U2TXB
+        movwf   U2TXB, BANKED
 #endif
         return
 ;***************************************************
@@ -750,10 +752,10 @@ RX1Q:
         bcf     U1ERRIR, RXFOIF, BANKED ; Restart RX on case of RX overrun
         bsf     U1ERRIR, RXFOIF, BANKED
 #else
-        banksel RCSTA2
-        btfsc   RCSTA2, OERR2, BANKED
-        bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
-        bsf     RCSTA2, CREN2, BANKED
+        banksel U2ERRIR
+        btfsc   U2ERRIR, RXFOIF, BANKED
+        bcf     U2ERRIR, RXFOIF, BANKED ; Restart RX on case of RX overrun
+        bsf     U2ERRIR, RXFOIF, BANKED
 #endif
         movf    RXcnt, W, A
         movwf   plusS, A
@@ -1040,10 +1042,11 @@ asmemit:
         banksel U1TXB
         movwf   U1TXB, BANKED
 #else
-        btfss   PIR3, TX2IF, A
+        banksel PIR6
+        btfss   PIR6, U2TXIF, BANKED
         bra     asmemit
-        banksel TXREG2
-        movwf   TXREG2, BANKED
+        banksel U2TXB
+        movwf   U2TXB, BANKED
 #endif
         return
 ;***************************************************
@@ -2187,26 +2190,63 @@ WARM_ZERO_1:
         movwf   U1CON0, BANKED
         banksel U1CON1
         bsf U1CON1, ON_U1CON1, BANKED ; turn on TX
-#ifdef USB_CDC
-        movlw   b'00000000'     ; Reset the UART since
-        movwf   RCSTA, A        ; USB warm start does not reset the chip
-#endif
+
 ; RX enable
         banksel PIE3
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
         banksel TRISC
         bsf     TRISC, TRISC7, BANKED   ; configure C7 as an input
 #else  ; UART == 2 ---------------------------------------
-        movlw   spbrgval
-        movwf   SPBRG2, BANKED
-; TX enable
-        movlw   b'00100100'
-        movwf   TXSTA2, BANKED
-; RX enable
-        movwf   RCSTA2, BANKED
-        bsf     PIE3, RC2IE, A
+; PPS configure pins for RX and TX
+        banksel ANSELC
+        clrf    ANSELC          ; disable analogue on PORTC so TXRX can function
+; Unlock the PPS
+        bcf     INTCON0, GIE, A ; disable interupts
+        banksel PPSLOCK         ; required sequence
+        movlw   h'55'
+        movwf   PPSLOCK, BANKED
+        movlw   h'AA'
+        movwf   PPSLOCK, BANKED
+        bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
+; Set the pins
+        banksel U2RXPPS         ; configure the RX pin to C7
+        movlw   b'00010111'
+        movwf   U2RXPPS, BANKED
+        
+        banksel U2CTSPPS        ; clear so always enabled
+        movlw   b'00000000'
+        movwf   U2CTSPPS, BANKED
+        
+        banksel RC6PPS          ; configure TX pin to C6
+        movlw   b'00010110'
+        movwf   RC6PPS, BANKED
 
-        bcf     ANCON2, ANSEL18, BANKED   ; Enable digital RG2 for RX2
+; Re-lock the PPS
+        banksel PPSLOCK         ; required sequence
+        movlw   h'55'
+        movwf   PPSLOCK, BANKED
+        movlw   h'AA'
+        movwf   PPSLOCK, BANKED
+        bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
+
+; Set the Baud Rate
+        movlw   spbrgval        ; ((clock/baud)/d'16') - 1
+        banksel U2BRGL
+        movwf   U2BRGL, BANKED
+
+; TX enable
+        banksel U2CON0
+        movlw   b'00110000'     ; NO HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
+        movwf   U2CON0, BANKED
+        banksel U2CON1
+        bsf U2CON1, ON_U2CON1, BANKED ; turn on TX
+
+; RX enable
+        banksel PIE6
+        bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
+        banksel TRISC
+        bsf     TRISC, TRISC7, BANKED   ; configure C7 as an input
 #endif
 
 #if IDLE_MODE == ENABLE
