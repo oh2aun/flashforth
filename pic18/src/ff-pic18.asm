@@ -406,15 +406,17 @@ irq_ms:
         bcf     PIR1, TMR2IF, A
 #else
 #if MS_TMR == 3 ;******************************
-        btfss   PIR2, TMR3IF, A
+        banksel PIR6
+        btfss   PIR6, TMR3IF, BANKED
         bra     irq_ms_end
-        bcf     T3CON, TMR3ON
+        bcf     T3CON, TMR3ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR3L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR3H, F, A
-        bsf     T3CON, TMR3ON
-        bcf     PIR2, TMR3IF, A
+        bsf     T3CON, TMR3ON, A
+        banksel PIR6
+        bcf     PIR6, TMR3IF, BANKED
 #else
 #if MS_TMR == 4 ;******************************
         btfss   PIR5, TMR4IF, A
@@ -422,16 +424,17 @@ irq_ms:
         bcf     PIR5, TMR4IF, A
 #else
 #if MS_TMR == 5 ;******************************
-        btfss   PIR5, TMR5IF, A
+        banksel PIR8
+        btfss   PIR8, TMR5IF, BANKED
         bra     irq_ms_end
-        banksel T5CON
-        bcf     T5CON, TMR5ON, BANKED
+        bcf     T5CON, TMR5ON, A
         movlw   low(tmr1ms_val)
-        subwf   TMR5L, F, BANKED
+        subwf   TMR5L, F, A
         movlw   high(tmr1ms_val)
-        subwfb  TMR5H, F, BANKED
-        bsf     T5CON, TMR5ON, BANKED
-        bcf     PIR5, TMR5IF, A
+        subwfb  TMR5H, F, A
+        bsf     T5CON, TMR5ON, A
+        banksel PIR8
+        bcf     PIR8, TMR5IF, BANKED
 #else
 #if MS_TMR == 6 ;******************************
         btfss   PIR5, TMR6IF, A
@@ -2261,7 +2264,7 @@ WARM_ZERO_1:
         movwf   T1CLK, A
         setf    TMR1H, A
         banksel PIE4
-        ;bsf     PIE4,TMR1IE, BANKED
+        bsf     PIE4,TMR1IE, BANKED
 #else
 #if MS_TMR == 2
         ;; Timer 2 for 1 ms system tick
@@ -2273,10 +2276,13 @@ WARM_ZERO_1:
 #else
 #if MS_TMR == 3
         ;; Timer 3 for 1 ms system tick
-        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
+        movlw   h'01'           ; prescale = 1 / 8-bit write
         movwf   T3CON, A
+        movlw   h'01'           ; fosc/4
+        movwf   T3CLK, A
         setf    TMR3H, A
-        bsf     PIE2,TMR3IE, A
+        banksel PIE6
+        bsf     PIE6,TMR3IE, BANKED
 #else
 #if MS_TMR == 4
         ;; Timer 4 for 1 ms system tick
@@ -2288,10 +2294,13 @@ WARM_ZERO_1:
 #else
 #if MS_TMR == 5
         ;; Timer 5 for 1 ms system tick
-        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T5CON, BANKED
-        setf    TMR5H, BANKED
-        bsf     PIE5,TMR5IE, A
+        movlw   h'01'           ; prescale = 1 / 8-bit write
+        movwf   T5CON, A
+        movlw   h'01'           ; fosc/4
+        movwf   T5CLK, A
+        setf    TMR5H, A
+        banksel PIE8
+        bsf     PIE8,TMR5IE, BANKED
 #else
 #if MS_TMR == 6
         ;; Timer 6 for 1 ms system tick
