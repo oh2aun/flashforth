@@ -955,14 +955,6 @@ wbtil2:
 #endif
         bcf     INTCON0, GIE, A  ; Disable Interrupts
 
-#ifdef p18fxx2xx8_fix_1
-        movff   PIE1, SPIE1
-        movff   PIE2, SPIE2
-        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
-        clrf    INTCON, A       ; may be lost
-        clrf    PIE1, A
-        clrf    PIE2, A
-#endif
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
         banksel NVMCON1
         bsf     NVMCON1, REG1, BANKED      ; Erase the flash block
@@ -993,11 +985,6 @@ write_buffer_to_imem_2:
         banksel NVMCON1
         bcf     NVMCON1, WREN, BANKED
 
-#ifdef p18fxx2xx8_fix_1
-        movff   SPIE2, PIE2
-        movff   SPIE1, PIE1
-        movff   SINTCON, INTCON
-#endif
         bsf     INTCON0, GIE, A        
 verify_imem:
         movlw   d'128'
@@ -1032,7 +1019,6 @@ magic:
         movwf   NVMCON2, BANKED
         movlw   h'aa'
         movwf   NVMCON2, BANKED
-        ;banksel NVMCON1
         bsf     NVMCON1, WR, BANKED
         return
 
@@ -1416,9 +1402,6 @@ ECFETCH:
         clrf    plusS, A
         return
 asmecfetch:
-#ifdef p18fxx2xx8_fix_1
-        bcf     INTCON, GIE, A          ; 18f252 ERRATA
-#endif
         banksel NVMCON1
         bcf     NVMCON1, REG1, BANKED
         bcf     NVMCON1, REG0, BANKED
@@ -1426,9 +1409,6 @@ asmecfetch:
         banksel NVMDAT
         movf    NVMDAT, W, BANKED
         movwf   plusS, A
-#ifdef p18fxx2xx8_fix_1
-        bsf     INTCON, GIE, A          ; 18f252 ERRATA
-#endif
         return
 
 ;;; Disable writes to flash and eeprom
@@ -2085,13 +2065,6 @@ main:
         banksel ADREF
         clrf    ADREF       ; VREF+ = AVDD , VREF- = AVSS
         clrf    TBLPTRU, A  ; TBLPTRU is not used when reading or writing
-
-#ifdef PLL
-#if PLL == ENABLE
-        movlw   0x40
-        movwf   OSCTUNE, A
-#endif
-#endif
                                 ; Clear ram
 WARM:
         movffl  STKPTR, 0       ; Save return stack reset reasons
