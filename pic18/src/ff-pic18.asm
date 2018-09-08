@@ -401,9 +401,10 @@ irq_ms:
         bcf     PIR4, TMR1IF, BANKED
 #else
 #if MS_TMR == 2 ;******************************
-        btfss   PIR1, TMR2IF, A
+        banksel PIR4
+        btfss   PIR4, TMR2IF, BANKED
         bra     irq_ms_end
-        bcf     PIR1, TMR2IF, A
+        bcf     PIR4, TMR2IF, BANKED        
 #else
 #if MS_TMR == 3 ;******************************
         banksel PIR6
@@ -419,9 +420,10 @@ irq_ms:
         bcf     PIR6, TMR3IF, BANKED
 #else
 #if MS_TMR == 4 ;******************************
-        btfss   PIR5, TMR4IF, A
+        banksel PIR7
+        btfss   PIR7, TMR4IF, BANKED
         bra     irq_ms_end
-        bcf     PIR5, TMR4IF, A
+        bcf     PIR7, TMR4IF, BANKED        
 #else
 #if MS_TMR == 5 ;******************************
         banksel PIR8
@@ -437,9 +439,10 @@ irq_ms:
         bcf     PIR8, TMR5IF, BANKED
 #else
 #if MS_TMR == 6 ;******************************
-        btfss   PIR5, TMR6IF, A
+        banksel PIR9
+        btfss   PIR9, TMR6IF, BANKED
         bra     irq_ms_end
-        bcf     PIR5, TMR6IF, A
+        bcf     PIR9, TMR6IF, BANKED        
 #endif
 #endif
 #endif
@@ -2248,12 +2251,15 @@ WARM_ZERO_1:
         bsf     PIE4,TMR1IE, BANKED
 #else
 #if MS_TMR == 2
-        ;; Timer 2 for 1 ms system tick
-        movlw   h'7d'      ; Prescale = 4, Postscale = 16
-        movwf   T2CON, A
+        ;; Timer 2 for 1 ms system tick    
+        movlw   h'01'
+        movwf   T2CLK, A
         movlw   tmr2ms_val
-        movwf   PR2, A
-        bsf     PIE1, TMR2IE, A
+        movwf   T2PR, A
+        movlw   h'af'       ; Prescale = 4, Postscale = 16
+        movwf   T2CON, A
+        banksel PIE4
+        bsf     PIE4, TMR2IE, BANKED
 #else
 #if MS_TMR == 3
         ;; Timer 3 for 1 ms system tick
@@ -2267,11 +2273,14 @@ WARM_ZERO_1:
 #else
 #if MS_TMR == 4
         ;; Timer 4 for 1 ms system tick
-        movlw   h'7d'      ; Prescale = 4, Postscale = 16
-        movwf   T4CON, BANKED
+        movlw   h'01'
+        movwf   T4CLK, A
         movlw   tmr2ms_val
-        movwf   PR4, BANKED
-        bsf     PIE5, TMR4IE, A
+        movwf   T4PR, A
+        movlw   h'af'       ; Prescale = 4, Postscale = 16
+        movwf   T4CON, A
+        banksel PIE7
+        bsf     PIE7, TMR4IE, BANKED
 #else
 #if MS_TMR == 5
         ;; Timer 5 for 1 ms system tick
@@ -2285,11 +2294,14 @@ WARM_ZERO_1:
 #else
 #if MS_TMR == 6
         ;; Timer 6 for 1 ms system tick
-        movlw   h'7d'      ; Prescale = 4, Postscale = 16
-        movwf   T6CON, BANKED
+        movlw   h'01'
+        movwf   T6CLK, A
         movlw   tmr2ms_val
-        movwf   PR6, BANKED
-        bsf     PIE5, TMR6IE, A
+        movwf   T6PR, A
+        movlw   h'af'       ; Prescale = 4, Postscale = 16
+        movwf   T6CON, A
+        banksel PIE9
+        bsf     PIE9, TMR6IE, BANKED
 #endif
 #endif
 #endif
