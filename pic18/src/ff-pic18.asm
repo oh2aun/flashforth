@@ -2150,8 +2150,10 @@ WARM_ZERO_1:
         banksel Sp  ; Select register bank ($0f00)
 #if UART == 1 ; ----------------------------------------------
 ; PPS configure pins for RX and TX
-        banksel ANSELC
-        clrf    ANSELC          ; disable analogue on PORTC so TXRX can function
+        banksel RX_ANSEL
+        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        banksel TX_ANSEL
+        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
 ; Unlock the PPS
         bcf     INTCON0, GIE, A ; disable interupts
         banksel PPSLOCK         ; required sequence
@@ -2162,16 +2164,16 @@ WARM_ZERO_1:
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
         banksel U1RXPPS         ; configure the RX pin to C7
-        movlw   b'00010111'
+        movlw   RX_PPS 
         movwf   U1RXPPS, BANKED
         
         banksel U1CTSPPS        ; clear so always enabled
         movlw   b'00000000'
         movwf   U1CTSPPS, BANKED
         
-        banksel RC6PPS          ; configure TX pin to C6
+        banksel TX_PPS          ; configure TX pin to C6
         movlw   b'00010011'
-        movwf   RC6PPS, BANKED
+        movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
         banksel PPSLOCK         ; required sequence
@@ -2197,12 +2199,14 @@ WARM_ZERO_1:
 ; RX enable
         banksel PIE3
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
-        banksel TRISC
-        bsf     TRISC, TRISC7, BANKED   ; configure C7 as an input
+        banksel RX_TRIS
+        bsf     RX_TRIS, RX_BIT, BANKED   ; configure C7 as an input
 #else  ; UART == 2 ---------------------------------------
 ; PPS configure pins for RX and TX
-        banksel ANSELC
-        clrf    ANSELC          ; disable analogue on PORTC so TXRX can function
+        banksel RX_ANSEL
+        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        banksel TX_ANSEL
+        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
 ; Unlock the PPS
         bcf     INTCON0, GIE, A ; disable interupts
         banksel PPSLOCK         ; required sequence
@@ -2213,16 +2217,16 @@ WARM_ZERO_1:
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
         banksel U2RXPPS         ; configure the RX pin to C7
-        movlw   b'00010111'
+        movlw   RX_PPS
         movwf   U2RXPPS, BANKED
         
         banksel U2CTSPPS        ; clear so always enabled
         movlw   b'00000000'
         movwf   U2CTSPPS, BANKED
         
-        banksel RC6PPS          ; configure TX pin to C6
+        banksel TX_PPS          ; configure TX pin to C6
         movlw   b'00010110'
-        movwf   RC6PPS, BANKED
+        movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
         banksel PPSLOCK         ; required sequence
@@ -2248,8 +2252,8 @@ WARM_ZERO_1:
 ; RX enable
         banksel PIE6
         bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
-        banksel TRISC
-        bsf     TRISC, TRISC7, BANKED   ; configure C7 as an input
+        banksel RX_TRIS
+        bsf     RX_TRIS, RX_BIT, BANKED ; configure C7 as an input
 #endif
 
 #if IDLE_MODE == ENABLE
