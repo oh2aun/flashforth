@@ -255,11 +255,6 @@ usbuf       res ussize
 #endif
 #endif
 
-#ifdef p18fxx2xx8_fix_1
-SINTCON     res 1       ; Save INTCON before disabling interrupts
-SPIE1       res 1       ; Save PIE1 before disabling interrupts
-SPIE2       res 1       ; Save PIE2 before disabling interrupts
-#endif
 #if IDLE_MODE == ENABLE
 load_res    res 3       ; 256 ms load result
 #endif
@@ -348,11 +343,6 @@ utibbuf     res utibsize
 #endif
 
 ;;; Start of free ram
-#ifdef USB_CDC
-#ifndef __18F14K50
-HERE udata
-#endif
-#endif
 dpdata      res 2
 
 ;;; Variables in EEPROM
@@ -1259,7 +1249,7 @@ pcfetch0:
 ISTORE_SETUP:
         rcall   LOCKED
 ; check that writes are not to the kernel code
-        ;rcall   ISTORECHK
+        rcall   ISTORECHK
 ;check if program memory row is already in buffer
         movffl  Sminus, iaddr_hi
         movffl  Sminus, iaddr_lo
@@ -1314,7 +1304,7 @@ IFETCH:
         andlw   0x7f
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
-        bra     FETCH2
+        goto    FETCH2
 
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
@@ -1455,7 +1445,7 @@ L_VALUE:
         db      NFA|5,"value"
 VALUE:
         call    CREATE
-        rcall   COMMA
+        call    COMMA
         call    XDOES
 VALUE_DOES:
         rcall   DODOES
@@ -1921,13 +1911,13 @@ AS3:
         call    XDOES
 AS3_DOES:
         rcall   DODOES          ;  f d/b a opcode
-        rcall   TOR             ;  f d/b A
-        rcall   ROT             ;  d/b a f
+        call    TOR             ;  f d/b A
+        call    ROT             ;  d/b a f
         rcall   ICCOMMA         ;  d/b a
         rcall   SWOP            ;  a d/b
         call    TWOSTAR
         rcall   OR_A
-        rcall   RFROM
+        call    RFROM
 AS3_2:  
         rcall   OR_A
         bra     ICCOMMA
@@ -1956,13 +1946,13 @@ BR3:
         call    XDOES
 BR3_DOES:
         rcall   DODOES          ; abs-addr opcode
-        rcall   TOR             ; abs-addr
+        call    TOR             ; abs-addr
         call    TWOSLASH        ; abs-addr
-        rcall   DUP
+        call    DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      h'ff'
         call    AND
-        rcall   RFROM
+        call    RFROM
         rcall   OR_A
         rcall   ICOMMA
         rcall   LIT
@@ -2248,7 +2238,7 @@ WARM_ZERO_1:
         movwf   T1CLK, A
         setf    TMR1H, A
         banksel PIE4
-        bsf     PIE4,TMR1IE, BANKED
+        ;bsf     PIE4,TMR1IE, BANKED
 #else
 #if MS_TMR == 2
         ;; Timer 2 for 1 ms system tick    
@@ -2330,7 +2320,7 @@ WARM_ZERO_1:
         dw      dp_start
         rcall   FETCH
         call    TRUE_
-        rcall   EQUAL
+        call    EQUAL
         call    ZEROSENSE
         bz      WARM_2
         rcall   EMPTY
@@ -2416,7 +2406,7 @@ check_sp:
 L_EMIT:
         db      NFA|4,"emit"
 EMIT:
-        rcall   UEMIT
+        call    UEMIT
         goto    FEXECUTE
 
 ;***************************************************
@@ -2425,7 +2415,7 @@ EMIT:
 L_KEY:
         db      NFA|3,"key"
 KEY:
-        rcall   UKEY
+        call    UKEY
         goto    FEXECUTE
 
 ;***************************************************
@@ -2434,7 +2424,7 @@ KEY:
 L_KEYQ:
         db      NFA|4,"key?"
 KEYQ:
-        rcall   UKEYQ
+        call    UKEYQ
         goto    FEXECUTE
 
 ;***************************************************
@@ -2661,9 +2651,19 @@ STORE:
         bra     ESTORE
         bra     ISTORE
 STORE1:
+        movlw   SFR_LOW>>8
+        cpfslt  Srw, A
+        bra     STORE2
         movffl  Sminus, Tbank
         movlw   h'0f'
         andwf   Tbank, F, A
+        movffl  Sminus, Tp
+        swapf   Tplus, W, A
+        movffl  Sminus, Tminus
+        movffl  Sminus, Trw  
+        bra     return1
+STORE2:
+        movffl  Sminus, Tbank
         movffl  Sminus, Tp
         swapf   Tplus, W, A
         movffl  Sminus, Tminus
@@ -2683,14 +2683,24 @@ CSTORE:
         movlw   PEEPROM>>8
         cpfslt  Srw, A
         bra     ECSTORE
-        bra     ICSTORE
+        goto    ICSTORE
 CSTORE1:
+        movlw   SFR_LOW>>8
+        cpfslt  Srw, A
+        bra     CSTORE2
         movffl  Sminus, Tbank
         movlw   h'0f'
         andwf   Tbank, F, A
         movffl  Sminus, Tp
         movf    Sminus, W, A
+        movffl  Sminus, Trw  
+        bra     creturn1
+CSTORE2:
+        movffl  Sminus, Tbank
+        movffl  Sminus, Tp
+        movf    Sminus, W, A
         movffl  Sminus, Trw
+creturn1:
         return
  
 ;   @       addr -- x    fetch cell from memory
@@ -2706,7 +2716,7 @@ FETCH:
         movlw   PEEPROM>>8
         cpfslt  Srw, A
         bra     EFETCH
-        bra     IFETCH
+        goto    IFETCH
 FETCH1:
         movffl  Sminus, Tbank
         movlw   h'0f'
