@@ -801,10 +801,9 @@ umslashmod3:
         movffl  Sminus, DIVIDEND_2
         movffl  Sminus, DIVIDEND_1
         movffl  Sminus, DIVIDEND_0
-        clrf    DCNT, A             ; count to 16; 19
+        movlw   d'16'           ; count to 16; 19
+        movwf   DCNT, A             
 UMSLASHMOD1:
-        movlw   h'0f'               ; have the possibility of a 6 bit counter
-        andwf   DCNT, F, A
         clrf    Tp, A
         bcf     STATUS, C, A
         rlcf    DIVIDEND_0, F, A
