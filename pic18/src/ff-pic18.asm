@@ -33,7 +33,6 @@
 #include "p18f-main.cfg"
 #include "p18fxxxx.cfg"
 
-; We will be using the UART rather then the USB
 #ifdef USB_CDC 
 #if USB_OPERATOR_UART == 0
 #define OPERATOR_TX  TX0
@@ -59,20 +58,12 @@
         global asmemit
 #else ; Normal UART
 
-; Here we create alternative names for labels related to UART IO
-; TX1_  outputs a character
-; RX1_  receives a character
-; Rx1Q  returns how many characters in the receive queue
 #define OPERATOR_TX  TX1_
 #define OPERATOR_RX  RX1_
 #define OPERATOR_RXQ RX1Q
 
 #endif
 
-; RX_FULL_BIT takes buf_size as an arguement. 
-; RXcnt is a register reseved to keep count of the number 
-; of chars in the RX fifo.
-; The macro tests the most signficant bit of RXcnt to see if is set 
 RX_FULL_BIT macro buf_size
             local bitno = 0
             local size = buf_size
