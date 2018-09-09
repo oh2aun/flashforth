@@ -73,20 +73,7 @@ size /= 2
             endw
             btfss   RXcnt, #v(bitno), A
             endm
-    
-; Stacks are at the heart of Forth, and as it happens, the PIC18 lacks general
-; purpose stacks for the user. 
-; In Forth the Parameter Stack is used to pass value between Words. 
-; The Return (R) stack is used to hold address of calling Words. 
-; To implement these stacks, the PIC18 indirect registers are used. 
-; These are a pair of registers that act like pointers to locations in memory.
-; It is important to not that the K42 uses 14bits, while the other PIC18s only
-; use 12 bits.     
-; They are used in conjunction with virtual registers which increment / 
-; decrement the indirect registers. 
-;
-; FlashForth additionally uses one of these to perform operations at temporary locations in 
-; memory.     
+      
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Rp  - R stack pointer
@@ -138,18 +125,9 @@ LF_     equ h'0a'
 BS_     equ h'08'
 
 ;;; Flags for the Name Field
-; Forth stores it's Words in a Dictionary
-; The Dictionary is a Linked List, and each Word is a node. 
-; Each node contains a Name Field, which contains the name of the Word. 
-; In addition there are a number of flags stored, which effect how the Word is
-; used. 
 COMPILE equ 0x10
-; The Word will not be threaded, but compiled into the definition of the Word
-; calling it
 INLINE  equ 0x20
-; The Word will be execuated as soon as it is encounted during compiliation. 
 IMMED   equ 0x40
-; Name Field Address: the location of the name of the Word
 NFA     equ 0x80
 NFAmask equ 0x0f
 
@@ -209,13 +187,7 @@ aregh    res 1
 #ifndef USB_CDC
 load_acc res 3       ;
 #endif
-
-; Writes to Instruction memory can only be done in blocks. 
-; The 128 bytes reserved here allows values to be modified in RAM before being
-; written to Instruction memory. 
-; Other PIC18s have a block size of 64bytes, this was previously kept in Access
-; RAM. 
-; We had to move it out for the K42 as it no longer fits there. 
+ 
 FLASH_BUF udata
 flash_buf res 0x80
 
@@ -2030,10 +2002,10 @@ EMPTY:
         rcall   LIT
         dw      STARTV      ; 
         rcall   LIT
-        dw      dp_start    ; this is in EEPROM
+        dw      dp_start    
         rcall   LIT
-        dw      h'000c'     ; EMPTY dictionary data is Ch long
-        call    CMOVE       ; copy  EMPTY dictionary data to EEPROM
+        dw      h'000c'     
+        call    CMOVE       
         goto    DP_TO_RAM
 ;*******************************************************
         dw      L_EMPTY
@@ -2048,7 +2020,7 @@ WARM_:
 main:
         banksel ADREF
         clrf    ADREF       ; VREF+ = AVDD , VREF- = AVSS
-        clrf    TBLPTRU, A  ; TBLPTRU is not used when reading or writing
+        clrf    TBLPTRU, A  
                                 ; Clear ram
 WARM:
         movffl  STKPTR, 0       ; Save return stack reset reasons
@@ -2072,14 +2044,13 @@ WARM_ZERO_3:
         bnz     WARM_ZERO_3
 #else
 WARM_ZERO_1:
-        clrf    Splus, A        ; Zero the byte pointed to, then increment
-        movf    Sbank, W, A     ; Move the HIGH byte of the ram pointer to working
-        sublw   h'0f'           ; Subtract 0Fh to find out if HIGH byte is 0Fh
-        bnz     WARM_ZERO_1     ; Means will clear from 0003h -> 0EFFh 
+        clrf    Splus, A        
+        movf    Sbank, W, A     
+        sublw   h'0f'           
+        bnz     WARM_ZERO_1     
 #endif
 
-        setf    ibase_hi, A     ; Mark flash buffer empty ( Making it all one
-                                ; ensures never equal to iaddrhi )
+        setf    ibase_hi, A     ; Mark flash buffer empty 
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
         lfsr    Rptr, urbuf
         banksel PIE0            ; Disable all peripheral interrupts
@@ -2108,9 +2079,9 @@ WARM_ZERO_1:
 #if UART == 1 ; ----------------------------------------------
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
-        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTx so RX can function
         banksel TX_ANSEL
-        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTx so TX can function
 ; Unlock the PPS
         bcf     INTCON0, GIE, A ; disable interupts
         banksel PPSLOCK         ; required sequence
@@ -2120,7 +2091,7 @@ WARM_ZERO_1:
         movwf   PPSLOCK, BANKED
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
-        banksel U1RXPPS         ; configure the RX pin to C7
+        banksel U1RXPPS         ; configure the RX pin to XY
         movlw   RX_PPS 
         movwf   U1RXPPS, BANKED
         
@@ -2128,7 +2099,7 @@ WARM_ZERO_1:
         movlw   b'00000000'
         movwf   U1CTSPPS, BANKED
         
-        banksel TX_PPS          ; configure TX pin to C6
+        banksel TX_PPS          ; configure TX pin to XY
         movlw   b'00010011'
         movwf   TX_PPS, BANKED
 
@@ -2153,19 +2124,19 @@ WARM_ZERO_1:
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U1CON0, BANKED
         banksel U1CON1
-        bsf U1CON1, ON_U1CON1, BANKED ; turn on TX
+        bsf U1CON1, ON_U1CON1, BANKED   ; turn on TX
 
 ; RX enable
         banksel PIE3
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
         banksel RX_TRIS
-        bsf     RX_TRIS, RX_BIT, BANKED   ; configure C7 as an input
+        bsf     RX_TRIS, RX_BIT, BANKED ; configure XY as an input
 #else  ; UART == 2 ---------------------------------------
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
-        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTx so RX can function
         banksel TX_ANSEL
-        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTC so TXRX can function
+        bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTx so TX can function
 ; Unlock the PPS
         bcf     INTCON0, GIE, A ; disable interupts
         banksel PPSLOCK         ; required sequence
@@ -2175,7 +2146,7 @@ WARM_ZERO_1:
         movwf   PPSLOCK, BANKED
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
-        banksel U2RXPPS         ; configure the RX pin to C7
+        banksel U2RXPPS         ; configure the RX pin to XY
         movlw   RX_PPS
         movwf   U2RXPPS, BANKED
         
@@ -2183,7 +2154,7 @@ WARM_ZERO_1:
         movlw   b'00000000'
         movwf   U2CTSPPS, BANKED
         
-        banksel TX_PPS          ; configure TX pin to C6
+        banksel TX_PPS          ; configure TX pin to XY
         movlw   b'00010110'
         movwf   TX_PPS, BANKED
 
@@ -2299,11 +2270,11 @@ WARM_ZERO_1:
 #endif
         banksel Sp  ; Select register bank ($0f00) (put this back in down here)
         rcall   LIT
-        dw      WARMLIT     ; puts address of warm lit on the stack
-        call    UPTR        ; puts address of uptr on the stack
+        dw      WARMLIT     
+        call    UPTR        
         rcall   LIT
-        dw      warmlitsize ; puts size of warmlit on stack
-        call    CMOVE       ; copies warmlit to uptr
+        dw      warmlitsize 
+        call    CMOVE      
         
         rcall   FRAM
         bsf     INTCON0, GIE, A
@@ -3055,9 +3026,9 @@ WTOS:
 L_ACCEPT:
         db      NFA|6,"accept"
 ACCEPT:
-        rcall   OVER            ; c-addr +n c-addr
-        rcall   PLUS            ; c-addr (n + c-addr)
-        rcall   OVER            ; c-addr (n + c-addr) c-addr
+        rcall   OVER           
+        rcall   PLUS        
+        rcall   OVER            
 FF_ACC1:
         rcall   KEY
 
@@ -4995,7 +4966,7 @@ CREATE:
         call    XSQUOTE
         db      d'15',"ALREADY DEFINED"
         rcall   QABORT         ; ABORT if word has already been defined
-        rcall   DUP_A           ; Check the word length 
+        rcall   DUP_A          ; Check the word length 
         call    CFETCH_A
         call    ONE
         rcall   LIT_A
@@ -5013,12 +4984,12 @@ CREATE:
         rcall   DUP_A             
         rcall   LATEST          ; new 'latest' link
         rcall   STORE_A         ; str len ihere
-        rcall   PLACE           ; place as counted str
-        rcall   IHERE           ; ( dictionary-ptr ) 
+        rcall   PLACE           
+        rcall   IHERE           ; ihere
         call    CFETCH_A
         rcall   LIT_A
         dw      NFA
-        rcall   SHB             ; Set header bit
+        rcall   SHB             
         call    ONEPLUS
         call    ALIGNED
         rcall   IALLOT          ; The header has now been created
