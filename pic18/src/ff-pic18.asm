@@ -335,7 +335,7 @@ FFCODE:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-        bsf     T0CON, TMR0ON, A
+        bsf     T0CON0, T0EN, A
 #endif
 #endif
 #endif
@@ -1493,7 +1493,7 @@ PAUSE_IDLE0:
 #endif
         bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
 #if CPU_LOAD == ENABLE
-        bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
+        bcf     T0CON0, T0EN, A   ; TMR0 Restart in interrupt routine
 #endif
         sleep
 PAUSE_IDLE1:
