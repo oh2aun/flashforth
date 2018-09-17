@@ -1491,7 +1491,8 @@ PAUSE_IDLE0:
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #endif
 #endif
-        bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
+        banksel CPUDOZE
+        bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
 #if CPU_LOAD == ENABLE
         bcf     T0CON0, T0EN, A   ; TMR0 Restart in interrupt routine
 #endif
@@ -2188,8 +2189,9 @@ WARM_ZERO_1:
 #endif
 
 #if IDLE_MODE == ENABLE
-        movlw   h'08'           ; TMR0 used for CPU_LOAD
-        movwf   T0CON           ; prescale = 1
+        bsf     T0CON0, T0MD16, A   ; 16 bit timer
+        movlw   h'40'               ; TMR0 used for CPU_LOAD
+        movwf   T0CON1              ; Instruction clock 1:1 
 #endif
 #if MS_TMR == 1
         ;; Timer 1 for 1 ms system tick
