@@ -6076,7 +6076,7 @@ end_of_dict:
 FF_DP code
 dpcode:
 ;****************************************************
-        org h'310000'
+        org EEPROM_ADDR
         de  h'ff', h'ff'
 ;        de  dp_user_dictionary&0xff, (dp_user_dictionary>>8)&0xff
 ;        de  dpeeprom&0xff, (dpeeprom>>8)&0xff
