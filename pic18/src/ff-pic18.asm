@@ -145,8 +145,8 @@ fTAILC  equ 1           ; Disable tailcall optimisation
 idirty  equ 0           ; Flash buffer dirty flag
 
 ;;; Memory mapping prefixes
-PRAM        equ h'f000'
-PEEPROM     equ h'ec00'
+PRAM        equ RAM_LO
+PEEPROM     equ EEPROM_LO
 
 ussize      equ PARAMETER_STACK_SIZE
 utibsize    equ TIB_SIZE + HOLD_SIZE
@@ -189,7 +189,7 @@ load_acc res 3       ;
 #endif
  
 FLASH_BUF udata
-flash_buf res 0x80
+flash_buf res flash_block_size
 
 IRQ_STACK udata
 irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
@@ -488,7 +488,7 @@ irq_async_rx_2:
 irq_async_rx_3:
 #if FC_TYPE_SW == ENABLE
         addlw   0x04                    ; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
-        btfss   FLAGS2, fFC, A         ; receive xoff if FC is off
+        btfss   FLAGS2, fFC, A          ; receive xoff if FC is off
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
         incf    RXcnt, F, A
@@ -517,19 +517,19 @@ warmlitsize equ d'30'
 warmlitsize equ d'18'
 #endif
 WARMLIT:
-        dw      u0+h'f000'     ; UP
-        dw      usbuf+h'efff'  ; S0
+        dw      u0+PRAM        ; UP
+        dw      usbuf+(PRAM-1) ; S0
         dw      OPERATOR_TX    ; EMIT vector
         dw      OPERATOR_RX    ; KEY vector
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
         dw      DEFAULT_BASE   ; BASE
-        dw      utibbuf+h'f000'; TIB
+        dw      utibbuf+PRAM   ; TIB
         dw      0              ; ustatus & uflg
 #if MULTITASKING == ENABLE
         dw      0,0,0,0
         dw      0; u0+h'f000'  ; ulink
-        dw      urbuf+h'f000'  ; urptr
+        dw      urbuf+PRAM     ; urptr
 #endif
 
 
@@ -539,7 +539,7 @@ WARMLIT:
 STARTV: dw      h'0000'
 DPC:    dw      dpcode     ; dp_user_dictionary
 DPE:    dw      dpeeprom
-DPD:    dw      dpdata+h'f000'
+DPD:    dw      dpdata+PRAM
 LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ; *******************************************************************
@@ -851,7 +851,7 @@ iupdatebuf:
         movf    iaddr_hi, W, A
         cpfseq  ibase_hi
         bra     iupdatebuf0
-        movlw   h'80'
+        movlw   flash_pointer_mask
         andwf   iaddr_lo, W, A
         cpfseq  ibase_lo, A
         bra     iupdatebuf0
@@ -859,7 +859,7 @@ iupdatebuf:
 
 iupdatebuf0:
         rcall   IFLUSH
-        movlw   h'80'
+        movlw   flash_pointer_mask
         andwf   iaddr_lo, W, A
         movwf   ibase_lo, A
         movffl  iaddr_hi, ibase_hi
@@ -867,7 +867,7 @@ iupdatebuf0:
         movff   iaddr_up, ibase_up
 #endif
 fill_buffer_from_imem:
-        movlw   d'128'
+        movlw   flash_block_size
         movwf   PCLATH, A
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
 fill_buffer_from_imem_1:
@@ -942,7 +942,7 @@ write_buffer_to_imem_2:
 
         bsf     INTCON0, GIE, A        
 verify_imem:
-        movlw   d'128'
+        movlw   flash_block_size
         movwf   PCLATH, A
         rcall   init_ptrs
 verify_imem_1:
@@ -1043,10 +1043,7 @@ SKIP:
         movf    Sminus, W, A
         movwf   PCLATH, A       ; count_lo
         movffl  Sminus, Tbank
-        movlw   h'0f'           ; 14 bit address width needs this
-        andwf   Tbank, F, A
         movffl  Sminus, Tp      ; c-addr
-        movf    PCLATH, F, A    ; with the addition of the andwf, need this again
         bz      SKIP4           ; zero flag comes from the previous movf
 SKIP0:
         movlw   0x9             ; SKIP TAB
@@ -1067,7 +1064,7 @@ SKIP4:
                                 ; restore the stack
         movffl  Tp, plusS
         movf    Tbank, W, A
-        iorlw   h'f0'
+        iorlw   high(PRAM)
         movwf   plusS, A
         movffl  PCLATH, plusS
         clrf    plusS, W
@@ -1091,8 +1088,6 @@ SCAN:
         movwf   PCLATH, A
         bz      SCAN4
         movffl  Sminus, Tbank
-        movlw   h'0f'
-        andwf   Tbank, F, A
         movffl  Sminus, Tp          ; c-addr
 SCAN0:
         movf    Trw, W, A
@@ -1110,7 +1105,7 @@ SCAN3:                              ; found start of word
                                     ; restore the stack
         movffl  Tp, plusS
         movf    Tbank, W, A
-        iorlw   h'f0'
+        iorlw   high(PRAM)
         movwf   plusS, A
 SCAN4:
         movffl  PCLATH, plusS
@@ -1218,7 +1213,7 @@ ISTORE_SETUP:
         rcall   iupdatebuf
 ;write_cell_to_buffer
         movf    iaddr_lo, W, A
-        andlw   0x7f
+        andlw   flash_block_mask          
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         return
@@ -1257,13 +1252,13 @@ IFETCH:
         rcall   TOTBLP
         cpfseq  ibase_hi
         bra     pfetch0
-        movlw   h'80'
+        movlw   flash_pointer_mask
         andwf   TBLPTRL, W, A
         cpfseq  ibase_lo, A
         bra     pfetch0
 ;read_cell_from_buffer
         movf    TBLPTRL, W, A
-        andlw   0x7f
+        andlw   flash_block_mask            ; buffer size
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         goto    FETCH2
@@ -1275,13 +1270,13 @@ ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W, A
         cpfseq  ibase_hi
         bra     pcfetch0
-        movlw   h'80'
+        movlw   flash_pointer_mask
         andwf   TBLPTRL, W, A
         cpfseq  ibase_lo, A
         bra     pcfetch0
 ;read_byte_from_buffer
         movf    TBLPTRL, W, A
-        andlw   0x7f
+        andlw   flash_block_mask
         lfsr    Tptr, flash_buf
         addwf   Tp, F, A
         tblrd*+                 ; To satisfy optimisation in N=
@@ -1458,7 +1453,7 @@ L_TURNKEY:
         db      NFA|7,"turnkey"
 TURNKEY:
         call    VALUE_DOES      ; Must be call for IS to work.
-        dw      dpSTART+h'f000'
+        dw      dpSTART+PRAM
 
 ;;; *******************************************************
 ; PAUSE  --     switch task
@@ -1783,7 +1778,7 @@ OPERATOR:
         call    DOCREATE        ; Must be a call !
         dw      OPERATOR_AREA
 OPERATOR_AREA:  
-        dw      u0+h'f000'      ; User pointer
+        dw      u0+PRAM         ; User pointer
         dw      UADDSIZE, ursize
         dw      ussize, utibsize
 
@@ -2046,7 +2041,7 @@ WARM_ZERO_3:
 WARM_ZERO_1:
         clrf    Splus, A        
         movf    Sbank, W, A     
-        sublw   h'0f'           
+        sublw   h'0f'           ; !TODO this probably needs to change
         bnz     WARM_ZERO_1     
 #endif
 
@@ -2546,7 +2541,7 @@ SPFETCH:
         movffl  Sp, Tp
         movf    Sbank, W, A
         movffl  Tp, plusS
-        iorlw   h'f0'
+        iorlw   high(PRAM)
         movwf   plusS, A
         return
 
@@ -2558,8 +2553,6 @@ SPFETCH:
         db      NFA|3,"sp!"
 SPSTORE:
         movffl  Sminus, Tp
-        movlw   h'0f'
-        andwf   Tp, F, A
         movf    Sminus, W, A 
         movwf   Sp, A
         movffl  Tp, Sbank
@@ -2614,18 +2607,6 @@ STORE:
         bra     ESTORE
         bra     ISTORE
 STORE1:
-        movlw   SFR_LOW>>8
-        cpfslt  Srw, A
-        bra     STORE2
-        movffl  Sminus, Tbank
-        movlw   h'0f'
-        andwf   Tbank, F, A
-        movffl  Sminus, Tp
-        swapf   Tplus, W, A
-        movffl  Sminus, Tminus
-        movffl  Sminus, Trw  
-        bra     return1
-STORE2:
         movffl  Sminus, Tbank
         movffl  Sminus, Tp
         swapf   Tplus, W, A
@@ -2648,22 +2629,10 @@ CSTORE:
         bra     ECSTORE
         goto    ICSTORE
 CSTORE1:
-        movlw   SFR_LOW>>8
-        cpfslt  Srw, A
-        bra     CSTORE2
-        movffl  Sminus, Tbank
-        movlw   h'0f'
-        andwf   Tbank, F, A
-        movffl  Sminus, Tp
-        movf    Sminus, W, A
-        movffl  Sminus, Trw  
-        bra     creturn1
-CSTORE2:
         movffl  Sminus, Tbank
         movffl  Sminus, Tp
         movf    Sminus, W, A
         movffl  Sminus, Trw
-creturn1:
         return
  
 ;   @       addr -- x    fetch cell from memory
@@ -2682,8 +2651,6 @@ FETCH:
         goto    IFETCH
 FETCH1:
         movffl  Sminus, Tbank
-        movlw   h'0f'
-        andwf   Tbank, F, A
         movffl  Sminus, Tp
 FETCH2:
         movffl  Tplus, plusS
@@ -2706,8 +2673,6 @@ CFETCH:
         goto    ICFETCH
 CFETCH1:
         movffl  Sminus, Tbank
-        movlw   h'0f'
-        andwf   Tbank, F, A
         movffl  Sminus, Tp
 CFETCH2:
         movffl  Trw, plusS
@@ -3800,7 +3765,7 @@ L_UPTR:
         db      NFA|2,"up"
 UPTR:
         rcall   DOCREATE_A
-        dw      upcurr+h'f000'
+        dw      upcurr+PRAM
 
 ; NUMERIC OUTPUT ================================
 ; HOLD  char --        add char to output string
@@ -5031,7 +4996,7 @@ POSTPONE1:
         db      NFA|3,"idp"
 IDP:
         rcall   DOCREATE_A
-        dw      dpFLASH+h'f000'
+        dw      dpFLASH+PRAM
 
 
 ;***************************************************************
@@ -5207,7 +5172,7 @@ L_LATEST:
         db      NFA|6,"latest"
 LATEST:
         rcall   DOCREATE_A
-        dw      dpLATEST+h'f000'
+        dw      dpLATEST+PRAM
 
 ; S0       -- a-addr      start of parameter stack
         dw      L_LATEST
@@ -5224,7 +5189,7 @@ S0:
         db      NFA|3,"ini"
 INI:
         rcall   DOCREATE_A
-        dw      dpSTART+h'f000'
+        dw      dpSTART+PRAM
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
         dw      L_S0
