@@ -155,9 +155,12 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;****************************************************
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
+#ifndef K42     
+FLASH_BUF udata_acs
+flash_buf res flash_block_size    
+#endif
 
 FORTH_VARS  udata_acs   ; Variables in Access Ram
-blank    res 2
 p_lo     res 1       ; P and DO LOOP INDEX
 p_hi     res 1
 ibase_lo res 1       ; Memory address of ibuffer
@@ -187,9 +190,11 @@ aregh    res 1
 #ifndef USB_CDC
 load_acc res 3       ;
 #endif
- 
+
+#ifdef K42
 FLASH_BUF udata
 flash_buf res flash_block_size
+#endif
 
 IRQ_STACK udata
 irq_s0   res PARAMETER_STACK_SIZE_IRQ   ; Multiple of h'10'. Interrupt parameter stack.
@@ -218,6 +223,11 @@ usbuf       res ussize
 #endif
 #endif
 
+#ifdef p18fxx2xx8_fix_1
+SINTCON     res 1       ; Save INTCON before disabling interrupts
+SPIE1       res 1       ; Save PIE1 before disabling interrupts
+SPIE2       res 1       ; Save PIE2 before disabling interrupts
+#endif
 #if IDLE_MODE == ENABLE
 load_res    res 3       ; 256 ms load result
 #endif
@@ -306,6 +316,11 @@ utibbuf     res utibsize
 #endif
 
 ;;; Start of free ram
+#ifdef USB_CDC
+#ifndef __18F14K50
+HERE udata
+#endif
+#endif     
 dpdata      res 2
 
 ;;; Variables in EEPROM
@@ -910,6 +925,14 @@ wbtil2:
 #endif
         bcf     INTCON0, GIE, A  ; Disable Interrupts
 
+#ifdef p18fxx2xx8_fix_1
+        movff   PIE1, SPIE1
+        movff   PIE2, SPIE2
+        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
+        clrf    INTCON, A       ; may be lost
+        clrf    PIE1, A
+        clrf    PIE2, A
+#endif        
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
         banksel NVMCON1
         bsf     NVMCON1, REG1, BANKED      ; Erase the flash block
@@ -940,6 +963,11 @@ write_buffer_to_imem_2:
         banksel NVMCON1
         bcf     NVMCON1, WREN, BANKED
 
+#ifdef p18fxx2xx8_fix_1
+        movff   SPIE2, PIE2
+        movff   SPIE1, PIE1
+        movff   SINTCON, INTCON
+#endif
         bsf     INTCON0, GIE, A        
 verify_imem:
         movlw   flash_block_size
@@ -1352,6 +1380,9 @@ ECFETCH:
         clrf    plusS, A
         return
 asmecfetch:
+#ifdef p18fxx2xx8_fix_1
+        bcf     INTCON, GIE, A          ; 18f252 ERRATA
+#endif
         banksel NVMCON1
         bcf     NVMCON1, REG1, BANKED
         bcf     NVMCON1, REG0, BANKED
@@ -1359,6 +1390,9 @@ asmecfetch:
         banksel NVMDAT
         movf    NVMDAT, W, BANKED
         movwf   plusS, A
+#ifdef p18fxx2xx8_fix_1
+        bsf     INTCON, GIE, A          ; 18f252 ERRATA
+#endif
         return
 
 ;;; Disable writes to flash and eeprom
