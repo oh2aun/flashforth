@@ -81,7 +81,26 @@ MOVFF_  macro src, dst
             movff   src, dst
 #endif  
         endm
- 
+        
+UNARY_A_OR_B   macro instr, arg1
+#ifdef K42
+                banksel arg1
+                instr   arg1, BANKED
+#else
+                instr   arg1, A
+#endif
+                endm
+                    
+
+BINARY_A_OR_B  macro instr, arg1, arg2
+#ifdef K42
+                banksel arg1
+                instr   arg1, arg2, BANKED
+#else
+                instr   arg1, arg2, A
+#endif
+                endm
+               
       
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
@@ -365,27 +384,23 @@ FFCODE:
 #endif
 irq_ms:
 #if MS_TMR == 1  ;****************************
-        banksel PIR4
-        btfss   PIR4, TMR1IF, BANKED
+        BINARY_A_OR_B btfss, PIR4, TMR1IF
         bra     irq_ms_end
         bcf     T1CON, TMR1ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR1L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR1H, F, A
-        bsf     T1CON, TMR1ON, A
-        banksel PIR4
-        bcf     PIR4, TMR1IF, BANKED
+        bsf     T1CON, TMR1ON
+        bcf     PIR4, TMR1IF
 #else
 #if MS_TMR == 2 ;******************************
-        banksel PIR4
-        btfss   PIR4, TMR2IF, BANKED
+        BINARY_A_OR_B btfss, PIR4, TMR2IF
         bra     irq_ms_end
-        bcf     PIR4, TMR2IF, BANKED        
+        bcf     PIR4, TMR2IF        
 #else
 #if MS_TMR == 3 ;******************************
-        banksel PIR6
-        btfss   PIR6, TMR3IF, BANKED
+        BINARY_A_OR_B btfss, PIR6, TMR3IF
         bra     irq_ms_end
         bcf     T3CON, TMR3ON, A
         movlw   low(tmr1ms_val)
@@ -393,18 +408,15 @@ irq_ms:
         movlw   high(tmr1ms_val)
         subwfb  TMR3H, F, A
         bsf     T3CON, TMR3ON, A
-        banksel PIR6
-        bcf     PIR6, TMR3IF, BANKED
+        bcf     PIR6, TMR3IF
 #else
 #if MS_TMR == 4 ;******************************
-        banksel PIR7
-        btfss   PIR7, TMR4IF, BANKED
+        BINARY_A_OR_B btfss, PIR7, TMR4IF
         bra     irq_ms_end
-        bcf     PIR7, TMR4IF, BANKED        
+        bcf     PIR7, TMR4IF      
 #else
 #if MS_TMR == 5 ;******************************
-        banksel PIR8
-        btfss   PIR8, TMR5IF, BANKED
+        BINARY_A_OR_B btfss, PIR8, TMR5IF
         bra     irq_ms_end
         bcf     T5CON, TMR5ON, A
         movlw   low(tmr1ms_val)
@@ -412,14 +424,12 @@ irq_ms:
         movlw   high(tmr1ms_val)
         subwfb  TMR5H, F, A
         bsf     T5CON, TMR5ON, A
-        banksel PIR8
-        bcf     PIR8, TMR5IF, BANKED
+        bcf     PIR8, TMR5IF
 #else
 #if MS_TMR == 6 ;******************************
-        banksel PIR9
-        btfss   PIR9, TMR6IF, BANKED
+        BINARY_A_OR_B btfss, PIR9, TMR6IF
         bra     irq_ms_end
-        bcf     PIR9, TMR6IF, BANKED        
+        bcf     PIR9, TMR6IF       
 #endif
 #endif
 #endif
@@ -471,11 +481,9 @@ irq_user_skip:
 ;;; from the serial line
 irq_async_rx:
 #if UART == 1
-        banksel PIR3
-        btfss   PIR3, U1RXIF, BANKED
+        BINARY_A_OR_B btfss, PIR3, U1RXIF
 #else
-        banksel PIR6
-        btfss   PIR6, U2RXIF, BANKED
+        BINARY_A_OR_B btfss, PIR6, U2RXIF
 #endif
         bra     irq_async_rx_end
 
@@ -676,11 +684,9 @@ L_TX1_:
 TX1_:
         rcall   PAUSE
 #if UART == 1
-        banksel U1ERRIR
-        btfss   U1ERRIR, U1TXMTIF, BANKED
+        BINARY_A_OR_B btfss, U1ERRIR, U1TXMTIF
 #else
-        banksel U2ERRIR
-        btfss   U2ERRIR, U2TXMTIF, BANKED
+        BINARY_A_OR_B btfss, U2ERRIR, U2TXMTIF
 #endif
         bra     TX1_
 TX1_SEND:
@@ -690,8 +696,7 @@ TX1_SEND:
         andlw   h'7f'
 #endif
 #if UART == 1
-        banksel U1TXB
-        movwf   U1TXB, BANKED
+        UNARY_A_OR_B movwf, U1TXB
 #else
         banksel U2TXB
         movwf   U2TXB, BANKED
@@ -1017,14 +1022,11 @@ magic:
 ;***************************************************
 asmemit:
 #if UART == 1
-        banksel PIR3
-        btfss   PIR3, U1TXIF, BANKED
+        BINARY_A_OR_B btfss, PIR3, U1TXIF
         bra     asmemit
-        banksel U1TXB
-        movwf   U1TXB, BANKED
+        UNARY_A_OR_B movwf, U1TXB
 #else
-        banksel PIR6
-        btfss   PIR6, U2TXIF, BANKED
+        BINARY_A_OR_B btfss, PIR6, U2TXIF, BANKED
         bra     asmemit
         banksel U2TXB
         movwf   U2TXB, BANKED
@@ -2056,8 +2058,13 @@ WARM_:
         reset                   ; Perform a reset, jumps to h'0000' and resets stuff
 #endif
 main:
+#ifdef K42
         banksel ADREF
         clrf    ADREF       ; VREF+ = AVDD , VREF- = AVSS
+#else 
+        movlw   0xf
+        iorwf   ADCON1, F, A
+#endif
         clrf    TBLPTRU, A  
 #ifdef OSCCON
         movlw   0x70            ; Use full internal OSC frequency
@@ -2102,28 +2109,35 @@ WARM_ZERO_1:
         
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
         lfsr    Rptr, urbuf
-        banksel PIE0            ; Disable all peripheral interrupts
-        clrf    PIE0, BANKED
-        banksel PIE1
-        clrf    PIE1, BANKED
-        banksel PIE2
-        clrf    PIE2, BANKED
-        banksel PIE3
-        clrf    PIE3, BANKED
-        banksel PIE4
-        clrf    PIE4, BANKED
-        banksel PIE5
-        clrf    PIE5, BANKED
-        banksel PIE6
-        clrf    PIE6, BANKED
-        banksel PIE7
-        clrf    PIE7, BANKED
-        banksel PIE8
-        clrf    PIE8, BANKED
-        banksel PIE9
-        clrf    PIE9, BANKED
-        banksel PIE10
-        clrf    PIE10, BANKED
+#ifdef PIE0
+        UNARY_A_OR_B clrf, PIE0 ; Disable all peripheral interrupts        
+#endif 
+        UNARY_A_OR_B clrf, PIE1 ; Assume all PIEx are in the same bank
+        clrf    PIE2
+#ifdef PIE3
+        clrf    PIE3
+#endif
+#ifdef PIE4        
+        clrf    PIE4
+#endif
+#ifdef PIE5        
+        clrf    PIE5
+#endif
+#ifdef PIE6
+        clrf    PIE6
+#endif
+#ifdef PIE7
+        clrf    PIE7
+#endif
+#ifdef PIE8
+        clrf    PIE8
+#endif
+#ifdef PIE9
+        clrf    PIE9
+#endif
+#ifdef PIE10
+        clrf    PIE10
+#endif
         banksel Sp  ; Select register bank ($0f00)
 #if UART == 1 ; ----------------------------------------------
 ; PPS configure pins for RX and TX
