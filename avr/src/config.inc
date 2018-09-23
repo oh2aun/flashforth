@@ -20,7 +20,7 @@
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
-.equ BAUDRATE0 = 38400              ; Serial baudrate UART0
+.equ BAUDRATE0 = 38400               ; Serial baudrate UART0
 .equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
@@ -54,15 +54,15 @@
 .equ TURNKEY_DELAY = 2000  ; milliseconds
 
 ; UART buffer sizes
-.equ RX0_BUF_SIZE = 32  ; 8,16,32,64
+.equ RX0_BUF_SIZE = 64  ; 8,16,32,64
 .equ RX0_OFF_FILL = 4   ; Fill level for XOFF
 
 .equ RX1_BUF_SIZE = 32  ; 8,16,32,64
 .equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE = 64          ; 48 cells return stack
-.equ PARAMETER_STACK_SIZE = 96       ; 32 cells parameter stack
+.equ RETURN_STACK_SIZE = 64          ; 32 cells return stack
+.equ PARAMETER_STACK_SIZE = 64       ; 32 cells parameter stack
 .equ TIB_SIZE = 90                   ; 80 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART

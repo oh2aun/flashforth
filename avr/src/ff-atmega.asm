@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          22.03.2017                                        *
+;    Date:          23.09.2018                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "22.03.2017"
+#define DATE "23.09.2018"
 
 
 ; Register definitions
@@ -4293,7 +4293,6 @@ LOADOFF_L:
         .db     NFA|5,"load-"
         cbr     FLAGS2, (1<<fLOADled)
 .if CPU_LOAD_LED == 1
-        cbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 1
         cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .else
@@ -4418,11 +4417,6 @@ RX1Q:
 
 ;****************************************************
 RX1_ISRR:
-        ldi     zl, low(rbuf1)
-        ldi     zh, high(rbuf1)
-        lds     xl, rbuf1_wr
-        add     zl, xl
-        adc     zh, r_zero
         in_     xh, UDR1
 .if OPERATOR_UART == 1
 .if CTRL_O_WARM_RESET == 1
@@ -4431,16 +4425,11 @@ RX1_ISRR:
         rjmp    RESET_
 .endif
 .endif
-        st      z, xh
-        inc     xl
-        andi    xl, (RX1_BUF_SIZE-1)
-        sts     rbuf1_wr, xl
         lds     xl, rbuf1_lv
+        cpi     xl, RX1_BUF_SIZE-2
+        breq    RX1_OVF
         inc     xl
         sts     rbuf1_lv, xl
-        cpi     xl, RX1_BUF_SIZE-2
-        brne    PC+2
-        rcall   RX1_OVF
         cpi     xl, RX0_OFF_FILL
         brmi    RX1_ISR_SKIP_XOFF
 .if U1FC_TYPE == 1
@@ -4450,10 +4439,20 @@ RX1_ISRR:
         sbi_    U1RTS_PORT, U1RTS_BIT
 .endif
 RX1_ISR_SKIP_XOFF:
+        ldi     zl, low(rbuf1)
+        ldi     zh, high(rbuf1)
+        lds     xl, rbuf1_wr
+        add     zl, xl
+        adc     zh, r_zero
+        st      z, xh
+        inc     xl
+        andi    xl, (RX1_BUF_SIZE-1)
+        sts     rbuf1_wr, xl
         rjmp    FF_ISR_EXIT
 RX1_OVF:
         ldi     zh, '|'
-        rjmp    TX1_SEND
+        rcall   TX1_SEND
+        rjmp    FF_ISR_EXIT
 TX1_ISR:
 .endif
 ;***************************************************
@@ -4511,7 +4510,6 @@ CPU_LOAD_END:
 .if CPU_LOAD_LED == 1
         sbrs    FLAGS2, fLOADled
         rjmp    LOAD_LED_END
-        sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
 .if CPU_LOAD_LED_POLARITY == 1
         cbi_    CPU_LOAD_PORT, CPU_LOAD_BIT
 .else
@@ -4525,8 +4523,15 @@ LOAD_LED_END:
         cp      upl, t0
         brne    IDLE_LOAD1
 .ifdef SMCR
-        ldi     t0, (1<<SE)
-        out_    SMCR, t0
+        lds     zl, rbuf0_lv
+.ifdef rbuf1_lv
+        lds     zh, rbuf1_lv
+        or      zl, zh
+.else
+        cpi     zl, 0
+.endif
+        brne    IDLE_LOAD1
+        out_    SMCR, r_one
 .else
         in_     t0, MCUCR
         sbr     t0, (1<<SE)
@@ -4886,11 +4891,6 @@ LOAD_ADD_END:
         rjmp    MS_TIMER_ISR_EXIT
 ;;; ***************************************************
 RX0_ISR:
-        ldi     zl, low(rbuf0)
-        ldi     zh, high(rbuf0)
-        lds     xl, rbuf0_wr
-        add     zl, xl
-        adc     zh, r_zero
         in_     xh, UDR0_
 .if OPERATOR_UART == 0
 .if CTRL_O_WARM_RESET == 1
@@ -4899,16 +4899,12 @@ RX0_ISR:
         rjmp    RESET_
 .endif
 .endif
-        st      z, xh
-        inc     xl
-        andi    xl, (RX0_BUF_SIZE-1)
-        sts     rbuf0_wr, xl
         lds     xl, rbuf0_lv
+        cpi     xl, RX0_BUF_SIZE-2
+        breq    RX0_OVF
         inc     xl
         sts     rbuf0_lv, xl
-        cpi     xl, RX0_BUF_SIZE-2
-        brne    PC+2
-        rcall   RX0_OVF
+
         cpi     xl, RX0_OFF_FILL
         brmi    RX0_ISR_SKIP_XOFF
 .if U0FC_TYPE == 1
@@ -4918,10 +4914,22 @@ RX0_ISR:
         sbi_    U0RTS_PORT, U0RTS_BIT
 .endif
 RX0_ISR_SKIP_XOFF:
+
+        ldi     zl, low(rbuf0)
+        ldi     zh, high(rbuf0)
+
+        lds     xl, rbuf0_wr
+        add     zl, xl
+        adc     zh, r_zero
+        st      z, xh
+        inc     xl
+        andi    xl, (RX0_BUF_SIZE-1)
+        sts     rbuf0_wr, xl
         rjmp    FF_ISR_EXIT
 RX0_OVF:
         ldi     zh, '|'
-        rjmp    TX0_SEND
+        rcall   TX0_SEND
+        rjmp    FF_ISR_EXIT
 TX0_ISR:
 
 .ifdef UCSR1A
@@ -5507,6 +5515,15 @@ WARM_3:
 
         rcall   RQ_EMIT
         rcall   VER
+        sts     rbuf0_lv, r_zero
+        sts     rbuf0_wr, r_zero
+.ifdef rbuf1_lv
+        sts     rbuf1_lv, r_zero
+        sts     rbuf1_wr, r_zero
+.endif
+.if CPU_LOAD_LED == 1
+        sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
+.endif
 ; Turnkey ?
         rcall   TURNKEY
         call    ZEROSENSE
