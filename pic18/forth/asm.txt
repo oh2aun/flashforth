@@ -37,12 +37,12 @@ hex ram
 1 constant b,     \ Force Bank Select Register
 
 \ registers for parameter stack handling
-$0000 constant Sreg     \ For lfsr
+$0000 constant  sp     \ For lfsr
 $ffed constant (sp-)
 $ffec constant (+sp)
 
 \ Temporary pointer
-$0001 constant Treg     \ For lfsr
+$0001 constant tp     \ For lfsr
 $ffe5 constant (tp-)
 $ffe4 constant (+tp)
 

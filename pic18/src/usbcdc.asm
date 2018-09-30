@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          07.10.2017                                        *
+;    Date:          30.09.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -75,11 +75,6 @@ endif
     #include p18f45k50.inc
 #endif
 
-; Control Transfer States
-#define WAIT_SETUP          0
-#define CTRL_TRF_TX         1
-#define CTRL_TRF_RX         2
-
 ; Buffer Descriptor Status Register Initialization Parameters
 #define _BSTALL     0x04                ; Buffer Stall enable
 #define _DTSEN      0x08                ; Data Toggle Synch enable
@@ -91,25 +86,14 @@ endif
 #define _USIE       0x80                ; SIE owns buffer
 #define _UCPU       0x00                ; CPU owns buffer
 
-; USB Device States - To be used with usb_device_state
-#define DETACHED_STATE          0
-#define ATTACHED_STATE          0
-#define POWERED_STATE           0
-#define DEFAULT_STATE           1
-#define ADR_PENDING_STATE       3
-#define ADDRESS_STATE           h'07' 
-#define ADDRESS_STATE2          h'83'  ; Shifted to h'07'
-#define CONFIGURED_STATE        h'0f'
+; Buffer Descriptor Status Register bits
+#define     __UOWN  7
+#define     __DTS   6
+#define     __DTSEN 3
 
 #define CDC_INT_EP_SIZE         8
 #define CDC_BULK_OUT_EP_SIZE    1
 #define CDC_BULK_IN_EP_SIZE     1
-
-#define SET_LINE_CODING         0x20
-#define GET_LINE_CODING         0x21
-
-#define MUID_NULL               0
-#define MUID_USB9               1
 
         global USBDriverService
         global cdc_data_tx
@@ -118,6 +102,7 @@ endif
         global ep3istat
         global ep3icnt
         global ep3ostat
+        extern asmemit
 
 USB_EP udata
 ep0ostat	res 1
@@ -146,16 +131,39 @@ ep3iadr		res 2
 
 
 USB_VARS udata
+
+; Control transfer session owner
 ctrl_trf_session_owner res 1
+#define MUID_NULL               0
+#define MUID_USB9               1
+
+; Control Transfer States
 ctrl_trf_state res 1
+#define WAIT_SETUP          0
+#define CTRL_TRF_TX         1
+#define CTRL_TRF_RX         2
+
+; USB Device States - To be used with usb_device_state
 usb_device_state res 1
+#define DETACHED_STATE          0
+#define ATTACHED_STATE          0
+#define POWERED_STATE           0
+#define DEFAULT_STATE           1
+#define ADR_PENDING_STATE       3
+#define ADDRESS_STATE           h'07'
+#define ADDRESS_STATE2          h'83'  ; Shifted to h'07'
+#define CONFIGURED_STATE        h'0f'
+
 ep0buf		res CDC_INT_EP_SIZE ;8
-moveLen equ PRODL               ; local variable
-count  res 1
-pSrc    res 2
+moveLen     equ PRODL               ; local variable
+count       res 1
+pSrc        res 2
+pDst        res 2
 cdc_data_rx res 1
 cdc_data_tx res 1
-
+line_coding res 7
+mem         res 1           ; 0 = flash ; 0xff = ram
+Ssave       res 2
 
 ;*******************************************************************************
 FF_CODE code
@@ -252,41 +260,54 @@ USBReset_1:
         MOVLW DEFAULT_STATE
         MOVWF usb_device_state, BANKED
         return
-;*******************************************************************************
-USBCtrlEPService:
-        MOVF USTAT, W, ACCESS
-        BNZ USBCtrlEPService_3
-        MOVF ep0ostat, W, BANKED
-        ANDLW 0x3C
-        SUBLW _KEN|_INCDIS|_BSTALL;0x34
-        bnz USBPrepareForNextSetupTrf
-USBCtrlTrfSetupHandler:
-        CLRF ctrl_trf_state, BANKED
-        CLRF ctrl_trf_session_owner, BANKED ; MUID_NULL
-        CLRF count, BANKED
-        RCALL USBCheckStdRequest
-        RCALL USBCheckCdcRequest
-        BRA   USBCtrlEPServiceComplete
-USBCtrlEPService_3:
-        MOVLW 0x0
-        MOVF USTAT, F, ACCESS
-        BTFSS STATUS, Z, A
-        MOVLW 0x1
-        IORLW 0x4
-        BNZ USBCtrlTrfInHandler
+return1:
         return
 ;*******************************************************************************
+USBCtrlEPService:
+        movlb   ep0ostat
+        MOVF    USTAT, W, ACCESS
+        andlw   0x7c
+        bz      USBCtrlEPService_out        ; USTAT == EP00_OUT
+        andlw   0x78
+        bnz     return1
+        bra     USBCtrlTrfInHandler
+USBCtrlEPService_out:
+        MOVF    ep0ostat, W, BANKED         ; USTAT == EP00_OUT
+        andlw   0x3C
+        xorlw   0x34; _KEN|_INCDIS|_BSTALL        ; 0x34  SETUP_TOKEN
+        bz      USBCtrlTrfSetupHandler
+        bra     USBCtrlTrfOutHandler
+USBCtrlTrfSetupHandler:
+        clrf    ctrl_trf_state, BANKED          ; WAIT_SETUP
+        clrf    ctrl_trf_session_owner, BANKED ; MUID_NULL
+        clrf    count, BANKED
+        rcall   USBCheckStdRequest
+       ; btfss   ctrl_trf_session_owner, 2, BANKED
+        RCALL   USBCheckCdcRequest
+        BRA     USBCtrlEPServiceComplete
+;*******************************************************************************
+USBCtrlTrfOutHandler:
+        movlw   CTRL_TRF_RX      ; 2
+        subwf   ctrl_trf_state, W, BANKED
+        bnz     USBPrepareForNextSetupTrf
+        rcall   USBCtrlTrfRxService
+        movlw   0xc8
+        btfsc   ep0ostat, __DTS, BANKED
+        movlw   0x88
+        movwf   ep0ostat, BANKED
+        return
+
 USBPrepareForNextSetupTrf:
-        CLRF ctrl_trf_state, BANKED
-        MOVLW CDC_INT_EP_SIZE
-        MOVWF ep0ocnt, BANKED
-        MOVLW low(setupPkt)
-        MOVWF ep0oadr, BANKED
-        MOVLW high(setupPkt)
-        MOVWF ep0oadr+1, BANKED
-        MOVLW _USIE|_DTSEN;0x88
-        MOVWF ep0ostat, BANKED
-        CLRF ep0istat, BANKED
+        CLRF    ctrl_trf_state, BANKED
+        MOVLW   CDC_INT_EP_SIZE
+        MOVWF   ep0ocnt, BANKED
+        MOVLW   low(setupPkt)
+        MOVWF   ep0oadr, BANKED
+        MOVLW   high(setupPkt)
+        MOVWF   ep0oadr+1, BANKED
+        MOVLW   _USIE|_DTSEN      ;0x88
+        MOVWF   ep0ostat, BANKED
+        CLRF    ep0istat, BANKED
         RETURN
 ;*******************************************************************************
 USBCtrlTrfInHandler:
@@ -306,23 +327,57 @@ USBCtrlTrfInHandler_2:
         BNZ     USBPrepareForNextSetupTrf
         RCALL   USBCtrlTrfTxService
         MOVLW   _USIE|_DTSEN;0x88
-        BTFSS   ep0istat, 6, BANKED
+        BTFSS   ep0istat, __DTS, BANKED
         MOVLW   _DAT1|_USIE|_DTSEN;0xC8
         MOVWF   ep0istat, BANKED
         return
 ;*******************************************************************************
+USBCtrlTrfRxService:
+        movf    ep0ocnt, W, BANKED
+        movwf   moveLen, A
+        movff   FSR0L, Ssave
+        movff   FSR0H, Ssave+1
+        lfsr    0, ep0buf     ; SRC ptr
+        movff   pDst, FSR1L
+        movff   pDst+1, FSR1H
+;**********************************************
+ramcp:
+        bra     ramcp2
+ramcp1:
+        movf    POSTINC0, W, A
+        movwf   POSTINC1, A
+ramcp2:
+        decf    moveLen, F, A
+        bc      ramcp1
+        movff   Ssave, FSR0L
+        movff   Ssave+1,FSR0H
+        clrf    mem, BANKED
+        return
+ramcp_tx:
+        movff   FSR0L, Ssave
+        movff   FSR0H, Ssave+1
+        movff   pSrc, FSR0L
+        movff   pSrc+1, FSR0H
+        bra     ramcp
+;**********************************************
 USBCtrlTrfTxService:
-        MOVLW   CDC_INT_EP_SIZE
-        MOVWF   moveLen, A
-        SUBWF   count, W, BANKED
-        BC      USBCtrlTrfTxService_1
-        MOVFF   count, moveLen
-USBCtrlTrfTxService_1:
-        MOVFF   moveLen, ep0icnt
-        MOVF    moveLen, W, A
-        SUBWF   count, W, BANKED
-        MOVWF   count, BANKED
-        lfsr    1, ep0buf
+        movf    count, W, BANKED
+        sublw   CDC_INT_EP_SIZE-1     ; CDC_INT_EP_SIZE - count
+        bnn     LT
+GTE:
+        movlw   CDC_INT_EP_SIZE
+        movwf   moveLen, A        ; moveLen =  CDC_INT_EP_SIZE
+        bra     SUB
+LT:
+        movf    count, W, BANKED
+        movwf   moveLen, A        ; moveLen = count
+SUB:
+        movwf   ep0icnt, BANKED
+        subwf   count, F, BANKED     ; count = count - moveLen
+romcp:
+        lfsr    1, ep0buf        ; DST ptr
+        tstfsz  mem, BANKED
+        bra     ramcp_tx
         movff   pSrc, TBLPTRL
         movff   pSrc+1, TBLPTRH
         bra     romcp2
@@ -335,25 +390,24 @@ romcp2:
         bc      romcp1
         movff   TBLPTRL, pSrc
         movff   TBLPTRH, pSrc+1
-        RETURN
+        return
+
 ;*******************************************************************************
 USBCtrlEPServiceComplete:
-        MOVLW CDC_INT_EP_SIZE
-        MOVWF ep0ocnt, BANKED
-        MOVLW low(setupPkt)
-        MOVWF ep0oadr, BANKED
-        MOVLW low(ep0buf)
-        MOVWF ep0iadr, BANKED
-        MOVLW high(ep0buf)
-        MOVWF ep0oadr+1, BANKED
-        MOVWF ep0iadr+1, BANKED
+        MOVLW   CDC_INT_EP_SIZE
+        MOVWF   ep0ocnt, BANKED
+        MOVLW   low(setupPkt)
+        MOVWF   ep0oadr, BANKED
+        MOVLW   high(ep0buf)
+        MOVWF   ep0oadr+1, BANKED
+        MOVWF   ep0iadr+1, BANKED
 
-        MOVF ctrl_trf_session_owner, W, BANKED
-        BNZ DATADIR_DEV_TO_HOST
-        MOVLW _USIE|_BSTALL ;0x84
-        MOVWF ep0ostat, BANKED
-        MOVWF ep0istat, BANKED
-        BRA USBCtrlEPServiceComplete_4
+        btfsc   ctrl_trf_session_owner, 2, BANKED
+        bra     DATADIR_DEV_TO_HOST
+        MOVLW   _USIE|_BSTALL ;0x84
+        MOVWF    ep0ostat, BANKED
+        MOVWF   ep0istat, BANKED
+        BRA     USBCtrlEPServiceComplete_4
 DATADIR_DEV_TO_HOST:
         BTFSS   setupPkt, 7, BANKED
         BRA     DATADIR_HOST_TO_DEV
@@ -368,6 +422,8 @@ DATADIR_DEV_TO_HOST_2:
         RCALL   USBCtrlTrfTxService
         MOVLW   CTRL_TRF_TX
         MOVWF   ctrl_trf_state, BANKED
+        MOVLW   low(ep0buf)
+        MOVWF   ep0iadr, BANKED
         MOVLW   _USIE; 0x80
         MOVWF   ep0ostat, BANKED
         MOVLW   _DAT1|_USIE|_DTSEN;0xC8
@@ -379,122 +435,147 @@ DATADIR_HOST_TO_DEV:
         CLRF    ep0icnt, BANKED
         MOVLW   _DAT1|_USIE|_DTSEN;0xC8
         MOVWF   ep0istat, BANKED
+        MOVWF   ep0ostat, BANKED
+        MOVLW   low(ep0buf)
+        MOVWF   ep0oadr, BANKED
 USBCtrlEPServiceComplete_4:
         BCF     UCON, PKTDIS, ACCESS
         RETURN
 
 ;*******************************************************************************
 USBCheckStdRequest:
-        MOVLW 0x60
-        ANDWF setupPkt, W, BANKED
-        BNZ   RETURN__
-        bsf   ctrl_trf_session_owner, 0, BANKED
-        MOVF  setupPkt+1, W, BANKED
-        XORLW 0x9
-        BZ    SET_CFG
-        XORLW 0xF
-        BZ    GET_DSC
-        XORLW 0x3
-        BNZ   RETURN__
+        MOVLW   0x60
+        ANDWF   setupPkt, W, BANKED
+        BNZ     RETURN__
+        bsf     ctrl_trf_session_owner, 2, BANKED
+        MOVF    setupPkt+1, W, BANKED
+        XORLW   0x9
+        BZ      SET_CFG   ; 9(J) == SET_CFG
+        XORLW   0xF
+        BZ      GET_DSC   ; 6(G) == GET_DSC
+        XORLW   0x3       ; 5(F) == SET_ADDR
+        BNZ     RETURN__
 SET_ADR:
-        MOVLW ADR_PENDING_STATE
-        MOVWF usb_device_state, BANKED
+        MOVLW   ADR_PENDING_STATE
+        MOVWF   usb_device_state, BANKED
+SESSION_OWNER_USB9:
 RETURN__:
         return
 SET_CFG:
-        MOVLW  ADDRESS_STATE
-        TSTFSZ setupPkt+2, BANKED
-        MOVLW  CONFIGURED_STATE      ; USB ACTIVE CFG != 0
-        MOVWF  usb_device_state, BANKED
-        MOVF   setupPkt+2, W, BANKED
-        BZ     RETURN__
+        MOVLW   ADDRESS_STATE
+        TSTFSZ  setupPkt+2, BANKED
+        MOVLW   CONFIGURED_STATE      ; USB ACTIVE CFG != 0
+        MOVWF   usb_device_state, BANKED
+        MOVF    setupPkt+2, W, BANKED
+        BZ      SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
-        movlb high(UEP3)
-        MOVLW 0x1A
-        MOVWF UEP2, BANKED
-        MOVLW 0x1E
-        MOVWF UEP3, BANKED
-        movlb ep0ostat
-        CLRF  ep2istat, BANKED ; CDC notification end point not used
-        MOVLW 1
-        MOVWF ep3ocnt, BANKED
-        MOVWF ep3icnt, BANKED
-        MOVLW low(cdc_data_rx)
-        MOVWF ep3oadr, BANKED
-        MOVLW low(cdc_data_tx)
-        MOVWF ep3iadr, BANKED
-        MOVLW high(cdc_data_rx)
-        MOVWF ep3oadr+1, BANKED
-        MOVWF ep3iadr+1, BANKED
-        MOVLW _USIE|_DTSEN ;0x88
-        MOVWF ep3ostat, BANKED
-        CLRF ep3istat, BANKED
-        RETURN
+        movlb   high(UEP3)
+        MOVLW   0x1A
+        MOVWF   UEP2, BANKED
+        MOVLW   0x1E
+        MOVWF   UEP3, BANKED
+        movlb   ep0ostat
+        CLRF    ep2istat, BANKED ; CDC notification end point not used
+        MOVLW   1
+        MOVWF   ep3ocnt, BANKED
+        MOVWF   ep3icnt, BANKED
+        MOVLW   low(cdc_data_rx)
+        MOVWF   ep3oadr, BANKED
+        MOVLW   low(cdc_data_tx)
+        MOVWF   ep3iadr, BANKED
+        MOVLW   high(cdc_data_rx)
+        MOVWF   ep3oadr+1, BANKED
+        MOVWF   ep3iadr+1, BANKED
+        MOVLW   _USIE|_DTSEN ;0x88
+        MOVWF   ep3ostat, BANKED
+        CLRF    ep3istat, BANKED
+        bra     SESSION_OWNER_USB9
 ;*******************************************************************************
 GET_DSC:
-        MOVLW 0x80
-        SUBWF setupPkt, W, BANKED
-        BNZ GetDsc_6
-        MOVF setupPkt+3, W, BANKED
-        XORLW 0x3
-        BZ GET_DSC_STR
-        XORLW 0x1
-        BZ GET_DSC_CFG
-        XORLW 0x3
-        BNZ GetDsc_6
+        MOVLW   0x80
+        SUBWF   setupPkt, W, BANKED
+        BNZ     GetDsc_6
+        MOVF    setupPkt+3, W, BANKED
+        XORLW   0x3
+        BZ      GET_DSC_STR
+        XORLW   0x1
+        BZ      GET_DSC_CFG
+        XORLW   0x3
+        BNZ     GetDsc_6
 GET_DSC_DEV:
-        MOVLW low(device_dsc)
-        MOVWF pSrc, BANKED
-        MOVLW high(device_dsc)
-        MOVWF pSrc+1, BANKED
-        MOVLW 0x12 
-        BRA  GetDsc_4
+        MOVLW   low(device_dsc)
+        MOVWF   pSrc, BANKED
+        MOVLW   high(device_dsc)
+        MOVWF   pSrc+1, BANKED
+        MOVLW   0x12
+        BRA     GetDsc_4
 GET_DSC_CFG:
-        MOVLW low(USB_CFG)
-        MOVWF pSrc, BANKED
-        MOVLW high(USB_CFG)
-        MOVWF pSrc+1, BANKED
-        MOVLW 0x43
-        BRA GetDsc_4
+        MOVLW   low(USB_CFG)
+        MOVWF   pSrc, BANKED
+        MOVLW   high(USB_CFG)
+        MOVWF   pSrc+1, BANKED
+        MOVLW   0x43
+        BRA     GetDsc_4
 GET_DSC_STR:
-        MOVF setupPkt+2, W, BANKED
-        MOVWF TBLPTR, ACCESS
-        ADDWF TBLPTR, F, ACCESS
-        MOVLW low(USB_SD)
-        ADDWF TBLPTR, F, ACCESS
-        CLRF TBLPTRH, ACCESS
-        MOVLW high(USB_SD)
-        ADDWFC TBLPTRH, F, ACCESS
+        MOVF    setupPkt+2, W, BANKED
+        MOVWF   TBLPTR, ACCESS
+        ADDWF   TBLPTR, F, ACCESS
+        MOVLW   low(USB_SD)
+        ADDWF   TBLPTR, F, ACCESS
+        CLRF    TBLPTRH, ACCESS
+        MOVLW   high(USB_SD)
+        ADDWFC  TBLPTRH, F, ACCESS
 
         TBLRD*+
-        MOVF  TABLAT, W, A
-        MOVWF pSrc, BANKED
+        MOVF    TABLAT, W, A
+        MOVWF   pSrc, BANKED
         TBLRD*
-        MOVWF TBLPTR, A
-        MOVF  TABLAT, W, A
-        movwf pSrc+1, BANKED
-        MOVWF TBLPTRH, A
+        MOVWF   TBLPTR, A
+        MOVF    TABLAT, W, A
+        movwf   pSrc+1, BANKED
+        MOVWF   TBLPTRH, A
 
         TBLRD*
-        MOVF  TABLAT, W, A
+        MOVF    TABLAT, W, A
 GetDsc_4:
-        MOVWF count, BANKED
+        MOVWF   count, BANKED
 GetDsc_6:
         RETURN
 
 USBCheckCdcRequest:
-        movlw 0x21                 ; IF INTF & CLASS &  TO_DEVICE
-        xorwf setupPkt, W, BANKED
-        bnz   return6
-        movf  setupPkt+4, W, BANKED
-        sublw 1                  ; IF COMM_INTF || DATA_INTF
-        bn    return6
-        MOVF  setupPkt+1, W, BANKED
-        XORLW 0x22
-        BNZ   return6
+        movf setupPkt, W, BANKED ; IF INTF & CLASS &  TO_DEVICE
+        andlw   0x7f               ;
+        xorlw   0x21
+        bnz     return6
+        movf    setupPkt+4, W, BANKED
+        sublw   1                  ; IF COMM_INTF || DATA_INTF
+        bn      return6
+        MOVF    setupPkt+1, W, BANKED
+        addlw   -0x20                 ; SET_LINE_CODING 0x20
+        bz      SET_LINE_CODING
+        addlw   -1                    ;  GET_LINE_CODING 0x21
+        bz      GET_LINE_CODING
+        addlw   -1                    ; SET_CONTROL_LINE_STATE 0x22
+        bnz     return6
 SET_CONTROL_LINE_STATE:
-        bsf ctrl_trf_session_owner, 0, BANKED
+SET_MUID_CDC:
+        bsf     ctrl_trf_session_owner, 2, BANKED
 return6:
         return
+SET_LINE_CODING:
+        movlw   low(line_coding)
+        movwf   pDst, BANKED
+        movlw   high(line_coding)
+        movwf   pDst+1, BANKED
+        bra     SET_MUID_CDC
+GET_LINE_CODING:
+        movlw   low(line_coding)
+        movwf   pSrc, BANKED
+        movlw   high(line_coding)
+        movwf   pSrc+1, BANKED
+        movlw 7
+        movwf   count, BANKED
+        setf    mem, BANKED
+        bra     SET_MUID_CDC
         END

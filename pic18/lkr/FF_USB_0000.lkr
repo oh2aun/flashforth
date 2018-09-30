@@ -5,9 +5,9 @@ LIBPATH .
 // No bootloader  Application start at 0x0000
 CODEPAGE   NAME=coder      START=0x0000         END=0x00007
 CODEPAGE   NAME=codeih     START=0x0008         END=0x0000B
-CODEPAGE   NAME=codef      START=0x000C         END=0x024D7
-CODEPAGE   NAME=code1      START=0x24D8         END=0x024FF        PROTECTED
-CODEPAGE   NAME=code2      START=0x2500         END=0x07FFF        PROTECTED
+CODEPAGE   NAME=codef      START=0x000C         END=0x025D7
+CODEPAGE   NAME=code1      START=0x25D8         END=0x025FF        PROTECTED
+CODEPAGE   NAME=code2      START=0x2600         END=0x07FFF        PROTECTED
 
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
@@ -18,8 +18,8 @@ ACCESSBANK NAME=flashbuf   START=0x0            END=0x3F           PROTECTED
 ACCESSBANK NAME=acs_ram    START=0x40           END=0x5F           PROTECTED
 DATABANK   NAME=ram_dp     START=0x60           END=0x3FF          PROTECTED
 DATABANK   NAME=usbep      START=0x400          END=0x41F          PROTECTED
-DATABANK   NAME=usbvars    START=0x420          END=0x42F          PROTECTED
-DATABANK   NAME=userarea   START=0x430          END=0x78F          PROTECTED
+DATABANK   NAME=usbvars    START=0x420          END=0x43F          PROTECTED
+DATABANK   NAME=userarea   START=0x440          END=0x78F          PROTECTED
 DATABANK   NAME=irqstack   START=0x790          END=0x79F          PROTECTED
 DATABANK   NAME=uarttx     START=0x7A0          END=0x7BF          PROTECTED
 DATABANK   NAME=uartrx     START=0x7C0          END=0x7FF          PROTECTED

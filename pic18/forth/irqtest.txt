@@ -28,6 +28,7 @@ irqtest+  \ Start the interrupt routine
 \ Test ends by pressing anykey
 : */test ( -- )
   begin
+    pause
     #10000 #20000 um* 2dup #200000000. d= abort" err1"
     #40000 um/mod #5000 = abort" err2" drop
     key?
