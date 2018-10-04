@@ -1,0 +1,39 @@
+// File: FF_0000.lkr
+// Linker script for FlashForth without bootloader.
+// Adjust the cstack and STACK SIZE if needed.
+LIBPATH .
+
+CODEPAGE   NAME=coder      START=0x0000         END=0x00007
+CODEPAGE   NAME=codeih     START=0x0008         END=0x0000B
+CODEPAGE   NAME=codef      START=0x000C         END=0x2455
+CODEPAGE   NAME=code1      START=0x2456         END=0x247D         PROTECTED
+CODEPAGE   NAME=code2      START=0x247F         END=0xFFFFF        PROTECTED
+CODEPAGE   NAME=idlocs     START=0x200000       END=0x20000F       PROTECTED
+CODEPAGE   NAME=config     START=0x300000       END=0x300009       PROTECTED
+CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
+CODEPAGE   NAME=eedata     START=0x310000       END=0x3103FF       PROTECTED
+
+
+ACCESSBANK NAME=acs_ram    START=0x10              END=0x5F           PROTECTED
+DATABANK   NAME=flashbuf   START=0x60              END=0xDF           PROTECTED
+DATABANK   NAME=irqstack   START=0xE0              END=0x1FF          PROTECTED
+DATABANK   NAME=cstack     START=0x3E0             END=0x3FF          PROTECTED
+ACCESSBANK NAME=accesssfr  START=0xF60             END=0xFFF          PROTECTED
+DATABANK   NAME=sfr56      START=0x3800            END=0x38FF         PROTECTED
+DATABANK   NAME=sfr57      START=0x3900            END=0x39FF         PROTECTED
+DATABANK   NAME=sfr58      START=0x3A00            END=0x3AFF         PROTECTED
+DATABANK   NAME=sfr59      START=0x3B00            END=0x3BFF         PROTECTED
+DATABANK   NAME=sfr60      START=0x3C00            END=0x3CFF         PROTECTED
+DATABANK   NAME=sfr61      START=0x3D00            END=0x3DFF         PROTECTED
+DATABANK   NAME=sfr62      START=0x3E00            END=0x3EFF         PROTECTED
+DATABANK   NAME=sfr63      START=0x3F00            END=0x3F5F         PROTECTED
+
+SECTION NAME=FLASH_BUF    RAM=flashbuf
+SECTION NAME=FORTH_VARS   RAM=acs_ram
+SECTION NAME=MATH_DATA    RAM=acs_ram
+SECTION NAME=IRQ_STACK    RAM=irqstack
+SECTION NAME=FF_RESET     ROM=coder
+SECTION NAME=FF_INT_HI    ROM=codeih
+SECTION NAME=FF_CODE      ROM=codef
+SECTION NAME=FF_END_CODE  ROM=code1
+SECTION NAME=FF_DP        ROM=code2

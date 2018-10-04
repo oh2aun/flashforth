@@ -2673,6 +2673,7 @@ WARM_2:
 #ifdef HW_FC_CTS_TRIS
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
+        
         rcall   RQ
         rcall   VER     
         
@@ -5333,7 +5334,7 @@ CREATE:
         rcall   DUP_A             
         rcall   LATEST          ; new 'latest' link
         rcall   STORE_A         ; str len ihere
-        rcall   PLACE           
+        rcall   PLACE           ;
         rcall   IHERE           ; ihere
         call    CFETCH_A
         rcall   LIT_A
@@ -5579,10 +5580,10 @@ INI:
 L_TICKS:
         db      NFA|5,"ticks"
 TICKS:
-        bcf     INTCON0, GIE, A
+        bcf     INTCON, GIE, A
         MOVFF_  ms_count, plusS
         MOVFF_  ms_count+1, plusS
-        bsf     INTCON0, GIE, A
+        bsf     INTCON, GIE, A
         return
         
 ; ms  +n --      Pause for n millisconds
