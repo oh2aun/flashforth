@@ -75,32 +75,13 @@ size /= 2
             endm
             
 MOVFF_  macro src, dst
-#ifdef K42
-            movffl  src, dst
-#else 
+#ifndef PIC18FxxK42
             movff   src, dst
+#else 
+            movffl  src, dst   
 #endif  
         endm
-        
-UNARY_A_OR_B   macro instr, arg1
-#ifdef K42
-                banksel arg1
-                instr   arg1, BANKED
-#else
-                instr   arg1, A
-#endif
-                endm
-                    
-
-BINARY_A_OR_B  macro instr, arg1, arg2
-#ifdef K42
-                banksel arg1
-                instr   arg1, arg2, BANKED
-#else
-                instr   arg1, arg2, A
-#endif
-                endm
-               
+ 
       
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
@@ -183,7 +164,7 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;****************************************************
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
-#ifndef K42     
+#ifndef PIC18FxxK42     
 FLASH_BUF udata_acs
 flash_buf res flash_block_size    
 #endif
@@ -219,7 +200,7 @@ aregh    res 1
 load_acc res 3       ;
 #endif
 
-#ifdef K42
+#ifdef PIC18FxxK42
 FLASH_BUF udata
 flash_buf res flash_block_size
 #endif
@@ -378,29 +359,93 @@ FFCODE:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
+#ifndef PIC18FxxK42
+        bsf     T0CON, TMR0ON, A
+#else ; PIC18FxxK42
         bsf     T0CON0, T0EN, A
+#endif ; PIC18FxxK42
 #endif
 #endif
 #endif
 irq_ms:
+#ifndef PIC18FxxK42
 #if MS_TMR == 1  ;****************************
-        BINARY_A_OR_B btfss, PIR4, TMR1IF
+        btfss   PIR1, TMR1IF, A
+        bra     irq_ms_end
+        bcf     T1CON, TMR1ON
+        movlw   low(tmr1ms_val)
+        subwf   TMR1L, F, A
+        movlw   high(tmr1ms_val)
+        subwfb  TMR1H, F, A
+        bsf     T1CON, TMR1ON
+        bcf     PIR1, TMR1IF, A
+#else
+#if MS_TMR == 2 ;******************************
+        btfss   PIR1, TMR2IF, A
+        bra     irq_ms_end
+        bcf     PIR1, TMR2IF, A
+#else
+#if MS_TMR == 3 ;******************************
+        btfss   PIR2, TMR3IF, A
+        bra     irq_ms_end
+        bcf     T3CON, TMR3ON
+        movlw   low(tmr1ms_val)
+        subwf   TMR3L, F, A
+        movlw   high(tmr1ms_val)
+        subwfb  TMR3H, F, A
+        bsf     T3CON, TMR3ON
+        bcf     PIR2, TMR3IF, A
+#else
+#if MS_TMR == 4 ;******************************
+        btfss   PIR5, TMR4IF, A
+        bra     irq_ms_end
+        bcf     PIR5, TMR4IF, A
+#else
+#if MS_TMR == 5 ;******************************
+        btfss   PIR5, TMR5IF, A
+        bra     irq_ms_end
+        banksel T5CON
+        bcf     T5CON, TMR5ON, BANKED
+        movlw   low(tmr1ms_val)
+        subwf   TMR5L, F, BANKED
+        movlw   high(tmr1ms_val)
+        subwfb  TMR5H, F, BANKED
+        bsf     T5CON, TMR5ON, BANKED
+        bcf     PIR5, TMR5IF, A
+#else
+#if MS_TMR == 6 ;******************************
+        btfss   PIR5, TMR6IF, A
+        bra     irq_ms_end
+        bcf     PIR5, TMR6IF, A
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif    
+#else ; PIC18FxxK42    
+#if MS_TMR == 1  ;****************************
+        banksel PIR4
+        btfss   PIR4, TMR1IF, BANKED
         bra     irq_ms_end
         bcf     T1CON, TMR1ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR1L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR1H, F, A
-        bsf     T1CON, TMR1ON
-        bcf     PIR4, TMR1IF
+        bsf     T1CON, TMR1ON, A
+        banksel PIR4
+        bcf     PIR4, TMR1IF, BANKED
 #else
 #if MS_TMR == 2 ;******************************
-        BINARY_A_OR_B btfss, PIR4, TMR2IF
+        banksel PIR4
+        btfss   PIR4, TMR2IF, BANKED
         bra     irq_ms_end
-        bcf     PIR4, TMR2IF        
+        bcf     PIR4, TMR2IF, BANKED        
 #else
 #if MS_TMR == 3 ;******************************
-        BINARY_A_OR_B btfss, PIR6, TMR3IF
+        banksel PIR6
+        btfss   PIR6, TMR3IF, BANKED
         bra     irq_ms_end
         bcf     T3CON, TMR3ON, A
         movlw   low(tmr1ms_val)
@@ -408,15 +453,18 @@ irq_ms:
         movlw   high(tmr1ms_val)
         subwfb  TMR3H, F, A
         bsf     T3CON, TMR3ON, A
-        bcf     PIR6, TMR3IF
+        banksel PIR6
+        bcf     PIR6, TMR3IF, BANKED
 #else
 #if MS_TMR == 4 ;******************************
-        BINARY_A_OR_B btfss, PIR7, TMR4IF
+        banksel PIR7
+        btfss   PIR7, TMR4IF, BANKED
         bra     irq_ms_end
-        bcf     PIR7, TMR4IF      
+        bcf     PIR7, TMR4IF, BANKED        
 #else
 #if MS_TMR == 5 ;******************************
-        BINARY_A_OR_B btfss, PIR8, TMR5IF
+        banksel PIR8
+        btfss   PIR8, TMR5IF, BANKED
         bra     irq_ms_end
         bcf     T5CON, TMR5ON, A
         movlw   low(tmr1ms_val)
@@ -424,18 +472,21 @@ irq_ms:
         movlw   high(tmr1ms_val)
         subwfb  TMR5H, F, A
         bsf     T5CON, TMR5ON, A
-        bcf     PIR8, TMR5IF
+        banksel PIR8
+        bcf     PIR8, TMR5IF, BANKED
 #else
 #if MS_TMR == 6 ;******************************
-        BINARY_A_OR_B btfss, PIR9, TMR6IF
+        banksel PIR9
+        btfss   PIR9, TMR6IF, BANKED
         bra     irq_ms_end
-        bcf     PIR9, TMR6IF       
+        bcf     PIR9, TMR6IF, BANKED        
 #endif
 #endif
 #endif
 #endif
 #endif
 #endif
+#endif ; PIC18FxxK42        
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
 #ifdef IDLEN
@@ -481,9 +532,15 @@ irq_user_skip:
 ;;; from the serial line
 irq_async_rx:
 #if UART == 1
-        BINARY_A_OR_B btfss, PIR3, U1RXIF
+#ifndef PIC18FxxK42
+        btfss   PIR1, RCIF, A
+#else ; PIC18FxxK42
+        banksel PIR3
+        btfss   PIR3, U1RXIF, BANKED
+#endif ; PIC18FxxK42
 #else
-        BINARY_A_OR_B btfss, PIR6, U2RXIF
+        banksel PIR6
+        btfss   PIR6, U2RXIF, BANKED
 #endif
         bra     irq_async_rx_end
 
@@ -684,9 +741,19 @@ L_TX1_:
 TX1_:
         rcall   PAUSE
 #if UART == 1
-        BINARY_A_OR_B btfss, U1ERRIR, U1TXMTIF
+#ifndef PIC18FxxK42
+        btfss   PIR1, TXIF, A
+#else ; PIC18FxxK42
+        banksel U1ERRIR
+        btfss   U1ERRIR, U1TXMTIF, BANKED
+#endif ; PIC18FxxK42 
 #else
-        BINARY_A_OR_B btfss, U2ERRIR, U2TXMTIF
+#ifndef PIC18FxxK42
+        btfss   PIR3, TX2IF, A
+#else ; PIC18FxxK42
+        banksel U2ERRIR
+        btfss   U2ERRIR, U2TXMTIF, BANKED
+#endif ; PIC18FxxK42
 #endif
         bra     TX1_
 TX1_SEND:
@@ -696,10 +763,20 @@ TX1_SEND:
         andlw   h'7f'
 #endif
 #if UART == 1
-        UNARY_A_OR_B movwf, U1TXB
+#ifndef PIC18FxxK42
+        movwf   TXREG, A
+#else ; PIC18FxxK42
+        banksel U1TXB
+        movwf   U1TXB, BANKED
+#endif ; PIC18FxxK42
 #else
+#ifndef PIC18FxxK42
+        banksel TXREG2
+        movwf   TXREG2, BANKED        
+#else ; PIC18FxxK42
         banksel U2TXB
         movwf   U2TXB, BANKED
+#endif ; PIC18FxxK42
 #endif
         return
 ;***************************************************
@@ -718,14 +795,14 @@ RX1_:
         MOVFF_  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
 
-        bcf     INTCON0, GIE, A
+        bcf     INTCON, GIE, A
 
         incf    RXtail, F, A
         movlw   RXbufmask
         andwf   RXtail, F, A
         decf    RXcnt, F, A
 
-        bsf     INTCON0, GIE, A
+        bsf     INTCON, GIE, A
         return
 
 ;***************************************************
@@ -735,15 +812,28 @@ L_RX1Q:
         db      NFA|4,"rx1?"
 RX1Q:
 #if UART == 1
+#ifndef PIC18FxxK42
+        btfsc   RCSTA, OERR, A
+        bcf     RCSTA, CREN, A ; Restart RX on case of RX overrun
+        bsf     RCSTA, CREN, A    
+#else ; PIC18FxxK42
         banksel U1ERRIR
         btfsc   U1ERRIR, RXFOIF, BANKED
         bcf     U1ERRIR, RXFOIF, BANKED ; Restart RX on case of RX overrun
         bsf     U1ERRIR, RXFOIF, BANKED
+#endif ; PIC18FxxK42
 #else
+#ifndef PIC18FxxK42
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, BANKED
+        bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, BANKED
+#else ; PIC18FxxK42
         banksel U2ERRIR
         btfsc   U2ERRIR, RXFOIF, BANKED
         bcf     U2ERRIR, RXFOIF, BANKED ; Restart RX on case of RX overrun
         bsf     U2ERRIR, RXFOIF, BANKED
+#endif ; PIC18FxxK42
 #endif
         movf    RXcnt, W, A
         movwf   plusS, A
@@ -863,12 +953,12 @@ UMSLASHMOD2:
         MOVFF_  DIVIDEND_1, plusS
         return                  ; 11 cycles 
 ; *******************************************************************
-;if (ibaselo != (iaddrlo&0x80))&& (ibasehi != iaddrhi)
+;if (ibaselo != (iaddrlo&flash_block_mask))&& (ibasehi != iaddrhi)
 ;   if (idirty)
 ;       writebuffer_to_imem
 ;   endif
 ;   fillbuffer_from_imem
-;   ibaselo = iaddrlo&0x80
+;   ibaselo = iaddrlo&flash_block_mask
 ;   ibasehi = iaddrhi
 ;endif
 iupdatebuf:
@@ -937,7 +1027,7 @@ wbtil2:
         decfsz  Tbank, F, A
         bra     wbtil1             ; 20 ms @ 64 MHz XTAL @ write_delay = 255
 #endif
-        bcf     INTCON0, GIE, A  ; Disable Interrupts
+        bcf     INTCON, GIE, A  ; Disable Interrupts
 
 #ifdef p18fxx2xx8_fix_1
         movff   PIE1, SPIE1
@@ -948,11 +1038,18 @@ wbtil2:
         clrf    PIE2, A
 #endif        
         rcall   init_ptrs             ; Init TBLPTR and ram pointer
+#ifndef PIC18FxxK42
+        bsf     EECON1, EEPGD, A      ; Erase the flash block
+        bcf     EECON1, CFGS, A
+        bsf     EECON1, WREN, A
+        bsf     EECON1, FREE, A        
+#else ; PIC18FxxK42
         banksel NVMCON1
         bsf     NVMCON1, REG1, BANKED      ; Erase the flash block
         bcf     NVMCON1, REG0, BANKED
         bsf     NVMCON1, WREN, BANKED
         bsf     NVMCON1, FREE, BANKED
+#endif ; PIC18FxxK42
 
         rcall   magic
 
@@ -969,20 +1066,26 @@ write_buffer_to_imem_2:
         tblwt+*
         decfsz  PRODL, F, A
         bra     write_buffer_to_imem_2
+#ifdef PIC18FxxK42
         banksel NVMCON1
         bcf     NVMCON1, FREE, BANKED     
+#endif
         rcall   magic
         decfsz  PRODH, F, A
         bra     write_buffer_to_imem_1
+#ifndef PIC18FxxK42
+        bcf     EECON1, WREN, A        
+#else ; PIC18FxxK42
         banksel NVMCON1
         bcf     NVMCON1, WREN, BANKED
+#endif ; PIC18FxxK42
 
 #ifdef p18fxx2xx8_fix_1
         movff   SPIE2, PIE2
         movff   SPIE1, PIE1
         movff   SINTCON, INTCON
 #endif
-        bsf     INTCON0, GIE, A        
+        bsf     INTCON, GIE, A        
 verify_imem:
         movlw   flash_block_size
         movwf   PCLATH, A
@@ -1011,25 +1114,49 @@ init_ptrs:
 #endif
         return
 magic:
+#ifndef PIC18FxxK42
+        movlw   h'55'
+        movwf   EECON2, A
+        movlw   h'aa'
+        movwf   EECON2, A
+        bsf     EECON1, WR, A
+#else ; PIC18FxxK42
         banksel NVMCON2
         movlw   h'55'
         movwf   NVMCON2, BANKED
         movlw   h'aa'
         movwf   NVMCON2, BANKED
         bsf     NVMCON1, WR, BANKED
+#endif ; PIC18FxxK42
         return
 
 ;***************************************************
 asmemit:
 #if UART == 1
-        BINARY_A_OR_B btfss, PIR3, U1TXIF
+#ifndef PIC18FxxK42
+        btfss   PIR1, TXIF, A
         bra     asmemit
-        UNARY_A_OR_B movwf, U1TXB
+        movwf   TXREG, A
+#else ; PIC18FxxK42
+        banksel PIR3
+        btfss   PIR3, U1TXIF, BANKED
+        bra     asmemit
+        banksel U1TXB
+        movwf   U1TXB, BANKED
+#endif ; PIC18FxxK42
 #else
-        BINARY_A_OR_B btfss, PIR6, U2TXIF, BANKED
+#ifndef PIC18FxxK42
+        btfss   PIR3, TX2IF, A
+        bra     asmemit
+        banksel TXREG2
+        movwf   TXREG2, BANKED
+#else ; PIC18FxxK42
+        banksel PIR6
+        btfss   PIR6, U2TXIF, BANKED
         bra     asmemit
         banksel U2TXB
         movwf   U2TXB, BANKED
+#endif ; PIC18FxxK42
 #endif
         return
 ;***************************************************
@@ -1155,7 +1282,7 @@ SCAN4:
         dw      L_SCAN
 L_EI:
         db      NFA|INLINE|2,"ei"
-        bsf     INTCON0, GIE, A
+        bsf     INTCON, GIE, A
         return
         
 ; di  ( -- )    Disable interrupts
@@ -1325,68 +1452,140 @@ ICFETCH1:                       ; Called directly by N=
 ESTORE:
         rcall   LOCKED
         movf    Sminus, W, A
+#ifndef PIC18FxxK42
+#ifdef EEADRH
+        movwf   EEADRH, A
+#endif
+        movff   Sminus, EEADR
+        incf    EEADR, F, A
+        movff   Sminus, EEDATA        
+#else ; PIC18FxxK42
         banksel NVMADRH
         movwf   NVMADRH, BANKED
         MOVFF_  Sminus, NVMADRL
         banksel NVMADRL
         incf    NVMADRL, F, BANKED 
         MOVFF_  Sminus, NVMDAT
+#endif ; PIC18FxxK42
         rcall   ECSTORE1
+#ifndef PIC18FxxK42
+        decf    EEADR, F, A
+        movff   Sminus, EEDATA        
+#else ; PIC18FxxK42
         banksel NVMADRL
         decf    NVMADRL, F, BANKED
         MOVFF_  Sminus, NVMDAT
+#endif ; PIC18FxxK42
         bra     ECSTORE1
 
 ; EC!       c addr --    store char in data EEPROM
 ECSTORE:
         rcall   LOCKED
         movf    Sminus, W, A
-        andlw   h'03'
+#ifndef  PIC18FxxK42
+#ifdef EEADRH
+        movwf   EEADRH, A
+#endif
+        movff   Sminus, EEADR
+        movf    Sminus, W, A
+        movff   Sminus, EEDATA        
+#else ; PIC18FxxK42
         banksel NVMADRH
         movwf   NVMADRH, BANKED
         MOVFF_  Sminus, NVMADRL
         movf    Sminus, W, A
         MOVFF_  Sminus, NVMDAT
+#endif ; PIC18FxxK42
 ECSTORE1:
+#ifndef PIC18FxxK42
+        bcf     EECON1, EEPGD, A
+        bcf     EECON1, CFGS, A
+#ifdef PIR6
+        bcf     PIR6, EEIF, A
+#else
+        bcf     PIR2, EEIF, A
+#endif
+        bsf     EECON1, WREN, A
+        bcf     INTCON, GIE, A
+        movlw   h'55'
+        movwf   EECON2, A
+        movlw   h'aa'
+        movwf   EECON2, A
+        bsf     EECON1, WR, A
+        bsf     INTCON, GIE, A    
+#else ; PIC18FxxK42
         banksel NVMCON1
         bcf     NVMCON1, REG1, BANKED
         bcf     NVMCON1, REG0, BANKED
         bsf     NVMCON1, WREN, BANKED
-        bcf     INTCON0, GIE, A
+        bcf     INTCON, GIE, A
         movlw   h'55'
         movwf   NVMCON2
         movlw   h'aa'
         movwf   NVMCON2
         bsf     NVMCON1, WR, BANKED
-        bsf     INTCON0, GIE, A
+        bsf     INTCON, GIE, A
+#endif ; PIC18FxxK42
 ECSTORE2:
+#ifndef PIC18FxxK42
+#ifdef PIR6
+        btfss   PIR6, EEIF, A
+#else
+        btfss   PIR2, EEIF, A
+#endif
+        bra     ECSTORE2
+        bcf     EECON1, WREN, A
+#ifdef PIR6
+        bcf     PIR6, EEIF, A
+#else
+        bcf     PIR2, EEIF, A
+#endif    
+#else ; PIC18FxxK42
         btfsc   NVMCON1, WR, BANKED
         bra     ECSTORE2
         banksel NVMCON1
         bcf     NVMCON1, WREN, BANKED
         banksel PIR0
         bcf     PIR0, NVMIF, BANKED
+#endif ; PIC18FxxK42
         return
 
 
 ; E@       a-addr -- x  fetch cell from data EEPROM
 EFETCH:
         movf    Sminus, W, A
-
+#ifndef  PIC18FxxK42
+#ifdef EEADRH
+        movwf   EEADRH, A
+#endif
+        movff   Sminus, EEADR        
+#else ; PIC18FxxK42
         banksel NVMADRH
         movwf   NVMADRH, BANKED
         MOVFF_  Sminus, NVMADRL
+#endif ; PIC18FxxK42
         rcall   asmecfetch
+#ifndef PIC18FxxK42
+        incf    EEADR,F,A
+#else ; PIC18FxxK42
         banksel NVMADRL
         incf    NVMADRL,F, BANKED
+#endif ; PIC18FxxK42
         bra     asmecfetch
 
 ; EC@      addr -- c  fetch char from data EEPROM
 ECFETCH:
         movf    Sminus, W, A
+#ifndef PIC18FxxK42
+#ifdef EEADRH
+        movwf   EEADRH, A
+#endif
+        movff   Sminus, EEADR        
+#else ;  PIC18FxxK42
         banksel NVMADRH
         movwf   NVMADRH, BANKED
         MOVFF_  Sminus, NVMADRL
+#endif ; PIC18FxxK42
         rcall   asmecfetch
         clrf    plusS, A
         return
@@ -1394,12 +1593,19 @@ asmecfetch:
 #ifdef p18fxx2xx8_fix_1
         bcf     INTCON, GIE, A          ; 18f252 ERRATA
 #endif
+#ifndef PIC18FxxK42
+        bcf     EECON1, EEPGD, A
+        bcf     EECON1, CFGS, A
+        bsf     EECON1, RD, A
+        movf    EEDATA, W        
+#else ; PIC18FxxK42
         banksel NVMCON1
         bcf     NVMCON1, REG1, BANKED
         bcf     NVMCON1, REG0, BANKED
         bsf     NVMCON1, RD, BANKED
         banksel NVMDAT
         movf    NVMDAT, W, BANKED
+#endif ; PIC18FxxK42
         movwf   plusS, A
 #ifdef p18fxx2xx8_fix_1
         bsf     INTCON, GIE, A          ; 18f252 ERRATA
@@ -1531,10 +1737,18 @@ PAUSE_IDLE0:
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, A
 #endif
 #endif
+#ifndef PIC18FxxK42
+        bsf     OSCCON, IDLEN, A   ; Only IDLE mode supported
+#else
         banksel CPUDOZE
         bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
+#endif  
 #if CPU_LOAD == ENABLE
+#ifndef PIC18FxxK42
+        bcf     T0CON, TMR0ON, A   ; TMR0 Restart in interrupt routine
+#else
         bcf     T0CON0, T0EN, A   ; TMR0 Restart in interrupt routine
+#endif         
 #endif
         sleep
 PAUSE_IDLE1:
@@ -1731,13 +1945,21 @@ RQ_DIVZERO:
         db      d'1',"M"
         call    TYPE
 RQ_STKFUL:
+#ifndef PIC18FxxK42
+        btfss   0, STKFUL, A
+#else 
         btfss   1, STKOVF, A
+#endif
         bra     RQ_STKUNF
         call    XSQUOTE
         db      d'1',"O"
         call    TYPE
 RQ_STKUNF:
+#ifndef PIC18FxxK42
+        btfss   0, STKUNF, A
+#else
         btfss   1, STKUNF, A
+#endif 
         bra     RQ_BOR
         call    XSQUOTE
         db      d'1',"U"
@@ -1755,7 +1977,11 @@ RQ_POR:
         db      d'1',"P"
         call    TYPE
 RQ_TO:
+#ifndef PIC18FxxK42
+        btfsc   1, TO
+#else
         btfsc   1, RWDT
+#endif 
         bra     RQ_RI
         call    XSQUOTE
         db      d'1',"W"
@@ -2058,13 +2284,13 @@ WARM_:
         reset                   ; Perform a reset, jumps to h'0000' and resets stuff
 #endif
 main:
-#ifdef K42
+#ifndef PIC18FxxK42
+        movlw   0xf
+        iorwf   ADCON1, F, A    
+#else
         banksel ADREF
         clrf    ADREF       ; VREF+ = AVDD , VREF- = AVSS
-#else 
-        movlw   0xf
-        iorwf   ADCON1, F, A
-#endif
+#endif 
         clrf    TBLPTRU, A  
 #ifdef OSCCON
         movlw   0x70            ; Use full internal OSC frequency
@@ -2079,11 +2305,20 @@ main:
                                 ; Clear ram
 WARM:
         MOVFF_  STKPTR, 0       ; Save return stack reset reasons
+#ifndef PIC18FxxK42
+        MOVFF_  RCON, 1         ; Save reset reasons
+#else
         MOVFF_  PCON0, 1        ; Save reset reasons
+#endif 
         MOVFF_  c_status, 2     ; Divide by zero sets a flag then jumps to WARM
         clrf    STKPTR, A       ; Clear return stack (should be zero on RESET )
+#ifndef PIC18FxxK42
+        movlw   h'1f'
+        movwf   RCON, A
+#else
         movlw   h'3f'           ; Clearing the flags in PCON0
         movwf   PCON0, A
+#endif 
         lfsr    Sptr, 3         ; Zero ram from 3 upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
@@ -2101,7 +2336,7 @@ WARM_ZERO_3:
 WARM_ZERO_1:
         clrf    Splus, A        
         movf    Sbank, W, A     
-        sublw   h'0f'           ; !TODO this probably needs to change
+        sublw   h'0f'           ; !TODO this probably needs to change to 3f
         bnz     WARM_ZERO_1     
 #endif
 
@@ -2109,26 +2344,27 @@ WARM_ZERO_1:
         
         lfsr    Sptr, (usbuf-1) ; Initalise Parameter stack
         lfsr    Rptr, urbuf
-#ifdef PIE0
-        UNARY_A_OR_B clrf, PIE0 ; Disable all peripheral interrupts        
-#endif 
-        UNARY_A_OR_B clrf, PIE1 ; Assume all PIEx are in the same bank
+#ifdef PIE0                     ; Disable all peripheral interrupts
+        banksel PIE0            
+        clrf    PIE0
+#endif
+        clrf    PIE1
         clrf    PIE2
 #ifdef PIE3
         clrf    PIE3
 #endif
-#ifdef PIE4        
+#ifdef PIE4
         clrf    PIE4
 #endif
-#ifdef PIE5        
+#ifdef PIE5
         clrf    PIE5
-#endif
+#endif 
 #ifdef PIE6
         clrf    PIE6
 #endif
 #ifdef PIE7
         clrf    PIE7
-#endif
+#endif 
 #ifdef PIE8
         clrf    PIE8
 #endif
@@ -2140,6 +2376,31 @@ WARM_ZERO_1:
 #endif
         banksel Sp  ; Select register bank ($0f00)
 #if UART == 1 ; ----------------------------------------------
+#ifndef PIC18FxxK42
+        movlw   spbrgval
+        movwf   SPBRG, A
+; TX enable
+        movlw   b'00100100'
+        movwf   TXSTA, A
+#ifdef USB_CDC
+        movlw   b'00000000'     ; Reset the UART since
+        movwf   RCSTA, A        ; USB warm start does not reset the chip
+#endif
+; RX enable
+        movlw   b'10010000'
+        movwf   RCSTA, A
+        bsf     PIE1, RCIE, A
+#ifdef ANSELH
+#ifdef ANS11
+        bcf     ANSELH, ANS11, A ; Enable digital RB5 for RX
+#endif
+#endif
+#ifdef ANSELC
+#ifdef ANSC7
+        bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
+#endif
+#endif        
+#else ; PIC18FxxK42
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTx so RX can function
@@ -2194,7 +2455,20 @@ WARM_ZERO_1:
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
         banksel RX_TRIS
         bsf     RX_TRIS, RX_BIT, BANKED ; configure XY as an input
+#endif ; PIC18FxxK42        
 #else  ; UART == 2 ---------------------------------------
+#ifndef PIC18FxxK42
+        movlw   spbrgval
+        movwf   SPBRG2, BANKED
+; TX enable
+        movlw   b'00100100'
+        movwf   TXSTA2, BANKED
+; RX enable
+        movwf   RCSTA2, BANKED
+        bsf     PIE3, RC2IE, A
+
+        bcf     ANCON2, ANSEL18, BANKED   ; Enable digital RG2 for RX2        
+#else ; PIC18FxxK42
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTx so RX can function
@@ -2249,7 +2523,8 @@ WARM_ZERO_1:
         bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
         banksel RX_TRIS
         bsf     RX_TRIS, RX_BIT, BANKED ; configure C7 as an input
-#endif
+#endif ; PIC18FxxK42       
+#endif ; UART
 
 #if IDLE_MODE == ENABLE
         bsf     T0CON0, T0MD16, A   ; 16 bit timer
@@ -2260,14 +2535,25 @@ WARM_ZERO_1:
         ;; Timer 1 for 1 ms system tick
         movlw   h'01'           ; prescale = 1 / 8-bit write
         movwf   T1CON, A
+        setf    TMR1H, A
+#ifndef PIC18FxxK42
+        bsf     PIE1,TMR1IE, A
+#else
         movlw   h'01'           ; fosc/4
         movwf   T1CLK, A
-        setf    TMR1H, A
         banksel PIE4
-        ;bsf     PIE4,TMR1IE, BANKED
+        bsf     PIE4,TMR1IE, BANKED
+#endif 
 #else
 #if MS_TMR == 2
-        ;; Timer 2 for 1 ms system tick    
+        ;; Timer 2 for 1 ms system tick
+#ifndef PIC18FxxK42
+        movlw   h'7d'      ; Prescale = 4, Postscale = 16
+        movwf   T2CON, A
+        movlw   tmr2ms_val
+        movwf   PR2, A
+        bsf     PIE1, TMR2IE, A        
+#else ; PIC18FxxK42
         movlw   h'01'
         movwf   T2CLK, A
         movlw   tmr2ms_val
@@ -2276,19 +2562,31 @@ WARM_ZERO_1:
         movwf   T2CON, A
         banksel PIE4
         bsf     PIE4, TMR2IE, BANKED
+#endif ; PIC18FxxK42
 #else
 #if MS_TMR == 3
         ;; Timer 3 for 1 ms system tick
         movlw   h'01'           ; prescale = 1 / 8-bit write
         movwf   T3CON, A
+        setf    TMR3H, A
+#ifndef PIC18FxxK42
+        bsf     PIE2, TMR3IE, A
+#else 
         movlw   h'01'           ; fosc/4
         movwf   T3CLK, A
-        setf    TMR3H, A
         banksel PIE6
         bsf     PIE6,TMR3IE, BANKED
+#endif         
 #else
 #if MS_TMR == 4
         ;; Timer 4 for 1 ms system tick
+#ifndef PIC18FxxK42
+        movlw   h'7d'      ; Prescale = 4, Postscale = 16
+        movwf   T4CON, BANKED
+        movlw   tmr2ms_val
+        movwf   PR4, BANKED
+        bsf     PIE5, TMR4IE, A
+#else
         movlw   h'01'
         movwf   T4CLK, A
         movlw   tmr2ms_val
@@ -2297,19 +2595,31 @@ WARM_ZERO_1:
         movwf   T4CON, A
         banksel PIE7
         bsf     PIE7, TMR4IE, BANKED
+#endif 
 #else
 #if MS_TMR == 5
         ;; Timer 5 for 1 ms system tick
         movlw   h'01'           ; prescale = 1 / 8-bit write
         movwf   T5CON, A
+        setf    TMR5H, A
+#ifndef PIC18FxxK42
+        bsf     PIE5,TMR5IE, A
+#else 
         movlw   h'01'           ; fosc/4
         movwf   T5CLK, A
-        setf    TMR5H, A
         banksel PIE8
         bsf     PIE8,TMR5IE, BANKED
+#endif 
 #else
 #if MS_TMR == 6
         ;; Timer 6 for 1 ms system tick
+#ifndef PIC18FxxK42
+        movlw   h'7d'      ; Prescale = 4, Postscale = 16
+        movwf   T6CON, BANKED
+        movlw   tmr2ms_val
+        movwf   PR6, BANKED
+        bsf     PIE5, TMR6IE, A        
+#else ; PIC18FxxK42
         movlw   h'01'
         movwf   T6CLK, A
         movlw   tmr2ms_val
@@ -2318,6 +2628,7 @@ WARM_ZERO_1:
         movwf   T6CON, A
         banksel PIE9
         bsf     PIE9, TMR6IE, BANKED
+#endif ; PIC18FxxK42
 #endif
 #endif
 #endif
@@ -2341,7 +2652,11 @@ WARM_ZERO_1:
         call    CMOVE      
         
         rcall   FRAM
-        bsf     INTCON0, GIE, A
+#ifndef PIC18FxxK42
+        clrf    INTCON, A
+        bsf     INTCON, PEIE, A
+#endif 
+        bsf     INTCON, GIE, A
         rcall   LIT
         dw      dp_start
         rcall   FETCH
