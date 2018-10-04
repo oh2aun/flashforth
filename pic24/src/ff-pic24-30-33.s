@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          20.03.2018                                        *
+;    Date:          04.10.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2015  Mikael Nordman
+; Copyright (C) 2018  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -40,15 +40,25 @@
 ;Global Declarations:
 ;..............................................................................
 .global __reset
+.global __OscillatorFail
+.global __AddressError
+.global __StackError
+.global __MathError
 .global __T1Interrupt
 .global __U1TXInterrupt
 .global __U1RXInterrupt
 .global __U2TXInterrupt
 .global __U2RXInterrupt
-.global __OscillatorFail
-.global __AddressError
-.global __StackError
-.global __MathError
+.global __AltOscillatorFail
+.global __AltAddressError
+.global __AltStackError
+.global __AltMathError
+.global __AltT1Interrupt
+.global __AltU1TXInterrupt
+.global __AltU1RXInterrupt
+.global __AltU2TXInterrupt
+.global __AltU2RXInterrupt
+
 .ifdecl INTTREG
 .global __DefaultInterrupt
 .endif
@@ -274,11 +284,16 @@ __OscillatorFail:
 __AddressError:
 __StackError:
 __MathError:
+__AltOscillatorFail:
+__AltAddressError:
+__AltStackError:
+__AltMathError:
         mov     INTCON1, W0
         mov     W0, intcon1dbg
         reset
 
 __T1Interrupt:
+__AltT1Interrupt:
 ; No nested interrupts, T1 interrupt must the first interrupt to be enabled
         bset    INTCON1, #NSTDIS
         push.s
@@ -313,6 +328,7 @@ RETFIE_T1_0:
         retfie
 
 __U1RXInterrupt:
+__AltU1RXInterrupt:
         push.s
         push    TBLPAG
         lnk     #6                    ; 3 cell parameter stack
@@ -381,6 +397,7 @@ U1RX_ERR1:
 
 .if TX1_BUF_SIZE > 0
 __U1TXInterrupt:
+__AltU1TXInterrupt:
         push.s
         push    TBLPAG
         lnk     #4                      ; 2 cell parameter stack
@@ -400,6 +417,7 @@ __U1TXInterrupt0:
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
 __U2RXInterrupt:
+__AltU2RXInterrupt:
         push.s
         push    TBLPAG
         lnk     #6             ; 3 cell parameter stack
@@ -464,6 +482,7 @@ U2RX_ERR1:
 
 .if TX2_BUF_SIZE > 0
 __U2TXInterrupt:
+__AltU2TXInterrupt:
         push.s
         push    TBLPAG
         lnk     #4        ; 2 Cell parameter stack
@@ -1158,7 +1177,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 20.03.2018\r\n"
+        .ascii  " FlashForth 5 PIC24 04.10.2018\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
