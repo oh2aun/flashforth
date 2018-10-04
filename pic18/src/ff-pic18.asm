@@ -563,10 +563,18 @@ irq_async_rx_2:
         lfsr    Tptr, RXbuf
         movf    RXhead, W, A
 #if UART == 1
+#ifndef PIC18FxxK42
+        movff   RCREG, TWrw
+#else 
         MOVFF_  U1RXB, TWrw
-#else
+#endif 
+#else ; UART
+#ifndef PIC18FxxK42
+        movff   RCREG2, TWrw
+#else 
         MOVFF_  U2RXB, TWrw
-#endif
+#endif 
+#endif ; UART
         movf    TWrw, W, A
                 
         sublw   0x0f                    ; ctrl-o
@@ -1289,7 +1297,7 @@ L_EI:
         dw      L_EI
 L_DI:
         db      NFA|INLINE|2,"di"
-        bcf     INTCON0, GIE, A
+        bcf     INTCON, GIE, A
         return
         
 ; ;i  ( -- )    End definition of user interrupt routine
