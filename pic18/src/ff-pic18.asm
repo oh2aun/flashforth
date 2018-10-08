@@ -6468,7 +6468,7 @@ end_of_dict:
 FF_DP code
 dpcode:
 ;****************************************************
-        org EEPROM_ADDR
+        org EEDATA_LO
         de  h'ff', h'ff'
 ;        de  dp_user_dictionary&0xff, (dp_user_dictionary>>8)&0xff
 ;        de  dpeeprom&0xff, (dpeeprom>>8)&0xff
