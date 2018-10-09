@@ -124,7 +124,7 @@ Rplus   equ POSTINC2    ; push
 plusR   equ PREINC2
 RWrw    equ PLUSW2      ; Offset to Rp in W
 #ifdef PIC18FxxK42
-INTCON equ INTCON0
+INTCON  equ INTCON0
 #endif 
 
 ;;; For Flow Control
@@ -1535,7 +1535,7 @@ ECSTORE1:
         movwf   NVMCON2
         bsf     NVMCON1, WR, BANKED
         bsf     INTCON, GIE, A
-#endif ;**************************************
+#endif 
 ECSTORE2:
 #ifndef PIC18FxxK42 ;*************************
 #ifdef PIR6
@@ -1557,7 +1557,7 @@ ECSTORE2:
         bcf     NVMCON1, WREN, BANKED
         banksel PIR0
         bcf     PIR0, NVMIF, BANKED
-#endif ;**************************************
+#endif 
         return
 
 
