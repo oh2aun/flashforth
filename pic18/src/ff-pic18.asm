@@ -124,7 +124,7 @@ Rplus   equ POSTINC2    ; push
 plusR   equ PREINC2
 RWrw    equ PLUSW2      ; Offset to Rp in W
 #ifdef PIC18FxxK42
-INTCON  equ INTCON0
+INTCON  equ INTCON0    
 #endif 
 
 ;;; For Flow Control
@@ -488,7 +488,7 @@ irq_ms:
 #endif
 #endif
 #endif
-#endif ; ------------------------------------------------------      
+#endif      
         infsnz  ms_count, F, A
         incf    ms_count+1, F, A
 #ifdef IDLEN
@@ -540,9 +540,13 @@ irq_async_rx:
         banksel PIR3
         btfss   PIR3, U1RXIF, BANKED
 #endif
+#else ; UART == 2
+#ifndef PIC18FxxK42
+        btfss   PIR3, RC2IF, A
 #else
         banksel PIR6
         btfss   PIR6, U2RXIF, BANKED
+#endif
 #endif
         bra     irq_async_rx_end
 
@@ -1564,7 +1568,7 @@ ECSTORE2:
 ; E@       a-addr -- x  fetch cell from data EEPROM
 EFETCH:
         movf    Sminus, W, A
-#ifndef  PIC18FxxK42
+#ifndef PIC18FxxK42
 #ifdef EEADRH
         movwf   EEADRH, A
 #endif
