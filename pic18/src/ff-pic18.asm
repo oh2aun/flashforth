@@ -2350,7 +2350,7 @@ WARM_ZERO_3:
 WARM_ZERO_1:
         clrf    Splus, A        
         movf    Sbank, W, A     
-        sublw   h'0f'           ; !TODO this probably needs to change to 3f
+        sublw   h'0f'          
         bnz     WARM_ZERO_1     
 #endif
 
