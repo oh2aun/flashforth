@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          04.10.2018                                        *
+;    Date:          30.11.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -61,6 +61,10 @@
 
 .ifdecl INTTREG
 .global __DefaultInterrupt
+.endif
+.if USB_CDC == 1
+.extern USBInit
+.extern USBDriverService
 .endif
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -870,7 +874,7 @@ WARM:
         MOV     W0, [++W14]
 
         clr     W0              ; Fill operator return and parameter stacks with 0x00
-        mov     #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
+        mov     #0x800, W14; #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
         mov     #PFLASH, W1
 FILL_RAM:
         mov.w   W0, [W14++]
@@ -992,6 +996,9 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 
+.if USB_CDC == 1
+        rcall   USBInit
+.endif
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
 
@@ -1228,6 +1235,9 @@ TURNKEY:
         .align 2
 PAUSE:
         clrwdt
+.if USB_CDC == 1
+        rcall   USBDriverService
+.endif
 .if WRITE_METHOD == 2
         btss    iflags, #WTMO
         bra     PAUSE2
@@ -2633,10 +2643,10 @@ RX1Q:
 RX1Q1:
         return
 
-        .pword  paddr(9b)+PFLASH
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
 .if TX2_BUF_SIZE > 0
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|5
         .ascii  "u2txq"
@@ -2742,10 +2752,55 @@ RX2Q:
 .endif
 RX2Q1:
         return
-
+.endif
+.endif
+        
+.ifdef USB_CDC
         .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "rxu"
+        .align  2
+RXU:
+        rcall   PAUSE
+        btss.b  usb_device_state, #3
+        bra     return
+        btsc.b  ep3ostat, #7
+        bra     RXU
+        btss.b  ep3ocnt, #0
+        bra     RXU
+        mov.b   cdc_data_rx, WREG
+        ze      W0, W0
+        mov     W0, [++W14]
+        mov     #0x40, W0
+        and.b   ep3ostat
+        btg.b   ep3ostat, #6
+        mov     #0x88, W0
+        ior.b   ep3ostat
+        ; ctrl-O goes here
+        return
+        
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "txu"
+        .align  2
+TXU:
+        rcall   PAUSE
+        btss.b  usb_device_state, #3
+        bra     DROP
+        btsc.b  ep3istat, #7
+        bra     TXU
+        mov     [W14--], W0
+        mov.b   WREG, cdc_data_tx
+        mov     #0x40, W0
+        and.b   ep3istat  ; WREG=W0
+        btg.b   ep3istat, #6
+        mov     #0x88, W0
+        ior.b   ep3istat  ; WREG=W0
+        return
 .endif
-.endif
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|3
         .ascii  "dup"

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.s   NOT READY YET                          *
-;    Date:          29.11.2018                                        *
+;    Date:          30.11.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -70,6 +70,7 @@
 .global ep3istat
 .global ep3icnt
 .global ep3ostat
+.global ep3ocnt
 .extern asmemit
 
 .bss 
@@ -313,8 +314,8 @@ USBCtrlTrfSetupHandler:
         bra     USBCtrlEPServiceComplete
 ;*******************************************************************************
 USBCtrlTrfOutHandler:
-        mov     #'o', W4
-        rcall   emit
+;        mov     #'o', W4
+;        rcall   emit
         mov     CTRL_TRF_RX, W0      ; 2
         cp.b    ctrl_trf_state
         bra     nz, USBPrepareForNextSetupTrf
@@ -326,8 +327,8 @@ USBCtrlTrfOutHandler:
         return
 
 USBPrepareForNextSetupTrf:
-        mov     #'n', W4
-        rcall   emit
+;        mov     #'n', W4
+;        rcall   emit
         clr.b    ctrl_trf_state
         mov     #CDC_INT_EP_SIZE, W0
         mov.b   WREG, ep0ocnt
@@ -339,8 +340,8 @@ USBPrepareForNextSetupTrf:
         return
 ;*******************************************************************************
 USBCtrlTrfInHandler:
-        mov     #'i', W4
-        rcall   emit
+;        mov     #'i', W4
+;        rcall   emit
         mov     #ADR_PENDING_STATE, W0
         cp.b    usb_device_state
         bra     nz, USBCtrlTrfInHandler_2
@@ -367,24 +368,21 @@ USBCtrlTrfRxService:
         mov     pDst, W2
 ;**********************************************
 ramcp:
-        bra     ramcp2
-ramcp1:
+        dec.b   moveLen, WREG
+        bra     n, ramcpreturn
+        se      W0, W0
+        repeat  W0
         mov.b   [W3++], [W2++]
-ramcp2:
-        dec.b   moveLen
-        bra     c, ramcp1
         clr.b   mem
+ramcpreturn:
         return
 ramcp_tx:
         mov     pSrc, W3
         bra     ramcp
 ;**********************************************
 USBCtrlTrfTxService:
-        ;mov     #'t', W4
-        ;rcall   emit
         mov     #(CDC_INT_EP_SIZE+1), W0
         cp.b    count                  ; count - (CDC_INT_EP_SIZE)
-       ; cp.b    CDC_INT_EP_SIZE-1     ; CDC_INT_EP_SIZE - count
         bra     n, LT
 GTE:
         mov     #CDC_INT_EP_SIZE, W0
@@ -414,9 +412,6 @@ romcp2:
 
 ;*******************************************************************************
 USBCtrlEPServiceComplete:
-        mov     #'c', W4
-        rcall   emit
-
         mov     #CDC_INT_EP_SIZE, W0
         mov.b   WREG, ep0ocnt
         mov     #setupPkt, W0
@@ -467,9 +462,8 @@ USBCheckStdRequest:
         and.b   setupPkt, WREG
         bra     nz, RETURN__
         bset    ctrl_trf_session_owner, #2
-        mov     #'s', W4
-        rcall   emit
-
+;        mov     #'s', W4
+;        rcall   emit
         mov.b   setupPkt+1, WREG
         cp.b    W0, #0x9
         bra     z, SET_CFG   ; 9(J) == SET_CFG
@@ -498,6 +492,8 @@ SET_CFG1:
         bra     z, SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
+        mov     #'I', W4
+        rcall   emit
         mov     #0x15, W0
         mov     W0, U1EP2
         mov     #0x1D, W0
@@ -562,8 +558,6 @@ USBCheckCdcRequest:
         and.b   #0x7f, W0              ;
         xor.b   #0x21, W0
         bra     nz, return6
-        mov     #'d', W4
-        rcall   emit
         mov     #1, W0
         subr.b  setupPkt+4, WREG            ; IF COMM_INTF || DATA_INTF
         bra     n, return6
@@ -575,15 +569,21 @@ USBCheckCdcRequest:
         sub.b   #1, W0                      ; SET_CONTROL_LINE_STATE 0x22
         bra     nz, return6
 SET_CONTROL_LINE_STATE:
+        mov     #'4', W4
+        rcall   emit
 SET_MUID_CDC:
         bset    ctrl_trf_session_owner, #2
 return6:
         return
 SET_LINE_CODING:
+        mov     #'5', W4
+        rcall   emit
         mov     #line_coding, W0
         mov     W0, pDst
         bra     SET_MUID_CDC
 GET_LINE_CODING:
+        mov     #'6', W4
+        rcall   emit
         mov     #line_coding, W0
         mov     W0, pSrc
         mov     #7, w0
