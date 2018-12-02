@@ -1,7 +1,7 @@
 \ *********************************************************************
 \ 
 \    Filename:       vt100-test.txt
-\    Date:           02.03.2014
+\    Date:           02.12.2018
 \    FF Version:     5.0 
 \    Author:         Attila Herman
 \ *********************************************************************
@@ -26,8 +26,8 @@ marker -vt100-test
   \res \bri \rev
   0
   begin
-   4 #16 \cp bl emit
-   dup . 1+  s" sec " type
+   4 #14 \cp bl emit
+   dup 5 u.r 1+  s" sec " type
    #1000 ms
    key?
   until

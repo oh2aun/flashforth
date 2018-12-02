@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          30.11.2018                                        *
+;    Date:          02.12.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -62,9 +62,12 @@
 .ifdecl INTTREG
 .global __DefaultInterrupt
 .endif
+.ifdef USB_CDC
 .if USB_CDC == 1
-.extern USBInit
-.extern USBDriverService
+.equ IDLE_MODE,0
+.endif
+.else
+.equ USB_CDC,0
 .endif
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -76,7 +79,6 @@
 .equ NFL, 0x0f      ; Name field length mask
 
 ; flags
-.equ BUSYIDLE_MASK, 0xc000
 .equ fIDLE,   14  ; 0=IDLE, 1=BUSY
 .equ fwritten,13
 .equ edirty,  12  ; eeprom status dirty
@@ -144,6 +146,9 @@
 .endif
 ;****************************************************
 .bss
+.if USB_CDC == 1
+.include "cdc-bss.s"
+.endif
 temp:        .space 2
 intcon1dbg:  .space 2
 
@@ -245,6 +250,9 @@ ustart:     .space uareasize ; The operator user area
 
 ;;; *************************************
 ;;; COLD dictionary data
+.if USB_CDC == 1
+.include "cdc-text.s"
+.endif
 COLDLIT:
 STARTV: .word      0
 .ifdef PEEPROM
@@ -269,14 +277,21 @@ WARMLIT:
         .word      u0                    ; UP
         .word      usbuf0                ; S0, First user variable
         .word      urbuf                 ; R0
+
+.if OPERATOR_UART == 1
+        .word      handle(TX1)+PFLASH
+        .word      handle(RX1)+PFLASH
+        .word      handle(RX1Q)+PFLASH
+.endif
 .if OPERATOR_UART == 2
         .word      handle(TX2)+PFLASH
         .word      handle(RX2)+PFLASH
         .word      handle(RX2Q)+PFLASH
-.else
-        .word      handle(TX1)+PFLASH
-        .word      handle(RX1)+PFLASH
-        .word      handle(RX1Q)+PFLASH
+.endif
+.if OPERATOR_UART == 3
+        .word      handle(TXU)+PFLASH
+        .word      handle(RXU)+PFLASH
+        .word      handle(RXUQ)+PFLASH
 .endif
         .word      u0                    ; ULINK
         .word      BASE_DEFAULT          ; BASE
@@ -857,8 +872,11 @@ RESET_FF:
         mlit    10
         rcall   MS
 RESET_FF_1:
+.if USB_CDC == 1
+        goto    WARM
+.else
         reset
-
+.endif
 __reset:
 WARM:
 .ifdecl CLKDIV
@@ -874,7 +892,7 @@ WARM:
         MOV     W0, [++W14]
 
         clr     W0              ; Fill operator return and parameter stacks with 0x00
-        mov     #0x800, W14; #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
+        mov     #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
         mov     #PFLASH, W1
 FILL_RAM:
         mov.w   W0, [W14++]
@@ -929,8 +947,14 @@ WARM_FILL_IVEC:
 .ifdef ANSELG
         clr      ANSELG
 .endif
+.ifdecl ANSA
+        clr     ANSA
+.endif
 .ifdecl ANSB
         clr     ANSB
+.endif
+.ifdecl ANSC
+        clr     ANSC
 .endif
 WARM_0:
 ; Init the serial TX buffer
@@ -1184,7 +1208,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 04.10.2018\r\n"
+        .ascii  " FlashForth 5 PIC24 02.12.2018\r\n"
         .align 2
         rcall   TYPE
 .if FC1_TYPE == 1
@@ -2755,7 +2779,17 @@ RX2Q1:
 .endif
 .endif
         
-.ifdef USB_CDC
+.if USB_CDC == 1
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "rxu?"
+        .align  2
+RXUQ:
+        btsc.b  ep3ostat, #7
+        bra     FALSE_
+        goto    TRUE_
+
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|3
@@ -2764,7 +2798,7 @@ RX2Q1:
 RXU:
         rcall   PAUSE
         btss.b  usb_device_state, #3
-        bra     return
+        bra     RXU
         btsc.b  ep3ostat, #7
         bra     RXU
         btss.b  ep3ocnt, #0
@@ -2792,12 +2826,13 @@ TXU:
         btsc.b  ep3istat, #7
         bra     TXU
         mov     [W14--], W0
+TXU_INIT:
         mov.b   WREG, cdc_data_tx
         mov     #0x40, W0
-        and.b   ep3istat  ; WREG=W0
+        and.b   ep3istat
         btg.b   ep3istat, #6
         mov     #0x88, W0
-        ior.b   ep3istat  ; WREG=W0
+        ior.b   ep3istat
         return
 .endif
         .pword  paddr(9b)+PFLASH

@@ -1,7 +1,7 @@
 \ *********************************************************************
 \ 
 \    Filename:       vt100.txt
-\    Date:           02.03.2014
+\    Date:           02.12.2018
 \    FF Version:     5.0 
 \    Author:         Attila Herman
 \ *********************************************************************
@@ -18,7 +18,7 @@ marker -vt100
 \ Auxiliary words
 : esc[ #27 emit #91 emit ; \ 'esc' and '[' for starting escape sequence
 : .n ( n -- )              \ Print n without separator space character
-  0 <# #s #>  for dup c@ emit 1+ next drop ;
+  base @ >r decimal 0 <# #s #>  for dup c@ emit 1+ next drop r> base ! ;
 : \; [char] ; emit ;       \ Emit semicolon character
 
 \ Erasing and cursor positioning words

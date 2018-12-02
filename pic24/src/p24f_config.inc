@@ -2,23 +2,29 @@
 
 ;;; Device memory sizes. Set according to your device.
 ;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24FJ64GA002
+;;; Below is the setting for max amount of ram for PIC24FJ128GB202
 ;;; NOTE: The last 2 words on the last FLASH page contains the configuration bits.
 ;;; If these are overwritten the the device will loose its configuration bits.
-;;; So for example on PIC24FJ64GA002 the FLASH_SIZE is set to 0xAC00 - 0x0400
-.equ FLASH_SIZE,     0xA800  ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x2000  ; Ram size in bytes
+.equ FLASH_SIZE,     0x15800  ; Flash size in bytes without the high byte.
+                              ; See program memory size in the device datasheet.
+.equ RAM_SIZE,       0x2000   ; Ram size in bytes
 
 ;; Check the configuration for your particular chip from the datasheet.
-config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
+;config __CONFIG2, FCKSM_CSDCMD & FNOSC_FRCPLL ;POSCMOD_NONE & 
+config __CONFIG1, WDTPS_PS32768 & FWPSA_PR128 & WINDIS_OFF & FWDTEN_OFF & ICS_PGx1 & LPCFG_OFF & GWRP_OFF & GCP_OFF & JTAGEN_OFF
+config __CONFIG2, POSCMD_NONE & FNOSC_FRCPLL & WDTCLK_LPRC & OSCIOFCN_OFF & FCKSM_CSECMD & ALTRB6_APPEND & ALTCMPI_CxINC_RB & WDTCMX_WDTCLK & IESO_ON
+config __CONFIG3, WPFP_WPFP127 & SOSCSEL_OFF & WDTWIN_PS25_0 & PLLSS_PLL_FRC & BOREN_ON & WPDIS_WPDIS & WPCFG_WPCFGDIS & WPEND_WPENDMEM
+config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF & DSSWEN_ON & PLLDIV_DIVIDE2 & I2C1SEL_DISABLE & IOL1WAY_ON
 
 .equ FREQ_OSC, (8000000*4)				  ;Clock (Crystal)frequency (Hz)
 
 .equ FCY, (FREQ_OSC/2)
 
+; USB CDC support
+.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+			      
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1        ; 1 or 2
+.equ OPERATOR_UART, 1        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
@@ -34,8 +40,8 @@ config __CONFIG2, FCKSM_CSDCMD & POSCMOD_NONE & FNOSC_FRCPLL
 ;;; Peripheral pin mapping
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
-.equ RPINR18VAL, 0x0d0f    ; (U1RXPIN)
-.equ U1TXPIN, 0xe
+.equ RPINR18VAL, 0x0d03    ; (U1RXPIN)
+.equ U1TXPIN, 0x2
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 0xc
