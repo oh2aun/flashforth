@@ -2806,11 +2806,10 @@ RXU:
         mov.b   cdc_data_rx, WREG
         ze      W0, W0
         mov     W0, [++W14]
-        mov     #0x40, W0
-        and.b   ep3ostat
-        btg.b   ep3ostat, #6
-        mov     #0x88, W0
-        ior.b   ep3ostat
+        mov     #(_DAT1|_USIE|_DTSEN), W0
+        btsc.b  ep3ostat, #6
+        mov     #(_DAT0|_USIE|_DTSEN), W0
+        mov.b   WREG, ep3ostat
         ; ctrl-O goes here
         return
         
@@ -2828,11 +2827,10 @@ TXU:
         mov     [W14--], W0
 TXU_INIT:
         mov.b   WREG, cdc_data_tx
-        mov     #0x40, W0
-        and.b   ep3istat
-        btg.b   ep3istat, #6
-        mov     #0x88, W0
-        ior.b   ep3istat
+        mov     #(_DAT1|_USIE|_DTSEN), W0
+        btsc.b  ep3istat, #6
+        mov     #(_DAT0|_USIE|_DTSEN), W0
+        mov.b   WREG, ep3istat 
         return
 .endif
         .pword  paddr(9b)+PFLASH

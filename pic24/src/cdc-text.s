@@ -91,8 +91,8 @@ USB_CFG:
         .byte  0x05,0x24,0x01,0x00,0x01
         .byte  0x07,0x05,0x82,0x03,0x08,0x00,0x02
         .byte  0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00
-        .byte  0x07,0x05,0x03,0x03,0x01,0x00,0x01
-        .byte  0x07,0x05,0x83,0x02,0x08,0x00,0x01
+        .byte  0x07,0x05,0x03,0x02,0x01,0x00,0x00
+        .byte  0x07,0x05,0x83,0x02,0x08,0x00,0x00
 
 USBInit:
 	bset	U1PWRC, #0	    ; Power up the USB module
@@ -190,9 +190,9 @@ USBCtrlTrfOutHandler:
         cp.b    ctrl_trf_state
         bra     nz, USBPrepareForNextSetupTrf
         rcall   USBCtrlTrfRxService
-        mov     #0xc8, W0
+        mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep0ostat, #__DTS
-        mov     #0x88, W0
+        mov     #(_USIE|_DTSEN), W0
         mov.b   WREG, ep0ostat
         return
 
@@ -229,12 +229,11 @@ USBCtrlTrfInHandler_2:
 ;*******************************************************************************
 USBCtrlTrfRxService:
         mov.b   ep0ocnt, WREG
-        mov.b   WREG, moveLen
         mov     #ep0buf, W3
         mov     pDst, W2
 ;**********************************************
 ramcp:
-        dec.b   moveLen, WREG
+        dec.b   W0, W0
         bra     n, ramcpreturn
         ze      W0, W0
         repeat  W0
@@ -242,36 +241,29 @@ ramcp:
         clr.b   mem
 ramcpreturn:
         return
-ramcp_tx:
-        mov     pSrc, W3
-        bra     ramcp
 ;**********************************************
 USBCtrlTrfTxService:
         mov     #(CDC_INT_EP_SIZE+1), W0
         cp.b    count                  ; count - (CDC_INT_EP_SIZE)
-        bra     n, LT
-GTE:
-        mov     #CDC_INT_EP_SIZE, W0
-        mov.b   WREG, moveLen          ; moveLen =  CDC_INT_EP_SIZE
-        bra     SUB
+        mov     #CDC_INT_EP_SIZE, W0   ; moveLen =  CDC_INT_EP_SIZE
+        bra     nn, SUB
 LT:
-        mov.b   count, WREG
-        mov.b   WREG, moveLen          ; moveLen = count
+        mov.b   count, WREG            ; moveLen = count
 SUB:
-        mov.b   moveLen, WREG
         mov.b   WREG, ep0icnt
         sub.b   count                  ; count = count - moveLen
 romcp:
         mov     #ep0buf, W2        ; DST ptr
         mov     pSrc, W3
         cp0.b   mem
-        bra     nz, ramcp_tx
-        bra     romcp2
+        bra     z, romcp2
+        mov     pSrc, W3   
+        bra     ramcp
 romcp1:
-        tblrdl.b [W3++], W0
-        mov.b   W0, [W2++]
+        tblrdl.b [W3++], W1
+        mov.b   W1, [W2++]
 romcp2:
-        dec.b   moveLen
+        dec.b   W0, W0
         bra     c, romcp1
         mov     W3, pSrc
         return
@@ -383,13 +375,11 @@ GET_DSC:
         cp.b    W0, #0x1
         bra     nz, GetDsc_6
 GET_DSC_DEV:
-        mov     #handle(device_dsc), W0
-        mov     W0, pSrc
+        mov     #handle(device_dsc), W2
         mov     #0x12, W0
         bra     GetDsc_4
 GET_DSC_CFG:
-        mov     #handle(USB_CFG), W0
-        mov     W0, pSrc
+        mov     #handle(USB_CFG), W2
         mov     #0x43, W0
         BRA     GetDsc_4
 GET_DSC_STR:
@@ -400,9 +390,9 @@ GET_DSC_STR:
         addc    W0, W1, W1
 
         tblrdl  [W1], W2
-        mov     W2, pSrc
         tblrdl.b [W2], W0
 GetDsc_4:
+        mov     W2, pSrc
         mov.b   WREG, count
 GetDsc_6:
         return
@@ -424,7 +414,7 @@ USBCheckCdcRequest:
         cp.b    W0, #2                      ; SET_CONTROL_LINE_STATE 0x22
         bra     nz, return6
 SET_CONTROL_LINE_STATE:
- SET_MUID_CDC:
+SET_MUID_CDC:
         bset    ctrl_trf_session_owner, #2
 return6:
         return

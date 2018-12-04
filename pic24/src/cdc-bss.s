@@ -87,6 +87,10 @@ ep3icnt:  	.space 1
 ep3istat:	.space 1
 ep3iadr:	.space 2
 
+ep0buf:	    .space CDC_INT_EP_SIZE ;8
+cdc_data_rx:.space 1
+cdc_data_tx:.space 1
+
 ; Control transfer session owner
 ctrl_trf_session_owner: .space 1
 .equ MUID_NULL,               0
@@ -108,15 +112,9 @@ usb_device_state: .space 1
 .equ ADDRESS_STATE,           0x07
 .equ ADDRESS_STATE2,          0x83  ; Shifted to h'07'
 .equ CONFIGURED_STATE,        0x0f
-            .align 2
-ep0buf:	    .space CDC_INT_EP_SIZE ;8
-moveLen:    .space 1               ; local variable
 count:      .space 1
-            .align 2
 pSrc:       .space 2
 pDst:       .space 2
-cdc_data_rx:.space 2
-cdc_data_tx:.space 2
 line_coding:.space 8
 mem:        .space 2           ; 0 = flash ; 0xff = ram
             
