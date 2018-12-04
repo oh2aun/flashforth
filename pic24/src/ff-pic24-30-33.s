@@ -190,7 +190,16 @@ rbuf_lv2:    .space 2
 rbuf2:       .space RX2_BUF_SIZE+1
 .endif
 .endif
-
+.if USB_CDC == 1
+.equ RX3_BUF_SIZE, 0x3f
+rxqueue3:
+rbuf_mask3:
+rbuf_len3:   .space 2
+rbuf_wr3:    .space 2
+rbuf_rd3:    .space 2
+rbuf_lv3:    .space 2
+rbuf3:       .space RX3_BUF_SIZE+1
+.endif
 index:      .space 2
 ibasel:     .space 2
 iaddrl:     .space 2
@@ -1021,6 +1030,8 @@ PLL_NOT_IN_USE:
 .endif
 
 .if USB_CDC == 1
+        rcall   U3RXQUEUE
+        rcall   CQUEUEZ
         rcall   USBInit
 .endif
 ; Enable T1 interrupt
@@ -1261,6 +1272,7 @@ PAUSE:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
+        rcall   RXU_CHECK
 .endif
 .if WRITE_METHOD == 2
         btss    iflags, #WTMO
@@ -2559,8 +2571,8 @@ CQUEUE_DOES:
         rcall   DODOES
         return
 
-        .pword  paddr(9b)+PFLASH
 .if TX1_BUF_SIZE > 0
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|5
         .ascii  "u1txq"
@@ -2572,8 +2584,8 @@ U1TXQUEUE_DATA:
         .word   txqueue1
         .word   TX1_BUF_SIZE
 
-        .pword  paddr(9b)+PFLASH
 .endif
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|5
         .ascii  "u1rxq"
@@ -2782,13 +2794,25 @@ RX2Q1:
 .if USB_CDC == 1
         .pword  paddr(9b)+PFLASH
 9:
+        .byte   NFA|INLINE|5
+        .ascii  "uurxq"
+        .align  2
+U3RXQUEUE:
+        mlit    handle(U3RXQUEUE_DATA)+PFLASH
+        return
+U3RXQUEUE_DATA:
+        .word   rxqueue3
+        .word   RX3_BUF_SIZE
+
+        .pword  paddr(9b)+PFLASH
+9:
         .byte   NFA|4
         .ascii  "rxu?"
         .align  2
 RXUQ:
-        btsc.b  ep3ostat, #7
-        bra     FALSE_
-        goto    TRUE_
+        mov     rbuf_lv3, W0
+        mov     W0, [++W14]
+        return
 
         .pword  paddr(9b)+PFLASH
 9:
@@ -2797,15 +2821,35 @@ RXUQ:
         .align  2
 RXU:
         rcall   PAUSE
+        rcall   RXUQ
+        cp0     [W14--]
+        bra     z, RXU
+        mlit    handle(U3RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_FROM
+        return
+
+RXU_CHECK:
         btss.b  usb_device_state, #3
-        bra     RXU
+        return
         btsc.b  ep3ostat, #7
-        bra     RXU
-        btss.b  ep3ocnt, #0
-        bra     RXU
-        mov.b   cdc_data_rx, WREG
+        return
+        mov     #cdc_data_rx, W1
+        push    W1
+        bra     RXU_CHECK2
+RXU_CHECK1:
+        pop     W1
+        mov.b   [W1++], W0
+        push    W1
         ze      W0, W0
         mov     W0, [++W14]
+        mlit    handle(U3RXQUEUE_DATA)+PFLASH
+        rcall   CQUEUE_TO
+RXU_CHECK2:
+        dec.b   ep3ocnt
+        bra     c, RXU_CHECK1
+        pop     W1
+        mov     #8, W0
+        mov.b   WREG, ep3ocnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep3ostat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0

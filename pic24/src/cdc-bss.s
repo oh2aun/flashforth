@@ -57,13 +57,13 @@
 .equ __TRNIF,  0x08
     
 .equ CDC_INT_EP_SIZE,         8
-.equ CDC_BULK_OUT_EP_SIZE,    1
-.equ CDC_BULK_IN_EP_SIZE,     1
+.equ CDC_BULK_OUT_EP_SIZE,    8
+.equ CDC_BULK_IN_EP_SIZE,     2
 
 .bss 
 ;.section buf1,bss,address(0x1200)
 ;.org 0x800   ; Align to 512 byte / 256 word boundary
-;.align 512
+.align 512
 bdt_base:
 ep0ocnt:  	.space 1
 ep0ostat:	.space 1
@@ -88,8 +88,8 @@ ep3istat:	.space 1
 ep3iadr:	.space 2
 
 ep0buf:	    .space CDC_INT_EP_SIZE ;8
-cdc_data_rx:.space 1
-cdc_data_tx:.space 1
+cdc_data_rx:.space CDC_BULK_OUT_EP_SIZE
+cdc_data_tx:.space CDC_BULK_IN_EP_SIZE
 
 ; Control transfer session owner
 ctrl_trf_session_owner: .space 1
