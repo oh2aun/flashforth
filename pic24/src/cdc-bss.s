@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          04.12.2018                                        *
+;    Date:          30.12.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -58,7 +58,7 @@
     
 .equ CDC_INT_EP_SIZE,         8
 .equ CDC_BULK_OUT_EP_SIZE,    8
-.equ CDC_BULK_IN_EP_SIZE,     2
+.equ CDC_BULK_IN_EP_SIZE,     16
 
 .bss 
 ;.section buf1,bss,address(0x1200)
@@ -117,4 +117,9 @@ pSrc:       .space 2
 pDst:       .space 2
 line_coding:.space 8
 mem:        .space 2           ; 0 = flash ; 0xff = ram
-            
+ep3optr:    .space 2
+ep3ocount:  .space 2
+ep3iptr:    .space 2
+ep3icount:  .space 2
+ep3itmo:    .space 2
+           

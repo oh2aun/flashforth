@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          04.12.2018                                        *
+;    Date:          30.12.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -189,16 +189,6 @@ rbuf_rd2:    .space 2
 rbuf_lv2:    .space 2
 rbuf2:       .space RX2_BUF_SIZE+1
 .endif
-.endif
-.if USB_CDC == 1
-.equ RX3_BUF_SIZE, 0x3f
-rxqueue3:
-rbuf_mask3:
-rbuf_len3:   .space 2
-rbuf_wr3:    .space 2
-rbuf_rd3:    .space 2
-rbuf_lv3:    .space 2
-rbuf3:       .space RX3_BUF_SIZE+1
 .endif
 index:      .space 2
 ibasel:     .space 2
@@ -1028,10 +1018,7 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .endif
-
 .if USB_CDC == 1
-        rcall   U3RXQUEUE
-        rcall   CQUEUEZ
         rcall   USBInit
 .endif
 ; Enable T1 interrupt
@@ -1219,14 +1206,21 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 04.12.2018\r\n"
+        .ascii  " FlashForth 5 PIC24 30.12.2018\r\n"
         .align 2
         rcall   TYPE
+.if OPERATOR_UART == 1
 .if FC1_TYPE == 1
         mlit    XON
         rcall   EMIT
 .endif
-; TURNKEY
+.endif
+.if OPERATOR_UART == 2
+.if FC2_TYPE == 1
+        mlit    XON
+        rcall   EMIT
+.endif
+.endif; TURNKEY
         rcall   TURNKEY
         cp0     [W14--]
         bra     z, STARTQ2
@@ -1272,7 +1266,13 @@ PAUSE:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
-        rcall   RXU_CHECK
+        cp0     ep3icount
+        bra     z, PAUSE_USB_CDC_END
+        mov     ep3itmo, WREG
+        subr    ms_count, WREG
+        bra     nn, PAUSE_USB_CDC_END
+        rcall   TXU_SEND
+PAUSE_USB_CDC_END:
 .endif
 .if WRITE_METHOD == 2
         btss    iflags, #WTMO
@@ -2794,25 +2794,15 @@ RX2Q1:
 .if USB_CDC == 1
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|INLINE|5
-        .ascii  "uurxq"
-        .align  2
-U3RXQUEUE:
-        mlit    handle(U3RXQUEUE_DATA)+PFLASH
-        return
-U3RXQUEUE_DATA:
-        .word   rxqueue3
-        .word   RX3_BUF_SIZE
-
-        .pword  paddr(9b)+PFLASH
-9:
         .byte   NFA|4
         .ascii  "rxu?"
         .align  2
 RXUQ:
-        mov     rbuf_lv3, W0
-        mov     W0, [++W14]
-        return
+        btss.b  usb_device_state, #3
+        bra     FALSE_
+        btsc.b  ep3ostat, #7
+        bra     FALSE_
+        goto    TRUE_
 
         .pword  paddr(9b)+PFLASH
 9:
@@ -2821,42 +2811,34 @@ RXUQ:
         .align  2
 RXU:
         rcall   PAUSE
-        rcall   RXUQ
-        cp0     [W14--]
-        bra     z, RXU
-        mlit    handle(U3RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_FROM
-        return
-
-RXU_CHECK:
         btss.b  usb_device_state, #3
-        return
+        bra     RXU
         btsc.b  ep3ostat, #7
-        return
-        mov     #cdc_data_rx, W1
-        push    W1
-        bra     RXU_CHECK2
-RXU_CHECK1:
-        pop     W1
-        mov.b   [W1++], W0
-        push    W1
+        bra     RXU
+        cp0.b   ep3ocount
+        bra     nz, RXU_OLD_PACKET
+RXU_NEW_PACKET:     
+        mov.b   ep3ocnt, WREG
+        mov.b   WREG, ep3ocount
+        mov     #cdc_data_rx, W0
+        mov     W0, ep3optr
+RXU_OLD_PACKET:
+        mov     ep3optr, W1
+        mov.b   [W1], W0
         ze      W0, W0
         mov     W0, [++W14]
-        mlit    handle(U3RXQUEUE_DATA)+PFLASH
-        rcall   CQUEUE_TO
-RXU_CHECK2:
-        dec.b   ep3ocnt
-        bra     c, RXU_CHECK1
-        pop     W1
+        inc     ep3optr
+        dec.b   ep3ocount
+        bra     nz, RXU_END
         mov     #8, W0
         mov.b   WREG, ep3ocnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep3ostat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
-        mov.b   WREG, ep3ostat
-        ; ctrl-O goes here
+        mov.b   WREG, ep3ostat        
+RXU_END:
         return
-        
+
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|3
@@ -2868,13 +2850,24 @@ TXU:
         bra     DROP
         btsc.b  ep3istat, #7
         bra     TXU
+        mov     ep3icount, W2
+        mov     #cdc_data_tx, W1
         mov     [W14--], W0
-TXU_INIT:
-        mov.b   WREG, cdc_data_tx
+        mov.b   W0, [W1+W2]
+        inc     ep3icount
+        inc2    ms_count, WREG
+        mov     WREG, ep3itmo
+        cp      W2, #(CDC_BULK_IN_EP_SIZE-2)
+        bra     n, TXU_END
+TXU_SEND:
+        mov     ep3icount, W0
+        mov.b   WREG, ep3icnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep3istat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
-        mov.b   WREG, ep3istat 
+        mov.b   WREG, ep3istat
+        clr     ep3icount
+TXU_END:
         return
 .endif
         .pword  paddr(9b)+PFLASH

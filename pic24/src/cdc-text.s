@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          04.12.2018                                        *
+;    Date:          30.12.2018                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -81,18 +81,18 @@ USB_CFG:
         .byte  0x00     ; interface 0
         .byte  0x00     ; alternate setting
         .byte  0x01     ; number of end points
-        .byte  0x02     ; class code
-        .byte  0x02     ; subclass
+        .byte  0x02     ; interface class code
+        .byte  0x02     ; interface subclass
         .byte  0x01     ; interface protocol
         .byte  0x00     ; string descriptor index
-        .byte  0x05,0x24,0x00,0x10,0x01
-        .byte  0x04,0x24,0x02,0x02
-        .byte  0x05,0x24,0x06,0x00,0x01
-        .byte  0x05,0x24,0x01,0x00,0x01
-        .byte  0x07,0x05,0x82,0x03,0x08,0x00,0x02
+        .byte  0x05,0x24,0x00,0x10,0x01 ; interface header FD  
+        .byte  0x04,0x24,0x02,0x02      ; interface ACM FD
+        .byte  0x05,0x24,0x06,0x00,0x01 ; interface Union FD
+        .byte  0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
+        .byte  0x07,0x05,0x82,0x03,0x08,0x00,0x10
         .byte  0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00
-        .byte  0x07,0x05,0x03,0x02,0x08,0x00,0x01
-        .byte  0x07,0x05,0x83,0x02,0x08,0x00,0x01
+        .byte  0x07,0x05,0x03,0x02,0x08,0x00,0x00
+        .byte  0x07,0x05,0x83,0x02,0x10,0x00,0x00
 
 USBInit:
 	bset	U1PWRC, #0	    ; Power up the USB module
@@ -344,11 +344,18 @@ SET_CFG1:
         bra     z, SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
+        mov     #0x96, W0
+        mov     W0, line_coding
+        clr     line_coding+2
+        clr     line_coding+4
+        mov     #8, W0
+        mov     W0,line_coding+6
         mov     #0x15, W0
         mov     W0, U1EP2
         mov     #0x1D, W0
         mov     W0, U1EP3
         clr.b   ep2istat          ; CDC notification end point not used
+        clr     ep3ocount
         mov     #8, W0
         mov.b   WREG, ep3ocnt
         mov     #1, W0
@@ -360,8 +367,10 @@ CDCInitEP:
         mov     #(_USIE|_DTSEN), W0  ;0x88
         mov.b   WREG, ep3ostat
         clr.b   ep3istat
-        clr     W0
-        rcall   TXU_INIT
+        clr     cdc_data_tx
+        mov     #1, W0
+        mov.b   WREG, ep3icount
+        rcall   TXU_SEND
         bra     SESSION_OWNER_USB9
 ;*******************************************************************************
 GET_DSC:
