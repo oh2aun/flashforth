@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          30.09.2018                                        *
+;    Date:          01.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2017  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -99,10 +99,14 @@ endif
         global cdc_data_tx
         global cdc_data_rx
         global usb_device_state
-        global ep3istat
-        global ep3icnt
-        global ep3ostat
-        extern asmemit
+        global ep2istat
+        global ep2icnt
+        global ep2ostat
+        global ep2ocnt
+        global ep2itmo
+        global ep2icount
+        global ep2ocount
+        global ep2optr
 
 USB_EP udata
 ep0ostat	res 1
@@ -112,7 +116,12 @@ ep0istat	res 1
 ep0icnt  	res 1
 ep0iadr		res 2
 
-setupPkt    res CDC_INT_EP_SIZE ;8
+ep1ostat	res 1
+ep1ocnt  	res 1
+ep1oadr		res 2
+ep1istat	res 1
+ep1icnt  	res 1
+ep1iadr		res 2
 
 ep2ostat	res 1
 ep2ocnt  	res 1
@@ -121,16 +130,8 @@ ep2istat	res 1
 ep2icnt  	res 1
 ep2iadr		res 2
 
-ep3ostat	res 1
-ep3ocnt  	res 1
-ep3oadr		res 2
-ep3istat	res 1
-ep3icnt  	res 1
-ep3iadr		res 2
-
-
-
 USB_VARS udata
+setupPkt    res CDC_INT_EP_SIZE ;8
 
 ; Control transfer session owner
 ctrl_trf_session_owner res 1
@@ -154,63 +155,81 @@ usb_device_state res 1
 #define ADDRESS_STATE2          h'83'  ; Shifted to h'07'
 #define CONFIGURED_STATE        h'0f'
 
-ep0buf		res CDC_INT_EP_SIZE ;8
-moveLen     equ PRODL               ; local variable
 count       res 1
+ep0buf      res CDC_INT_EP_SIZE ;8
+moveLen     equ PRODL               ; local variable
 pSrc        res 2
 pDst        res 2
-cdc_data_rx res 1
-cdc_data_tx res 1
+cdc_data_rx res 8
+cdc_data_tx res 8
 line_coding res 7
 mem         res 1           ; 0 = flash ; 0xff = ram
+ep2icount   res 1
+ep2itmo     res 1
+ep2ocount   res 1
+ep2optr     res 1
 Ssave       res 2
 
 ;*******************************************************************************
-FF_CODE code
+FF_CODE code_pack
 device_dsc:
-        dw      0x0112    ; Size of this descriptor in bytes
-                          ; DEVICE descriptor type
-        dw      0x0200    ; USB Spec Release Number in BCD format
-        dw      0x0002;   ; Class Code CDC device
-                          ; Subclass code = 00
-        dw      0x0800    ; Protocol code = 00
-                          ; EP0 packet size = 8
-        dw      U_VID     ; Vendor ID
-        dw      U_PID     ; Product ID
-        dw      0x0000    ; Device release Number in BCD
-        dw      0x0201    ; Manufacturer string index
-                          ; Product string Index
-        dw      0x0100    ; Device serial number string index
-                          ; Number of possible configurations
+        db   0x12    ; Size of this descriptor in bytes
+        db   0x01    ; DEVICE descriptor type
+        dw   0x0200  ; USB Spec Release Number in BCD format
+        db   0x02    ; Class Code CDC device
+        db   0x00    ; Subclass 
+        db   0x00    ; Protocol
+        db   0x08    ; EP0 packet size
+        dw   U_VID   ; Vendor ID
+        dw   U_PID   ; Product ID
+        dw   0x0000  ; Device release Number in BCD
+        db   0x00    ; Manufacturer string index
+        db   0x01    ; Product string Index
+        db   0x00    ; Device serial number string index
+        db   0x01    ; Number of possible configurations
 
 SD000:
-        dw      0x0304    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        dw      0x0409
-
-; Manufacturer string
-SD001:
-        dw      0x0304    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        dw      'M'
+        db   0x04    ; sizeof descriptor in bytes
+        db   0x03    ; STRING descriptor type
+        dw   0x0409  ; Language code
 
 ; Product string
-SD002:
-        dw      0x030a    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        dw      'F','F','5','0'
+SD001:
+        db   0x0a    ; sizeof descriptor in bytes
+        db   0x03    ; STRING descriptor type
+        dw   'F','F','5','0'
 
 USB_SD:
-        dw      SD000
-        dw      SD001
-        dw      SD002
-USB_CFG:
-        db  0x09,0x02,0x43,0x00,0x02,0x01,0x00,0x80,0x32,0x09,0x04,0x00,0x00,0x01,0x02,0x02
-        db  0x01,0x00,0x05,0x24,0x00,0x10,0x01,0x04,0x24,0x02,0x02,0x05,0x24,0x06,0x00,0x01
-        db  0x05,0x24,0x01,0x00,0x01,0x07,0x05,0x82,0x03,0x08,0x00,0x02,0x09,0x04,0x01,0x00
-        db  0x02,0x0a,0x00,0x00,0x00,0x07,0x05,0x03,0x02,0x01,0x00,0x00,0x07,0x05,0x83,0x02
-        db  0x02,0x00,0x00
+        dw   SD000
+        dw   SD001
 
+USB_CFG:
+        db   0x09     ; length
+        db   0x02     ; configuration descriptor
+        dw   0x0043   ; total length
+        db   0x02     ; number of interfaces
+        db   0x01     ; configuration id
+        db   0x00     ; string descriptor index
+        db   0x80     ; attributes (bus powered)
+        db   0x32     ; maxpower 100 mA
+        db   0x09     ; length
+        db   0x04     ; interface descriptor
+        db   0x00     ; interface 0
+        db   0x00     ; alternate setting
+        db   0x01     ; number of end points
+        db   0x02     ; interface class code
+        db   0x02     ; interface subclass
+        db   0x01     ; interface protocol
+        db   0x00     ; string descriptor index
+        db   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
+        db   0x04,0x24,0x02,0x02      ; interface ACM FD
+        db   0x05,0x24,0x06,0x00,0x01 ; interface Union FD
+        db   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
+        db   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
+        db   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
+        db   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
+        db   0x07,0x05,0x82,0x02,0x08,0x00,0x00 ; endpoint data in
+        code
 ;*******************************************************************************
 USBDriverService:
         movlb   ep0ostat
@@ -247,8 +266,8 @@ USBReset:
         movlb high(UEIR)
         CLRF UIR, ACCESS
         CLRF UADDR, BANKED
+        CLRF UEP1, BANKED
         CLRF UEP2, BANKED
-        CLRF UEP3, BANKED
         MOVLW 0x16
         MOVWF UEP0, BANKED
         movlb ep0ostat
@@ -414,7 +433,7 @@ DATADIR_DEV_TO_HOST:
         MOVF    setupPkt+7, W, BANKED
         bnz     DATADIR_DEV_TO_HOST_2
         MOVF    count, W, BANKED
-        SUBWF   setupPkt+6, W, BANKED
+        SUBWF   setupPkt+6, W, BANKED  ; F - W
         BC      DATADIR_DEV_TO_HOST_2
         MOVF    setupPkt+6, W, BANKED
         MOVWF   count, BANKED
@@ -470,26 +489,28 @@ SET_CFG:
         BZ      SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
-        movlb   high(UEP3)
+        movlb   high(UEP2)
         MOVLW   0x1A
-        MOVWF   UEP2, BANKED
+        MOVWF   UEP1, BANKED
         MOVLW   0x1E
-        MOVWF   UEP3, BANKED
-        movlb   ep0ostat
-        CLRF    ep2istat, BANKED ; CDC notification end point not used
-        MOVLW   1
-        MOVWF   ep3ocnt, BANKED
-        MOVWF   ep3icnt, BANKED
+        MOVWF   UEP2, BANKED
+        movlb   high(ep0ostat)
+        CLRF    ep1istat, BANKED ; CDC notification end point not used
+        MOVLW   8
+        MOVWF   ep2ocnt, BANKED
+        MOVWF   ep2icnt, BANKED
         MOVLW   low(cdc_data_rx)
-        MOVWF   ep3oadr, BANKED
+        MOVWF   ep2oadr, BANKED
         MOVLW   low(cdc_data_tx)
-        MOVWF   ep3iadr, BANKED
+        MOVWF   ep2iadr, BANKED
         MOVLW   high(cdc_data_rx)
-        MOVWF   ep3oadr+1, BANKED
-        MOVWF   ep3iadr+1, BANKED
+        MOVWF   ep2oadr+1, BANKED
+        MOVWF   ep2iadr+1, BANKED
         MOVLW   _USIE|_DTSEN ;0x88
-        MOVWF   ep3ostat, BANKED
-        CLRF    ep3istat, BANKED
+        MOVWF   ep2ostat, BANKED
+        CLRF    ep2istat, BANKED
+        clrf    ep2icount, BANKED
+        clrf    ep2ocount, BANKED
         bra     SESSION_OWNER_USB9
 ;*******************************************************************************
 GET_DSC:
@@ -549,7 +570,7 @@ USBCheckCdcRequest:
         xorlw   0x21
         bnz     return6
         movf    setupPkt+4, W, BANKED
-        sublw   1                  ; IF COMM_INTF || DATA_INTF
+        sublw   1       ;1 - w        ; IF COMM_INTF || DATA_INTF
         bn      return6
         MOVF    setupPkt+1, W, BANKED
         addlw   -0x20                 ; SET_LINE_CODING 0x20

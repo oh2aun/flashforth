@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          17.09.2018                                        *
+;    Date:          01.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2017  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -52,10 +52,14 @@
         extern cdc_data_tx
         extern cdc_data_rx
         extern usb_device_state
-        extern ep3istat
-        extern ep3icnt
-        extern ep3ostat
-        global asmemit
+        extern ep2istat
+        extern ep2icnt
+        extern ep2ostat
+        extern ep2ocnt
+        extern ep2itmo
+        extern ep2icount
+        extern ep2ocount
+        extern ep2optr
 #else ; Normal UART
 
 #define OPERATOR_TX  TX1_
@@ -1434,13 +1438,20 @@ TURNKEY:
 ;;;  38 us @ 12 MHz, 11,4 us @ 40 Mhz  9us at 48 Mhz  ( with 4 cells on return stack )
 ;;; save stack to current uarea, link -> up, restore stack
         dw      L_TURNKEY
-L_PAUSE:
+L_PAUSE
         db      NFA|5,"pause"
 PAUSE:
         clrwdt
 #ifdef USB_CDC
         call    USBDriverService
-PAUSE0:
+        banksel ep2icount
+        movf    ep2icount, W, BANKED
+        bz      PAUSE_USB_CDC_END
+        movf    ep2itmo, W, BANKED
+        subwf   ms_count, W, A
+        bn      PAUSE_USB_CDC_END
+        rcall   TX0_SEND
+PAUSE_USB_CDC_END:
 #endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
@@ -1559,19 +1570,32 @@ L_TX0:
         db      NFA|3,"txu"
 TX0:
         rcall   PAUSE
-        movlb   ep3istat
+        movlb   ep2istat
         btfss   usb_device_state, 3, BANKED
         goto    DROP          ;discard char if USB not in CONFIGURED_STATE(8)
-        btfsc   ep3istat, 7, BANKED     ; BD3.STAT.UOWN
+        btfsc   ep2istat, 7, BANKED     ; BD3.STAT.UOWN
         bra     TX0                     ; Pause if USB TX is not ready
-TX0_0:
+        movf    ms_count, W, A
+        addlw   2
+        movwf   ep2itmo, BANKED
+        lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
-        movff   Sminus, cdc_data_tx
+        movf    ep2icount, W, BANKED
+        movff   Sminus, TWrw
+        addlw   1
+        movwf   ep2icount, BANKED
+        sublw   7 
+        bnn     TX0_END
+TX0_SEND:
+        movf    ep2icount, W, BANKED
+        movwf   ep2icnt, BANKED
         movlw   0x40
-        andwf   ep3istat, F, BANKED
-        btg     ep3istat, 0x6, BANKED
+        andwf   ep2istat, F, BANKED
+        btg     ep2istat, 0x6, BANKED
         movlw   0x88
-        iorwf   ep3istat, F, BANKED
+        iorwf   ep2istat, F, BANKED
+        clrf    ep2icount, BANKED
+TX0_END:
         return
 ;***************************************************
 ; KEY   -- c    get character from the USB line
@@ -1580,25 +1604,32 @@ L_RX0:
         db      NFA|3,"rxu"
 RX0:
         rcall   PAUSE
-        movlb   ep3ostat
-        btfsc   ep3ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+        movlb   ep2ostat
+        btfss   usb_device_state, 3, BANKED
         bra     RX0
-        btfss   ep3ostat+1, 0, BANKED ; CDC_BULK_BD_OUT.CNT == 1
+        btfsc   ep2ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
         bra     RX0
-RX0_2:
-        movff   cdc_data_rx, plusS
+        tstfsz  ep2ocount, BANKED
+        bra     RX0_OLD_PACKET
+RX0_NEW_PACKET:
+        movf    ep2ocnt, W, BANKED
+        movwf   ep2ocount, BANKED
+        clrf    ep2optr, BANKED
+RX0_OLD_PACKET:
+        lfsr    Tptr, cdc_data_rx
+        movf    ep2optr, W, BANKED
+        movff   TWrw, plusS
+        incf    ep2optr, F, BANKED
+        decf    ep2ocount, F, BANKED
+        bnz     RX0_END
+        movlw   8
+        movwf   ep2ocnt, BANKED
         movlw   h'40'
-        andwf   ep3ostat, F, BANKED
-        btg     ep3ostat, 6, BANKED
+        andwf   ep2ostat, F, BANKED
+        btg     ep2ostat, 6, BANKED
         movlw   h'88'
-        iorwf   ep3ostat, F, BANKED
-#if CTRL_O_WARM_RESET == ENABLE
-        movlw   0xf
-        subwf   Srw, W, A
-        bnz     RX0_3
-        bra     WARM
-RX0_3:
-#endif
+        iorwf   ep2ostat, F, BANKED
+RX0_END:
         clrf    plusS, A
         return
 ;***************************************************
@@ -1607,12 +1638,13 @@ RX0_3:
 L_RX0Q:
         db      NFA|4,"rxu?"
 RX0Q:
-        movlb   ep3ostat
-        btfsc   ep3ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+        movlb   ep2ostat
+        btfss   usb_device_state, 3, BANKED
+        bra     RX0Q1
+        btfsc   ep2ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+RX0Q1:
         goto    FALSE_
-        clrf    plusS, A
-        movff   ep3ostat+1, plusS ; CDC_BULK_BD_OUT.CNT
-        return
+        goto    TRUE_
 #endif
 ; ***************************************************
 #if FC_TYPE_SW == ENABLE
@@ -2174,7 +2206,6 @@ WARM_2:
 #ifdef HW_FC_CTS_TRIS
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN, A
 #endif
-
         rcall   RQ
         rcall   VER
         
@@ -2209,7 +2240,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 17.09.2018\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 01.01.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
