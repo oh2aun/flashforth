@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          30.12.2018                                        *
+;    Date:          01.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2018  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -71,55 +71,53 @@ ep0oadr:	.space 2
 ep0icnt:  	.space 1
 ep0istat:	.space 1
 ep0iadr:	.space 2
-
-setupPkt:       .space CDC_INT_EP_SIZE ;8
-
+ep1ocnt:  	.space 1
+ep1ostat:	.space 1
+ep1oadr:	.space 2
+ep1icnt:  	.space 1
+ep1istat:	.space 1
+ep1iadr:	.space 2
 ep2ocnt:  	.space 1
 ep2ostat:	.space 1
 ep2oadr:	.space 2
 ep2icnt:  	.space 1
 ep2istat:	.space 1
 ep2iadr:	.space 2
-ep3ocnt:  	.space 1
-ep3ostat:	.space 1
-ep3oadr:	.space 2
-ep3icnt:  	.space 1
-ep3istat:	.space 1
-ep3iadr:	.space 2
 
-ep0buf:	    .space CDC_INT_EP_SIZE ;8
-cdc_data_rx:.space CDC_BULK_OUT_EP_SIZE
-cdc_data_tx:.space CDC_BULK_IN_EP_SIZE
+setupPkt:       .space CDC_INT_EP_SIZE
+ep0buf:         .space CDC_INT_EP_SIZE
+cdc_data_rx:    .space CDC_BULK_OUT_EP_SIZE
+cdc_data_tx:    .space CDC_BULK_IN_EP_SIZE
 
 ; Control transfer session owner
 ctrl_trf_session_owner: .space 1
-.equ MUID_NULL,               0
-.equ MUID_USB9,               1
+.equ MUID_NULL,                0
+.equ MUID_USB9,                1
 
 ; Control Transfer States
-ctrl_trf_state: .space 1
-.equ WAIT_SETUP,          0
-.equ CTRL_TRF_TX,         1
-.equ CTRL_TRF_RX,         2
+ctrl_trf_state:     .space 1
+.equ WAIT_SETUP,    0
+.equ CTRL_TRF_TX,   1
+.equ CTRL_TRF_RX,   2
 
 ; USB Device States - To be used with usb_device_state
-usb_device_state: .space 1
-.equ DETACHED_STATE,          0
-.equ ATTACHED_STATE,          0
-.equ POWERED_STATE,           0
-.equ DEFAULT_STATE,           1
-.equ ADR_PENDING_STATE,       3
-.equ ADDRESS_STATE,           0x07
-.equ ADDRESS_STATE2,          0x83  ; Shifted to h'07'
-.equ CONFIGURED_STATE,        0x0f
-count:      .space 1
-pSrc:       .space 2
-pDst:       .space 2
-line_coding:.space 8
-mem:        .space 2           ; 0 = flash ; 0xff = ram
-ep3optr:    .space 2
-ep3ocount:  .space 2
-ep3iptr:    .space 2
-ep3icount:  .space 2
-ep3itmo:    .space 2
+usb_device_state:   .space 1
+.equ DETACHED_STATE,    0
+.equ ATTACHED_STATE,    0
+.equ POWERED_STATE,     0
+.equ DEFAULT_STATE,     1
+.equ ADR_PENDING_STATE, 3
+.equ ADDRESS_STATE,     0x07
+.equ ADDRESS_STATE2,    0x83  ; Shifted to h'07'
+.equ CONFIGURED_STATE,  0x0f
+count:          .space 1
+pSrc:           .space 2
+pDst:           .space 2
+line_coding:    .space 8
+mem:            .space 2           ; 0 = flash ; 0xff = ram
+ep2optr:        .space 2
+ep2ocount:      .space 2
+ep2iptr:        .space 2
+ep2icount:      .space 2
+ep2itmo:        .space 2
            

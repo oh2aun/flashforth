@@ -637,8 +637,10 @@ marker     ( "name" -- )
 max        ( n1 n2 -- n3 )
            Leave max of n1 and n2
 
-mclr       ( byte-mask byte-ram-addr -- )
-           AND the contents of caddr with the complement of mask
+mclr       ( mask addr -- )
+           AND the contents of addr with the complement of mask
+           PIC24-30-33: 16-bit operation
+           ATMEGA and PIC18: 8-bit operation
 
 min        ( n1 n2 -- n3 )
            Leave min of n1 and n2
@@ -649,11 +651,15 @@ mod        ( n1 n2 -- remainder )
 ms         ( +n -- )
            Pause for +n milliseconds
 
-mset       ( byte-mask byte-ram-caddr -- )
-           OR the contents of caddr with mask.
+mset       ( mask addr -- )
+           OR the contents of addr with mask.
+           PIC24-30-33: 16-bit operation
+           ATMEGA and PIC18: 8-bit operation
 
-mtst       ( byte-mask byte-addr -- x )
-           AND the contents of caddr with mask
+mtst       ( mask addr -- x )
+           AND the contents of addr with mask
+           PIC24-30-33: 16-bit operation
+           ATMEGA and PIC18: 8-bit operation
 
 n=         ( c-addr nfa u -- flag )
            Compare strings in ram(c-addr) and flash(nfa)
@@ -725,7 +731,7 @@ parse	   ( c -- addr length )
 
 pause      ( -- )
            Switch to the next task in the round robin task list.
-	   Idle in the operator task if allowed by all tasks.
+	       Idle in the operator task if allowed by all tasks.
 
 place      ( addr1 u addr2 -- )
            Place string from addr1 to addr2 as a counted string

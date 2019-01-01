@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          30.12.2018                                        *
+;    Date:          01.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2018  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -30,72 +30,65 @@
 ;**********************************************************************
 .text
 device_dsc:
-        .word   0x0112       ; Size of this descriptor in bytes
-                             ; DEVICE descriptor type
-        .word      0x0200    ; USB Spec Release Number in BCD format
-        .word      0x0002;   ; Class Code CDC device
-                             ; Subclass code = 00
-        .word      0x0800    ; Protocol code = 00
-                             ; EP0 packet size = 8
-        .word      U_VID     ; Vendor ID
-        .word      U_PID     ; Product ID
-        .word      0x0000    ; Device release Number in BCD
-        .word      0x0201    ; Manufacturer string index
-                             ; Product string Index
-        .word      0x0100    ; Device serial number string index
-                             ; Number of possible configurations
+        .byte   0x12    ; Size of this descriptor in bytes
+        .byte   0x01    ; DEVICE descriptor type
+        .word   0x0200  ; USB Spec Release Number in BCD format
+        .byte   0x02    ; Class Code CDC device
+        .byte   0x00    ; Subclass 
+        .byte   0x00    ; Protocol
+        .byte   0x08    ; EP0 packet size
+        .word   U_VID   ; Vendor ID
+        .word   U_PID   ; Product ID
+        .word   0x0000  ; Device release Number in BCD
+        .byte   0x00    ; Manufacturer string index
+        .byte   0x01    ; Product string Index
+        .byte   0x00    ; Device serial number string index
+        .byte   0x01    ; Number of possible configurations
 
 SD000:
-        .word      0x0304    ; sizeof descriptor in bytes
-                             ; STRING descriptor type
-        .word      0x0409
-
-; Manufacturer string
-SD001:
-        .word      0x0304    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        .word      'M'
+        .byte   0x04    ; sizeof descriptor in bytes
+        .byte   0x03    ; STRING descriptor type
+        .word   0x0409  ; Language code
 
 ; Product string
-SD002:
-        .word      0x030a    ; sizeof descriptor in bytes
-                          ; STRING descriptor type
-        .word      'F','F','5','0'
+SD001:
+        .byte   0x0a    ; sizeof descriptor in bytes
+        .byte   0x03    ; STRING descriptor type
+        .word   'F','F','5','0'
 
 USB_SD:
-        .word      SD000
-        .word      SD001
-        .word      SD002
+        .word   SD000
+        .word   SD001
+
 USB_CFG:
-        .byte  0x09     ; length
-        .byte  0x02     ; configuration descriptor
-        .byte  0x43     ; total length
-        .byte  0x00     
-        .byte  0x02     ; number of interfaces
-        .byte  0x01     ; configuration id
-        .byte  0x00     ; string descriptor index
-        .byte  0x80     ; attributes (bus powered)
-        .byte  0x32     ; maxpower 100 mA
-        .byte  0x09     ; length
-        .byte  0x04     ; interface descriptor
-        .byte  0x00     ; interface 0
-        .byte  0x00     ; alternate setting
-        .byte  0x01     ; number of end points
-        .byte  0x02     ; interface class code
-        .byte  0x02     ; interface subclass
-        .byte  0x01     ; interface protocol
-        .byte  0x00     ; string descriptor index
-        .byte  0x05,0x24,0x00,0x10,0x01 ; interface header FD  
-        .byte  0x04,0x24,0x02,0x02      ; interface ACM FD
-        .byte  0x05,0x24,0x06,0x00,0x01 ; interface Union FD
-        .byte  0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
-        .byte  0x07,0x05,0x82,0x03,0x08,0x00,0x10
-        .byte  0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00
-        .byte  0x07,0x05,0x03,0x02,0x08,0x00,0x00
-        .byte  0x07,0x05,0x83,0x02,0x10,0x00,0x00
+        .byte   0x09     ; length
+        .byte   0x02     ; configuration descriptor
+        .word   0x0043   ; total length
+        .byte   0x02     ; number of interfaces
+        .byte   0x01     ; configuration id
+        .byte   0x00     ; string descriptor index
+        .byte   0x80     ; attributes (bus powered)
+        .byte   0x32     ; maxpower 100 mA
+        .byte   0x09     ; length
+        .byte   0x04     ; interface descriptor
+        .byte   0x00     ; interface 0
+        .byte   0x00     ; alternate setting
+        .byte   0x01     ; number of end points
+        .byte   0x02     ; interface class code
+        .byte   0x02     ; interface subclass
+        .byte   0x01     ; interface protocol
+        .byte   0x00     ; string descriptor index
+        .byte   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
+        .byte   0x04,0x24,0x02,0x02      ; interface ACM FD
+        .byte   0x05,0x24,0x06,0x00,0x01 ; interface Union FD
+        .byte   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
+        .byte   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
+        .byte   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
+        .byte   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
+        .byte   0x07,0x05,0x82,0x02,0x10,0x00,0x00 ; endpoint data in
 
 USBInit:
-	bset	U1PWRC, #0	    ; Power up the USB module
+	bset    U1PWRC, #0	    ; Power up the USB module
 	mov	#bdt_base, W0
 	lsr	W0, #8, W0
 	mov	W0, U1BDTP1	    ; Set the BDT base address
@@ -145,12 +138,12 @@ USBWake:
 USBReset:
         setm    U1IR
         clr 	U1ADDR
+	clr	U1EP1
 	clr	U1EP2
-	clr	U1EP3
 USBReset_1:
-	btst	U1IR, #3	    ; TRNIF ?
+	btst	U1IR, #TRNIF
 	bra	z, USBReset_2
-	mov	#8, W0              ; TRNIF
+	mov	__TRNIF, W0
 	mov	W0, U1IR            ; clear TRNIF
 	; clr some variables maybe
 	bra	USBReset_1
@@ -172,7 +165,7 @@ USBCtrlEPService:
         bra     nz, return1
         bra     USBCtrlTrfInHandler            ; USTAT == EP00_IN
 USBCtrlEPService_out:
-        mov.b   ep0ostat, WREG                   ; USTAT == EP00_OUT
+        mov.b   ep0ostat, WREG                 ; USTAT == EP00_OUT
         and.b   #0x3C, W0
         xor.b   #0x34, W0                      ; 0x34 (0xd) SETUP_TOKEN
         bra     z, USBCtrlTrfSetupHandler
@@ -351,25 +344,25 @@ CDCInitEP:
         mov     #8, W0
         mov     W0,line_coding+6
         mov     #0x15, W0
-        mov     W0, U1EP2
+        mov     W0, U1EP1
         mov     #0x1D, W0
-        mov     W0, U1EP3
-        clr.b   ep2istat          ; CDC notification end point not used
-        clr     ep3ocount
+        mov     W0, U1EP2
+        clr.b   ep1istat          ; CDC notification end point not used
+        clr     ep2ocount
         mov     #8, W0
-        mov.b   WREG, ep3ocnt
+        mov.b   WREG, ep2ocnt
         mov     #1, W0
-        mov.b   WREG, ep3icnt
+        mov.b   WREG, ep2icnt
         mov     #cdc_data_rx, W0
-        mov     W0, ep3oadr
+        mov     W0, ep2oadr
         mov     #cdc_data_tx, W0
-        mov     W0, ep3iadr
+        mov     W0, ep2iadr
         mov     #(_USIE|_DTSEN), W0  ;0x88
-        mov.b   WREG, ep3ostat
-        clr.b   ep3istat
+        mov.b   WREG, ep2ostat
+        clr.b   ep2istat
         clr     cdc_data_tx
         mov     #1, W0
-        mov.b   WREG, ep3icount
+        mov.b   WREG, ep2icount
         rcall   TXU_SEND
         bra     SESSION_OWNER_USB9
 ;*******************************************************************************
@@ -419,7 +412,7 @@ USBCheckCdcRequest:
         sub.b   setupPkt+1, WREG ; W0 = F - W0
         cp.b    W0, #0x0                    ; SET_LINE_CODING 0x20
         bra     z,SET_LINE_CODING
-        cp.b    W0, #1                      ;  GET_LINE_CODING 0x21
+        cp.b    W0, #1                      ; GET_LINE_CODING 0x21
         bra     z,GET_LINE_CODING
         cp.b    W0, #2                      ; SET_CONTROL_LINE_STATE 0x22
         bra     nz, return6

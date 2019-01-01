@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          30.12.2018                                        *
+;    Date:          01.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2018  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1206,7 +1206,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 30.12.2018\r\n"
+        .ascii  " FlashForth 5 PIC24 01.01.2019\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1230,7 +1230,7 @@ WARM1:
         .ascii  "ESC"
         .align 2
         rcall   TYPE
-        mlit    0x0800
+        mlit    TURNKEY_DELAY
         rcall   MS
         rcall   KEYQ
         cp0     [W14--]
@@ -1266,9 +1266,9 @@ PAUSE:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
-        cp0     ep3icount
+        cp0     ep2icount
         bra     z, PAUSE_USB_CDC_END
-        mov     ep3itmo, WREG
+        mov     ep2itmo, WREG
         subr    ms_count, WREG
         bra     nn, PAUSE_USB_CDC_END
         rcall   TXU_SEND
@@ -2800,7 +2800,7 @@ RX2Q1:
 RXUQ:
         btss.b  usb_device_state, #3
         bra     FALSE_
-        btsc.b  ep3ostat, #7
+        btsc.b  ep2ostat, #7
         bra     FALSE_
         goto    TRUE_
 
@@ -2813,29 +2813,29 @@ RXU:
         rcall   PAUSE
         btss.b  usb_device_state, #3
         bra     RXU
-        btsc.b  ep3ostat, #7
+        btsc.b  ep2ostat, #7
         bra     RXU
-        cp0.b   ep3ocount
+        cp0.b   ep2ocount
         bra     nz, RXU_OLD_PACKET
 RXU_NEW_PACKET:     
-        mov.b   ep3ocnt, WREG
-        mov.b   WREG, ep3ocount
+        mov.b   ep2ocnt, WREG
+        mov.b   WREG, ep2ocount
         mov     #cdc_data_rx, W0
-        mov     W0, ep3optr
+        mov     W0, ep2optr
 RXU_OLD_PACKET:
-        mov     ep3optr, W1
+        mov     ep2optr, W1
         mov.b   [W1], W0
         ze      W0, W0
         mov     W0, [++W14]
-        inc     ep3optr
-        dec.b   ep3ocount
+        inc     ep2optr
+        dec.b   ep2ocount
         bra     nz, RXU_END
         mov     #8, W0
-        mov.b   WREG, ep3ocnt
+        mov.b   WREG, ep2ocnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
-        btsc.b  ep3ostat, #6
+        btsc.b  ep2ostat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
-        mov.b   WREG, ep3ostat        
+        mov.b   WREG, ep2ostat
 RXU_END:
         return
 
@@ -2848,25 +2848,25 @@ TXU:
         rcall   PAUSE
         btss.b  usb_device_state, #3
         bra     DROP
-        btsc.b  ep3istat, #7
+        btsc.b  ep2istat, #7
         bra     TXU
-        mov     ep3icount, W2
+        mov     ep2icount, W2
         mov     #cdc_data_tx, W1
         mov     [W14--], W0
         mov.b   W0, [W1+W2]
-        inc     ep3icount
+        inc     ep2icount
         inc2    ms_count, WREG
-        mov     WREG, ep3itmo
+        mov     WREG, ep2itmo
         cp      W2, #(CDC_BULK_IN_EP_SIZE-2)
         bra     n, TXU_END
 TXU_SEND:
-        mov     ep3icount, W0
-        mov.b   WREG, ep3icnt
+        mov     ep2icount, W0
+        mov.b   WREG, ep2icnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
-        btsc.b  ep3istat, #6
+        btsc.b  ep2istat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
-        mov.b   WREG, ep3istat
-        clr     ep3icount
+        mov.b   WREG, ep2istat
+        clr     ep2icount
 TXU_END:
         return
 .endif

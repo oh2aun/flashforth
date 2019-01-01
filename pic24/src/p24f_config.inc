@@ -24,7 +24,7 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
 			      
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
+.equ OPERATOR_UART, 1	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400			; Serial baudrate UART1
@@ -67,7 +67,7 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
-.equ TURNKEY_DELAY, 2000  ; milliseconds
+.equ TURNKEY_DELAY, 4000  ; milliseconds
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
