@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          01.01.2019                                        *
+;    Date:          06.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -58,11 +58,9 @@
     
 .equ CDC_INT_EP_SIZE,         8
 .equ CDC_BULK_OUT_EP_SIZE,    8
-.equ CDC_BULK_IN_EP_SIZE,     16
+.equ CDC_BULK_IN_EP_SIZE,     8
 
-.bss 
-;.section buf1,bss,address(0x1200)
-;.org 0x800   ; Align to 512 byte / 256 word boundary
+.bss
 .align 512
 bdt_base:
 ep0ocnt:  	.space 1
@@ -84,15 +82,14 @@ ep2icnt:  	.space 1
 ep2istat:	.space 1
 ep2iadr:	.space 2
 
-setupPkt:       .space CDC_INT_EP_SIZE
 ep0buf:         .space CDC_INT_EP_SIZE
 cdc_data_rx:    .space CDC_BULK_OUT_EP_SIZE
 cdc_data_tx:    .space CDC_BULK_IN_EP_SIZE
 
 ; Control transfer session owner
-ctrl_trf_session_owner: .space 1
-.equ MUID_NULL,                0
-.equ MUID_USB9,                1
+usb_status:     .space 1
+.equ MEM,           0
+.equ MUID_USB9,     1
 
 ; Control Transfer States
 ctrl_trf_state:     .space 1
@@ -111,12 +108,10 @@ usb_device_state:   .space 1
 .equ ADDRESS_STATE2,    0x83  ; Shifted to h'07'
 .equ CONFIGURED_STATE,  0x0f
 count:          .space 1
-pSrc:           .space 2
-pDst:           .space 2
+dPtr:           .space 2
 line_coding:    .space 8
 mem:            .space 2           ; 0 = flash ; 0xff = ram
 ep2optr:        .space 2
-ep2ocount:      .space 2
 ep2iptr:        .space 2
 ep2icount:      .space 2
 ep2itmo:        .space 2

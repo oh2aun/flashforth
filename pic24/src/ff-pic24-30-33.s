@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          01.01.2019                                        *
+;    Date:          06.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1019,7 +1019,7 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .if USB_CDC == 1
-        rcall   USBInit
+        rcall   USB_ON
 .endif
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
@@ -1206,7 +1206,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 01.01.2019\r\n"
+        .ascii  " FlashForth 5 PIC24 06.01.2019\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -2795,11 +2795,39 @@ RX2Q1:
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|4
+        .ascii  "usb+"
+        .align  2
+USB_ON:
+	bset    U1PWRC, #0	    ; Power up the USB module
+	mov	#bdt_base, W0
+	lsr	W0, #8, W0
+	mov	W0, U1BDTP1	    ; Set the BDT base address
+        bset    U1CON, #0
+	mov	#0xD, W0
+	mov	W0, U1EP0	    ; Ep0 is control endpoint
+        rcall   USBPrepareForNextSetupTrf
+        mov     #0x9000, W0
+        mov     W0, OSCTUN
+	return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "usb-"
+        .align  2
+USB_OFF:
+        bclr    U1CON, #0
+        bclr    U1PWRC, #0
+        clr     OSCTUN
+        return
+
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
         .ascii  "rxu?"
         .align  2
 RXUQ:
-        btss.b  usb_device_state, #3
-        bra     FALSE_
+        btsc.b  usb_device_state, #3
         btsc.b  ep2ostat, #7
         bra     FALSE_
         goto    TRUE_
@@ -2811,31 +2839,24 @@ RXUQ:
         .align  2
 RXU:
         rcall   PAUSE
-        btss.b  usb_device_state, #3
-        bra     RXU
+        btsc.b  usb_device_state, #3
         btsc.b  ep2ostat, #7
         bra     RXU
-        cp0.b   ep2ocount
-        bra     nz, RXU_OLD_PACKET
-RXU_NEW_PACKET:     
-        mov.b   ep2ocnt, WREG
-        mov.b   WREG, ep2ocount
         mov     #cdc_data_rx, W0
-        mov     W0, ep2optr
-RXU_OLD_PACKET:
         mov     ep2optr, W1
-        mov.b   [W1], W0
+        mov.b   [W0+W1], W0
         ze      W0, W0
         mov     W0, [++W14]
         inc     ep2optr
-        dec.b   ep2ocount
+        dec.b   ep2ocnt
         bra     nz, RXU_END
-        mov     #8, W0
+        mov     #CDC_BULK_OUT_EP_SIZE, W0
         mov.b   WREG, ep2ocnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep2ostat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
         mov.b   WREG, ep2ostat
+        clr     ep2optr
 RXU_END:
         return
 
@@ -2846,21 +2867,21 @@ RXU_END:
         .align  2
 TXU:
         rcall   PAUSE
-        btss.b  usb_device_state, #3
-        bra     DROP
+        btsc.b  usb_device_state, #3
         btsc.b  ep2istat, #7
         bra     TXU
+        inc2    ms_count, WREG
+        mov     WREG, ep2itmo
         mov     ep2icount, W2
         mov     #cdc_data_tx, W1
         mov     [W14--], W0
         mov.b   W0, [W1+W2]
         inc     ep2icount
-        inc2    ms_count, WREG
-        mov     WREG, ep2itmo
         cp      W2, #(CDC_BULK_IN_EP_SIZE-2)
         bra     n, TXU_END
 TXU_SEND:
         mov     ep2icount, W0
+TXU_SEND2:
         mov.b   WREG, ep2icnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep2istat, #6

@@ -579,21 +579,16 @@ USBCheckCdcRequest:
         addlw   -1                    ; SET_CONTROL_LINE_STATE 0x22
         bnz     return6
 SET_CONTROL_LINE_STATE:
+SET_LINE_CODING:
 SET_MUID_CDC:
+        movlw   low(line_coding)
+        movwf   dPtr, BANKED
+        movlw   high(line_coding)
+        movwf   dPtr+1, BANKED
         bsf     status, MUID_USB9, BANKED
 return6:
         return
-SET_LINE_CODING:
-        movlw   low(line_coding)
-        movwf   dPtr, BANKED
-        movlw   high(line_coding)
-        movwf   dPtr+1, BANKED
-        bra     SET_MUID_CDC
 GET_LINE_CODING:
-        movlw   low(line_coding)
-        movwf   dPtr, BANKED
-        movlw   high(line_coding)
-        movwf   dPtr+1, BANKED
         movlw 7
         movwf   count, BANKED
         bsf     status, MEM, BANKED

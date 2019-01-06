@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          01.01.2019                                        *
+;    Date:          06.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -85,20 +85,7 @@ USB_CFG:
         .byte   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
         .byte   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         .byte   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
-        .byte   0x07,0x05,0x82,0x02,0x10,0x00,0x00 ; endpoint data in
-
-USBInit:
-	bset    U1PWRC, #0	    ; Power up the USB module
-	mov	#bdt_base, W0
-	lsr	W0, #8, W0
-	mov	W0, U1BDTP1	    ; Set the BDT base address
-        bset    U1CON, #0
-	mov	#0xD, W0
-	mov	W0, U1EP0	    ; Ep0 is control endpoint
-        rcall   USBPrepareForNextSetupTrf
-        mov     #0x9000, W0
-        mov     W0, OSCTUN
-	return
+        .byte   0x07,0x05,0x82,0x02,0x08,0x00,0x00 ; endpoint data in
 
 ;*******************************************************************************
 USBDriverService:
@@ -172,7 +159,7 @@ USBCtrlEPService_out:
         bra     USBCtrlTrfOutHandler
 USBCtrlTrfSetupHandler:
         clr.b   ctrl_trf_state                 ; WAIT_SETUP
-        clr.b   ctrl_trf_session_owner         ; MUID_NULL
+        bclr.b  usb_status, #MUID_USB9
         clr.b   count
         rcall   USBCheckStdRequest
         rcall   USBCheckCdcRequest
@@ -193,7 +180,7 @@ USBPrepareForNextSetupTrf:
         clr.b    ctrl_trf_state
         mov     #CDC_INT_EP_SIZE, W0
         mov.b   WREG, ep0ocnt
-        mov     #setupPkt, W0
+        mov     #ep0buf, W0
         mov     W0, ep0oadr
         mov     #(_USIE|_DTSEN), W0      ;0x88
         mov.b   WREG, ep0ostat
@@ -204,7 +191,7 @@ USBCtrlTrfInHandler:
         mov     #ADR_PENDING_STATE, W0
         cp.b    usb_device_state
         bra     nz, USBCtrlTrfInHandler_2
-        mov.b   setupPkt+2, WREG
+        mov.b   ep0buf+2, WREG
         mov.b   WREG, U1ADDR
         mov     #DEFAULT_STATE, W1
         btss    SR, #Z
@@ -223,7 +210,7 @@ USBCtrlTrfInHandler_2:
 USBCtrlTrfRxService:
         mov.b   ep0ocnt, WREG
         mov     #ep0buf, W3
-        mov     pDst, W2
+        mov     dPtr, W2
 ;**********************************************
 ramcp:
         dec.b   W0, W0
@@ -231,7 +218,7 @@ ramcp:
         ze      W0, W0
         repeat  W0
         mov.b   [W3++], [W2++]
-        clr.b   mem
+        bclr.b  usb_status, #MEM
 ramcpreturn:
         return
 ;**********************************************
@@ -247,10 +234,10 @@ SUB:
         sub.b   count                  ; count = count - moveLen
 romcp:
         mov     #ep0buf, W2        ; DST ptr
-        mov     pSrc, W3
-        cp0.b   mem
-        bra     z, romcp2
-        mov     pSrc, W3   
+        mov     dPtr, W3
+        btss    usb_status, #MEM
+        bra     romcp2
+        mov     dPtr, W3   
         bra     ramcp
 romcp1:
         tblrdl.b [W3++], W1
@@ -258,30 +245,30 @@ romcp1:
 romcp2:
         dec.b   W0, W0
         bra     c, romcp1
-        mov     W3, pSrc
+        mov     W3, dPtr
         return
 
 ;*******************************************************************************
 USBCtrlEPServiceComplete:
         mov     #CDC_INT_EP_SIZE, W0
         mov.b   WREG, ep0ocnt
-        mov     #setupPkt, W0
+        mov     #ep0buf, W0
         mov     WREG, ep0oadr
-        btsc    ctrl_trf_session_owner, #2
+        btsc    usb_status, #MUID_USB9
         bra     DATADIR_DEV_TO_HOST
         mov     #(_USIE|_BSTALL), W0       ;0x84
         mov.b   WREG, ep0ostat
         mov.b   WREG, ep0istat
         bra     USBCtrlEPServiceComplete_4
 DATADIR_DEV_TO_HOST:
-        btss    setupPkt, #7
+        btss    ep0buf, #7
         bra     DATADIR_HOST_TO_DEV
-        mov.b   setupPkt+7, WREG
+        mov.b   ep0buf+7, WREG
         bra     nz, DATADIR_DEV_TO_HOST_2
         mov.b   count, WREG
-        cp.b    setupPkt+6                ; F - W
+        cp.b    ep0buf+6                ; F - W
         bra     c, DATADIR_DEV_TO_HOST_2
-        mov.b   setupPkt+6, WREG
+        mov.b   ep0buf+6, WREG
         mov.b   WREG, count
 DATADIR_DEV_TO_HOST_2:
         rcall   USBCtrlTrfTxService
@@ -310,10 +297,10 @@ USBCtrlEPServiceComplete_4:
 ;*******************************************************************************
 USBCheckStdRequest:
         mov     #0x60, W0
-        and.b   setupPkt, WREG
+        and.b   ep0buf, WREG
         bra     nz, RETURN__
-        bset    ctrl_trf_session_owner, #2
-        mov.b   setupPkt+1, WREG
+        bset    usb_status, #MUID_USB9
+        mov.b   ep0buf+1, WREG
         cp.b    W0, #0x9
         bra     z, SET_CFG   ; 9(J) == SET_CFG
         cp.b    W0, #0x6
@@ -328,12 +315,12 @@ RETURN__:
         return
 SET_CFG:
         mov     #ADDRESS_STATE, W0
-        cp0.b   setupPkt+2
+        cp0.b   ep0buf+2
         bra     z, SET_CFG1
         mov     #CONFIGURED_STATE, W0       ; USB ACTIVE CFG != 0
 SET_CFG1:
         mov.b   WREG, usb_device_state
-        cp0.b   setupPkt+2
+        cp0.b   ep0buf+2
         bra     z, SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
@@ -348,11 +335,11 @@ CDCInitEP:
         mov     #0x1D, W0
         mov     W0, U1EP2
         clr.b   ep1istat          ; CDC notification end point not used
-        clr     ep2ocount
         mov     #8, W0
         mov.b   WREG, ep2ocnt
         mov     #1, W0
         mov.b   WREG, ep2icnt
+        clr     ep2optr
         mov     #cdc_data_rx, W0
         mov     W0, ep2oadr
         mov     #cdc_data_tx, W0
@@ -362,15 +349,14 @@ CDCInitEP:
         clr.b   ep2istat
         clr     cdc_data_tx
         mov     #1, W0
-        mov.b   WREG, ep2icount
-        rcall   TXU_SEND
+        rcall   TXU_SEND2
         bra     SESSION_OWNER_USB9
 ;*******************************************************************************
 GET_DSC:
         mov     #0x80, W0
-        cp.b    setupPkt
+        cp.b    ep0buf
         bra     nz, GetDsc_6
-        mov.b   setupPkt+3, WREG
+        mov.b   ep0buf+3, WREG
         cp.b    W0, #0x3
         bra     z, GET_DSC_STR
         cp.b    W0, #0x2
@@ -387,7 +373,7 @@ GET_DSC_CFG:
         BRA     GetDsc_4
 GET_DSC_STR:
         clr     W0
-        mov.b   setupPkt+2, WREG
+        mov.b   ep0buf+2, WREG
         add     W0, W0, W0      ; 2*
         mov     #handle(USB_SD), W1
         addc    W0, W1, W1
@@ -395,21 +381,21 @@ GET_DSC_STR:
         tblrdl  [W1], W2
         tblrdl.b [W2], W0
 GetDsc_4:
-        mov     W2, pSrc
+        mov     W2, dPtr
         mov.b   WREG, count
 GetDsc_6:
         return
 
 USBCheckCdcRequest:
-        mov.b   setupPkt, WREG     ; IF INTF & CLASS &  TO_DEVICE
+        mov.b   ep0buf, WREG     ; IF INTF & CLASS &  TO_DEVICE
         and.b   #0x7f, W0              ;
         xor.b   #0x21, W0
         bra     nz, return6
         mov     #1, W0
-        subr.b  setupPkt+4, WREG            ; IF COMM_INTF || DATA_INTF
+        subr.b  ep0buf+4, WREG            ; IF COMM_INTF || DATA_INTF
         bra     n, return6
         mov     #0x20, W0
-        sub.b   setupPkt+1, WREG ; W0 = F - W0
+        sub.b   ep0buf+1, WREG ; W0 = F - W0
         cp.b    W0, #0x0                    ; SET_LINE_CODING 0x20
         bra     z,SET_LINE_CODING
         cp.b    W0, #1                      ; GET_LINE_CODING 0x21
@@ -418,18 +404,16 @@ USBCheckCdcRequest:
         bra     nz, return6
 SET_CONTROL_LINE_STATE:
 SET_MUID_CDC:
-        bset    ctrl_trf_session_owner, #2
-return6:
-        return
 SET_LINE_CODING:
         mov     #line_coding, W0
-        mov     W0, pDst
-        bra     SET_MUID_CDC
+        mov     W0, dPtr
+        bset    usb_status, #MUID_USB9
+return6:
+        return
+       bra     SET_MUID_CDC
 GET_LINE_CODING:
-        mov     #line_coding, W0
-        mov     W0, pSrc
         mov     #7, w0
         mov.b   WREG, count
-        setm.b  mem
+        bset.b  usb_status, #MEM
         bra     SET_MUID_CDC
 
