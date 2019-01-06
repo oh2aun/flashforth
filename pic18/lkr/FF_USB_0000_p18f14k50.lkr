@@ -18,8 +18,8 @@ ACCESSBANK NAME=flashbuf   START=0x0            END=0x3F           PROTECTED
 ACCESSBANK NAME=acs_ram    START=0x40           END=0x5F           PROTECTED
 DATABANK   NAME=userarea   START=0x60           END=0x1FF          PROTECTED
 DATABANK   NAME=usbep      START=0x200          END=0x217          PROTECTED
-DATABANK   NAME=usbvars    START=0x218          END=0x24F          PROTECTED
-DATABANK   NAME=irqstack   START=0x250          END=0x2DF          PROTECTED
+DATABANK   NAME=usbvars    START=0x218          END=0x23F          PROTECTED
+DATABANK   NAME=irqstack   START=0x240          END=0x2DF          PROTECTED
 DATABANK   NAME=uartrx     START=0x2E0          END=0x2FF          PROTECTED
 DATABANK   NAME=sfrbanked  START=0xF53          END=0xF5F          PROTECTED
 ACCESSBANK NAME=accesssfr  START=0xF60          END=0xFFF          PROTECTED

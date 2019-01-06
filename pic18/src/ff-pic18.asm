@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          01.01.2019                                        *
+;    Date:          06.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -58,8 +58,8 @@
         extern ep2ocnt
         extern ep2itmo
         extern ep2icount
-        extern ep2ocount
         extern ep2optr
+        global TX0_SEND2
 #else ; Normal UART
 
 #define OPERATOR_TX  TX1_
@@ -188,7 +188,8 @@ status   res 1       ; if zero, cpu idle is allowed
 irq_v    res 2       ; Interrupt vector
 areg     res 1       ; A register
 aregh    res 1
-
+#ifdef USB_CDC
+#endif
 #ifndef USB_CDC
 load_acc res 3       ;
 #endif
@@ -493,7 +494,7 @@ WARMLIT:
         dw      OPERATOR_RXQ   ; KEY? vector
         dw      OPERATOR_AREA  ; TASK vector 
         dw      DEFAULT_BASE   ; BASE
-        dw      utibbuf+h'f000'; TIB
+        dw      utibbuf+h'f001'; TIB (one extra byte for WORD)
         dw      0              ; ustatus & uflg
         dw      0,0,0,0
         dw      0; u0+h'f000'  ; ulink
@@ -1570,11 +1571,10 @@ L_TX0:
         db      NFA|3,"txu"
 TX0:
         rcall   PAUSE
-        movlb   ep2istat
-        btfss   usb_device_state, 3, BANKED
-        goto    DROP          ;discard char if USB not in CONFIGURED_STATE(8)
-        btfsc   ep2istat, 7, BANKED     ; BD3.STAT.UOWN
-        bra     TX0                     ; Pause if USB TX is not ready
+        banksel ep2istat
+        btfsc   usb_device_state, 3, BANKED
+        btfsc   ep2istat, 7, BANKED
+        bra     TX0
         movf    ms_count, W, A
         addlw   2
         movwf   ep2itmo, BANKED
@@ -1584,16 +1584,16 @@ TX0:
         movff   Sminus, TWrw
         addlw   1
         movwf   ep2icount, BANKED
-        sublw   7 
+        sublw   6                       ; l - w
         bnn     TX0_END
 TX0_SEND:
         movf    ep2icount, W, BANKED
+TX0_SEND2:
         movwf   ep2icnt, BANKED
-        movlw   0x40
-        andwf   ep2istat, F, BANKED
-        btg     ep2istat, 0x6, BANKED
+        movlw   0xc8
+        btfsc   ep2istat, 0x6, BANKED
         movlw   0x88
-        iorwf   ep2istat, F, BANKED
+        movwf   ep2istat, BANKED
         clrf    ep2icount, BANKED
 TX0_END:
         return
@@ -1604,31 +1604,23 @@ L_RX0:
         db      NFA|3,"rxu"
 RX0:
         rcall   PAUSE
-        movlb   ep2ostat
-        btfss   usb_device_state, 3, BANKED
+        banksel ep2ostat
+        btfsc   usb_device_state, 3, BANKED
+        btfsc   ep2ostat, 7, BANKED
         bra     RX0
-        btfsc   ep2ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
-        bra     RX0
-        tstfsz  ep2ocount, BANKED
-        bra     RX0_OLD_PACKET
-RX0_NEW_PACKET:
-        movf    ep2ocnt, W, BANKED
-        movwf   ep2ocount, BANKED
-        clrf    ep2optr, BANKED
-RX0_OLD_PACKET:
         lfsr    Tptr, cdc_data_rx
         movf    ep2optr, W, BANKED
         movff   TWrw, plusS
         incf    ep2optr, F, BANKED
-        decf    ep2ocount, F, BANKED
+        decf    ep2ocnt, F, BANKED
         bnz     RX0_END
         movlw   8
         movwf   ep2ocnt, BANKED
-        movlw   h'40'
-        andwf   ep2ostat, F, BANKED
-        btg     ep2ostat, 6, BANKED
+        movlw   h'C8'
+        btfsc   ep2ostat, 6, BANKED
         movlw   h'88'
-        iorwf   ep2ostat, F, BANKED
+        movwf   ep2ostat, BANKED
+        clrf    ep2optr, BANKED
 RX0_END:
         clrf    plusS, A
         return
@@ -1638,10 +1630,9 @@ RX0_END:
 L_RX0Q:
         db      NFA|4,"rxu?"
 RX0Q:
-        movlb   ep2ostat
-        btfss   usb_device_state, 3, BANKED
-        bra     RX0Q1
-        btfsc   ep2ostat, 7, BANKED  ; CDC_BULK_BD_OUT.Stat.UOWN == 0
+        banksel ep2ostat
+        btfsc   usb_device_state, 3, BANKED
+        btfsc   ep2ostat, 7, BANKED
 RX0Q1:
         goto    FALSE_
         goto    TRUE_
@@ -2007,8 +1998,36 @@ EMPTY:
         dw      h'000c'
         call    CMOVE
         goto    DP_TO_RAM
-;*******************************************************
+
         dw      L_EMPTY
+#ifdef USB_CDC
+L_USB_ON:
+        db      NFA|4,"usb+"
+USB_ON:
+        btfsc   UCON, USBEN, A
+        bra     USB_ON_RET
+        movlw   0x14
+        movwf   UCFG, A
+        clrf    UCON, ACCESS
+        bsf     UCON, USBEN, ACCESS
+        clrf    UIR, ACCESS
+        clrf    usb_device_state, BANKED
+        banksel ep2icount
+        clrf    ep2icount, BANKED
+USB_ON_RET:
+        return
+;*******************************************************
+        dw      L_USB_ON
+L_USB_OFF:
+        db      NFA|4,"usb-"
+USB_OFF:
+        bcf     UCON, SUSPND, A
+        clrf    UCON, A
+        clrf    usb_device_state, BANKED
+        return
+;*******************************************************
+        dw      L_USB_OFF
+#endif
 L_WARM:
         db      NFA|4,"warm"
 WARM_:  
@@ -2171,12 +2190,7 @@ WARM_ZERO_1:
 #endif
 #endif
 #ifdef USB_CDC
-        movlw   0x14
-        movwf   UCFG, A
-        CLRF    UCON, ACCESS
-        BSF     UCON, USBEN, ACCESS
-        CLRF    UIR, ACCESS
-        CLRF    usb_device_state, BANKED
+        rcall   USB_ON
 #endif
         rcall   LIT
         dw      WARMLIT
@@ -2240,7 +2254,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 01.01.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 06.01.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
