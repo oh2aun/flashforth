@@ -1009,6 +1009,14 @@ up         ( -- a-addr )
 user       ( +n "name" -- )
            Define a user variable at offset +n
 
+usb+       ( -- )
+           Start the USB serial interface
+           PIC18 PIC24
+
+usb-       ( -- )
+           Stop the USB serial interface
+           PIC18 PIC24
+
 uq*        ( ud ud -- uq )
            Multiply two double numbers to a quad result
            PIC18 PIC24 PIC30 PIC33
