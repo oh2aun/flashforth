@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          06.01.2019                                        *
+;    Date:          13.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1206,7 +1206,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 06.01.2019\r\n"
+        .ascii  " FlashForth 5 PIC24 13.01.2019\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -4159,62 +4159,60 @@ ONE:
 ACCEPT:
         rcall   OVER
         rcall   PLUS
-        rcall   OVER
+        mov     [W14--], [W15++]  ; S: start R:end
+        rcall   DUP               ; S: start start R:end
 ACC1:
-        rcall   KEY
-
-        mov     [W14], W0
-
-        cp      W0, #0x0d   ; CR
-        bra     nz, ACC_LF
-        sub     W14, #2, W14
-        
-        rcall   TRUE_
-        rcall   FCR
+        rcall   KEY		  ; get char
+        mov     [W14], W0	  ; move from stack to W0
+        cp      W0, #0x0d	  ; is it CR?
+        bra     z, ACC_CR	  ; no, then check for line feed
+        cp      W0, #0x0a	  ; check for Line Feed
+        bra     z, ACC_LF
+        cp      W0, #8            ; BS
+        bra     z,ACC_BS_DEL
+        sub.b   #127, W0          ; DEL
+        bra     z,ACC_BS_DEL
+        bra     ACC3
+ACC_CR:
+        rcall   FCR               ; Mark CR received
         rcall   CSTORE
         bra     ACC6
 ACC_LF:
-        cp      W0, #0x0a   ; LF
-        bra     nz, ACC2
         sub     W14, #2, W14
-
         rcall   FCR
         rcall   CFETCH
         rcall   ZEROSENSE
-        bra     z, ACC6
+        bra     z, ACC6            ; LF end of line CR has not been received
         rcall   FALSE_
         rcall   FCR
         rcall   CSTORE
+        bra     ACC1		   ; repeat getting chars until cr
+ACC_BS_DEL:	   
+	sub     W14, #2, W14
+        mov     [W14-2], W0
+        cp      W0, [W14]          ; start and current pointers
+        bra     z, ACC1
+        dec     [W14], [W14]
+        rcall   XSQUOTE
+        .byte   3,8,0x20,8
+        rcall   TYPE
         bra     ACC1
-ACC2:
-        mov     [W14++], [W14]      ; dup
-        rcall   EMIT
+ACC3:
+	mov     [W14++], [W14]      ; dup
+        rcall   EMIT		    ; and echo char
 
         rcall   FALSE_
         rcall   FCR
         rcall   CSTORE
-        mov     [W14], W0
-        cp      W0, #8
-        bra     nz, ACC3
-        sub     W14, #2, W14
-        dec     [W14], [W14]
-        push    [W14--]
-        rcall   OVER
-        pop     [++W14]
-        rcall   UMAX
-        bra     ACC1
-ACC3:
+
         rcall   OVER
         rcall   CSTORE
         inc     [W14], [W14]
-        rcall   OVER
-        rcall   UMIN
-        rcall   TWODUP
-        rcall   NOTEQUAL
-        cp0     [W14--]
+        mov     [W15-2], W0         ; r@
+        cp      W0, [W14]
         bra     nz, ACC1
 ACC6:
-        mov     [W14--], [W14]      ; nip
+        pop     W0                  ; rdrop
         rcall   SWOP
         goto    MINUS
 

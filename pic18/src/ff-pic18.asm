@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          06.01.2019                                        *
+;    Date:          13.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2254,7 +2254,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 06.01.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 13.01.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2924,27 +2924,27 @@ L_ACCEPT:
 ACCEPT:
         rcall   OVER
         rcall   PLUS
-        rcall   OVER
+        rcall   TOR
+        rcall   DUP
 ACC1:
         rcall   KEY
-
         movf    Sminus, W, A
-        movlw   CR_
-        subwf   Splus, W, A
-        bnz     ACC_LF
-        
-        rcall   ONE
-        rcall   FCR
+        movf    Splus, W, A
+        sublw   8             ; L - W
+        bz      ACC_BS_DEL
+        sublw   -2            ; 
+        bz      ACC_LF
+        sublw   3             ;
+        bz      ACC_CR
+        sublw   d'114'
+        bz      ACC_BS_DEL
+        bra     ACC3
+ACC_CR:
+        rcall   FCR             ; Mark CR received
         rcall   CSTORE
-        rcall   DROP            ; CR
         bra     ACC6            ; CR END OF LINE
 ACC_LF:
-        movf    Sminus, W, A
-        movlw   LF_
-        subwf   Splus, W, A
-        bnz     ACC2
-        rcall   DROP            ; LF
-
+        rcall   DROP
         rcall   FCR
         rcall   CFETCH
         rcall   ZEROSENSE
@@ -2953,38 +2953,33 @@ ACC_LF:
         rcall   FCR
         rcall   CSTORE
         bra     ACC1            ; CR has been received
-ACC2:                   	; NOT CR, NOT LF
+ACC_BS_DEL:
         call    FALSE_
         rcall   FCR
         rcall   CSTORE
-
-        rcall   DUP
-        rcall   EMIT
-
-        movf    Sminus, W, A
-        movlw   BS_
-        subwf   Splus, W, A
-        bnz     ACC3
-
         rcall   DROP
+        rcall   TWODUP
+        rcall   EQUAL
+        rcall   ZEROSENSE
+        bnz     ACC1
         rcall   ONEMINUS
-        rcall   TOR
-        rcall   OVER
-        rcall   RFROM
-        rcall   UMAX
+        rcall   XSQUOTE
+        db      3,8,h'20',8
+        rcall   TYPE
         bra     ACC1
 ACC3:
+        rcall   DUP
+        rcall   EMIT
         rcall   OVER
         rcall   CSTORE
         rcall   ONEPLUS
+        rcall   RFETCH
         rcall   OVER
-        rcall   UMIN
-        rcall   TWODUP
-        rcall   XOR; NOTEQUAL
+        rcall   EQUAL
         rcall   ZEROSENSE
-        bnz     ACC1
+        bz      ACC1
 ACC6:
-        rcall   NIP
+        call    RDROP
         rcall   SWOP
         goto    MINUS
 

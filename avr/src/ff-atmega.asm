@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          23.09.2018                                        *
+;    Date:          13.01.2019                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2017  Mikael Nordman
+; Copyright (C) 2019  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "23.09.2018"
+#define DATE "13.01.2019"
 
 
 ; Register definitions
@@ -1324,21 +1324,24 @@ ACCEPT_L:
 ACCEPT:
         rcall   OVER
         rcall   PLUS
-        rcall   OVER
+        rcall   TOR
+        rcall   DUP
 ACC1:
         rcall   KEY
-
         cpi     tosl, CR_
-        brne    ACC_LF
-        
-        rcall   TRUE_
+        breq    ACC_CR
+        cpi     tosl, LF_
+        breq    ACC_LF
+        cpi     tosl, BS_
+        breq    ACC_BS_DEL
+        cpi     tosl, 127
+        breq    ACC_BS_DEL
+        rjmp    ACC3
+ACC_CR:
         rcall   FCR
         rcall   CSTORE_A
-        rcall   DROP
         rjmp    ACC6
 ACC_LF:
-        cpi     tosl, LF_
-        brne    ACC2
         rcall   DROP
 
         rcall   FCR
@@ -1349,37 +1352,35 @@ ACC_LF:
         rcall   FCR
         rcall   CSTORE_A
         rjmp    ACC1
-ACC2:
+ACC_BS_DEL:
         rcall   FALSE_
         rcall   FCR
         rcall   CSTORE_A
-        rcall   DUP
-        rcall   EMIT
-        rcall   DUP
-        rcall   DOLIT
-        .dw     BS_
+        rcall   DROP
+        rcall   TWODUP
         rcall   EQUAL
         rcall   ZEROSENSE
-        breq    ACC3
-        rcall   DROP
+        brne    ACC1
         rcall   ONEMINUS
-        rcall   TOR
-        rcall   OVER
-        rcall   RFROM
-        rcall   UMAX
+        rcall   XSQUOTE
+        .db     3,8,0x20,8
+        rcall   TYPE
         rjmp    ACC1
 ACC3:
+        rcall   DUP
+        rcall   EMIT
         rcall   OVER
         rcall   CSTORE_A
         rcall   ONEPLUS
+        rcall   RFETCH
         rcall   OVER
-        rcall   UMIN
-        rcall   TWODUP
-        rcall   NOTEQUAL
+        rcall   EQUAL
         rcall   ZEROSENSE
-        brne     ACC1
+        breq    ACC1
 ACC6:
-        rcall   NIP
+        pop     t0
+        pop     t0
+
         rcall   SWOP
         jmp     MINUS
 
@@ -4007,11 +4008,11 @@ LEAVE:
 ; RDROP compile a pop
         fdw      LEAVE_L
 RDROP_L:
-        .db      NFA|IMMED|COMPILE|5,"rdrop"
+        .db      NFA|IMMED|COMPILE|INLINE|5,"rdrop"
 RDROP:
-        rcall   DOLIT
-        fdw     XNEXT1
-        jmp     INLINE0
+        pop     t0
+        pop     t0
+        ret
 ;***************************************************
         fdw     RDROP_L
 STOD_L:
