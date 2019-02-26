@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          13.01.2019                                        *
+;    Date:          26.02.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1206,7 +1206,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 13.01.2019\r\n"
+        .ascii  " FlashForth 5 PIC24 26.02.2019\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -2867,7 +2867,8 @@ RXU_END:
         .align  2
 TXU:
         rcall   PAUSE
-        btsc.b  usb_device_state, #3
+        btss.b  usb_device_state, #3
+        bra     TXU_DROP
         btsc.b  ep2istat, #7
         bra     TXU
         inc2    ms_count, WREG
@@ -2888,6 +2889,9 @@ TXU_SEND2:
         mov     #(_DAT0|_USIE|_DTSEN), W0
         mov.b   WREG, ep2istat
         clr     ep2icount
+        bra     TXU_END
+TXU_DROP:
+        dec2    W14, W14
 TXU_END:
         return
 .endif
