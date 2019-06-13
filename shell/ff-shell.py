@@ -136,7 +136,7 @@ def main():
         sys.stdout.flush()
       else:
         while waitForNL > 0:
-          sleep(0.04)
+          sleep(0.1)
           waitForNL = waitForNL - 1
           pass
         line = file.readline()
