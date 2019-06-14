@@ -1020,7 +1020,7 @@ iupdatebuf:
         movf    iaddr_hi, W
         cpfseq  ibase_hi
         bra     iupdatebuf0
-        movlw   flash_pointer_mask ; h'c0'
+        movlw   flash_pointer_mask
         andwf   iaddr_lo, W
         cpfseq  ibase_lo
         bra     iupdatebuf0
@@ -1028,7 +1028,7 @@ iupdatebuf:
 
 iupdatebuf0:
         rcall   IFLUSH
-        movlw   flash_pointer_mask ; h'c0'
+        movlw   flash_pointer_mask
         andwf   iaddr_lo, W
         movwf   ibase_lo
         movf    iaddr_hi, W
