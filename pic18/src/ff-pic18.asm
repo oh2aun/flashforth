@@ -367,10 +367,12 @@ irq_ms:
         subwf   TMR1L, F
         movf    tickval+1, W ;   high(tmr1ms_val)
         subwfb  TMR1H, F
+        bcf     PIR1, TMR1IF
+#if 0
         bcf     ANSELH, ANS9
         bcf     TRISC, 7
         btg     PORTC, 7
-        bcf     PIR1, TMR1IF
+#endif
 #endif
 #if MS_TMR == 2 ;******************************
         btfss   PIR1, TMR2IF
