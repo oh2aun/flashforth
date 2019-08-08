@@ -46,11 +46,11 @@ class Config(object):
     self.sw = False
 
 def serial_open(config):
-  print "Port:"+config.port+" Speed:"+config.rate+" hw:"+str(config.hw)+" sw:"+str(config.sw)
+  print "Port:"+str(config.port)+" Speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
-    print("Could not open serial port '{}': {}".format(com_port, e))
+    print("Could not open serial port '{}': {}".format(config.serial_port, e))
     raise e
   
 
@@ -172,7 +172,7 @@ def main():
         config.ser.flush()       # Send the output buffer
       except Exception as e:
         THR_LOCK.release()
-        print("Write error on serial port {0}, {1}".format(com_port, e))
+        print("Write error on serial port {0}, {1}".format(config.serial_port, e))
         running = False
       THR_LOCK.release()
 
