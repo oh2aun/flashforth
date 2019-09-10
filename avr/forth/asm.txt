@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      asm.txt                                           *
-\    Date:          03.02.2014                                        *
+\    Date:          10.09.2019                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
@@ -173,7 +173,7 @@ e000 f000  Rd,k: ldi,
 
 9488 op: clc,                  \ --
 94d8 op: clh,                  \ --
-94d8 op: cli,                  \ --
+94f8 op: cli,                  \ --
 94a8 op: cln,                  \ --
 94c8 op: cls,                  \ --
 94e8 op: clt,                  \ --
