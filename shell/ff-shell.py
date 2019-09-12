@@ -34,7 +34,6 @@ from time import *
 
 # Threading stuff, global flags
 running = True
-RECVR_STARTED = False
 waitForNL = 0
 uploadMode = 0
 
@@ -56,8 +55,7 @@ def serial_open(config):
 
 # receive_thr() receives chars from FlashForth
 def receive_thr(config, *args):
-  global RECVR_STARTED, running, waitForNL, uploadMode
-  RECVR_STARTED = True
+  global running, waitForNL, uploadMode
   while running==True:
     try:
       char = config.ser.read()
@@ -65,19 +63,13 @@ def receive_thr(config, *args):
       sys.stdout.flush()
       if char == '\n':
         waitForNL = 0
-    except Exception as e:
-      running = True
-      # print "Receive thread exception {0}".format(e)
 
     except Exception as e:
       print "Serial exception {0}".format(e)
-      RECVR_STARTED = False
       running = False
-      os.kill(os.getpid(), signal.SIGINT)      
 
-  print "End of receive thread"
-  RECVR_STARTED = False
-  running = False
+  print "End of receive thread. Press enter to exit."
+  exit()
 
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
@@ -104,9 +96,6 @@ def main():
   parse_arg(config)
   serial_open(config)
   start_new_thread(receive_thr, (config, 1))
-  # Wait for the thread to start
-  while not RECVR_STARTED:
-    pass
  
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
@@ -172,8 +161,6 @@ def main():
       print "Transmission thread exception {0}".format(e) 
       running = False
 
-  while RECVR_STARTED:
-    pass
   config.ser.close()
   print "Exiting ff-shell.py, goodbye..."
 
