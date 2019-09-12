@@ -3,7 +3,8 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 25.01.2015 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 12.09.2019 Mikael Nordman (oh2aun@gmail.com)
+# 12.09.2019 - Updated for nonblocking I/O
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -28,13 +29,12 @@ import atexit
 import logging
 import signal
 import string
-from thread import start_new_thread, allocate_lock
+from thread import start_new_thread
 from time import *
 
 # Threading stuff, global flags
 running = True
 RECVR_STARTED = False
-THR_LOCK = allocate_lock()
 waitForNL = 0
 uploadMode = 0
 
@@ -48,7 +48,7 @@ class Config(object):
 def serial_open(config):
   print "Port:"+config.port+" Speed:"+config.rate+" hw:"+str(config.hw)+" sw:"+str(config.sw)
   try:
-    config.ser = serial.Serial(config.port, config.rate, timeout=0.1, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
+    config.ser = serial.Serial(config.port, config.rate, timeout=0.5, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
     print("Could not open serial port '{}': {}".format(com_port, e))
     raise e
@@ -60,19 +60,14 @@ def receive_thr(config, *args):
   RECVR_STARTED = True
   while running==True:
     try:
-      while config.ser.inWaiting() > 0:
-        try:
-          THR_LOCK.acquire()
-          char = config.ser.read()
-          sys.stdout.write(char)
-          sys.stdout.flush()
-          if char == '\n':
-            waitForNL = 0
-          THR_LOCK.release()
-        except Exception as e:
-          THR_LOCK.release()
-          running = True
-          # print "Receive thread exception {0}".format(e)
+      char = config.ser.read()
+      sys.stdout.write(char)
+      sys.stdout.flush()
+      if char == '\n':
+        waitForNL = 0
+    except Exception as e:
+      running = True
+      # print "Receive thread exception {0}".format(e)
 
     except Exception as e:
       print "Serial exception {0}".format(e)
@@ -112,7 +107,7 @@ def main():
   # Wait for the thread to start
   while not RECVR_STARTED:
     pass
-  # 
+ 
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
   print histfn
@@ -164,17 +159,14 @@ def main():
       if line[:5] == "#warm":
         line = '\017'           # CTRL-O
       if line[:5] == "#esc":
-        line = '\033'           # CTRL-O
-      THR_LOCK.acquire()
+        line = '\033'           # Escape
       try:
-        waitForNL = 10
+        waitForNL = 5
         bytes = config.ser.write(line+'\n')
         config.ser.flush()       # Send the output buffer
       except Exception as e:
-        THR_LOCK.release()
         print("Write error on serial port {0}, {1}".format(com_port, e))
         running = False
-      THR_LOCK.release()
 
     except Exception as e:
       print "Transmission thread exception {0}".format(e) 
