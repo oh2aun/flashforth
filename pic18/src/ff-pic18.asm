@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          08.09.2019                                        *
+;    Date:          15.09.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -67,15 +67,6 @@
 #define OPERATOR_RX_IS_UART
 #endif
 
-RX_FULL_BIT macro buf_size
-            local bitno = 0
-            local size = buf_size
-            while size > 1
-bitno += 1
-size /= 2
-            endw
-            btfss   RXcnt, #v(bitno)
-            endm
 #ifndef K42
 #define movff_ movff
 #else
@@ -401,12 +392,10 @@ irq_ms:
         btfss   PIR4, TMR1IF, BANKED
         bra     irq_ms_end
         bcf     PIR4, TMR1IF, BANKED
-        bcf     T1CON, TMR1ON
         movlw   low(tmr1ms_val)
         subwf   TMR1L, F
         movlw   high(tmr1ms_val)
         subwfb  TMR1H, F
-        bsf     T1CON, TMR1ON
 #endif
 #if MS_TMR == 2 ;******************************
         banksel PIR4
@@ -418,13 +407,10 @@ irq_ms:
         banksel PIR6
         btfss   PIR6, TMR3IF, BANKED
         bra     irq_ms_end
-        bcf     T3CON, TMR3ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR3L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR3H, F, A
-        bsf     T3CON, TMR3ON, A
-        banksel PIR6
         bcf     PIR6, TMR3IF, BANKED
 #endif
 #if MS_TMR == 4 ;******************************
@@ -437,13 +423,10 @@ irq_ms:
         banksel PIR8
         btfss   PIR8, TMR5IF, BANKED
         bra     irq_ms_end
-        bcf     T5CON, TMR5ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR5L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR5H, F, A
-        bsf     T5CON, TMR5ON, A
-        banksel PIR8
         bcf     PIR8, TMR5IF, BANKED
 #endif
 #if MS_TMR == 6 ;******************************
@@ -581,13 +564,6 @@ irq_async_rx_3:
         btfss    FLAGS2, fFC         ; receive xoff if FC is off
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
-        incf    RXcnt, F
-        RX_FULL_BIT RX_BUF_SIZE         ;  Buffer full ?
-        bra     irq_async_rx_4
-        movlw   '|'                     ;  Buffer overflow
-        rcall   asmemit
-        decf    RXcnt, F
-        decf    RXhead, F
 irq_async_rx_4:
         incf    RXhead, F
         movlw   RXbufmask               ; Wrap the RXhead pointer. 
@@ -637,10 +613,7 @@ STAT:   dw      DOTSTATUS
 L_EXIT:
         db      NFA|4,"exit"
 EXIT:
-        pop
-#ifdef K42
-        nop
-#endif
+        decf    STKPTR, F, A     ; pop does not work on K42 and K83
         return
 
 ; idle
@@ -763,25 +736,24 @@ L_IR:
 L_TX1_:
         db      NFA|3,"tx1"
 TX1_:
-        rcall   PAUSE
 #if UART == 1
 #ifndef U1ERRIR
-        btfss   PIR1, TXIF
+        btfsc   PIR1, TXIF
 #else
 
         banksel U1ERRIR
-        btfss   U1ERRIR, U1TXMTIF, BANKED
+        btfsc   U1ERRIR, U1TXMTIF, BANKED
 #endif
 #else
 #ifndef U2ERRIR
-        btfss   PIR3, TX2IF
+        btfsc   PIR3, TX2IF
 #else
         banksel U2ERRIR
-        btfss   U2ERRIR, U2TXMTIF, BANKED
-        bra     TX1_
-        btfss   U2ERRIR, U2TXMTIF, BANKED
+        btfsc   U2ERRIR, U2TXMTIF, BANKED
 #endif
 #endif
+        bra     TX1_SEND
+        rcall   PAUSE
         bra     TX1_
 TX1_SEND:
         movf    Sminus, W
@@ -805,7 +777,7 @@ TX1_SEND:
         movwf   U2TXB, BANKED
 #endif 
 #endif
-        return
+        goto    PAUSE
 ;***************************************************
 ; RX1    -- c    get character from the serial line
         dw      L_TX1_
@@ -821,15 +793,9 @@ RX1_:
         movf    RXtail, W
         movff_   TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS
-
-        bcf     INTCON, GIE
-
         incf    RXtail, F
         movlw   RXbufmask
         andwf   RXtail, F
-        decf    RXcnt, F
-
-        bsf     INTCON, GIE
         return
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -861,7 +827,8 @@ RX1Q:
         bsf     U2ERRIR, RXFOIF, BANKED
 #endif 
 #endif
-        movf    RXcnt, W
+        movf    RXhead, W
+        subwf   RXtail, W
         movwf   plusS
         bnz     RX1Q2
 #if FC_TYPE_SW == ENABLE
@@ -924,10 +891,7 @@ umstar0:
         movwf   plusS
         movf    TOSH, W
         movwf   plusS
-        pop
-#ifdef K42
-        nop
-#endif
+        decf    STKPTR, F, A
         return
 
 ;***********************************************************
@@ -1740,7 +1704,7 @@ PAUSE000:
         movf    (upcurr+1), W
         movwf   Tbank
 
-;; Switch tasks only if background tasks are running
+;; Switch tasks only if some background tasks are running
         movf    Tminus, W
         movf    Tplus, W
         bz      PAUSE_RET
@@ -1793,7 +1757,7 @@ pause1:
         movf    (upcurr+1), W
         movwf   Tbank
 
-        ; Set the return stack restore pointer  in Ap
+        ; Set the return stack restore pointer  in Rp
         movf    Tplus, W
         movwf   Rp
         movf    Tminus, W
@@ -2760,7 +2724,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 08.09.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 15.09.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2810,7 +2774,7 @@ L_KEY:
         db      NFA|3,"key"
 KEY:
         rcall   UKEY
-        goto     FEXECUTE
+        goto    FEXECUTE
 
 ;***************************************************
 ; KEY   -- c    get char from UKEY vector
@@ -2930,10 +2894,7 @@ DOCREATE: ; -- addr  exec action of CREATE
         movwf   TBLPTRL
         movf    TOSH, W
         rcall   FETCHLIT
-        pop                         ; return to the callers caller
-#ifdef K42
-        nop
-#endif
+        decf    STKPTR, F, A
 RETURN2:
         return
 
@@ -2947,10 +2908,7 @@ DODOES:
         movwf   Tp
         movf    TOSH, W
         movwf   PCLATH
-        pop
-#ifdef K42
-        nop
-#endif
+        decf    STKPTR, F, A
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
@@ -4487,10 +4445,6 @@ DOUSER:
         movwf   TBLPTRL
         movf    TOSH, W
         movwf   TBLPTRH
-        pop                         ; return to the callers caller
-#ifdef K42
-        nop
-#endif
         tblrd*+
         movf    TABLAT, W
         addwf   upcurr, W
@@ -4499,6 +4453,7 @@ DOUSER:
         movf    TABLAT, W
         addwfc  upcurr+1, W
         movwf   plusS
+        decf    STKPTR, F, A         ; return to the callers caller
         return  
 
 ; SOURCE   -- adr n         current input buffer
@@ -5499,10 +5454,7 @@ XDOES:
         movwf   plusS
         movf    TOSH, W
         movwf   plusS
-        pop
-#ifdef K42
-        nop
-#endif
+        decf    STKPTR, F, A
         rcall   LAST
         rcall   NFATOCFA
         rcall   IDP
