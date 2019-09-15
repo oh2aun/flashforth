@@ -568,6 +568,7 @@ irq_async_rx_4:
         incf    RXhead, F
         movlw   RXbufmask               ; Wrap the RXhead pointer. 
         andwf   RXhead, F
+        incf    RXcnt, F
 irq_async_rx_end:
 ;;; *****************************************************************
 ;; Restore Tp and Tbank
@@ -796,6 +797,7 @@ RX1_:
         incf    RXtail, F
         movlw   RXbufmask
         andwf   RXtail, F
+        decf    RXcnt, F
         return
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -838,6 +840,7 @@ RX1Q:
 #ifdef  HW_FC_CTS_PORT
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
+        clrf    RXcnt
 RX1Q2:
         clrf    plusS
         return
