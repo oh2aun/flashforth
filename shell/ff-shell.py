@@ -120,15 +120,15 @@ def main():
         sys.stdout.flush()
       else:
         while waitForNL > 0:
-          sleep(0.1)
+          sleep(0.001)
           waitForNL = waitForNL - 1
-          pass
+          continue
         line = file.readline()
         if line == "":
           file.close()
           uploadMode = 0
           waitForNL = 0
-          pass
+          continue
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
@@ -150,7 +150,7 @@ def main():
       if line[:5] == "#esc":
         line = '\033'           # Escape
       try:
-        waitForNL = 5
+        waitForNL = 1000
         bytes = config.ser.write(line+'\n')
         config.ser.flush()       # Send the output buffer
       except Exception as e:
