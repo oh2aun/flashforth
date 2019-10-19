@@ -5,8 +5,7 @@ LIBPATH .
 // Bootloader  Application start at 0x0800
 CODEPAGE   NAME=protect    START=0x0000         END=0x7FF          PROTECTED
 CODEPAGE   NAME=coder      START=0x0800         END=0x0807
-CODEPAGE   NAME=codeih     START=0x0808         END=0x080B
-CODEPAGE   NAME=codef      START=0x080C         END=0x02CD7
+CODEPAGE   NAME=codeih     START=0x0808         END=0x02CD7
 CODEPAGE   NAME=code1      START=0x2CD8         END=0x02CFF        PROTECTED
 CODEPAGE   NAME=code2      START=0x2E00         END=0xFFFFF        PROTECTED
 
@@ -36,6 +35,5 @@ SECTION NAME=HERE         RAM=ram_dp
 SECTION NAME=IRQ_STACK    RAM=irqstack
 SECTION NAME=FF_RESET     ROM=coder
 SECTION NAME=FF_INT_HI    ROM=codeih
-SECTION NAME=FF_CODE      ROM=codef
 SECTION NAME=FF_END_CODE  ROM=code1
 SECTION NAME=FF_DP        ROM=code2

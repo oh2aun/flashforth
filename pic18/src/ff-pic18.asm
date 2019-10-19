@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          15.09.2019                                        *
+;    Date:          19.10.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -44,9 +44,6 @@
 #define OPERATOR_RXQ RX1Q
 #define OPERATOR_RX_IS_UART
 #endif
-
-#undefine CPU_LOAD
-#define CPU_LOAD DISABLE
         extern USBDriverService
         extern cdc_data_tx
         extern cdc_data_rx
@@ -196,7 +193,7 @@ aregh    res 1
 tickval  res 2       ; timer value for system tick
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-load_acc res 3       ;
+load_acc res 1       ;
 load_res res 3       ; 256 ms load result
 #endif
 #endif
@@ -323,24 +320,28 @@ FF_RESET code 0x0000
 ;; Interrupt routines
 ;; 1 millisecond tick counter
 FF_INT_HI code 0x0008
-        goto FFCODE
-
-FF_INT_LO code 0x0018
-FF_INT_LOW:
-        goto FF_INT_LOW
-FF_CODE code
 FFCODE:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bsf     T0CON, TMR0ON
+        btfss   INTCON, TMR0IF
+        bra     irq_ms
+        bcf     INTCON, TMR0IF
 #else 
         bsf     T0CON0, T0EN
-#endif 
+        banksel PIR3
+        btfss   PIR3, TMR0IF, BANKED
+        bra     irq_ms
+        bcf     PIR3,TMR0IF
+#endif
+        incf    load_acc 
+        retfie  1
 #endif
 #endif
 #endif
+
 irq_ms:
 #ifndef K42
 #if MS_TMR == 1  ;****************************
@@ -436,43 +437,28 @@ irq_ms:
         bcf     PIR9, TMR6IF, BANKED        
 #endif
 #endif
-
-#ifdef USB_CDC
-	bcf	STATUS, C
-#endif
         movlw   TICK_TIME
         addwf   ms_count, F
         movlw   0
         addwfc  ms_count+1, F
-#ifdef USB_CDC
-        btfsc   STATUS, C
-        bsf     FLAGS2, f32secs
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
+        movf    ms_count, W
+        bnz     irq_load_end
         movf    TMR0L, W
-        addwf   load_acc, F
+        movwf   load_res
         movf    TMR0H, W
         clrf    TMR0H
         clrf    TMR0L
-        addwfc  load_acc+1, F
-        movlw   0
-        addwfc  load_acc+2, F
-        movf    ms_count, W
-        bnz     irq_ms_end
-        movf    load_acc, W
-        movwf   load_res
-        movf    load_acc+1, W
         movwf   load_res+1
-        movf    load_acc+2, W
+        movf    load_acc, W
         movwf   load_res+2
         clrf    load_acc
-        clrf    load_acc+1
-        clrf    load_acc+2
 #endif
 #endif
 #endif
+irq_load_end:
 irq_ms_end:
 ;;; *************************************************        
 ;;; Save Tp and Tbank and PCLATH
@@ -500,9 +486,6 @@ irq_user_skip:
 ;;; UART RX interrupt routine
 ;;; Feeds the input buffer with characters
 ;;; from the serial line
-;;; Serial interrupt only is active for K42 K83
-;;; Normally it works for compiling forth code
-;;; Polling RX1 may be needed if there are some problems
 irq_async_rx:
 #if UART == 1
 #ifndef K42
@@ -515,8 +498,13 @@ irq_async_rx:
 #ifndef K42
         btfss   PIR3, RC2IF
 #else
+#ifdef K83
+        banksel PIR7
+        btfss   PIR7, U2RXIF, BANKED
+#else
         banksel PIR6
         btfss   PIR6, U2RXIF, BANKED
+#endif
 #endif
 #endif
         bra     irq_async_rx_end
@@ -541,15 +529,27 @@ irq_async_rx_2:
         movf    RXhead, W
 #if UART == 1
 #ifndef K42
-        movff    RCREG, TWrw
+        movff   RCREG, TWrw
+        btfsc   RCSTA, OERR
+        bcf     RCSTA, CREN ; Restart RX on case of RX overrun
+        bsf     RCSTA, CREN
+
 #else
-        movffl   U1RXB, TWrw
+        movffl  U1RXB, TWrw
+        banksel U1ERRIR
+        bcf     U1ERRIR, RXFOIF, BANKED
 #endif
 #else
 #ifndef K42
-        movff    RCREG2, TWrw
+        movff   RCREG2, TWrw
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, BANKED
+        bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, BANKED
 #else
-        movffl   U2RXB,  TWrw
+        movffl  U2RXB,  TWrw
+        banksel U2ERRIR
+        bcf     U2ERRIR, RXFOIF, BANKED
 #endif
 #endif
         movf    TWrw, W
@@ -561,7 +561,7 @@ irq_async_rx_2:
 irq_async_rx_3:
 #if FC_TYPE_SW == ENABLE
         addlw   0x04                    ; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
-        btfss    FLAGS2, fFC         ; receive xoff if FC is off
+        btfss   FLAGS2, fFC             ; receive xoff if FC is off
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
 irq_async_rx_4:
@@ -741,16 +741,20 @@ TX1_:
 #ifndef U1ERRIR
         btfsc   PIR1, TXIF
 #else
-
-        banksel U1ERRIR
-        btfsc   U1ERRIR, U1TXMTIF, BANKED
+        banksel PIR3
+        btfsc   PIR3, U1TXIF, BANKED
 #endif
 #else
 #ifndef U2ERRIR
         btfsc   PIR3, TX2IF
 #else
-        banksel U2ERRIR
-        btfsc   U2ERRIR, U2TXMTIF, BANKED
+#ifdef K83
+        banksel PIR7
+        btfsc   PIR7, U2TXIF, BANKED
+#else
+        banksel PIR6
+        btfsc   PIR6, U2TXIF, BANKED
+#endif
 #endif
 #endif
         bra     TX1_SEND
@@ -1028,17 +1032,11 @@ write_buffer_to_imem:
 
 wbtil:
         bcf     FLAGS1, istream
-        movlw   write_delay   ;  This loop takes about 20 milliseconds
-        movwf   Tbank
-wbtil1:
-        clrf    Tp
-wbtil2: 
-        btfsc   FLAGS1, istream ; Check for UART receive activity.
+        call    LIT
+        dw      (d'19200'/baud)+d'2'
+        call    MS
+        btfsc   FLAGS1, istream
         bra     wbtil
-        decfsz  Tp, F
-        bra     wbtil2             ; 1250 cycles = 78 us @ 64 MHz XTAL 
-        decfsz  Tbank, F
-        bra     wbtil1             ; 20 ms @ 64 MHz XTAL @ write_delay = 255
 #endif
         bcf     INTCON, GIE  ; Disable Interrupts
 
@@ -1140,8 +1138,13 @@ asmemit:
         banksel TXREG2
         movwf   TXREG2, BANKED
 #else 
+#ifdef K83
+        banksel PIR7
+        btfss   PIR7, U2TXIF, BANKED
+#else
         banksel PIR6
         btfss   PIR6, U2TXIF, BANKED
+#endif
         bra     asmemit
         banksel U2TXB
         movwf   U2TXB, BANKED
@@ -1346,7 +1349,7 @@ LITER3:
 LITER4:
         rcall   ICOMMA
         movf    Sminus, W
-LITER5: 
+LITER5:
         return
 
 ;**************************************************
@@ -1429,7 +1432,7 @@ IFETCH:
         andlw   flash_block_mask;0x3f
         lfsr    Tptr, flash_buf
         addwf   Tp, F
-        bra     FETCH2
+        goto    FETCH2
 
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
@@ -1438,7 +1441,7 @@ ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W
         cpfseq  ibase_hi
         bra     pcfetch0
-        movlw   flash_pointer_mask
+        movlw   flash_pointer_mask 
         andwf   TBLPTRL, W
         cpfseq  ibase_lo
         bra     pcfetch0
@@ -1448,7 +1451,7 @@ ICFETCH1:                       ; Called directly by N=
         lfsr    Tptr, flash_buf
         addwf   Tp, F
         tblrd*+                 ; To satisfy optimisation in N=
-        bra     CFETCH2
+        goto    CFETCH2
 
 ; E!      x a-addr --    store cell in data EEPROM
 ESTORE:
@@ -1643,15 +1646,11 @@ L_PAUSE
 PAUSE:
         clrwdt
 #ifdef USB_CDC
-        banksel ep2istat
-        btfss   FLAGS2, f32secs
-        bra     PAUSE_USB_RUN
-        btfsc   usb_device_state, 3, BANKED
-        bra     PAUSE_USB_RUN
-        tstfsz  UCON
-        rcall   USB_OFF
+        movf    upcurr, W
+        sublw   low(u0)        ; check usb only in operator task
+        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
+        btfss   UCON, USBEN
         bra     PAUSE_USB_CDC_END
-PAUSE_USB_RUN:
         call    USBDriverService
         movf    ep2icount, W
         bz      PAUSE_USB_CDC_END
@@ -1676,12 +1675,6 @@ PAUSE_USB_CDC_END:
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT
 #endif
 #endif
-#ifndef K42
-        bsf     OSCCON, IDLEN   ; Only IDLE mode supported
-#else
-        banksel CPUDOZE
-        bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
-#endif  
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bcf     T0CON, TMR0ON   ; TMR0 Restart in interrupt routine
@@ -1809,7 +1802,7 @@ TX0:
         btfsc   ep2istat, 7, BANKED
         bra     TX0
         movf    ms_count, W
-        addlw   2
+        addlw   2+TICK_TIME
         movwf   ep2itmo
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W
@@ -1936,8 +1929,7 @@ MCLR_:
         movf    Sminus, W
         movwf   Tp
         movf    Sminus, W
-        comf    Srw, F
-        movf    Sminus, W
+        comf    Sminus, W
         andwf   Trw, F
         return
 
@@ -2150,7 +2142,7 @@ BR3_DOES:
         rcall   DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      h'ff'
-        rcall   AND
+        call    AND
         rcall   RFROM
         rcall   OR_A
         rcall   ICOMMA
@@ -2270,7 +2262,7 @@ USB_ON_RET:
 ;*******************************************************
         dw      L_USB_ON
 L_USB_OFF:
-        db      NFA|4,"usb-"
+        db      NFA|5,"usb-?"
 USB_OFF:
         bsf     UCON, SUSPND
         clrf    UCON
@@ -2392,15 +2384,23 @@ WARM_ZERO_1:
 #ifdef PIE10
         clrf    PIE10, BANKED
 #endif
+        banksel TOSU   ; SFR bank(16)
 #ifndef K42
 #if UART == 1 ; ----------------------------------------------
+#ifdef BRG16
+        bsf     BAUDCON, BRG16
+        movlw   high(spbrgvalx4)
+        movwf   SPBRGH
+        movlw   low(spbrgvalx4)
+#else
         movlw   spbrgval
+#endif
         movwf   SPBRG
 ; TX enable
         movlw   b'00100100'
         movwf   TXSTA
 #ifdef USB_CDC
-        movlw   b'00000000'     ; Reset the UART since
+        movlw   b'00000000'  ; Reset the UART since
         movwf   RCSTA        ; USB warm start does not reset the chip
 #endif
 ; RX enable
@@ -2418,7 +2418,12 @@ WARM_ZERO_1:
 #endif
 #endif
 #else  ; UART == 2 ---------------------------------------
+#ifdef BRG16
+        bsf     BAUDCON2, BRG16
+        movlw   spbrgvalx4
+#else
         movlw   spbrgval
+#endif
         movwf   SPBRG2, BANKED
 ; TX enable
         movlw   b'00100100'
@@ -2428,9 +2433,10 @@ WARM_ZERO_1:
         movwf   RCSTA2, BANKED
         bsf     PIE3, RC2IE
 
-        bcf     ANCON2NSEL18, BANKED   ; Enable digital RG2 for RX2
+        bcf     ANCON2, ANSEL18, BANKED ; Enable digital RG2 for RX2 (18F87K22 family)
+                                        ; Other values may be needed depending on chip
 #endif
-#else  ; K42 83
+#else  ; K42 K83
 #if UART == 1 ; ----------------------------------------------
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
@@ -2439,7 +2445,7 @@ WARM_ZERO_1:
         bcf     TX_TRIS, TX_BIT
         bsf     TX_LAT, TX_BIT
 ; Unlock the PPS
-        bcf     INTCON0, GIE ; disable interupts
+        banksel PPSLOCK         ; required sequence
         movlw   h'55'
         movwf   PPSLOCK, BANKED
         movlw   h'AA'
@@ -2452,7 +2458,7 @@ WARM_ZERO_1:
         movlw   b'00000000'
         movwf   U1CTSPPS, BANKED
         
-        movlw   b'00010011'
+        movlw   b'00010011'     ; TX1
         movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
@@ -2463,18 +2469,17 @@ WARM_ZERO_1:
         bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
 
 ; Set the Baud Rate
-        movlw   spbrgval        ; ((clock/baud)/d'16') - 1
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
         banksel U1BRGL
         movwf   U1BRGL, BANKED
-        movlw   high(spbrgval)
+        movlw   high(spbrgvalx4)
         movwf   U1BRGH, BANKED
 
 ; TX enable
-        banksel U1CON0
-        movlw   b'00110000'     ; NO HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   b'10110000'     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U1CON0, BANKED
-        banksel U1CON1
+        bsf     U1CON2, RUNOVF, BANKED
         bsf     U1CON1, ON_U1CON1, BANKED   ; turn on TX
 
 ; RX enable
@@ -2490,7 +2495,6 @@ WARM_ZERO_1:
         banksel TX_ANSEL
         bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTx so TX can function
 ; Unlock the PPS
-        bcf     INTCON0, GIE ; disable interupts
         banksel PPSLOCK         ; required sequence
         movlw   h'55'
         movwf   PPSLOCK, BANKED
@@ -2498,16 +2502,15 @@ WARM_ZERO_1:
         movwf   PPSLOCK, BANKED
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
-        banksel U2RXPPS         ; configure the RX pin to XY
         movlw   RX_PPS
-        movwf   U2RXPPS, BANKED
+        movwf   U2RXPPS, BANKED        ; configure the RX pin to XY
         
-        banksel U2CTSPPS        ; clear so always enabled
+        banksel U2CTSPPS
         movlw   b'00000000'
-        movwf   U2CTSPPS, BANKED
+        movwf   U2CTSPPS, BANKED        ; clear so always disabled
         
         banksel TX_PPS          ; configure TX pin to XY
-        movlw   b'00010110'
+        movlw   b'00010110'     ; TX2
         movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
@@ -2519,37 +2522,52 @@ WARM_ZERO_1:
         bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
 
 ; Set the Baud Rate
-        movlw   spbrgval        ; ((clock/baud)/d'16') - 1
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
         banksel U2BRGL
         movwf   U2BRGL, BANKED
-        movlw   high(spbrgval)
+        movlw   high(spbrgvalx4)
         movwf   U2BRGH, BANKED
 
 ; TX enable
-        banksel U2CON0
-        movlw   b'00110000'     ; NO HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   b'10110000'     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U2CON0, BANKED
-        banksel U2CON1
-        bsf U2CON1, ON_U2CON1, BANKED ; turn on TX
+        bsf     U2CON2, RUNOVF, BANKED
+        bsf     U2CON1, ON_U2CON1, BANKED ; turn on TX
 
 ; RX enable
+#ifdef K83
+        banksel PIE7
+        bsf     PIE7, U2RXIE, BANKED    ; enable RX interupt
+#else ; K42
         banksel PIE6
         bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
+#endif
         banksel RX_TRIS
         bsf     RX_TRIS, RX_BIT, BANKED ; configure C7 as an input
-
 #endif
 #endif
-
+#ifdef IDLEN
+#if IDLE_MODE == ENABLE
+#ifndef K42
+        bsf     OSCCON, IDLEN   ; Only IDLE mode supported
+#else
+        banksel CPUDOZE
+        bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
+#endif  
+#endif
+#endif
 #if CPU_LOAD == ENABLE
 #ifndef K42
-        movlw   h'08'           ; TMR0 used for CPU_LOAD
-        movwf   T0CON           ; prescale = 1
+        movlw   h'08'               ; TMR0 used for CPU_LOAD
+        movwf   T0CON               ; prescale = 1
+        bsf     INTCON, TMR0IE
 #else
-        bsf     T0CON0, T0MD16   ; 16 bit timer
+        bsf     T0CON0, T0MD16      ; 16 bit timer
         movlw   h'40'               ; TMR0 used for CPU_LOAD
         movwf   T0CON1              ; Instruction clock 1:1 
+        banksel PIE3 
+        bsf     PIE3, TMR0IE, BANKED
 #endif
 #endif
         movlw   low(tmr1ms_val)
@@ -2727,7 +2745,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 15.09.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 19.10.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2964,32 +2982,6 @@ SPSTORE:
         return
 
 
-;   RPEMPTY     -- EMPTY THE RETURN STACK       
-;   empty the return stack and jump to the caller
-;       dw      link
-;link   set     $
-        db      NFA|3,"rp0"
-RPEMPTY:
-        ;lfsr    Rptr, urbuf
-        movlw   low(urbuf)
-        movwf   Rp
-        movlw   high(urbuf)
-        movwf   Rbank
-
-        movf    TOSH, W
-        movwf   PCLATH    ; Save the return address
-        movf    TOSL, W
-        clrf    STKPTR
-        movwf   PCL
-
-; MEMORY OPERATIONS =============================
-ISTORERR:
-ISTORERR2:
-        call    DOTS
-        rcall   XSQUOTE
-        db      3,"AD?"
-        rcall   TYPE
-        bra     STARTQ2        ; goto    ABORT
 
 ; !     x addrl addru  --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
@@ -3004,6 +2996,7 @@ L_XSTORE:
         clrf    iaddr_up
         return
 
+; MEMORY OPERATIONS =============================
 ; !     x addr --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
         dw      L_XSTORE
@@ -3067,7 +3060,7 @@ FETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     EFETCH
-        goto    IFETCH
+        bra    IFETCH
 FETCH1:
         movf    Sminus, W
         movwf   Tbank
@@ -3093,7 +3086,7 @@ CFETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     ECFETCH
-        goto    ICFETCH
+        bra     ICFETCH
 CFETCH1:
         movf    Sminus, W   
         movwf   Tbank
@@ -3104,6 +3097,32 @@ CFETCH2:
         movwf   plusS
         clrf    plusS
         return
+
+;   RPEMPTY     -- EMPTY THE RETURN STACK       
+;   empty the return stack and jump to the caller
+;       dw      link
+;link   set     $
+        db      NFA|3,"rp0"
+RPEMPTY:
+        ;lfsr    Rptr, urbuf
+        movlw   low(urbuf)
+        movwf   Rp
+        movlw   high(urbuf)
+        movwf   Rbank
+
+        movf    TOSH, W
+        movwf   PCLATH    ; Save the return address
+        movf    TOSL, W
+        clrf    STKPTR
+        movwf   PCL
+
+ISTORERR:
+ISTORERR2:
+        call    DOTS
+        rcall   XSQUOTE
+        db      3,"AD?"
+        rcall   TYPE
+        bra     STARTQ2        ; goto    ABORT
 
 ;   x@       addrl addru -- x    fetch cell from flash
         dw      L_CFETCH
@@ -3655,7 +3674,6 @@ RFROM:
 L_RFETCH:
         db      NFA|2,"r@"
 RFETCH:
-
         movf    Rminus, W
         movwf   plusS
         movf    Rplus,  W
@@ -6279,7 +6297,7 @@ DPLUS:
         addwfc  Srw, F
         
         return
-        
+
 ; D-    d1 d2 -- d3        double minus
         dw      L_DPLUS
 L_DMINUS:

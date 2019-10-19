@@ -4,18 +4,17 @@ LIBPATH .
 
 // No bootloader  Application start at 0x0000
 CODEPAGE   NAME=coder      START=0x0000         END=0x00007
-CODEPAGE   NAME=codeih     START=0x0008         END=0x0000B
-CODEPAGE   NAME=codef      START=0x000C         END=0x025D7
-CODEPAGE   NAME=code1      START=0x25D8         END=0x025FF        PROTECTED
-CODEPAGE   NAME=code2      START=0x2600         END=0x07FFF        PROTECTED
+CODEPAGE   NAME=codeih     START=0x0008         END=0x026D7
+CODEPAGE   NAME=code1      START=0x26D8         END=0x026FF        PROTECTED
+CODEPAGE   NAME=code2      START=0x2700         END=0x07FFF        PROTECTED
 
 CODEPAGE   NAME=idlocs     START=0x200000       END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000       END=0x30000D       PROTECTED
 CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
 CODEPAGE   NAME=eedata     START=0xF00000       END=0xF000FF       PROTECTED
 
-ACCESSBANK NAME=acs_ram    START=0x10           END=0x3B           PROTECTED
-DATABANK   NAME=ram_dp     START=0x3C           END=0x3FF          PROTECTED
+ACCESSBANK NAME=acs_ram    START=0x10           END=0x3F           PROTECTED
+DATABANK   NAME=ram_dp     START=0x40           END=0x3FF          PROTECTED
 DATABANK   NAME=usbep      START=0x400          END=0x417          PROTECTED
 DATABANK   NAME=usbvars    START=0x418          END=0x437          PROTECTED
 DATABANK   NAME=userarea   START=0x438          END=0x5FF          PROTECTED
@@ -35,6 +34,5 @@ SECTION NAME=HERE         RAM=ram_dp
 SECTION NAME=IRQ_STACK    RAM=irqstack
 SECTION NAME=FF_RESET     ROM=coder
 SECTION NAME=FF_INT_HI    ROM=codeih
-SECTION NAME=FF_CODE      ROM=codef
 SECTION NAME=FF_END_CODE  ROM=code1
 SECTION NAME=FF_DP        ROM=code2
