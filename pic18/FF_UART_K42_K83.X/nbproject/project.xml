@@ -3,8 +3,8 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>FF_UART</name>
-            <creation-uuid>8199bf80-85a7-4585-9d64-1f5b17280ebf</creation-uuid>
+            <name>FF_UART_K42_K83</name>
+            <creation-uuid>4377e442-00e5-4129-a192-130b894d7a98</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions/>
             <cpp-extensions/>

@@ -10,3 +10,13 @@
 *.o
 *.out
 
+/pic18/FF_PIC18_K42.X/build/
+/pic18/FF_PIC18_K42.X/dist/
+/pic18/FF_USB_14K50.X/build/
+/pic18/FF_USB_14K50.X/dist/
+/k42-test/k42-test.X/dist/
+/k42-test/k42-test.X/build/
+/FF_UART_K42.X/build/
+/FF_UART_K42.X/dist/
+/pic18/FF_UART_K42_K83.X/build/
+/pic18/FF_UART_K42_K83.X/dist/

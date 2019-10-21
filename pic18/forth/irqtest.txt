@@ -33,5 +33,5 @@ irqtest+  \ Start the interrupt routine
     #40000 um/mod #5000 = abort" err2" drop
     key?
   until
-  key .
+  key drop
 ;

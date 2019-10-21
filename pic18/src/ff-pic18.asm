@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          27.01.2019                                        *
+;    Date:          19.10.2019                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -44,11 +44,6 @@
 #define OPERATOR_RXQ RX1Q
 #define OPERATOR_RX_IS_UART
 #endif
-
-;#undefine IDLE_MODE      ; Not supported for USB
-;#define IDLE_MODE DISABLE
-#undefine CPU_LOAD
-#define CPU_LOAD DISABLE
         extern USBDriverService
         extern cdc_data_tx
         extern cdc_data_rx
@@ -69,15 +64,6 @@
 #define OPERATOR_RX_IS_UART
 #endif
 
-RX_FULL_BIT macro buf_size
-            local bitno = 0
-            local size = buf_size
-            while size > 1
-bitno += 1
-size /= 2
-            endw
-            btfss   RXcnt, #v(bitno)
-            endm
 #ifndef K42
 #define movff_ movff
 #else
@@ -92,13 +78,8 @@ size /= 2
 #define EEPGD 7
 #define CFGS 6
 #define EECON2 NVMCON2
-#undefine IDLE_MODE
-#define IDLE_MODE DISABLE
-#undefine CPU_LOAD
-#define CPU_LOAD DISABLE
-#undefine CPU_LOAD_LED
-#define CPU_LOAD_LED DISABLE
 #endif
+
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
 ;   FSR2    Rp  - R stack pointer
@@ -210,10 +191,9 @@ irq_v    res 2       ; Interrupt vector
 areg     res 1       ; A register
 aregh    res 1
 tickval  res 2       ; timer value for system tick
-ticktime res 1       ; tick time in milliseconds
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-load_acc res 3       ;
+load_acc res 1       ;
 load_res res 3       ; 256 ms load result
 #endif
 #endif
@@ -340,24 +320,28 @@ FF_RESET code 0x0000
 ;; Interrupt routines
 ;; 1 millisecond tick counter
 FF_INT_HI code 0x0008
-        goto FFCODE
-
-FF_INT_LO code 0x0018
-FF_INT_LOW:
-        goto FF_INT_LOW
-FF_CODE code
 FFCODE:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bsf     T0CON, TMR0ON
+        btfss   INTCON, TMR0IF
+        bra     irq_ms
+        bcf     INTCON, TMR0IF
 #else 
         bsf     T0CON0, T0EN
-#endif 
+        banksel PIR3
+        btfss   PIR3, TMR0IF, BANKED
+        bra     irq_ms
+        bcf     PIR3,TMR0IF
+#endif
+        incf    load_acc 
+        retfie  1
 #endif
 #endif
 #endif
+
 irq_ms:
 #ifndef K42
 #if MS_TMR == 1  ;****************************
@@ -368,11 +352,6 @@ irq_ms:
         movf    tickval+1, W ;   high(tmr1ms_val)
         subwfb  TMR1H, F
         bcf     PIR1, TMR1IF
-#if 0
-        bcf     ANSELH, ANS9
-        bcf     TRISC, 7
-        btg     PORTC, 7
-#endif
 #endif
 #if MS_TMR == 2 ;******************************
         btfss   PIR1, TMR2IF
@@ -409,18 +388,15 @@ irq_ms:
         bcf     PIR5, TMR6IF
 #endif
 #else ; K42 K83
-#if 0 ; INTERRUPTS DO NOT WORK WELL
 #if MS_TMR == 1  ;****************************
         banksel PIR4
         btfss   PIR4, TMR1IF, BANKED
         bra     irq_ms_end
         bcf     PIR4, TMR1IF, BANKED
-        bcf     T1CON, TMR1ON
         movlw   low(tmr1ms_val)
         subwf   TMR1L, F
         movlw   high(tmr1ms_val)
         subwfb  TMR1H, F
-        bsf     T1CON, TMR1ON
 #endif
 #if MS_TMR == 2 ;******************************
         banksel PIR4
@@ -432,13 +408,10 @@ irq_ms:
         banksel PIR6
         btfss   PIR6, TMR3IF, BANKED
         bra     irq_ms_end
-        bcf     T3CON, TMR3ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR3L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR3H, F, A
-        bsf     T3CON, TMR3ON, A
-        banksel PIR6
         bcf     PIR6, TMR3IF, BANKED
 #endif
 #if MS_TMR == 4 ;******************************
@@ -451,13 +424,10 @@ irq_ms:
         banksel PIR8
         btfss   PIR8, TMR5IF, BANKED
         bra     irq_ms_end
-        bcf     T5CON, TMR5ON, A
         movlw   low(tmr1ms_val)
         subwf   TMR5L, F, A
         movlw   high(tmr1ms_val)
         subwfb  TMR5H, F, A
-        bsf     T5CON, TMR5ON, A
-        banksel PIR8
         bcf     PIR8, TMR5IF, BANKED
 #endif
 #if MS_TMR == 6 ;******************************
@@ -467,48 +437,28 @@ irq_ms:
         bcf     PIR9, TMR6IF, BANKED        
 #endif
 #endif
-#endif
-
-#ifndef K42
-#ifdef USB_CDC
-	bcf	STATUS, C
-#endif
-        movf    ticktime, W
+        movlw   TICK_TIME
         addwf   ms_count, F
         movlw   0
         addwfc  ms_count+1, F
-        ;infsnz  ms_count, F
-        ;incf    ms_count+1, F
-#ifdef USB_CDC
-        btfsc   STATUS, C
-        bsf     FLAGS2, f32secs
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
+        movf    ms_count, W
+        bnz     irq_load_end
         movf    TMR0L, W
-        addwf   load_acc, F
+        movwf   load_res
         movf    TMR0H, W
         clrf    TMR0H
         clrf    TMR0L
-        addwfc  load_acc+1, F
-        movlw   0
-        addwfc  load_acc+2, F
-        movf    ms_count, W
-        bnz     irq_ms_end
-        movf    load_acc, W
-        movwf   load_res
-        movf    load_acc+1, W
         movwf   load_res+1
-        movf    load_acc+2, W
+        movf    load_acc, W
         movwf   load_res+2
         clrf    load_acc
-        clrf    load_acc+1
-        clrf    load_acc+2
 #endif
 #endif
 #endif
-#endif
+irq_load_end:
 irq_ms_end:
 ;;; *************************************************        
 ;;; Save Tp and Tbank and PCLATH
@@ -517,24 +467,25 @@ irq_ms_end:
         movwf   ihtp
         movf    Tbank, W
         movwf   ihtbank
+#endif
 irq_user:
         movf    irq_v+1, W
         bz      irq_user_skip
+#ifndef K42
         movff   PCLATH, ihpclath
+#endif
         movwf   PCLATH
         movf    irq_v, W
         movwf   PCL              ; Now the interrupt routine is executing
 irq_user_end:                    ; The user interrupt must jump to here.
+#ifndef K42
         movff   ihpclath, PCLATH ; Restore PCLATH
-irq_user_skip:
 #endif
+irq_user_skip:
 ;;; ************************************************
 ;;; UART RX interrupt routine
 ;;; Feeds the input buffer with characters
 ;;; from the serial line
-;;; Serial interrupt only is active for K42 K83
-;;; Normally it works for compiling forth code
-;;; Polling RX1 may be needed if there are some problems
 irq_async_rx:
 #if UART == 1
 #ifndef K42
@@ -547,8 +498,13 @@ irq_async_rx:
 #ifndef K42
         btfss   PIR3, RC2IF
 #else
+#ifdef K83
+        banksel PIR7
+        btfss   PIR7, U2RXIF, BANKED
+#else
         banksel PIR6
         btfss   PIR6, U2RXIF, BANKED
+#endif
 #endif
 #endif
         bra     irq_async_rx_end
@@ -573,15 +529,27 @@ irq_async_rx_2:
         movf    RXhead, W
 #if UART == 1
 #ifndef K42
-        movff_   RCREG, TWrw
+        movff   RCREG, TWrw
+        btfsc   RCSTA, OERR
+        bcf     RCSTA, CREN ; Restart RX on case of RX overrun
+        bsf     RCSTA, CREN
+
 #else
-        movff_   U1RXB, TWrw
+        movffl  U1RXB, TWrw
+        banksel U1ERRIR
+        bcf     U1ERRIR, RXFOIF, BANKED
 #endif
 #else
 #ifndef K42
-        movff_   RCREG2, TWrw
+        movff   RCREG2, TWrw
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, BANKED
+        bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, BANKED
 #else
-        movff_   U2RXB,  TWrw
+        movffl  U2RXB,  TWrw
+        banksel U2ERRIR
+        bcf     U2ERRIR, RXFOIF, BANKED
 #endif
 #endif
         movf    TWrw, W
@@ -593,20 +561,14 @@ irq_async_rx_2:
 irq_async_rx_3:
 #if FC_TYPE_SW == ENABLE
         addlw   0x04                    ; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
-        btfss    FLAGS2, fFC         ; receive xoff if FC is off
+        btfss   FLAGS2, fFC             ; receive xoff if FC is off
         bz      irq_async_rx_end        ; Do not receive  xoff
 #endif
-        incf    RXcnt, F
-        RX_FULL_BIT RX_BUF_SIZE         ;  Buffer full ?
-        bra     irq_async_rx_4
-        movlw   '|'                     ;  Buffer overflow
-        rcall   asmemit
-        decf    RXcnt, F
-        decf    RXhead, F
 irq_async_rx_4:
         incf    RXhead, F
         movlw   RXbufmask               ; Wrap the RXhead pointer. 
         andwf   RXhead, F
+        incf    RXcnt, F
 irq_async_rx_end:
 ;;; *****************************************************************
 ;; Restore Tp and Tbank
@@ -652,7 +614,7 @@ STAT:   dw      DOTSTATUS
 L_EXIT:
         db      NFA|4,"exit"
 EXIT:
-        pop
+        decf    STKPTR, F, A     ; pop does not work on K42 and K83
         return
 
 ; idle
@@ -775,25 +737,28 @@ L_IR:
 L_TX1_:
         db      NFA|3,"tx1"
 TX1_:
-        rcall   PAUSE
 #if UART == 1
 #ifndef U1ERRIR
-        btfss   PIR1, TXIF
+        btfsc   PIR1, TXIF
 #else
-
-        banksel U1ERRIR
-        btfss   U1ERRIR, U1TXMTIF, BANKED
+        banksel PIR3
+        btfsc   PIR3, U1TXIF, BANKED
 #endif
 #else
 #ifndef U2ERRIR
-        btfss   PIR3, TX2IF
+        btfsc   PIR3, TX2IF
 #else
-        banksel U2ERRIR
-        btfss   U2ERRIR, U2TXMTIF, BANKED
-        bra     TX1_
-        btfss   U2ERRIR, U2TXMTIF, BANKED
+#ifdef K83
+        banksel PIR7
+        btfsc   PIR7, U2TXIF, BANKED
+#else
+        banksel PIR6
+        btfsc   PIR6, U2TXIF, BANKED
 #endif
 #endif
+#endif
+        bra     TX1_SEND
+        rcall   PAUSE
         bra     TX1_
 TX1_SEND:
         movf    Sminus, W
@@ -817,7 +782,7 @@ TX1_SEND:
         movwf   U2TXB, BANKED
 #endif 
 #endif
-        return
+        goto    PAUSE
 ;***************************************************
 ; RX1    -- c    get character from the serial line
         dw      L_TX1_
@@ -833,15 +798,10 @@ RX1_:
         movf    RXtail, W
         movff_   TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS
-
-        bcf     INTCON, GIE
-
         incf    RXtail, F
         movlw   RXbufmask
         andwf   RXtail, F
         decf    RXcnt, F
-
-        bsf     INTCON, GIE
         return
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -873,7 +833,8 @@ RX1Q:
         bsf     U2ERRIR, RXFOIF, BANKED
 #endif 
 #endif
-        movf    RXcnt, W
+        movf    RXhead, W
+        subwf   RXtail, W
         movwf   plusS
         bnz     RX1Q2
 #if FC_TYPE_SW == ENABLE
@@ -883,6 +844,7 @@ RX1Q:
 #ifdef  HW_FC_CTS_PORT
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
+        clrf    RXcnt
 RX1Q2:
         clrf    plusS
         return
@@ -895,7 +857,7 @@ RX1Q2:
 umstar0:
         rcall   TOTBLP
         movf    Sminus, W
-        movwf   h'b';PCLATH
+        movwf   PCLATH
         movf    Sminus, W
         movwf   TABLAT
         movf    TBLPTRL, W
@@ -908,14 +870,14 @@ umstar0:
         movwf   plusS
 
         movf    TBLPTRH, W
-        mulwf   h'b';PCLATH       ; ARG1H * ARG2H -> PRODH:PRODL
+        mulwf   PCLATH       ; ARG1H * ARG2H -> PRODH:PRODL
         movf    PRODL, W
         movwf   TOSL
         movf    PRODH, W
         movwf   TOSH
 
         movf    TBLPTRL, W
-        mulwf   h'b';PCLATH       ; ARG1L * ARG2H -> PRODH:PRODL
+        mulwf   PCLATH       ; ARG1L * ARG2H -> PRODH:PRODL
         movf    PRODL, W
         addwf   Srw, F
         movf    PRODH, W
@@ -936,7 +898,7 @@ umstar0:
         movwf   plusS
         movf    TOSH, W
         movwf   plusS
-        pop
+        decf    STKPTR, F, A
         return
 
 ;***********************************************************
@@ -946,7 +908,7 @@ umstar0:
 #define DIVIDEND_0      PRODL
 #define DIVIDEND_1      PRODH
 #define DIVIDEND_2      TABLAT
-#define DIVIDEND_3      h'b';PCLATH
+#define DIVIDEND_3      PCLATH
 #define DIVISOR_0       TBLPTRL
 #define DIVISOR_1       TBLPTRH
 #define DCNT            Tbank
@@ -1070,17 +1032,11 @@ write_buffer_to_imem:
 
 wbtil:
         bcf     FLAGS1, istream
-        movlw   write_delay   ;  This loop takes about 20 milliseconds
-        movwf   Tbank
-wbtil1:
-        clrf    Tp
-wbtil2: 
-        btfsc   FLAGS1, istream ; Check for UART receive activity.
+        call    LIT
+        dw      (d'19200'/baud)+d'2'
+        call    MS
+        btfsc   FLAGS1, istream
         bra     wbtil
-        decfsz  Tp, F
-        bra     wbtil2             ; 1250 cycles = 78 us @ 64 MHz XTAL 
-        decfsz  Tbank, F
-        bra     wbtil1             ; 20 ms @ 64 MHz XTAL @ write_delay = 255
 #endif
         bcf     INTCON, GIE  ; Disable Interrupts
 
@@ -1182,8 +1138,13 @@ asmemit:
         banksel TXREG2
         movwf   TXREG2, BANKED
 #else 
+#ifdef K83
+        banksel PIR7
+        btfss   PIR7, U2TXIF, BANKED
+#else
         banksel PIR6
         btfss   PIR6, U2TXIF, BANKED
+#endif
         bra     asmemit
         banksel U2TXB
         movwf   U2TXB, BANKED
@@ -1320,7 +1281,6 @@ SCAN4:
 
 ; ei  ( -- )    Enable interrupts
         dw      L_SCAN
-#ifndef K42
 L_EI:
         db      NFA|INLINE|2,"ei"
         bsf     INTCON, GIE
@@ -1356,7 +1316,6 @@ INT:
 
 ; LITERAL  x --           compile literal x as native code
         dw      L_INT
-#endif
 L_LITERAL:
         db      NFA|IMMED|7,"literal"
 LITERAL:
@@ -1390,7 +1349,7 @@ LITER3:
 LITER4:
         rcall   ICOMMA
         movf    Sminus, W
-LITER5: 
+LITER5:
         return
 
 ;**************************************************
@@ -1473,7 +1432,7 @@ IFETCH:
         andlw   flash_block_mask;0x3f
         lfsr    Tptr, flash_buf
         addwf   Tp, F
-        bra     FETCH2
+        goto    FETCH2
 
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
@@ -1482,7 +1441,7 @@ ICFETCH1:                       ; Called directly by N=
         movf    TBLPTRH, W
         cpfseq  ibase_hi
         bra     pcfetch0
-        movlw   flash_pointer_mask
+        movlw   flash_pointer_mask 
         andwf   TBLPTRL, W
         cpfseq  ibase_lo
         bra     pcfetch0
@@ -1492,7 +1451,7 @@ ICFETCH1:                       ; Called directly by N=
         lfsr    Tptr, flash_buf
         addwf   Tp, F
         tblrd*+                 ; To satisfy optimisation in N=
-        bra     CFETCH2
+        goto    CFETCH2
 
 ; E!      x a-addr --    store cell in data EEPROM
 ESTORE:
@@ -1687,18 +1646,11 @@ L_PAUSE
 PAUSE:
         clrwdt
 #ifdef USB_CDC
-        banksel ep2istat
-        btfss   FLAGS2, f32secs
-        bra     PAUSE_USB_RUN
-        btfsc   usb_device_state, 3, BANKED
-        bra     PAUSE_USB_RUN
-        tstfsz  UCON
-        rcall   USB_OFF
-;        movlw   0x92
-;        movwf   OSCCON
-;        bcf     OSCCON2, PRI_SD
+        movf    upcurr, W
+        sublw   low(u0)        ; check usb only in operator task
+        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
+        btfss   UCON, USBEN
         bra     PAUSE_USB_CDC_END
-PAUSE_USB_RUN:
         call    USBDriverService
         movf    ep2icount, W
         bz      PAUSE_USB_CDC_END
@@ -1723,12 +1675,6 @@ PAUSE_USB_CDC_END:
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT
 #endif
 #endif
-#ifndef K42
-        bsf     OSCCON, IDLEN   ; Only IDLE mode supported
-#else
-        banksel CPUDOZE
-        bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
-#endif  
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bcf     T0CON, TMR0ON   ; TMR0 Restart in interrupt routine
@@ -1747,73 +1693,6 @@ PAUSE_IDLE1:
 #endif
 #endif
 #endif
-
-#ifdef K42    ; K42 K83
-#if MS_TMR == 1      ;****************************
-        banksel PIR4
-        btfss   PIR4, TMR1IF, BANKED
-        bra     poll_ms_end
-        bcf     PIR4, TMR1IF, BANKED
-        bcf     T1CON, TMR1ON
-        movlw   low(tmr1ms_val)
-        subwf   TMR1L, F
-        movlw   high(tmr1ms_val)
-        subwfb  TMR1H, F
-        bsf     T1CON, TMR1ON
-#endif
-#if MS_TMR == 2 ;******************************
-        banksel PIR4
-        btfss   PIR4, TMR2IF, BANKED
-        bra     poll_ms_end
-        bcf     PIR4, TMR2IF, BANKED
-#endif
-#if MS_TMR == 3 ;******************************
-        banksel PIR6
-        btfss   PIR6, TMR3IF, BANKED
-        bra     poll_ms_end
-        bcf     T3CON, TMR3ON, A
-        movlw   low(tmr1ms_val)
-        subwf   TMR3L, F, A
-        movlw   high(tmr1ms_val)
-        subwfb  TMR3H, F, A
-        bsf     T3CON, TMR3ON, A
-        banksel PIR6
-        bcf     PIR6, TMR3IF, BANKED
-#endif
-#if MS_TMR == 4 ;******************************
-        banksel PIR7
-        btfss   PIR7, TMR4IF, BANKED
-        bra     poll_ms_end
-        bcf     PIR7, TMR4IF, BANKED        
-#endif
-#if MS_TMR == 5 ;******************************
-        banksel PIR8
-        btfss   PIR8, TMR5IF, BANKED
-        bra     poll_ms_end
-        bcf     T5CON, TMR5ON, A
-        movlw   low(tmr1ms_val)
-        subwf   TMR5L, F, A
-        movlw   high(tmr1ms_val)
-        subwfb  TMR5H, F, A
-        bsf     T5CON, TMR5ON, A
-        banksel PIR8
-        bcf     PIR8, TMR5IF, BANKED
-#endif
-#if MS_TMR == 6 ;******************************
-        banksel PIR9
-        btfss   PIR9, TMR6IF, BANKED
-        bra     poll_ms_end
-        bcf     PIR9, TMR6IF, BANKED        
-#endif
-        movf    ticktime, W
-        addwf   ms_count, F
-        movlw   0
-        addwfc  ms_count+1, F
-
-        ;infsnz  ms_count, F
-        ;incf    ms_count+1, F
-poll_ms_end:
-#endif
 PAUSE000:
         ; Set user pointer in Tp, Tbank (FSR1
         movf    upcurr, W
@@ -1821,7 +1700,7 @@ PAUSE000:
         movf    (upcurr+1), W
         movwf   Tbank
 
-;; Switch tasks only if background tasks are running
+;; Switch tasks only if some background tasks are running
         movf    Tminus, W
         movf    Tplus, W
         bz      PAUSE_RET
@@ -1874,7 +1753,7 @@ pause1:
         movf    (upcurr+1), W
         movwf   Tbank
 
-        ; Set the return stack restore pointer  in Ap
+        ; Set the return stack restore pointer  in Rp
         movf    Tplus, W
         movwf   Rp
         movf    Tminus, W
@@ -1923,7 +1802,7 @@ TX0:
         btfsc   ep2istat, 7, BANKED
         bra     TX0
         movf    ms_count, W
-        addlw   2
+        addlw   2+TICK_TIME
         movwf   ep2itmo
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W
@@ -2050,8 +1929,7 @@ MCLR_:
         movf    Sminus, W
         movwf   Tp
         movf    Sminus, W
-        comf    Srw, F
-        movf    Sminus, W
+        comf    Sminus, W
         andwf   Trw, F
         return
 
@@ -2067,7 +1945,7 @@ RQ_DIVZERO:
 RQ_STKFUL:
         btfss   0, 7
         bra     RQ_STKUNF
-        rcall   XSQUOTE
+        call   XSQUOTE
         db      d'1',"O"
         rcall   TYPE
 RQ_STKUNF:
@@ -2384,7 +2262,7 @@ USB_ON_RET:
 ;*******************************************************
         dw      L_USB_ON
 L_USB_OFF:
-        db      NFA|4,"usb-"
+        db      NFA|5,"usb-?"
 USB_OFF:
         bsf     UCON, SUSPND
         clrf    UCON
@@ -2421,9 +2299,9 @@ main:
 #endif
                                 ; Clear ram
 WARM:
+#ifndef K42
         movf    STKPTR, W
         movwf   0               ; Save return stack reset reasons
-#ifndef K42
         movf    RCON, W
         movwf   1               ; Save reset reasons
         movf    fstatus, W
@@ -2433,14 +2311,11 @@ WARM:
 #else
         movf    PCON0, W
         movwf   0               ; Save reset reasons
-        movf    PCON1, W
         movwf   1               ; Save reset reasons
         movf    fstatus, W
         movwf   2
         movlw   h'3f'           ; Clearing the flags in PCON0
         movwf   PCON0
-        movlw   h'2'           ; Clearing the flags in PCON0
-        movwf   PCON1
 #endif
         clrf    STKPTR       ; Clear return stack
 
@@ -2509,16 +2384,23 @@ WARM_ZERO_1:
 #ifdef PIE10
         clrf    PIE10, BANKED
 #endif
-        banksel Sp  ; Select register bank ($0f00)
+        banksel TOSU   ; SFR bank(16)
 #ifndef K42
 #if UART == 1 ; ----------------------------------------------
+#ifdef BRG16
+        bsf     BAUDCON, BRG16
+        movlw   high(spbrgvalx4)
+        movwf   SPBRGH
+        movlw   low(spbrgvalx4)
+#else
         movlw   spbrgval
+#endif
         movwf   SPBRG
 ; TX enable
         movlw   b'00100100'
         movwf   TXSTA
 #ifdef USB_CDC
-        movlw   b'00000000'     ; Reset the UART since
+        movlw   b'00000000'  ; Reset the UART since
         movwf   RCSTA        ; USB warm start does not reset the chip
 #endif
 ; RX enable
@@ -2532,11 +2414,16 @@ WARM_ZERO_1:
 #endif
 #ifdef ANSELC
 #ifdef ANSC7
-        bcf     ANSELCNSC7, BANKED   ; Enable digital RC7 for RX
+        bcf     ANSELC, ANSC7, BANKED   ; Enable digital RC7 for RX
 #endif
 #endif
 #else  ; UART == 2 ---------------------------------------
+#ifdef BRG16
+        bsf     BAUDCON2, BRG16
+        movlw   spbrgvalx4
+#else
         movlw   spbrgval
+#endif
         movwf   SPBRG2, BANKED
 ; TX enable
         movlw   b'00100100'
@@ -2546,19 +2433,18 @@ WARM_ZERO_1:
         movwf   RCSTA2, BANKED
         bsf     PIE3, RC2IE
 
-        bcf     ANCON2NSEL18, BANKED   ; Enable digital RG2 for RX2
+        bcf     ANCON2, ANSEL18, BANKED ; Enable digital RG2 for RX2 (18F87K22 family)
+                                        ; Other values may be needed depending on chip
 #endif
-#else  ; K42 83
+#else  ; K42 K83
 #if UART == 1 ; ----------------------------------------------
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, BANKED    ; disable analogue on PORTx so RX can function
-        banksel TX_ANSEL
         bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTx so TX can function
         bcf     TX_TRIS, TX_BIT
         bsf     TX_LAT, TX_BIT
 ; Unlock the PPS
-        bcf     INTCON0, GIE ; disable interupts
         banksel PPSLOCK         ; required sequence
         movlw   h'55'
         movwf   PPSLOCK, BANKED
@@ -2566,20 +2452,16 @@ WARM_ZERO_1:
         movwf   PPSLOCK, BANKED
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
-        banksel U1RXPPS         ; configure the RX pin to XY
         movlw   RX_PPS 
         movwf   U1RXPPS, BANKED
         
-        banksel U1CTSPPS        ; clear so always enabled
         movlw   b'00000000'
         movwf   U1CTSPPS, BANKED
         
-        banksel TX_PPS          ; configure TX pin to XY
-        movlw   b'00010011'
+        movlw   b'00010011'     ; TX1
         movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
-        banksel PPSLOCK         ; required sequence
         movlw   h'55'
         movwf   PPSLOCK, BANKED
         movlw   h'AA'
@@ -2587,25 +2469,23 @@ WARM_ZERO_1:
         bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
 
 ; Set the Baud Rate
-        movlw   spbrgval        ; ((clock/baud)/d'16') - 1
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
         banksel U1BRGL
         movwf   U1BRGL, BANKED
-        movlw   high(spbrgval)
+        movlw   high(spbrgvalx4)
         movwf   U1BRGH, BANKED
 
 ; TX enable
-        banksel U1CON0
-        movlw   b'00110000'     ; NO HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   b'10110000'     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U1CON0, BANKED
-        banksel U1CON1
+        bsf     U1CON2, RUNOVF, BANKED
         bsf     U1CON1, ON_U1CON1, BANKED   ; turn on TX
 
 ; RX enable
         banksel PIE3
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
-        banksel RX_TRIS
-        bsf     RX_TRIS, RX_BIT, BANKED ; configure XY as an input
+        bsf     RX_TRIS, RX_BIT         ; configure XY as an input
 
 #else  ; UART == 2 ---------------------------------------
 
@@ -2615,7 +2495,6 @@ WARM_ZERO_1:
         banksel TX_ANSEL
         bcf     TX_ANSEL, TX_BIT, BANKED    ; disable analogue on PORTx so TX can function
 ; Unlock the PPS
-        bcf     INTCON0, GIE ; disable interupts
         banksel PPSLOCK         ; required sequence
         movlw   h'55'
         movwf   PPSLOCK, BANKED
@@ -2623,16 +2502,15 @@ WARM_ZERO_1:
         movwf   PPSLOCK, BANKED
         bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
 ; Set the pins
-        banksel U2RXPPS         ; configure the RX pin to XY
         movlw   RX_PPS
-        movwf   U2RXPPS, BANKED
+        movwf   U2RXPPS, BANKED        ; configure the RX pin to XY
         
-        banksel U2CTSPPS        ; clear so always enabled
+        banksel U2CTSPPS
         movlw   b'00000000'
-        movwf   U2CTSPPS, BANKED
+        movwf   U2CTSPPS, BANKED        ; clear so always disabled
         
         banksel TX_PPS          ; configure TX pin to XY
-        movlw   b'00010110'
+        movlw   b'00010110'     ; TX2
         movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
@@ -2644,49 +2522,62 @@ WARM_ZERO_1:
         bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
 
 ; Set the Baud Rate
-        movlw   spbrgval        ; ((clock/baud)/d'16') - 1
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
         banksel U2BRGL
         movwf   U2BRGL, BANKED
-        movlw   high(spbrgval)
+        movlw   high(spbrgvalx4)
         movwf   U2BRGH, BANKED
 
 ; TX enable
-        banksel U2CON0
-        movlw   b'00110000'     ; NO HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   b'10110000'     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U2CON0, BANKED
-        banksel U2CON1
-        bsf U2CON1, ON_U2CON1, BANKED ; turn on TX
+        bsf     U2CON2, RUNOVF, BANKED
+        bsf     U2CON1, ON_U2CON1, BANKED ; turn on TX
 
 ; RX enable
+#ifdef K83
+        banksel PIE7
+        bsf     PIE7, U2RXIE, BANKED    ; enable RX interupt
+#else ; K42
         banksel PIE6
         bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
+#endif
         banksel RX_TRIS
         bsf     RX_TRIS, RX_BIT, BANKED ; configure C7 as an input
-
 #endif
 #endif
-
+#ifdef IDLEN
+#if IDLE_MODE == ENABLE
+#ifndef K42
+        bsf     OSCCON, IDLEN   ; Only IDLE mode supported
+#else
+        banksel CPUDOZE
+        bsf     CPUDOZE, IDLEN, BANKED ; Only IDLE mode supported  
+#endif  
+#endif
+#endif
 #if CPU_LOAD == ENABLE
 #ifndef K42
-        movlw   h'08'           ; TMR0 used for CPU_LOAD
-        movwf   T0CON           ; prescale = 1
+        movlw   h'08'               ; TMR0 used for CPU_LOAD
+        movwf   T0CON               ; prescale = 1
+        bsf     INTCON, TMR0IE
 #else
-        bsf     T0CON0, T0MD16   ; 16 bit timer
+        bsf     T0CON0, T0MD16      ; 16 bit timer
         movlw   h'40'               ; TMR0 used for CPU_LOAD
         movwf   T0CON1              ; Instruction clock 1:1 
+        banksel PIE3 
+        bsf     PIE3, TMR0IE, BANKED
 #endif
 #endif
-        movlw   TICK_TIME
-        movwf   ticktime
-#if MS_TMR == 1                 ;; Timer 1 for 1 ms system tick
-#ifndef K42
-        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T1CON
         movlw   low(tmr1ms_val)
         movwf   tickval
         movlw   high(tmr1ms_val)
         movwf   tickval+1
+#if MS_TMR == 1                 ;; Timer 1 for 1 ms system tick
+#ifndef K42
+        movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T1CON
         bsf     PIE1, TMR1IE
 #else
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
@@ -2694,7 +2585,7 @@ WARM_ZERO_1:
         movlw   h'01'           ; fosc/4
         movwf   T1CLK
         banksel PIE4
-        bcf     PIE4, TMR1IE, BANKED
+        bsf     PIE4, TMR1IE, BANKED
 #endif
 #endif
 #if MS_TMR == 2                 ;; Timer 2 for 1 ms system tick
@@ -2712,7 +2603,7 @@ WARM_ZERO_1:
         movlw   h'af'       ; Prescale = 4, Postscale = 16
         movwf   T2CON
         banksel PIE4
-        bcf     PIE4, TMR2IE, BANKED
+        bsf     PIE4, TMR2IE, BANKED
 #endif
 #endif
 #if MS_TMR == 3                 ;; Timer 3 for 1 ms system tick
@@ -2727,7 +2618,7 @@ WARM_ZERO_1:
         movlw   h'01'           ; fosc/4
         movwf   T3CLK
         banksel PIE6
-        bcf     PIE6, TMR3IE, BANKED
+        bsf     PIE6, TMR3IE, BANKED
 #endif
 #endif
 #if MS_TMR == 4                 ;; Timer 4 for 1 ms system tick
@@ -2745,7 +2636,7 @@ WARM_ZERO_1:
         movlw   h'af'       ; Prescale = 4, Postscale = 16
         movwf   T4CON
         banksel PIE7
-        bcf     PIE7, TMR4IE, BANKED
+        bsf     PIE7, TMR4IE, BANKED
 #endif
 #endif
 #if MS_TMR == 5                 ;; Timer 5 for 1 ms system tick
@@ -2760,7 +2651,7 @@ WARM_ZERO_1:
         movlw   h'01'           ; fosc/4
         movwf   T5CLK
         banksel PIE8
-        bcf     PIE8,TMR5IE, BANKED
+        bsf     PIE8,TMR5IE, BANKED
 #endif
 #endif
 #if MS_TMR == 6                 ;; Timer 6 for 1 ms system tick
@@ -2778,7 +2669,7 @@ WARM_ZERO_1:
         movlw   h'af'       ; Prescale = 4, Postscale = 16
         movwf   T6CON
         banksel PIE9
-        bcf     PIE9, TMR6IE, BANKED
+        bsf     PIE9, TMR6IE, BANKED
 #endif
 #endif
 #ifdef USB_CDC
@@ -2791,7 +2682,7 @@ WARM_ZERO_1:
 
         rcall   LIT
         dw      WARMLIT
-        call    LIT
+        rcall   LIT
         dw      userarea+PRAM
         rcall   LIT
         dw      warmlitsize
@@ -2854,7 +2745,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 13.06.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 19.10.2019\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2904,7 +2795,7 @@ L_KEY:
         db      NFA|3,"key"
 KEY:
         rcall   UKEY
-        goto     FEXECUTE
+        goto    FEXECUTE
 
 ;***************************************************
 ; KEY   -- c    get char from UKEY vector
@@ -2939,12 +2830,10 @@ LIT:
 L_EXECUTE:
         db      NFA|7,"execute"
 EXECUTE:
-        push
         movf    Sminus, W
-        movwf   TOSH
+        movwf   PCLATH
         movf    Sminus, W
-        movwf   TOSL          ;  after this, xt is executing
-        return
+        movwf   PCL           ;  after this, xt is executing
 
 ; @EX  addr -- execute xt from addr
 ; 6 clock cycles
@@ -3026,7 +2915,7 @@ DOCREATE: ; -- addr  exec action of CREATE
         movwf   TBLPTRL
         movf    TOSH, W
         rcall   FETCHLIT
-        pop                         ; return to the callers caller
+        decf    STKPTR, F, A
 RETURN2:
         return
 
@@ -3040,14 +2929,16 @@ DODOES:
         movwf   Tp
         movf    TOSH, W
         movwf   PCLATH
-        pop
+        decf    STKPTR, F, A
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
         rcall   FETCHLIT
-        pop
+        movf    PCLATH, W
+        movwf   TOSH
         movf    Tp, W
-        movwf   PCL
+        movwf   TOSL
+        return
 	
 ;;; Compile inline address as subroutine call  
         db      NFA|3,"(,)"
@@ -3091,38 +2982,6 @@ SPSTORE:
         return
 
 
-;   RPEMPTY     -- EMPTY THE RETURN STACK       
-;   empty the return stack and jump to the caller
-;       dw      link
-;link   set     $
-        db      NFA|3,"rp0"
-RPEMPTY:
-        ;lfsr    Rptr, urbuf
-        movlw   low(urbuf)
-        movwf   Rp
-        movlw   high(urbuf)
-        movwf   Rbank
-
-        movf    TOSH, W
-        movwf   PCLATH    ; Save the return address
-        movf    TOSL, W
-        clrf    STKPTR
-        movwf   PCL
-
-; MEMORY OPERATIONS =============================
-ISTORERR:
-ISTORERR2:
-        ;movf    TOSL, W
-        ;movwf   plusS
-        ;movf    TOSH, W
-        ;movwf   plusS
-        ;decf    STKPTR, F
-        ;bnz     ISTORERR2
-        call    DOTS
-        rcall   XSQUOTE
-        db      3,"AD?"
-        rcall   TYPE
-        bra     STARTQ2        ; goto    ABORT
 
 ; !     x addrl addru  --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
@@ -3137,6 +2996,7 @@ L_XSTORE:
         clrf    iaddr_up
         return
 
+; MEMORY OPERATIONS =============================
 ; !     x addr --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
         dw      L_XSTORE
@@ -3186,7 +3046,7 @@ CSTORE1:
         movf    Sminus, W
         movwf   Trw
         return
- 
+
 ;   @       addr -- x    fetch cell from memory
 ; 16 cycles for ram.
 ; 26-33 cycles for rom
@@ -3200,7 +3060,7 @@ FETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     EFETCH
-        bra     IFETCH
+        bra    IFETCH
 FETCH1:
         movf    Sminus, W
         movwf   Tbank
@@ -3226,7 +3086,7 @@ CFETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     ECFETCH
-        goto    ICFETCH
+        bra     ICFETCH
 CFETCH1:
         movf    Sminus, W   
         movwf   Tbank
@@ -3237,6 +3097,32 @@ CFETCH2:
         movwf   plusS
         clrf    plusS
         return
+
+;   RPEMPTY     -- EMPTY THE RETURN STACK       
+;   empty the return stack and jump to the caller
+;       dw      link
+;link   set     $
+        db      NFA|3,"rp0"
+RPEMPTY:
+        ;lfsr    Rptr, urbuf
+        movlw   low(urbuf)
+        movwf   Rp
+        movlw   high(urbuf)
+        movwf   Rbank
+
+        movf    TOSH, W
+        movwf   PCLATH    ; Save the return address
+        movf    TOSL, W
+        clrf    STKPTR
+        movwf   PCL
+
+ISTORERR:
+ISTORERR2:
+        call    DOTS
+        rcall   XSQUOTE
+        db      3,"AD?"
+        rcall   TYPE
+        bra     STARTQ2        ; goto    ABORT
 
 ;   x@       addrl addru -- x    fetch cell from flash
         dw      L_CFETCH
@@ -3788,7 +3674,6 @@ RFROM:
 L_RFETCH:
         db      NFA|2,"r@"
 RFETCH:
-
         movf    Rminus, W
         movwf   plusS
         movf    Rplus,  W
@@ -4479,7 +4364,7 @@ UDOTR2:
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
-        call    SPACE_
+        rcall   SPACE_
         return
 
 ; .     n --                    display n signed
@@ -4589,7 +4474,7 @@ DOUSER:
         movf    TABLAT, W
         addwfc  upcurr+1, W
         movwf   plusS
-        pop                         ; return to the callers caller
+        decf    STKPTR, F, A         ; return to the callers caller
         return  
 
 ; SOURCE   -- adr n         current input buffer
@@ -4842,7 +4727,7 @@ DIGITQ2:
         goto    LESS            ; 1 ffff
 
 SLASHONE:
-        call   ONE
+        rcall  ONE
         goto   SLASHSTRING
 
 
@@ -5134,9 +5019,7 @@ IEXEC:                          ; Execute a word
         rcall   QABORT
 IEXECUTE:
         bcf     FLAGS1, noclear
-        ;bcf     INTCON, GIE
         call    EXECUTE
-        ;bsf     INTCON, GIE
         btfsc   FLAGS1, noclear ;  set by \ and by (
         bra     IPARSEWORD
         bcf     FLAGS1, izeroeq ; Clear 0= encountered in compilation
@@ -5170,7 +5053,7 @@ ICOMMAXT:
 ICOMPILE:
         btfss   wflags, 5    ; Inline check
         bra     ICOMMAXT
-        call    INLINE0
+        rcall   INLINE0
         bra     IPARSEWORD
 INUMBER: 
         bcf     FLAGS1, izeroeq ; Clear 0= encountered in compilation
@@ -5292,7 +5175,7 @@ DP_TO_RAM:
 DP_TO_EEPROM:
         rcall   LIT_A
         dw      dp_start
-        call    STORE_P_TO_R
+        rcall   STORE_P_TO_R
         rcall   INI
         movlw   5
         movwf   plusR
@@ -5315,7 +5198,7 @@ DP_TO_EEPROM_3:
         decf    Rrw, F
         bc      DP_TO_EEPROM_0
         movf    Rminus, W
-        call    R_TO_P
+        rcall   R_TO_P
         goto    DROP
 
 ;***************************************************************
@@ -5354,9 +5237,7 @@ QUIT1:
         rcall   TIBSIZE
         rcall   TEN                 ; Reserve 10 bytes for hold buffer
         call    MINUS
-        ;bsf     INTCON, GIE
         call    ACCEPT
-        ;bcf     INTCON, GIE
         call    SPACE_
         rcall   INTERPRET
         movf    state, W
@@ -5403,7 +5284,7 @@ L_QABORT:
         db      NFA|6,"?abort"
 QABORT:
         rcall   ROT_A
-        call    ZEROSENSE
+        rcall   ZEROSENSE
         bnz     QABO1
 QABORT1:        
         call    SPACE_
@@ -5518,7 +5399,7 @@ CREATE:
         db      d'15',"ALREADY DEFINED"
         rcall   QABORT         ; ABORT if word has already been defined
         rcall   DUP_A           ; Check the word length 
-        call    CFETCH_A
+        rcall   CFETCH_A
         call    ONE
         rcall   LIT_A
         dw      h'10'
@@ -5594,7 +5475,7 @@ XDOES:
         movwf   plusS
         movf    TOSH, W
         movwf   plusS
-        pop
+        decf    STKPTR, F, A
         rcall   LAST
         rcall   NFATOCFA
         rcall   IDP
@@ -5997,7 +5878,7 @@ DUMP2:
 DUMP4:  
         rcall   CFETCHPP_A
         rcall   TO_PRINTABLE
-        call    EMIT_A
+        rcall   EMIT_A
         decf    Rrw, F
         bnz     DUMP4
         movf    Rminus, W
@@ -6416,7 +6297,7 @@ DPLUS:
         addwfc  Srw, F
         
         return
-        
+
 ; D-    d1 d2 -- d3        double minus
         dw      L_DPLUS
 L_DMINUS:

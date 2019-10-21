@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      3blink14k50.txt                                   *
-\    Date:          15.09.2019                                        *
+\    Filename:      3blink42k83.txt                                   *
+\    Date:          10.09.2019                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -16,8 +16,8 @@ single
 marker -3blink
 ram hex
 
-$ff8b constant latc
-$ff94 constant trisc
+$ffbc constant latc
+$ffc4 constant trisc
 $2 user bitmask    \ The bitmask
 $4 user delay      \ The delay time in milliseconds
 
@@ -31,32 +31,32 @@ $4 user delay      \ The delay time in milliseconds
   again
 ;
 
-flash $0 $10 $10 $4 task: taskrc7
+flash $0 $10 $10 $4 task: tblink0
 
-: taskrc7-init
-  ['] taskloop taskrc7 tinit
-  %1000.0000 taskrc7 bitmask his !
-  #200 taskrc7 delay his !
+: tblink0-init
+  ['] taskloop tblink0 tinit
+  %1 tblink0 bitmask his !
+  $80 tblink0 delay his !
 ;
-flash $0 $10 $10 $4 task: taskrc6
-: taskrc6-init
-  ['] taskloop taskrc6 tinit
-  %0100.0000 taskrc6 bitmask his !
-  #210 taskrc6 delay his !
+flash $0 $10 $10 $4 task: tblink1
+: tblink1-init
+  ['] taskloop tblink1 tinit
+  %10 tblink1 bitmask his !
+  $90 tblink1 delay his !
 ;
-flash $0 $10 $10 $4 task: taskrc3
-: taskrc3-init
-  ['] taskloop taskrc3 tinit
-  %0000.1000 taskrc3 bitmask his !
-  #220 taskrc3 delay his !
+flash $0 $10 $10 $4 task: tblink2
+: tblink2-init
+  ['] taskloop tblink2 tinit
+  %100 tblink2 bitmask his !
+  $a0 tblink2 delay his !
 ;
 
 : 3blink
-  taskrc3-init taskrc3 run
-  taskrc6-init taskrc6 run
-  taskrc7-init taskrc7 run
+  tblink0-init tblink0 run 
+  tblink1-init tblink1 run 
+  tblink2-init tblink2 run 
 ; 
 
 \ Make 3blink start after reset.
 ' 3blink is turnkey
-warm
+ warm

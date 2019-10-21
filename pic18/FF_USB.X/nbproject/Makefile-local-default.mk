@@ -14,11 +14,11 @@
 # You can invoke make with the values of the macros:
 # $ makeMP_CC="/opt/microchip/mplabc30/v3.30c/bin/pic30-gcc" ...  
 #
-PATH_TO_IDE_BIN=/opt/microchip/mplabx/v5.05/mplab_platform/platform/../mplab_ide/modules/../../bin/
+PATH_TO_IDE_BIN=/opt/microchip/mplabx/v5.20/mplab_platform/platform/../mplab_ide/modules/../../bin/
 # Adding MPLAB X bin directory to path.
-PATH:=/opt/microchip/mplabx/v5.05/mplab_platform/platform/../mplab_ide/modules/../../bin/:$(PATH)
+PATH:=/opt/microchip/mplabx/v5.20/mplab_platform/platform/../mplab_ide/modules/../../bin/:$(PATH)
 # Path to java used to run MPLAB X when this makefile was created
-MP_JAVA_PATH="/opt/microchip/mplabx/v5.05/sys/java/jre1.8.0_144/bin/"
+MP_JAVA_PATH="/opt/microchip/mplabx/v5.20/sys/java/jre1.8.0_181/bin/"
 OS_CURRENT="$(shell uname -s)"
 # MP_CC is not defined
 # MP_CPPC is not defined
@@ -26,7 +26,7 @@ OS_CURRENT="$(shell uname -s)"
 MP_AS="/opt/microchip/mplabx/v5.05/mpasmx/mpasmx"
 MP_LD="/opt/microchip/mplabx/v5.05/mpasmx/mplink"
 MP_AR="/opt/microchip/mplabx/v5.05/mpasmx/mplib"
-DEP_GEN=${MP_JAVA_PATH}java -jar "/opt/microchip/mplabx/v5.05/mplab_platform/platform/../mplab_ide/modules/../../bin/extractobjectdependencies.jar"
+DEP_GEN=${MP_JAVA_PATH}java -jar "/opt/microchip/mplabx/v5.20/mplab_platform/platform/../mplab_ide/modules/../../bin/extractobjectdependencies.jar"
 # MP_CC_DIR is not defined
 # MP_CPPC_DIR is not defined
 # MP_BC_DIR is not defined
