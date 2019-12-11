@@ -36,6 +36,7 @@ from time import *
 running = True
 waitForNL = 0
 uploadMode = 0
+waitForChar = 'idle'
 
 class Config(object):
   def __init__(self):
@@ -43,9 +44,12 @@ class Config(object):
     self.rate = '38400'
     self.hw = False
     self.sw = False
+    self.chardelay = '0'
+    self.newlinedelay = '0'
+    self.charflowcontrol = False
 
 def serial_open(config):
-  print "Port:"+str(config.port)+" Speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)
+  print "Port:"+str(config.port)+" Speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.chardelay)+" chardelay:"+str(config.chardelay)+" charfc:"+str(config.charflowcontrol)
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.5, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
@@ -55,7 +59,7 @@ def serial_open(config):
 
 # receive_thr() receives chars from FlashForth
 def receive_thr(config, *args):
-  global running, waitForNL, uploadMode
+  global running, waitForNL, uploadMode, waitForChar
   while running==True:
     try:
       char = config.ser.read()
@@ -63,6 +67,9 @@ def receive_thr(config, *args):
       sys.stdout.flush()
       if char == '\n':
         waitForNL = 0
+      if config.charflowcontrol == True:
+        if char == waitForChar:
+          waitForChar = 'idle'
 
     except Exception as e:
       print "Serial exception {0}".format(e)
@@ -82,15 +89,24 @@ def parse_arg(config):
          default=False, help="Serial port XON/XOFF enable")
   parser.add_argument("--speed", "-s", action="store",
          type=str, default=38400, help="Serial port speed")
+  parser.add_argument("--chardelay", "-d", action="store",
+         type=str, default=0, help="Character delay(milliseconds)")
+  parser.add_argument("--newlinedelay", "-n", action="store",
+         type=str, default=0, help="Newline delay(milliseconds)")
+  parser.add_argument("--cc", "-c", action="store_true",
+         default=False, help="Character by character flow control")
   arg = parser.parse_args()
   config.port = arg.port
   config.hw = arg.hw
   config.sw = arg.sw
   config.rate = arg.speed
+  config.chardelay = arg.chardelay
+  config.newlinedelay = arg.newlinedelay
+  config.charflowcontrol = arg.cc
 
 #main loop for sending and receiving
 def main():
-  global running, waitForNL, uploadMode
+  global running, waitForNL, uploadMode, waitForChar
   
   config = Config() 
   parse_arg(config)
@@ -151,8 +167,18 @@ def main():
         line = '\033'           # Escape
       try:
         waitForNL = 1000
-        bytes = config.ser.write(line+'\n')
+        for c in line:
+          sleep(float(config.chardelay)/1000)
+          if config.charflowcontrol == True:
+            while waitForChar <> 'idle':
+              sleep(0.001)
+            waitForChar = c
+          config.ser.write(c)
+          config.ser.flush()       # Send the output buffer
+        sleep(float(config.newlinedelay)/1000)
+        config.ser.write('\n')
         config.ser.flush()       # Send the output buffer
+
       except Exception as e:
         print("Write error on serial port {0}, {1}".format(config.serial_port, e))
         running = False
