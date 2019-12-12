@@ -14,53 +14,51 @@
 \ You must also clear any related interrupt enable bits 
 \ and interrupt flags before zeroing the interrupt vector
 \ NOTE: Interrupt vector 0 is the high prority interrupt vector.
-\ NOTE: The low priority interrupt vector is not implemented.
+\ NOTE: The low priority interrupt vector is not supported.
 
 ccp1.int.off
 -user.int
 marker -user.int
-
+decimal
 $ff94 constant trisc
 $ff8b constant latc
 $ffb1 constant t3con
-$ffbd constant ccp1con
-$ffbe constant ccpr1
-$ff9e constant pir1
+$ffbd constant ccp1con inlined
+$ffbe constant ccpr1 inlined
+$ff9e constant pir1 inlined
 $ff9d constant pie1
-$0004 constant ccp1if
+$0004 constant ccp1if  inlined
 $0004 constant ccp1ie
 
-ram variable ccp1/edge
-ram variable width.clocks
-ram variable width.us
-ram variable ccp1.int.cnt
+ram variable ccp1/edge inlined
+ram variable width.clocks inlined
+ram variable ccp1.int.cnt inlined
 
 : ccp1.init
   0 ccp1con c!         \ reset capture module
   5 ccp1con c!         \ capture rising edge
-  %10111001 t3con c!   \ timer3 as capture counter prescaler=8
-  %00100000 trisc mclr \ ccp1 input port configured as output
-  \ %00100000 trisc mset \ ccp1 input port configured as input                     
+  %10001001 t3con c!   \ timer3 as capture counter prescaler=8
+  %00100000 trisc mset \ ccp1 input port configured as input                     
 ;
 
 : ccp1.int
   [i
   ccp1if pir1 mtst if
-    1 ccp1.int.cnt +!
-    ccp1if pir1 mclr
+    ccp1if pir1 inline mclr
     ccp1con c@ 5 = if
       4 ccp1con c!
       ccpr1 @ ccp1/edge !
     else
-      5 ccp1con c!
       ccpr1 @ ccp1/edge @ - width.clocks !
+      5 ccp1con c!
     then
+    1 ccp1.int.cnt +!
   then
   i]
 ;i
 
 : pulsewidth 
-  width.clocks @ #1000 Fcy 8 /  u*/mod nip u. ." us"
+  width.clocks @ #1000 Fcy u*/mod nip u. ." us"
 ;
 
 : ccp1.int.init
@@ -77,13 +75,27 @@ ram variable ccp1.int.cnt
 
 \ TESTS
 \ tests require that ccp1 input port is configured as output
-\ see ccp1.init
-: test1 10 ms $20 latc mset 1 ms  $20 latc mclr pulsewidth ;
-: test2 10 ms $20 latc mset 2 ms  $20 latc mclr pulsewidth ;
-: test3 10 ms $20 latc mset 3 ms  $20 latc mclr pulsewidth ;
+
+: test  %00100000 trisc mclr 
+        10 ms [ latc 5 a, bsf, ] 
+        for next 
+        [ latc 5 a, bcf, ] pulsewidth ;
+: test0 %00100000 trisc mclr 
+        10 ms $20 latc mset       $20 latc mclr pulsewidth ;
+: test1 %00100000 trisc mclr 
+        10 ms $20 latc mset 1 ms  $20 latc mclr pulsewidth ;
+: test2 %00100000 trisc mclr 
+        10 ms $20 latc mset 2 ms  $20 latc mclr pulsewidth ;
+: test3 %00100000 trisc mclr 
+        10 ms $20 latc mset 3 ms  $20 latc mclr pulsewidth ;
+: test4 %00100000 trisc mclr 10 ms
+        [ latc 5 a, bsf, 0 i, 0 i, 0 i, latc 5 a, bcf, ] pulsewidth ;
 
 ccp1.int.init
+test0
 test1
 test2
 test3
+test4
+10 test
 ccp1.int.cnt @ u.
