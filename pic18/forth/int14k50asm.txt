@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      int14k50asm.txt                                   *
-\    Date:          11.12.2019                                        *
+\    Date:          01.04.2020                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18F14K50                                       *
 \    Copyright:     Mikael Nordman                                    *
@@ -13,8 +13,9 @@
 \ the interrupt word is removed.
 \ You must also clear any related interrupt enable bits 
 \ and interrupt flags before zeroing the interrupt vector
+\ NOTE: User defined interrupts must always be defined as high priority interrupts.
 \ NOTE: Interrupt vector 0 is the high prority interrupt vector.
-\ NOTE: The low priority interrupt vector is not implemented.
+\ NOTE: UART and tick timer interrupts are always low priority interrupts.
 
 ccp1.int.off
 -user.int
@@ -36,6 +37,7 @@ $0004 constant ccp1ie
 $f008 constant ccp1/
 $f00a constant width
 $f00c constant ccp1.int.cnt
+$f007 constant temp
 
 : ccp1.init
   0 ccp1con c!         \ reset capture module
@@ -44,9 +46,9 @@ $f00c constant ccp1.int.cnt
   %00100000 trisc mset \ ccp1 input port configured as input                     
 ;
 
-: as2 ( opcode "name" -- ) ( f a -- )
-  co:
-  does> rot ic, or ic, ;
+\ : as2 ( opcode "name" -- ) ( f a -- )
+\   co:
+\  does> rot ic, or ic, ;
 
 1 constant f,     \ Destination File
 $6e as2 movwf,          ( f a -- )    
@@ -56,7 +58,6 @@ $24 as3 addwf,          ( f d a -- )
 $20 as3 addwfc,         ( f d a -- ) 
 $0e00 as1 movlw,        ( k -- )
 $0800 as1 sublw,        ( k -- )
-$ffe1 constant temp     \ FSR1L
 
 : ccp1.int.asm
   [ pir1                  w, a, movf,   ]
@@ -82,7 +83,7 @@ $ffe1 constant temp     \ FSR1L
   [             temp      w, a, subwfb, ]
   [             width 1+     a, movwf,  ] \ ccpr1 @ ccp1/ @ - 
                                           \ width !
-  [     then,
+  [     then,                           ]
   [     1 movlw,                        ]
   [     ccp1.int.cnt      f, a, addwf,  ]
   [     0 movlw,                        ]

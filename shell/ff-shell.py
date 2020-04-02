@@ -148,7 +148,6 @@ def main():
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
-          sys.stdout.write("> ")
  
       if line[:6] == "#send ":
         pathfile = line[6:]

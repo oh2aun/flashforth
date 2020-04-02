@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          19.10.2019                                        *
+;    Date:          01.04.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2019  Mikael Nordman
+; Copyright (C) 2020  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -79,6 +79,7 @@
 #define CFGS 6
 #define EECON2 NVMCON2
 #endif
+
 
 ;   FSR0    Sp  - Parameter Stack Pointer
 ;   FSR1    Tp  - Temporary Ram Pointer
@@ -162,8 +163,7 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;****************************************************
 ; USE ACCESS BANK to R/W these registers
 ; Internal variables used by asm code
-APP_VARS udata_acs   ; 16 first acs bytes free for application use
-FORTH_VARS  udata_acs; Variables in Access Ram
+FORTH_VARS udata_acs ; Variables in Access Ram
 upcurr   res 2       ; Current USER area pointer
 p_lo     res 1       ; P and DO LOOP INDEX
 p_hi     res 1
@@ -197,6 +197,13 @@ load_acc res 1       ;
 load_res res 3       ; 256 ms load result
 #endif
 #endif
+;;; Interrupt low priority save variables
+#ifndef K42
+ilw         res 1
+ilstatus    res 1
+ilbsr       res 1
+#endif
+
 ;;; Interrupt high priority save variables
 ihpclath    res 1
 ihtablat    res 1
@@ -233,7 +240,7 @@ flash_buf   res flash_block_size
 #endif      ; __18F14K50
 
 #else       ; NOT USB
-IRQ_STACK udata
+IRQ_STACK   udata
 irq_s0      res PARAMETER_STACK_SIZE_IRQ   ; Interrupt parameter stack.
 flash_buf   res flash_block_size
 #endif      ; USB_CDC
@@ -318,30 +325,63 @@ FF_RESET code 0x0000
         goto    main
 ;;***************************************************
 ;; Interrupt routines
-;; 1 millisecond tick counter
+;;; ****** HIGH PRIORITY INTERRUPT     
 FF_INT_HI code 0x0008
-FFCODE:
+#ifdef IDLEN
+#if IDLE_MODE == ENABLE
+#if CPU_LOAD == ENABLE
+#ifndef K42
+        bsf     T0CON, TMR0ON
+#else 
+        bsf     T0CON0, T0EN
+#endif
+#endif
+#endif
+#endif
+; NOTE: irq_v must be initialized before any interrupt is enabled. 
+; ' interrupt-routine 0 int!
+irq_user:
+        push
+        movf    irq_v+1, W
+        movwf   TOSH
+        movf    irq_v, W
+        movwf   TOSL
+        return              ; Now the interrupt routine is executing
+;;; *******************************************
+;;; ****** LOW PRIORITY INTERRUPT     
+;;; Timer 0 interrupt must be marked low priority   
+FF_INT_LO code 0x0018
+#ifndef K42
+        movwf   ilw
+        movff   STATUS, ilstatus
+#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bsf     T0CON, TMR0ON
         btfss   INTCON, TMR0IF
-        bra     irq_ms
+        bra     irq_t0_end
         bcf     INTCON, TMR0IF
+        incf    load_acc
+        bra     irq_end
 #else 
         bsf     T0CON0, T0EN
         banksel PIR3
         btfss   PIR3, TMR0IF, BANKED
-        bra     irq_ms
+        bra     irq_t0_end
         bcf     PIR3,TMR0IF
-#endif
-        incf    load_acc 
+        incf    load_acc
         retfie  1
 #endif
+irq_t0_end:
 #endif
 #endif
-
+#endif
+;;; ****** LOW PRIORITY INTERRUPT    
+;;; The tick counter interrupt and UART interrupt must be marked as low priority    
+irq_low:
+;; 1 millisecond tick counter
 irq_ms:
 #ifndef K42
 #if MS_TMR == 1  ;****************************
@@ -459,29 +499,12 @@ irq_ms:
 #endif
 #endif
 irq_load_end:
+#ifndef K42
+        bra     irq_end
+#else ; K42 K83
+        retfie 1
+#endif
 irq_ms_end:
-;;; *************************************************        
-;;; Save Tp and Tbank and PCLATH
-#ifndef K42
-        movf    Tp, W
-        movwf   ihtp
-        movf    Tbank, W
-        movwf   ihtbank
-#endif
-irq_user:
-        movf    irq_v+1, W
-        bz      irq_user_skip
-#ifndef K42
-        movff   PCLATH, ihpclath
-#endif
-        movwf   PCLATH
-        movf    irq_v, W
-        movwf   PCL              ; Now the interrupt routine is executing
-irq_user_end:                    ; The user interrupt must jump to here.
-#ifndef K42
-        movff   ihpclath, PCLATH ; Restore PCLATH
-#endif
-irq_user_skip:
 ;;; ************************************************
 ;;; UART RX interrupt routine
 ;;; Feeds the input buffer with characters
@@ -508,6 +531,12 @@ irq_async_rx:
 #endif
 #endif
         bra     irq_async_rx_end
+#ifndef K42
+        movf    Tp, W
+        movwf   ihtp
+        movf    Tbank, W
+        movwf   ihtbank
+#endif
 
         bsf     FLAGS1, istream      ; Indicate input stream activity to FLASH write routine
         movf    RXcnt, W
@@ -539,13 +568,15 @@ irq_async_rx_2:
         banksel U1ERRIR
         bcf     U1ERRIR, RXFOIF, BANKED
 #endif
-#else
+#else  ; UART 2
 #ifndef K42
         movff   RCREG2, TWrw
+        movff   BSR, ilbsr
         banksel RCSTA2
         btfsc   RCSTA2, OERR2, BANKED
         bcf     RCSTA2, CREN2, BANKED ; Restart RX on case of RX overrun
         bsf     RCSTA2, CREN2, BANKED
+        movff   ilbsr, BSR
 #else
         movffl  U2RXB,  TWrw
         banksel U2ERRIR
@@ -579,7 +610,23 @@ irq_async_rx_end:
         movwf   Tp
 #endif
 irq_end:
-        retfie  1               ; Restore WREG, BSR, STATUS regs
+#ifndef K42
+        movf    ilw, W
+        movff   ilstatus, STATUS
+        retfie  0
+#else ; K42 K83
+        retfie  1
+#endif
+;;; ******************************************
+;;; ******** HIGH PRIORITY INTERRUPT
+;irq_user:
+;        push
+;        movwf   TOSH
+;        movf    irq_v, W
+;        movwf   TOSL
+;        return              ; Now the interrupt routine is executing
+;;; *************************************************
+
 ; *******************************************************************
 ;;; WARM user area data
 warmlitsize equ d'28'
@@ -698,7 +745,11 @@ L_LI:
         movwf   ihsp
         movf    Sbank, W
         movwf   ihsbank 
-#endif
+        movf    Tp, W
+        movwf   ihtp
+        movf    Tbank, W
+        movwf   ihtbank
+ #endif
         movf    TBLPTRL, W
         movwf   ihtblptrl
         movf    TBLPTRH, W
@@ -714,6 +765,10 @@ L_LI:
 L_IR:
         db      NFA|INLINE|COMPILE|2,"i]"
 #ifndef K42
+        movf    ihtbank, W
+        movwf   Tbank
+        movf    ihtp, W
+        movwf   Tp
         movf    ihsbank, W
         movwf   Sbank
         movf    ihsp, W
@@ -1299,8 +1354,8 @@ L_IRQ_SEMI:
         db      NFA|IMMED|2,";i"
 IRQ_SEMI:
         rcall   LIT
-        dw      irq_user_end
-        rcall   GOTO_
+        dw      0x11      ; retfie 1
+        rcall   ICOMMA
         goto    LEFTBRACKET
         
 ; INT!   addr vector --     Store the interrupt vector
@@ -1668,7 +1723,6 @@ PAUSE_USB_CDC_END:
         sublw   low(u0)        ; Sleep only in operator task
         bnz     PAUSE000       ; Lowers execution delay when many tasks are running
 #if CPU_LOAD_LED == ENABLE
-        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT
 #else
@@ -1941,7 +1995,7 @@ RQ_DIVZERO:
         bra     RQ_STKFUL
         call    XSQUOTE
         db      d'1',"M"
-        rcall   TYPE
+        call    TYPE
 RQ_STKFUL:
         btfss   0, 7
         bra     RQ_STKUNF
@@ -1951,13 +2005,13 @@ RQ_STKFUL:
 RQ_STKUNF:
         btfss   0, 6
         bra     RQ_BOR
-        rcall   XSQUOTE
+        call    XSQUOTE
         db      d'1',"U"
         rcall   TYPE
 RQ_BOR:
         btfsc   1, BOR
         bra     RQ_POR
-        rcall   XSQUOTE
+        call    XSQUOTE
         db      d'1',"B"
         rcall   TYPE
 RQ_POR: 
@@ -2073,10 +2127,17 @@ RSHIFT1:
         bra     RSHIFT1
 RSHIFT2:        
         return
-
 ;*******************************************************
 ; Assembler
 ;*******************************************************
+;: as0 ( opcode "name" -- ) ( -- )
+;  co:
+;  does> i, ;
+;
+;: as2 ( opcode "name" -- ) ( f a -- )
+;  co:
+;  does> rot ic, or ic, ;
+
 ;       as1 ( opcode "name" -- ) ( k -- )
         dw      L_RSHIFT
 L_AS1:
@@ -2090,9 +2151,22 @@ AS1_1:
         rcall   OR_A
         bra     ICOMMA
 
+;       as2 ( opcode "name" -- ) ( f a -- )
+        dw      L_AS1
+L_AS2:
+        db      NFA|3,"as2"
+AS2:
+        rcall   CONSTANT_
+        call    XDOES
+AS2_DOES:
+        rcall   DODOES
+        rcall   ROT
+        rcall   ICCOMMA
+        bra     AS3_2
+
 ;       as3 ( opcode "name" --) ( f d/b a -- )  
 ;       write a 3 operand asm intruction to flash
-        dw      L_AS1
+        dw      L_AS2
 L_AS3:
         db      NFA|IMMED|3,"as3"
 AS3:    
@@ -2306,7 +2380,7 @@ WARM:
         movwf   1               ; Save reset reasons
         movf    fstatus, W
         movwf   2
-        movlw   h'1f'
+        movlw   h'9f'
         movwf   RCON
 #else
         movf    PCON0, W
@@ -2407,6 +2481,7 @@ WARM_ZERO_1:
         movlw   b'10010000'
         movwf   RCSTA
         bsf     PIE1, RCIE
+        bcf     IPR1, RCIP
 #ifdef ANSELH
 #ifdef ANS11
         bcf     ANSELH, ANS11 ; Enable digital RB5 for RX
@@ -2420,6 +2495,8 @@ WARM_ZERO_1:
 #else  ; UART == 2 ---------------------------------------
 #ifdef BRG16
         bsf     BAUDCON2, BRG16
+        movlw   high(spbrgvalx4)
+        movwf   SPBRGH2
         movlw   spbrgvalx4
 #else
         movlw   spbrgval
@@ -2432,6 +2509,7 @@ WARM_ZERO_1:
         movlw   b'10010000'
         movwf   RCSTA2, BANKED
         bsf     PIE3, RC2IE
+        bcf     IPR3, RC2IP
 
         bcf     ANCON2, ANSEL18, BANKED ; Enable digital RG2 for RX2 (18F87K22 family)
                                         ; Other values may be needed depending on chip
@@ -2485,6 +2563,7 @@ WARM_ZERO_1:
 ; RX enable
         banksel PIE3
         bsf     PIE3, U1RXIE, BANKED    ; enable RX interupt
+        bcf     IPR3, U1RXIP, BANKED    ; low priority
         bsf     RX_TRIS, RX_BIT         ; configure XY as an input
 
 #else  ; UART == 2 ---------------------------------------
@@ -2542,6 +2621,7 @@ WARM_ZERO_1:
 #else ; K42
         banksel PIE6
         bsf     PIE6, U2RXIE, BANKED    ; enable RX interupt
+        bcf     IPR6, U2RXIP, BANKED     ; low priority
 #endif
         banksel RX_TRIS
         bsf     RX_TRIS, RX_BIT, BANKED ; configure C7 as an input
@@ -2549,6 +2629,9 @@ WARM_ZERO_1:
 #endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
+#if CPU_LOAD_LED == ENABLE
+        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT
+#endif
 #ifndef K42
         bsf     OSCCON, IDLEN   ; Only IDLE mode supported
 #else
@@ -2562,12 +2645,14 @@ WARM_ZERO_1:
         movlw   h'08'               ; TMR0 used for CPU_LOAD
         movwf   T0CON               ; prescale = 1
         bsf     INTCON, TMR0IE
+        bcf     INTCON2, TMR0IP
 #else
         bsf     T0CON0, T0MD16      ; 16 bit timer
         movlw   h'40'               ; TMR0 used for CPU_LOAD
         movwf   T0CON1              ; Instruction clock 1:1 
         banksel PIE3 
         bsf     PIE3, TMR0IE, BANKED
+        bcf     IPR3, TMR0IP, BANKED; Low priority
 #endif
 #endif
         movlw   low(tmr1ms_val)
@@ -2579,6 +2664,7 @@ WARM_ZERO_1:
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON
         bsf     PIE1, TMR1IE
+        bcf     IPR1, TMR1IP
 #else
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON
@@ -2586,6 +2672,7 @@ WARM_ZERO_1:
         movwf   T1CLK
         banksel PIE4
         bsf     PIE4, TMR1IE, BANKED
+        bcf     IPR4, TMR1IP, BANKED
 #endif
 #endif
 #if MS_TMR == 2                 ;; Timer 2 for 1 ms system tick
@@ -2595,6 +2682,7 @@ WARM_ZERO_1:
         movlw   tmr2ms_val
         movwf   PR2
         bsf     PIE1, TMR2IE
+        bcf     IPR1, TMR2IP
 #else
         movlw   h'01'
         movwf   T2CLK
@@ -2604,6 +2692,7 @@ WARM_ZERO_1:
         movwf   T2CON
         banksel PIE4
         bsf     PIE4, TMR2IE, BANKED
+        bcf     IPR4, TMR2IP, BANKED
 #endif
 #endif
 #if MS_TMR == 3                 ;; Timer 3 for 1 ms system tick
@@ -2611,6 +2700,7 @@ WARM_ZERO_1:
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T3CON
         bsf     PIE2, TMR3IE
+        bcf     IPR2, TMR3IP
 #else
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T3CON
@@ -2619,6 +2709,7 @@ WARM_ZERO_1:
         movwf   T3CLK
         banksel PIE6
         bsf     PIE6, TMR3IE, BANKED
+        bcf     IPR6, TMR3IP, BANKED
 #endif
 #endif
 #if MS_TMR == 4                 ;; Timer 4 for 1 ms system tick
@@ -2628,6 +2719,7 @@ WARM_ZERO_1:
         movlw   tmr2ms_val
         movwf   PR4, BANKED
         bsf     PIE5, TMR4IE
+        bcf     IPR5, TMR4IP
 #else
         movlw   h'01'
         movwf   T4CLK
@@ -2637,13 +2729,15 @@ WARM_ZERO_1:
         movwf   T4CON
         banksel PIE7
         bsf     PIE7, TMR4IE, BANKED
+        bcf     IPR7, TMR4IP, BANKED
 #endif
 #endif
 #if MS_TMR == 5                 ;; Timer 5 for 1 ms system tick
 #ifndef K42
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T5CON, BANKED
-        bsf     PIE5,TMR5IE
+        bsf     PIE5, TMR5IE
+        bcf     IPR5, TMR5IP
 #else
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T5CON, BANKED
@@ -2651,7 +2745,8 @@ WARM_ZERO_1:
         movlw   h'01'           ; fosc/4
         movwf   T5CLK
         banksel PIE8
-        bsf     PIE8,TMR5IE, BANKED
+        bsf     PIE8, TMR5IE, BANKED
+        bcf     IPR8, TMR5IP, BANKED
 #endif
 #endif
 #if MS_TMR == 6                 ;; Timer 6 for 1 ms system tick
@@ -2661,6 +2756,7 @@ WARM_ZERO_1:
         movlw   tmr2ms_val
         movwf   PR6, BANKED
         bsf     PIE5, TMR6IE
+        bcf     IPR5, TMR6IP
 #else
         movlw   h'01'
         movwf   T6CLK
@@ -2670,6 +2766,7 @@ WARM_ZERO_1:
         movwf   T6CON
         banksel PIE9
         bsf     PIE9, TMR6IE, BANKED
+        bcf     IPR9, TMR6IP, BANKED
 #endif
 #endif
 #ifdef USB_CDC
@@ -2690,10 +2787,11 @@ WARM_ZERO_1:
         
         rcall   FRAM
         clrf    INTCON
-#ifndef K42
-        bsf     INTCON, PEIE
+#ifdef K42
+        bsf     INTCON, 5
 #endif
-        bsf     INTCON, GIE
+        bsf     INTCON, GIEL
+        bsf     INTCON, GIEH
 
         rcall   LIT
         dw      dp_start
@@ -2745,7 +2843,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 19.10.2019\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 01.04.2020\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -2966,22 +3064,6 @@ SPFETCH:
         movwf   plusS
         return
 
-;   SP!     addr --         store stack pointer
-;   addr should be an uneven address to point to the high
-;   byte of a 16 bit cell.
-;;;         dw      link
-;;; link    set     $
-        db      NFA|3,"sp!"
-SPSTORE:
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W 
-        movwf   Sp
-        movf    Tp, W
-        movwf   Sbank
-        return
-
-
 
 ; !     x addrl addru  --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
@@ -3036,7 +3118,7 @@ CSTORE:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     ECSTORE
-        bra     ICSTORE
+        goto    ICSTORE
 CSTORE1:
         movf    Sminus, W
         movwf   Tbank
@@ -3060,7 +3142,7 @@ FETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     EFETCH
-        bra    IFETCH
+        goto    IFETCH
 FETCH1:
         movf    Sminus, W
         movwf   Tbank
@@ -3086,7 +3168,7 @@ CFETCH:
         movlw   high(PEEPROM)
         cpfslt  Srw
         bra     ECFETCH
-        bra     ICFETCH
+        goto    ICFETCH
 CFETCH1:
         movf    Sminus, W   
         movwf   Tbank
@@ -3355,10 +3437,19 @@ TWOSTORE:
 ;   DROP DROP ;
         dw      L_TWOSTORE
 L_TWODROP:
+#ifndef K42
         db      NFA|5,"2drop"
+#else
+        db      NFA|INLINE|5,"2drop"
+#endif
 TWODROP:
+#ifndef K42
         rcall   DROP
         goto    DROP
+#else
+        subfsr  Sptr, 4
+        return
+#endif
 
 ; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
 ;   OVER OVER ;
@@ -3603,8 +3694,12 @@ ALLOT:
 L_DROP
         db      NFA|INLINE|4,"drop"
 DROP:
+#ifndef K42
         movwf   Sminus       ; no status change
         movwf   Sminus
+#else
+        subfsr  Sptr, 2
+#endif
         return
     
 
@@ -4172,9 +4267,11 @@ SLASH:
 L_NIP:
         db      NFA|3,"nip"
 NIP:
-        rcall   SWOP
-        goto    DROP
-    
+        movlw   -1
+        movff_   Sminus, SWrw
+        movff_   Sminus, SWrw
+        return
+
 ;   TUCK    x1 x2 -- x2 x1 x2
         dw      L_NIP
 L_TUCK:
@@ -4727,7 +4824,7 @@ DIGITQ2:
         goto    LESS            ; 1 ffff
 
 SLASHONE:
-        rcall  ONE
+        call   ONE
         goto   SLASHSTRING
 
 
@@ -5265,7 +5362,13 @@ L_ABORT:
 ABORT:
         rcall   S0
         rcall   FETCH_A
-        call    SPSTORE
+SPSTORE:
+        movf    Sminus, W
+        movwf   Tp
+        movf    Sminus, W 
+        movwf   Sp
+        movf    Tp, W
+        movwf   Sbank
         goto    QUIT
 
 ; ?ABORT?   f --       abort & print ?

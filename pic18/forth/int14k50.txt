@@ -1,7 +1,7 @@
 \ *********************************************************************
 \    Interrupts example for FlashForth                                *
 \    Filename:      int14k50.txt                                      *
-\    Date:          11.12.2019                                        *
+\    Date:          01.04.2020                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18F14K50                                       *
 \    Copyright:     Mikael Nordman                                    *
@@ -13,8 +13,9 @@
 \ the interrupt word is removed.
 \ You must also clear any related interrupt enable bits 
 \ and interrupt flags before zeroing the interrupt vector
+\ NOTE: User defined interrupts must always be defined as high priority interrupts.
 \ NOTE: Interrupt vector 0 is the high prority interrupt vector.
-\ NOTE: The low priority interrupt vector is not supported.
+\ NOTE: UART and tick timer interrupts are always low priority interrupts.
 
 ccp1.int.off
 -user.int
