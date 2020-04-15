@@ -31,12 +31,25 @@ import signal
 import string
 from thread import start_new_thread
 from time import *
-
+from base_dictionary import base_dictionary
+from user_dictionary import user_dictionary
 # Threading stuff, global flags
 running = True
 waitForNL = 0
 uploadMode = 0
 waitForChar = 'idle'
+cmd_dictionary = {
+  "#help filter   ": "SHELL: Print help text for a word",
+  "#help          ": "SHELL: Print help text for all words",
+  "#warm          ": "SHELL: Send ctrl-o to FF",
+  "#esc           ": "SHELL: Make a warm start and disable the turnkey",
+  "#send filename {startstring {stopstring}}" : "SHELL: Send a file optonally starting at line with startstring and optionally stop at line with stopstring", 
+  "#pwd           ": "SHELL: Print working directory",
+  "#ls {path}     ": "SHELL: List files in working directory or in path",
+  "#cd path       ": "SHELL: Change working directory",
+  "#cat file      ": "SHELL: Show the file contents",
+  "#history filter": "SHELL: Show the history"
+}
 
 class Config(object):
   def __init__(self):
@@ -78,6 +91,7 @@ def receive_thr(config, *args):
   print "End of receive thread. Press enter to exit."
   exit()
 
+
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
            epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename. Warm start with #warm.""")
@@ -117,10 +131,19 @@ def main():
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
   print histfn
   try:
+    readline.set_history_length(500)
     readline.read_history_file(histfn)
   except IOError, e:
     pass
   atexit.register(readline.write_history_file, histfn)
+  
+  dictionary = base_dictionary.copy()
+  dictionary.update(user_dictionary.copy())
+  dictionary.update(cmd_dictionary.copy())
+  
+  for cmd in sorted(cmd_dictionary):
+    print(cmd + "\t" + cmd_dictionary[cmd])
+
   running = True
   waitForNL = 0
   uploadMode = 0
@@ -134,12 +157,106 @@ def main():
           raise Exception
         sys.stdout.write('\r\033\133\101')
         sys.stdout.flush()
-      else:
+        args = line.split()
+        if len(args) > 1 and args[0] == "#send":
+          print(line)
+          pathfile = args[1]
+          startString = ""
+          stopString = ""
+          if len(args) > 2:
+            startString = args[2]
+          if len(args) > 3:
+            stopString = args[3]
+          if pathfile.endswith(".txt") == False:
+            pathfile = pathfile + ".txt"
+          line = ""
+          try:
+            file = open(pathfile, "r")
+            uploadMode = 1
+          except IOError, e:
+            print "\nFile not found: "+pathfile
+        if len(args) == 1 and args[0] == "#warm":
+          print(line)
+          line = '\017'           # CTRL-O
+        if len(args) == 1 and args[0] == "#esc":
+          print(line)
+          line = '\033'           # Escape
+        if len(args) == 2 and args[0] == "#help":
+          print(line)
+          filter = args[1]
+          try:
+            for cmd in sorted(dictionary):
+              if filter in cmd:
+                print(cmd + "\t" + dictionary[cmd])
+          except:
+            print "\n" + args[1] + "\t" + "not found"
+          continue
+        if len(args) == 1 and args[0] == "#help":
+          print(line)
+          for name in sorted(dictionary):
+            print(name + "\t" + dictionary[name])
+          continue
+        if len(args) == 1 and args[0] == "#pwd":
+          print(line)
+          print("dir : " + os.getcwd())
+          continue
+        if len(args) == 2 and args[0] == "#cd":
+          print(line)
+          os.chdir(args[1])
+          print("dir : " + os.getcwd())
+          continue
+        if len(args) >= 1 and args[0] == "#ls":
+          print(line)
+          print("dir : " + os.getcwd())
+          lspath = '.'
+          if len(args) == 2:
+            lspath = args[1]
+          files = os.listdir(lspath)
+          for file in sorted(files):
+            print(file)
+          continue
+        if len(args) == 2 and args[0] == "#cat":
+          print(line)
+          try:
+            catfile = open(args[1], "r")
+            for catline in catfile:
+              catline = catline.rstrip('\n')
+              catline = catline.rstrip('\r')
+              print(catline)
+          except IOError, e:
+            print "\nFile not found: " + args[1]
+          continue
+        if len(args) >= 1 and args[0] == "#history":
+          if len(args) == 2:
+            filter = args[1]
+          else:
+            filter = ""
+          print(line)
+          for index in range (1, readline.get_current_history_length()):
+            historyline = readline.get_history_item(index) 
+            if filter == "":
+              print(historyline)
+            else:
+              if filter in historyline:
+                print(historyline)
+          continue
+      else:                       # Send file
         while waitForNL > 0:
           sleep(0.001)
           waitForNL = waitForNL - 1
           continue
         line = file.readline()
+
+        if startString == "":
+          uploadMode = 2
+        else:
+          if uploadMode == 1 and line.find(startString) >= 0:
+            uploadMode = 2
+
+        if uploadMode == 2 and stopString != "":
+          if line.find(stopString) >= 0:
+            line = ""
+
         if line == "":
           file.close()
           uploadMode = 0
@@ -148,22 +265,9 @@ def main():
         else:
           line = line.rstrip('\n')
           line = line.rstrip('\r')
- 
-      if line[:6] == "#send ":
-        pathfile = line[6:]
 
-        if pathfile.endswith(".txt") == False:
-          pathfile = pathfile + ".txt"
-        line = ""
-        try:
-          file = open(pathfile, "r")
-          uploadMode = 1
-        except IOError, e:
-          print "\nFile not found: "+pathfile
-      if line[:5] == "#warm":
-        line = '\017'           # CTRL-O
-      if line[:5] == "#esc":
-        line = '\033'           # Escape
+        if uploadMode < 2:
+          continue
       try:
         waitForNL = 1000
         for c in line:
