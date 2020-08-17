@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          13.01.2019                                        *
+;    Date:          17.08.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "13.01.2019"
+#define DATE "17.08.2020"
 
 
 ; Register definitions
@@ -172,27 +172,27 @@
 .endmacro
 
 .macro m_pop_zh
-.ifdef EIND
+.if (FLASHEND > 0xffff)
         pop     zh
 .endif
 .endmacro
 .macro m_pop_xh
-.ifdef EIND
+.if (FLASHEND > 0xffff)
         pop     xh
  .endif
 .endmacro
 .macro m_pop_t0
-.ifdef EIND
+.if (FLASHEND > 0xffff)
         pop     t0
  .endif
 .endmacro
 .macro m_push_t0
-.ifdef EIND
+.if (FLASHEND > 0xffff)
         push    t0
  .endif
 .endmacro
 .macro mijmp
-.ifdef EIND
+.if (FLASHEND > 0xffff)
         eijmp
 .else
         ijmp
@@ -200,6 +200,22 @@
 .endmacro
 
 ; Symbol naming compatilibity
+; UART1 symbols for Atmega32u4
+.if defined(XXU4)
+.equ UCSR0A=UCSR1A
+.equ UDR0_=UDR1
+.equ UCSR0B=UCSR1B
+.equ UCSR0C=UCSR1C
+.equ URXC0addr=URXC1addr
+.equ RXEN0=RXEN1
+.equ TXEN0=TXEN1
+.equ RXCIE0=RXCIE1
+.equ UCSZ00=UCSZ10
+.equ USBS0=USBS1
+.equ UBRR0H=UBRR1H
+.equ UBRR0L=UBRR1L
+.equ URSEL_=0x80
+.else
 ; UART0 symbols for Atmega32
 .ifndef UCSR0A
 .equ UCSR0A=UCSRA
@@ -217,6 +233,7 @@
 .else
 .equ UDR0_=UDR0
 .equ URSEL_=0
+.endif
 .endif
 
 .ifndef SPMCSR
@@ -419,7 +436,7 @@ rbuf0_rd:    .byte 1
 rbuf0_lv:    .byte 1
 rbuf0:       .byte RX0_BUF_SIZE
 
-.ifdef UCSR1A
+.if UARTS == 2
 rxqueue1:
 rbuf1_wr:    .byte 1
 rbuf1_rd:    .byte 1
@@ -4325,7 +4342,7 @@ LOAD_L:
 .endif
 .endif
 
-.ifdef UCSR1A
+.if UARTS == 2
 ;***************************************************
 ; TX1   c --    output character to UART 1
         fdw     RX0Q_L
@@ -4933,7 +4950,7 @@ RX0_OVF:
         rjmp    FF_ISR_EXIT
 TX0_ISR:
 
-.ifdef UCSR1A
+.if UARTS == 2
 RX1_ISR: rjmp   RX1_ISRR
 .endif
 ;***************************************************
@@ -5297,7 +5314,7 @@ IFLUSH:
         ret
 
 ;***************************************************
-.ifdef UCSR1A
+.if UARTS == 2
         fdw     RX1Q_L
 .else
         fdw     RX0Q_L
@@ -5460,7 +5477,7 @@ WARM_3:
 .endif
 
 ; Init UART 0
-.ifdef UBRR0L
+.if UARTS >= 1
         rcall   DOLIT
         .dw     RX0_ISR
         rcall   DOLIT
@@ -5488,7 +5505,7 @@ WARM_3:
 .endif
 .endif
 ; Init UART 1
-.ifdef UBRR1L
+.if UARTS == 2
         rcall   DOLIT
         .dw     RX1_ISR
         rcall   DOLIT

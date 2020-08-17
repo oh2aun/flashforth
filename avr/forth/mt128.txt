@@ -1,3 +1,6 @@
+\ Text LCD display demo
+\ 4-bit parallell interface
+\ Needs asm.tx us.txt
 -mt128
 marker -mt128
 

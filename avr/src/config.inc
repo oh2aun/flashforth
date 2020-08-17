@@ -2,13 +2,16 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"  ; 
-;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
-;.include "m328pdef.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
-.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+;.include "m328pdef.inc"  ; Tested    Fuses: E:0xff H:0xda L:0xff
+;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
+;.include "m32U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
+;.include "m16U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
+
 
 ; Oscillator frequency in herz
 .equ FREQ_OSC = 16000000
@@ -76,19 +79,43 @@
 .equ DEBUG_FLASH = 0
 
 #if defined(__ATmega2560__)
-#define partstring "ATmega2560"
+#define partstring "ATmega2560 "
+.equ UARTS = 2
+
 #elif defined(__ATmega328P__)
-#define partstring "ATmega328P"
+#define partstring "ATmega328P "
+.equ UARTS = 1
+
 #elif defined(__ATmega328__)
 #define partstring "ATmega328"
+.equ UARTS = 1
+
 #elif defined(__ATmega128__)
 #define partstring "ATmega128"
+.equ UARTS = 2
+
 #elif defined(__ATmega2561__)
-#define partstring "ATmega2561"
+#define partstring "ATmega2561 "
+.equ UARTS = 2
+
 #elif defined(__ATmega644__)
 #define partstring "ATmega644"
+.equ UARTS = 1
+
+#elif defined(__ATmega32U4__)
+#define partstring "ATmega32u4 "
+.equ XXU4 = 32
+.equ UARTS = 1
+
+#elif defined(__ATmega16U4__)
+#define partstring "ATmega16u4 "
+.equ XXU4 = 16
+.equ UARTS = 1
+
 #else
-#define partstring "ATmega"
+#define partstring "ATmega "
+.equ UARTS = 1
+
 #endif
 
 .if MS_TIMER == 0
