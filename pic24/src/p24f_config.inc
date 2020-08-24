@@ -5,7 +5,7 @@
 ;;; Below is the setting for max amount of ram for PIC24FJ128GB202
 ;;; NOTE: The last 2 words on the last FLASH page contains the configuration bits.
 ;;; If these are overwritten the the device will loose its configuration bits.
-.equ FLASH_SIZE,     0x15800  ; Flash size in bytes without the high byte.
+.equ FLASH_SIZE,     0x15000  ; Flash size in bytes without the high byte.
                               ; See program memory size in the device datasheet.
 .equ RAM_SIZE,       0x2000   ; Ram size in bytes
 
@@ -21,10 +21,10 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .equ FCY, (FREQ_OSC/2)
 
 ; USB CDC support
-.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+.equ USB_CDC, 1		    ; 1 includes the USB CDC support into FlashForth
 			      
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
+.equ OPERATOR_UART, 3	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400			; Serial baudrate UART1

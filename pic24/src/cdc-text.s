@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          06.01.2019                                        *
+;    Date:          23.08.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2019  Mikael Nordman
+; Copyright (C) 2020  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -147,17 +147,14 @@ return1:
 USBCtrlEPService:
         mov.b   U1STAT, WREG
         and.b   #0xf8, W0
-        bra     z, USBCtrlEPService_out        ; USTAT == EP00_OUT
+        bra     z, USBCtrlEPService_out_setup  ; OUT or SETUP token
         and.b   #0xf0, W0
         bra     nz, return1
-        bra     USBCtrlTrfInHandler            ; USTAT == EP00_IN
-USBCtrlEPService_out:
-        mov.b   ep0ostat, WREG                 ; USTAT == EP00_OUT
-        and.b   #0x3C, W0
-        xor.b   #0x34, W0                      ; 0x34 (0xd) SETUP_TOKEN
-        bra     z, USBCtrlTrfSetupHandler
-        bra     USBCtrlTrfOutHandler
-USBCtrlTrfSetupHandler:
+        bra     USBCtrlTrfInHandler            ; IN TOKEN
+USBCtrlEPService_out_setup:
+        btss    U1CON, #PKTDIS
+        bra     USBCtrlTrfOutHandler           ; OUT TOKEN
+USBCtrlTrfSetupHandler:                        ; SETUP TOKEN
         clr.b   ctrl_trf_state                 ; WAIT_SETUP
         bclr.b  usb_status, #MUID_USB9
         clr.b   count
