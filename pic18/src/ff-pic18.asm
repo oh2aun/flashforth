@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          01.04.2020                                        *
+;    Date:          22.08.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -713,6 +713,7 @@ A_:
 L_W_:
         db      NFA|2,"w,"
 W_:
+FALSE__:
         goto    FALSE_
 
 ; movf, ( f d a -- )
@@ -1508,6 +1509,7 @@ ICFETCH1:                       ; Called directly by N=
         tblrd*+                 ; To satisfy optimisation in N=
         goto    CFETCH2
 
+
 ; E!      x a-addr --    store cell in data EEPROM
 ESTORE:
         rcall   LOCKED
@@ -1845,6 +1847,9 @@ PAUSE_RET:
 #ifdef USB_CDC
 ;***************************************************
 ; TX0  c --    output character to the USB serial emulation
+; Buffer Descriptor Status Register bits
+#define UOWN      7
+#define DTS       6
         dw      L_PAUSE
 L_TX0:
         db      NFA|3,"txu"
@@ -1853,7 +1858,7 @@ TX0:
         banksel ep2istat
         btfss   usb_device_state, 3, BANKED
         bra     TX0_DROP
-        btfsc   ep2istat, 7, BANKED
+        btfsc   ep2istat, UOWN, BANKED
         bra     TX0
         movf    ms_count, W
         addlw   2+TICK_TIME
@@ -1870,10 +1875,11 @@ TX0_SEND:
         movf    ep2icount, W
 TX0_SEND2:
         movwf   ep2icnt, BANKED
-        movlw   0xc8
-        btfsc   ep2istat, 0x6, BANKED
-        movlw   0x88
+        movlw   h'48'
+        btfsc   ep2istat, DTS, BANKED
+        movlw   h'08'
         movwf   ep2istat, BANKED
+        bsf     ep2istat, UOWN, BANKED
         clrf    ep2icount
         bra     TX0_END
 TX0_DROP:
@@ -1889,7 +1895,7 @@ RX0:
         rcall   PAUSE
         banksel ep2ostat
         btfsc   usb_device_state, 3, BANKED
-        btfsc   ep2ostat, 7, BANKED
+        btfsc   ep2ostat, UOWN, BANKED
         bra     RX0
         lfsr    Tptr, cdc_data_rx
         movf    ep2optr, W
@@ -1899,10 +1905,11 @@ RX0:
         bnz     RX0_END
         movlw   8
         movwf   ep2ocnt, BANKED
-        movlw   h'C8'
-        btfsc   ep2ostat, 6, BANKED
-        movlw   h'88'
+        movlw   h'48'
+        btfsc   ep2ostat, DTS, BANKED
+        movlw   h'08'
         movwf   ep2ostat, BANKED
+        bsf     ep2ostat, UOWN, BANKED
         clrf    ep2optr
 RX0_END:
         clrf    plusS
@@ -2331,17 +2338,29 @@ USB_ON:
         banksel usb_device_state
         clrf    usb_device_state, BANKED
         clrf    ep2icount
+#ifdef USB_CDC
+#if USB_SPEED == 1
+#ifdef ACTCON
+        bsf     ACTCON, ACTSRC
+        bsf     ACTCON, ACTEN
+#endif
+#endif
+#endif
 USB_ON_RET:
         return
 ;*******************************************************
         dw      L_USB_ON
 L_USB_OFF:
-        db      NFA|5,"usb-?"
+        db      NFA|4,"usb-"
 USB_OFF:
         bsf     UCON, SUSPND
         clrf    UCON
         banksel usb_device_state
         clrf    usb_device_state, BANKED
+#ifdef ACTCON
+        bcf     ACTCON, ACTEN
+#endif
+
         return
 ;*******************************************************
         dw      L_USB_OFF
@@ -2362,7 +2381,7 @@ main:
 
         clrf    TBLPTRU
 #ifdef OSCCON
-        movlw   0x70            ; Use full internal OSC frequency
+        movlw   0x70
         movwf   OSCCON
 #endif
 #ifdef PLL
@@ -2769,9 +2788,6 @@ WARM_ZERO_1:
         bcf     IPR9, TMR6IP, BANKED
 #endif
 #endif
-#ifdef USB_CDC
-        rcall   USB_ON
-#endif
         movlw   low(u0+PRAM)        ; UP
         movwf   upcurr
         movlw   high(u0+PRAM)
@@ -2792,6 +2808,9 @@ WARM_ZERO_1:
 #endif
         bsf     INTCON, GIEL
         bsf     INTCON, GIEH
+        rcall   LIT
+        dw      2
+        call    MS
 
         rcall   LIT
         dw      dp_start
@@ -2808,6 +2827,9 @@ WARM_2:
 #endif
 #ifdef HW_FC_CTS_TRIS
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN
+#endif
+#ifdef USB_CDC
+        rcall   USB_ON
 #endif
         rcall   RQ
         rcall   VER
@@ -2843,7 +2865,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 01.04.2020\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 22.08.2020\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:

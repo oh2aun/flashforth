@@ -13,8 +13,8 @@ CODEPAGE   NAME=devid      START=0x3FFFFE       END=0x3FFFFF       PROTECTED
 CODEPAGE   NAME=eedata     START=0x310000       END=0x3103FF       PROTECTED
 
 
-ACCESSBANK NAME=acs_ram    START=0x10              END=0x40           PROTECTED
-DATABANK   NAME=irqstack   START=0x41              END=0x7FF          PROTECTED
+ACCESSBANK NAME=acs_ram    START=0x10              END=0x37           PROTECTED
+DATABANK   NAME=irqstack   START=0x38              END=0x7FF          PROTECTED
 ACCESSBANK NAME=accesssfr  START=0x3F60            END=0x3FFF         PROTECTED
 DATABANK   NAME=sfr56      START=0x3800            END=0x38FF         PROTECTED
 DATABANK   NAME=sfr57      START=0x3900            END=0x39FF         PROTECTED

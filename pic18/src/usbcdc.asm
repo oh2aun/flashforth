@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          27.01.2019                                        *
+;    Date:          22.08.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -278,23 +278,17 @@ USBReset_1:
         MOVLW   DEFAULT_STATE
         MOVWF   usb_device_state, BANKED
         return
-return1:
-        return
 ;*******************************************************************************
 USBCtrlEPService:
-        banksel ep0ostat
-        MOVF    USTAT, W 
+        MOVF    USTAT, W
         andlw   0x7c
-        bz      USBCtrlEPService_out        ; USTAT == EP00_OUT
+        bz      USBCtrlEPService_out_setup  ; OUT or SETUP token
         andlw   0x78
-        bnz     return1
-        bra     USBCtrlTrfInHandler
-USBCtrlEPService_out:
-        MOVF    ep0ostat, W, BANKED         ; USTAT == EP00_OUT
-        andlw   0x3C
-        xorlw   0x34; _KEN|_INCDIS|_BSTALL        ; 0x34  SETUP_TOKEN
-        bz      USBCtrlTrfSetupHandler
-        bra     USBCtrlTrfOutHandler
+        bz      USBCtrlTrfInHandler         ; IN token
+        return
+USBCtrlEPService_out_setup:
+        btfss   UCON, PKTDIS                ; SETUP token ?
+        bra     USBCtrlTrfOutHandler        ; OUT token
 USBCtrlTrfSetupHandler:
         clrf    ctrl_trf_state,             ; WAIT_SETUP
         clrf    usb_status                  ; MUID_NULL, FLASH
@@ -355,8 +349,8 @@ USBCtrlTrfRxService:
         movwf   moveLen
         movff   FSR0L, PREINC2
         movff   FSR0H, PREINC2
-        lfsr    0, ep0buf   ; SRC ptr
-        movff   dPtr, FSR1L   ; DST ptr
+        lfsr    FSR0, ep0buf   ; SRC ptr
+        movff   dPtr, FSR1L    ; DST ptr
         movff   dPtr+1, FSR1H
 ;**********************************************
 ramcp:
