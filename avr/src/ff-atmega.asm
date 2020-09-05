@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          17.08.2020                                        *
+;    Date:          05.09.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2019  Mikael Nordman
+; Copyright (C) 2020  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "17.08.2020"
+#define DATE "05.09.2020"
 
 
 ; Register definitions
@@ -214,7 +214,7 @@
 .equ USBS0=USBS1
 .equ UBRR0H=UBRR1H
 .equ UBRR0L=UBRR1L
-.equ URSEL_=0x80
+.equ URSEL_=0x00
 .else
 ; UART0 symbols for Atmega32
 .ifndef UCSR0A
@@ -353,6 +353,7 @@
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 52 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
+.equ EIND__ = 1
 .equ KERNEL_SIZE=0x0d80
 .else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
@@ -410,7 +411,7 @@
 .equ uflg=         -11
 .equ usource=      -10         ; Two cells
 .equ utoin=        -6          ; Input stream
-.equ ulink=        -4          ; Task link
+.equ ulink=        -4          ; Task link (up0)
 .equ ursave=       -2          ; Saved ret stack pointer
 .equ uhp=           0          ; Hold pointer
 
@@ -476,9 +477,6 @@ usbuf:      .byte   ussize
 utibbuf:    .byte   utibsize
 dpdata:     .byte   2
 
-.eseg
-.org 0
-        .dw 0xffff  ; Force first cell of eeprom to 0xffff
 ;*******************************************************************
 ; Start of kernel
 ;*******************************************************************
@@ -524,6 +522,7 @@ WARMLIT:
         .dw      0                     ; source
         .dw      0                     ; TOIN
         .dw      up0                   ; Task link
+
 ; M? -- caddr count    current data space string
 ;        dw      L_DOTBASE
 L_MEMQ:
@@ -1186,7 +1185,7 @@ COMMAXT:
 STORECFF1: 
 ;        rcall   CALL_
         rcall   DOLIT
-.ifdef EIND
+.ifdef EIND__
         .dw     0x940F  ; On Atmega 2560 all code is on 128 - 256 Kword area.
 .else
         .dw     0x940E  ; call jmp:0x940d
@@ -3390,7 +3389,7 @@ SEMICOLON:
         breq    RCALL_TO_JMP
         poptos
         rcall   MINUS_FETCH
-.ifdef EIND
+.ifdef EIND__
         subi    tosl, 0x0f
 .else
         subi    tosl, 0x0e
@@ -3398,7 +3397,7 @@ SEMICOLON:
         sbci    tosh, 0x94
         brne    ADD_RETURN
 CALL_TO_JMP:
-.ifdef EIND
+.ifdef EIND__
         ldi     tosl, 0x0d
 .else
         ldi     tosl, 0x0c
@@ -3418,7 +3417,7 @@ RCALL_TO_JMP:
         .dw     -2
         rcall   IALLOT
         rcall   DOLIT
-.ifdef EIND
+.ifdef EIND__
         .dw     0x940d
 .else
         .dw     0x940c      ; jmp:0x940c
@@ -3756,7 +3755,7 @@ X_TO_R:
         adiw    zl, 1
         st      -z, tosl
         st      -z, tosh
-.ifdef EIND
+.ifdef EIND__
         st      -z, r_one
 .endif
         st      -z, r_zero
@@ -4444,16 +4443,17 @@ RX1_ISRR:
 .endif
 .endif
         lds     xl, rbuf1_lv
-        cpi     xl, RX1_BUF_SIZE-2
-        breq    RX1_OVF
         inc     xl
         sts     rbuf1_lv, xl
+
+.if U1FC_TYPE == 1
         cpi     xl, RX0_OFF_FILL
         brmi    RX1_ISR_SKIP_XOFF
-.if U1FC_TYPE == 1
         rcall   XXOFF_TX1_1
 .endif
 .if U1FC_TYPE == 2
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX1_ISR_SKIP_XOFF
         sbi_    U1RTS_PORT, U1RTS_BIT
 .endif
 RX1_ISR_SKIP_XOFF:
@@ -4466,10 +4466,6 @@ RX1_ISR_SKIP_XOFF:
         inc     xl
         andi    xl, (RX1_BUF_SIZE-1)
         sts     rbuf1_wr, xl
-        rjmp    FF_ISR_EXIT
-RX1_OVF:
-        ldi     zh, '|'
-        rcall   TX1_SEND
         rjmp    FF_ISR_EXIT
 TX1_ISR:
 .endif
@@ -4918,21 +4914,20 @@ RX0_ISR:
 .endif
 .endif
         lds     xl, rbuf0_lv
-        cpi     xl, RX0_BUF_SIZE-2
-        breq    RX0_OVF
         inc     xl
         sts     rbuf0_lv, xl
 
+.if U0FC_TYPE == 1
         cpi     xl, RX0_OFF_FILL
         brmi    RX0_ISR_SKIP_XOFF
-.if U0FC_TYPE == 1
         rcall   XXOFF_TX0_1
 .endif
 .if U0FC_TYPE == 2
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX0_ISR_SKIP_XOFF
         sbi_    U0RTS_PORT, U0RTS_BIT
 .endif
 RX0_ISR_SKIP_XOFF:
-
         ldi     zl, low(rbuf0)
         ldi     zh, high(rbuf0)
 
@@ -4944,11 +4939,6 @@ RX0_ISR_SKIP_XOFF:
         andi    xl, (RX0_BUF_SIZE-1)
         sts     rbuf0_wr, xl
         rjmp    FF_ISR_EXIT
-RX0_OVF:
-        ldi     zh, '|'
-        rcall   TX0_SEND
-        rjmp    FF_ISR_EXIT
-TX0_ISR:
 
 .if UARTS == 2
 RX1_ISR: rjmp   RX1_ISRR
@@ -5158,9 +5148,13 @@ IWRITE_BUFFER:
         rcall   DOLIT
         .dw     10
         rcall   MS
+
         ; Disable interrupts
         cli
         movw    zl, ibasel
+        cpi     zh, high(FLASH_HI-PFLASH+1) ; Don't allow kernel writes
+        brcc    ISTORERR2
+
 .ifdef RAMPZ
 	lds     t0, ibaseu
 	out_    RAMPZ, t0
@@ -5206,6 +5200,7 @@ IWRITE_BUFFER2:
         brne    IWRITE_BUFFER2
         pop     r1
         pop     r0
+ISTORERR2:
 	ser     t0
 	mov     ibaseh, t0
 .ifdef RAMPZ
@@ -5363,14 +5358,14 @@ WARM_1:
         in_     t2, MCUSR
         sts     MCUSR, r_zero
 .endif
-        ldi     xl, 0x1C  ; clear ram from y register upwards
+        ldi     xl, 0xff  ; clear ram from y register upwards
 WARM_2:
         st      x+, r_zero
-        cpi     xh, 0x10  ; up to 0xfff, 4 Kbytes 
+        cpi     xh, 0x08  ; up to 0x7ff, 2 Kbytes 
         brne    WARM_2
 
 ; Init empty flash buffer
-	    dec     ibaseh
+	dec     ibaseh
 .ifdef RAMPZ
 	sts     ibaseu, ibaseh
 .endif
@@ -5397,7 +5392,7 @@ WARM_2:
         ldi     t0, RAMPZV
         out_    RAMPZ, t0
 .endif
-.ifdef EIND
+.ifdef EIND__
         out_    EIND, r_one
 .endif
 ; init warm literals
@@ -5600,7 +5595,7 @@ IRQ_SEMI_L:
         .db     NFA|IMMED|2,";i",0
 IRQ_SEMI:
         rcall   DOLIT
-.ifdef EIND
+.ifdef EIND__
         .dw     0x940D     ; jmp
 .else
         .dw     0x940C     ; jmp

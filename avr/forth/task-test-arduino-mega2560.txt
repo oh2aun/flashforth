@@ -23,7 +23,7 @@ ram variable delay
 : ledoff  pin7 portb mclr ;
 : ledon   pin7 portb mset ;
 
-0 18 20 0 task: task1
+0 20 20 0 task: task1
 : taskloop 
   $100 delay !
   pin7 ddrb mset  \  Output 

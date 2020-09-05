@@ -2,14 +2,14 @@
 
 ; Select the include file for your micro controller
 ;.include "m2561def.inc"  ; 
-.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
 ;.include "m328pdef.inc"  ; Tested    Fuses: E:0xff H:0xda L:0xff
-;.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
+.include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
-;.include "m32U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
+;.include "m32U4def.inc"  ; Tested Crystal Fuses: E:0xcf H:0xda L:0xff
 ;.include "m16U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
 
 
@@ -17,21 +17,21 @@
 .equ FREQ_OSC = 16000000
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART = 0              ; 0 or 1
+.equ OPERATOR_UART = 0              ; 0 or 1 (0 for 32u4 )
 
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
-;;; The workaround is to use XON/XOFF flow control and 1 ms intercharacter delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
-.equ BAUDRATE0 = 38400               ; Serial baudrate UART0
-.equ U0FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
+.equ BAUDRATE0 = 38400              ; Serial baudrate UART0
+.equ U0FC_TYPE = 1                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3
 
 ;;; UART1 configuration
 .equ BAUDRATE1= 38400               ; Serial baudrate UART1
-.equ U1FC_TYPE = 1                  ; 1 = XON/XOFF, 2=CTS/RTS
+.equ U1FC_TYPE = 1                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 .equ U1RTS_PORT = portd
 .equ U1RTS_DDR = ddrd
 .equ U1RTS_BIT = 4
@@ -48,8 +48,8 @@
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
 .equ CPU_LOAD_DDR = ddrb
-.equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduinomega:portb arduinouno:portb
-.equ CPU_LOAD_BIT = 5            ; avr-p28:pin5  arduinomega:pin7  ardinouno:pin5
+.equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+.equ CPU_LOAD_BIT = 5            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
 .equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
                                  ; arduino : 1 = high on port turns on led 
 
@@ -60,7 +60,7 @@
 .equ RX0_BUF_SIZE = 64  ; 8,16,32,64
 .equ RX0_OFF_FILL = 4   ; Fill level for XOFF
 
-.equ RX1_BUF_SIZE = 32  ; 8,16,32,64
+.equ RX1_BUF_SIZE = 64  ; 8,16,32,64
 .equ RX1_OFF_FILL = 4   ; Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
@@ -69,7 +69,7 @@
 .equ TIB_SIZE = 90                   ; 80 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART
-.equ CTRL_O_WARM_RESET = 1
+.equ CTRL_O_WARM_RESET = 0
 
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
 .equ MS_TIMER = 0

@@ -16,18 +16,20 @@
 marker -vt100-test
 
 : vt100-test
-  \cls \c-
+  \cls \c+
   2 8 \cp
-  \bri s" *** " type
-  \res  \rev s"  Terminal test " type \res
-  \bri s"  ***" type
-  6 8 \cp \unl s" ^^^^^^^^^^^^^^^^^^^^^^" type
-  8 8 \cp \res s"  Press any key to quit! " type
-  \res \bri \rev
+  \bri ." *** "
+  \res  \rev ."  Terminal test " \res
+  \bri ."  ***"
+  6 8 \cp \unl ." ^^^^^^^^^^^^^^^^^^^^^^"
+  8 8 \cp \res ." Press any key to quit! "
+  \res
   0
   begin
+   \bri \rev 
    4 #14 \cp bl emit
-   dup 5 u.r 1+  s" sec " type
+   dup 5 u.r 1+  ." sec "
+   \res 
    #1000 ms
    key?
   until
