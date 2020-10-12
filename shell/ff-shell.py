@@ -39,16 +39,16 @@ waitForNL = 0
 uploadMode = 0
 waitForChar = 'idle'
 cmd_dictionary = {
-  "#help filter   ": "SHELL: Print help text for a word",
-  "#help          ": "SHELL: Print help text for all words",
-  "#warm          ": "SHELL: Send ctrl-o to FF",
-  "#esc           ": "SHELL: Make a warm start and disable the turnkey",
-  "#send filename {startstring {stopstring}}" : "SHELL: Send a file optonally starting at line with startstring and optionally stop at line with stopstring", 
-  "#pwd           ": "SHELL: Print working directory",
-  "#ls {path}     ": "SHELL: List files in working directory or in path",
-  "#cd path       ": "SHELL: Change working directory",
-  "#cat file      ": "SHELL: Show the file contents",
-  "#history filter": "SHELL: Show the history"
+  "#help filter   ": "Print filtered help text",
+  "#help          ": "Print help text for all words",
+  "#warm          ": "Send ctrl-o to FF",
+  "#esc           ": "Make a warm start and disable the turnkey",
+  "#send filename {startstring {stopstring}}" : "Send a file optonally starting at line with startstring and optionally stop at line with stopstring", 
+  "#pwd           ": "Print working directory",
+  "#ls {path}     ": "List files in working directory or in path",
+  "#cd path       ": "Change working directory",
+  "#cat file      ": "Show the file contents",
+  "#history filter": "Show the history"
 }
 
 class Config(object):
@@ -62,7 +62,7 @@ class Config(object):
     self.charflowcontrol = False
 
 def serial_open(config):
-  print "Port:"+str(config.port)+" Speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.chardelay)+" chardelay:"+str(config.chardelay)+" charfc:"+str(config.charflowcontrol)
+  print "port:"+str(config.port)+" speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.newlinedelay)+" chardelay:"+str(config.chardelay)+" cc:"+str(config.charflowcontrol)+" nl:"+str(config.newlineflowcontrol)
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.5, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
@@ -93,10 +93,10 @@ def receive_thr(config, *args):
 
 
 def parse_arg(config):
-  parser = argparse.ArgumentParser(description="Small shell for FlashForth", 
-           epilog="""Interact with FlashForth using commmand line editing and history. Send files to FlashForth with #send path/filename. Warm start with #warm.""")
+  parser = argparse.ArgumentParser(description="Small shell for FlashForth.")
+           #epilog="""End-of-line flow control with a 1 second timeout is always active.""")
   parser.add_argument("--port", "-p", action="store",
-         type=str, default="/dev/ttyACM0", help="Serial port name")
+         type=str, default="/dev/ttyACM0", help="Serial port name, default = /dev/ttyACM0")
   parser.add_argument("--hw", action="store_true",
          default=False, help="Serial port RTS/CTS enable")
   parser.add_argument("--sw", action="store_true",
@@ -109,6 +109,9 @@ def parse_arg(config):
          type=str, default=0, help="Newline delay(milliseconds)")
   parser.add_argument("--cc", "-c", action="store_true",
          default=False, help="Character by character flow control")
+  parser.add_argument("--nl", action="store_false",
+         default=True, help="Newline flow control disable")
+
   arg = parser.parse_args()
   config.port = arg.port
   config.hw = arg.hw
@@ -117,6 +120,7 @@ def parse_arg(config):
   config.chardelay = arg.chardelay
   config.newlinedelay = arg.newlinedelay
   config.charflowcontrol = arg.cc
+  config.newlineflowcontrol = arg.nl
 
 #main loop for sending and receiving
 def main():
@@ -129,7 +133,6 @@ def main():
  
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
-  print histfn
   try:
     readline.set_history_length(500)
     readline.read_history_file(histfn)
@@ -141,8 +144,10 @@ def main():
   dictionary.update(user_dictionary.copy())
   dictionary.update(cmd_dictionary.copy())
   
+  print("Shell directives:")
   for cmd in sorted(cmd_dictionary):
     print(cmd + "\t" + cmd_dictionary[cmd])
+  print("\n")
 
   running = True
   waitForNL = 0
@@ -269,18 +274,20 @@ def main():
         if uploadMode < 2:
           continue
       try:
-        waitForNL = 1000
+        if config.newlineflowcontrol:
+          waitForNL = 2000
         for c in line:
           sleep(float(config.chardelay)/1000)
-          if config.charflowcontrol == True:
+          if config.charflowcontrol:
             while waitForChar <> 'idle':
               sleep(0.001)
             waitForChar = c
           config.ser.write(c)
           config.ser.flush()       # Send the output buffer
-        sleep(float(config.newlinedelay)/1000)
+
         config.ser.write('\n')
         config.ser.flush()       # Send the output buffer
+        sleep(float(config.newlinedelay)/1000)
 
       except Exception as e:
         print("Write error on serial port {0}, {1}".format(config.serial_port, e))
