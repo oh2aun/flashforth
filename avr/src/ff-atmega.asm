@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          05.09.2020                                        *
+;    Date:          22.10.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -34,7 +34,7 @@
 .include "config.inc"
 
 ; Define the FF version date string
-#define DATE "05.09.2020"
+#define DATE "22.10.2020"
 
 
 ; Register definitions
@@ -4024,7 +4024,7 @@ LEAVE:
 ; RDROP compile a pop
         fdw      LEAVE_L
 RDROP_L:
-        .db      NFA|IMMED|COMPILE|INLINE|5,"rdrop"
+        .db      NFA|COMPILE|INLINE|5,"rdrop"
 RDROP:
         pop     t0
         pop     t0
