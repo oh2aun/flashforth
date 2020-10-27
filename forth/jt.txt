@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      jt.txt                                            *
-\    Date:          06.01.2014                                         *
+\    Date:          27.10.2020                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -12,31 +12,33 @@
 \ each entry consists of 'nn' cell sized comparison value
 \ and 'an' the address of the corresponding word to be executed.
 \ At least two entries must be provided, the last one beeing the
-\ default action.
--jt
-marker -jt
+\ default action. 
+\ ' default ' first-entry 3 ' 2nd-entry 5 2 jt:
+-jt:
+marker -jt:
 
-: jte nip cell+ @ex ;
-: jt ( an nn n -- ) \ compile an execution table
-     ( m -- )       \ execute aword corresponding to m
-  create
-  dup 1- ,             \ store the table size
+: jt: ( an nn n -- ) \ compile an jump table table
+     ( m -- )        \ execute aword corresponding to m
+  flash create
+  dup ,                \ store the table size
   for
     , ,                \ store an entry
   next
+  ,                   \ store the default entry
+  ram
   does>                \ m addr 
   dup @                \ m a n
   for
-    cell+
+    cell+              \ Point to value
     2dup @ =           \ m a flag
-    if
-      \ a match was found
-      jte rdrop exit
+    if                 \ m a
+      endit            \ a match was found
+    else
+      cell+            \ Point to execution address
     then
-    cell+             \ m a
   next
-  \ Execute the default action.
-  cell+ jte
+  \ Execute the action.
+  nip cell+ @ex
 ;
-ram
+
 
