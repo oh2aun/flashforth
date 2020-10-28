@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      usbcdc.txt                                        *
-\    Date:          27.10.2020                                        *
+\    Date:          28.10.2020                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega 32u4                                       *
 \    Copyright:     Mikael Nordman                                    *
@@ -99,9 +99,12 @@ ram create usb.linecoding 8 allot
   then  0 UDINT c!
 ;i
 
-: usb> UEDATX c@ ;
-: usb< UEDATX c! ;
+: c!+ ( a n  -- a' ) swap dup 1+ >r c! r> ;
+: usb@ UEDATX c@ ;
+: usb! UEDATX c! ;
 : usb? UEBCLX c@ ;
+: usb>> ( a n ) for usb@ c!+ next drop ; 
+: usb<< ( a n ) for c@+ usb! next drop ;
 : usb.stall   bit5 bit0 or UECONX c! ;  \ STALLRQ EPEN
 : usb.wait.tx begin ( TXINI) bit0 UEINTX mtst until ;
 : usb.tx      ( TXINI) bit0 UEINTX mclr ;
@@ -123,7 +126,7 @@ jumptable: usb.desc?
   dup if 
       usb.wait.tx
       for 
-        c@+ usb< usb? 32 = if usb.tx usb.wait.tx then 
+        c@+ usb! usb? 32 = if usb.tx usb.wait.tx then 
       next
       usb? if usb.tx then
   then
@@ -134,14 +137,14 @@ jumptable: usb.desc?
   bit1 UENUM c! bit0 UECONX c! $c1 UECFG0X c! bit1 UECFG1X c! \ Interrupt
   3    UENUM c! bit0 UECONX c! $80 UECFG0X c! bit1 UECFG1X c! \ OUT Bulk
   bit2 UENUM c! bit0 UECONX c! $81 UECFG0X c! bit1 UECFG1X c! \ IN Bulk
-  $7e UERST c! false UERST c!
+  $7e UERST c! 0 UERST c!
   usb.value c@ usb.conf c!
 ;
 : usb.set.addr usb.value c@ bit7 or UDADDR c! ;
-: usb.get.config usb.conf c@ usb< usb.tx ;
-: usb.get.status false usb< false usb< usb.tx ;
-: usb.get.lineco usb.linecoding 7 for c@+ usb< next usb.tx ;
-: usb.set.lineco usb.linecoding !p>r 7 for usb> pc! p+ next r>p ;
+: usb.get.config usb.conf c@ usb! usb.tx ;
+: usb.get.status 0 usb! 0 usb! usb.tx ;
+: usb.get.lineco usb.linecoding 7 usb<< usb.tx ;
+: usb.set.lineco usb.linecoding 7 usb>> ;
 : usb.set.ctline ;
 
 jumptable: usb.req?
@@ -160,7 +163,7 @@ jumptable: usb.req?
   0 UENUM c! 
   bit3 bit2 or UEINTX mtst if                      \ RXSTPI RXOUTI 
     \ SETUP PACKET 
-    usb.ctl.buf !p>r 8 for usb> pc! p+ next r>p 
+    usb.ctl.buf 8 usb>>
     bit3 bit2 bit0 or or UEINTX mclr               \ RXSTPI RXOUTI TXINI 
     bit7 usb.request.typ mtst 0= if usb.tx usb.wait.tx then
     usb.request c@ usb.req?
@@ -184,13 +187,13 @@ jumptable: usb.req?
 ;
 
 : usb.wait.txu begin pause bit0 ( TXINI) UEINTX mtst until usb.tx ;
-: txu 4 UENUM c! usb.wait.txu usb<  bit7 ( FIFOCON) UEINTX mclr ;
+: txu 4 UENUM c! usb.wait.txu usb!  bit7 ( FIFOCON) UEINTX mclr ;
 
 : rxu? 3 UENUM c! bit7 ( FIFOCON) UEINTX mtst ;
 : usb.wait.rxu begin pause rxu? until bit2 ( RXOUTI) UEINTX mclr ;
 : rxu 
   usb.wait.rxu 
-  usb? if usb> then 
+  usb? if usb@ then 
   usb? 0= if bit7 ( FIFOCON) UEINTX mclr then
 ;
 
