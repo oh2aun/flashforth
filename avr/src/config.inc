@@ -9,7 +9,7 @@
 .include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
 ;.include "m32adef.inc"
 ;.include "m644pdef.inc"
-;.include "m32U4def.inc"  ; Tested Crystal Fuses: E:0xcf H:0xda L:0xff
+;.include "m32U4def.inc"   ; Tested Crystal Fuses: E:0xcf H:0xda L:0xff
 ;.include "m16U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
 
 
@@ -17,21 +17,21 @@
 .equ FREQ_OSC = 16000000
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART = 0              ; 0 or 1 (0 for 32u4 )
+.equ OPERATOR_UART = 0              ; 0 or 1 (0 for 32u4 ) or 3 for USB
 
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
 .equ BAUDRATE0 = 38400              ; Serial baudrate UART0
-.equ U0FC_TYPE = 1                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
+.equ U0FC_TYPE = 0                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 .equ U0RTS_PORT = portd
 .equ U0RTS_DDR = ddrd
 .equ U0RTS_BIT = 3
 
 ;;; UART1 configuration
 .equ BAUDRATE1= 38400               ; Serial baudrate UART1
-.equ U1FC_TYPE = 1                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
+.equ U1FC_TYPE = 0                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 .equ U1RTS_PORT = portd
 .equ U1RTS_DDR = ddrd
 .equ U1RTS_BIT = 4

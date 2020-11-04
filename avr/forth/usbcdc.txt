@@ -114,12 +114,12 @@ ram create usb.linecoding 8 allot
 : usb.d.s1  usb.str.1 #10 ;
 : usb.d.0   usb.stall 0 ;
 
-jumptable: usb.desc?
-   $0100 | usb.d.d
-   $0200 | usb.d.c
-   $0300 | usb.d.s0
-   $0301 | usb.d.s1
-  default| usb.d.0
+jumptable: usb.desc?    ]
+[   $0100 | usb.d.d     ]
+[   $0200 | usb.d.c     ]
+[   $0300 | usb.d.s0    ]
+[   $0301 | usb.d.s1    ]
+[  default| usb.d.0
 
 : usb.get.desc
   usb.value @ usb.desc?
@@ -147,16 +147,16 @@ jumptable: usb.desc?
 : usb.set.lineco usb.linecoding 7 usb>> ;
 : usb.set.ctline ;
 
-jumptable: usb.req?
-      06  | usb.get.desc  
-      09  | usb.set.config
-      05  | usb.set.addr  
-      08  | usb.get.config
-      00  | usb.get.status
-      $20 | usb.set.lineco
-      $21 | usb.get.lineco
-      $22 | usb.set.ctline
-   default| usb.stall
+jumptable: usb.req?          ]
+[      06  | usb.get.desc    ]
+[      09  | usb.set.config  ]
+[      05  | usb.set.addr    ]
+[      08  | usb.get.config  ]
+[      00  | usb.get.status  ]
+[      $20 | usb.set.lineco  ]
+[      $21 | usb.get.lineco  ]
+[      $22 | usb.set.ctline  ]
+[   default| usb.stall
 
 : usb.endpoint
   UENUM c@
@@ -178,7 +178,7 @@ jumptable: usb.req?
   begin bit0 PLLCSR mtst until   \ PLOCK
   bit7 bit4 or USBCON mset       \ USBE OTGPADE 
   bit5 USBCON mclr               \ FRZCLK
-  0 UDCON c!
+  0 UDCON c!                     \ ATTACH, fullspeed mode
   0 usb.conf !
   ['] usb.device #11 int!
   ['] usb.endpoint #12 int!
@@ -186,13 +186,13 @@ jumptable: usb.req?
   ei
 ;
 
-: usb.wait.txu begin pause bit0 ( TXINI) UEINTX mtst until usb.tx ;
-: txu 4 UENUM c! usb.wait.txu usb!  bit7 ( FIFOCON) UEINTX mclr ;
+: txu.ready begin pause bit0 ( TXINI) UEINTX mtst until usb.tx ;
+: txu 4 UENUM c! txu.ready usb!  bit7 ( FIFOCON) UEINTX mclr ;
 
 : rxu? 3 UENUM c! bit7 ( FIFOCON) UEINTX mtst ;
-: usb.wait.rxu begin pause rxu? until bit2 ( RXOUTI) UEINTX mclr ;
+: rxu.ready begin pause rxu? until bit2 ( RXOUTI) UEINTX mclr ;
 : rxu 
-  usb.wait.rxu 
+  rxu.ready
   usb? if usb@ then 
   usb? 0= if bit7 ( FIFOCON) UEINTX mclr then
 ;

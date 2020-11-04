@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          22.10.2020                                        *
+;    Date:          03.11.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -32,172 +32,10 @@
 
 ; Include the FlashForth configuration file
 .include "config.inc"
+.include "macros.inc"
 
 ; Define the FF version date string
-#define DATE "22.10.2020"
-
-
-; Register definitions
-  .def upl = r2         ; not in interrupt 
-  .def uph = r3         ; not in interrupt
-  .def r_zero = r5      ; read only zero
-  .def r_one = r6       ; read only one
-  .def r_two = r7       ; read only two
-  .def t8 = r8          ; Not in interrupt
-  .def wflags  = r9     ; not in interrupt
-
-  .def loadreg0 = r4    ;
-  .def loadreg1 = r12
-  .def loadreg2 = r13
-
-
-  .def ibasel=r10       ; Not in interrupt
-  .def ibaseh=r11       ; Not in interrupt
-  .def ms_count  = r14  ; Not in interrupt
-  .def ms_count1 = r15  ; Not in interrupt
-  .def t0 = r16
-  .def t1 = r17
-  .def t2 = r0          ; Not in interrupt
-  .def t3 = r1          ; Not in interrupt
-
-  .def al = r18
-  .def ah = r19
-  .def pl = r20         ; P Register and FOR..LOOP INDEX variable
-  .def ph = r21
-
-  .def FLAGS1 = r22     ; Not in interrupt
-  .def FLAGS2 = r23     ; Not in interrupt
-  .def tosl = r24
-  .def tosh = r25
-;  xl = r26
-;  xh = r27
-;  yl = r28  ; StackPointer Ylo
-;  yh = r29  ; StackPointer Yhi
-;  zl = r30
-;  zh = r31
-  .def t4 = r26
-  .def t5 = r27
-  .def t6 = r30
-  .def t7 = r31
-
-; Macros
-.macro poptos 
-    ld tosl, Y+
-    ld tosh, Y+
-.endmacro
-
-.macro pushtos
-    st -Y, tosh
-    st -Y, tosl
-.endmacro
-
-.macro in_
-.if (@1 < $40)
-  in @0,@1
-.else
-  lds @0,@1
-.endif
-.endmacro
-
-.macro out_
-.if (@0 < $40)
-  out @0,@1
-.else
-  sts @0,@1
-.endif
-.endmacro
-
-.macro sbi_
-.if (@0 < $40)
-  sbi @0,@1
-.else
-  in_ @2,@0
-  ori @2,exp2(@1)
-  out_ @0,@2
-.endif
-.endmacro
-
-.macro cbi_
-.if (@0 < $40)
-  cbi @0,@1
-.else
-  in_ @2,@0
-  andi @2,~(exp2(@1))
-  out_ @0,@2
-.endif
-.endmacro
-
-.macro lpm_
-.if (FLASHEND < 0x8000) ; Word address
-        lpm @0,@1
-.else
-        elpm @0,@1
-.endif
-.endmacro
-
-.macro sub_pflash_z
-.if (PFLASH > 0)
-        subi    zh, high(PFLASH)
-.endif
-.endmacro
-
-.macro add_pflash_z
-.if (PFLASH > 0)
-        subi    zh, high(0x10000-PFLASH)
-.endif        
-.endmacro
-
-.macro sub_pflash_tos
-.if (PFLASH > 0)
-        subi    tosh, high(PFLASH)
-.endif
-.endmacro
-
-.macro add_pflash_tos
-.if (PFLASH > 0)
-        subi    tosh, high(0x10000-PFLASH)
-.endif        
-.endmacro
-
-.macro rampv_to_c
-.if (FLASHEND >= 0x8000)
-        bset    0
-.else
-        bclr    0
-.endif
-.endmacro
-
-.macro fdw
-  .dw ((@0<<1)+PFLASH)
-.endmacro
-
-.macro m_pop_zh
-.if (FLASHEND > 0xffff)
-        pop     zh
-.endif
-.endmacro
-.macro m_pop_xh
-.if (FLASHEND > 0xffff)
-        pop     xh
- .endif
-.endmacro
-.macro m_pop_t0
-.if (FLASHEND > 0xffff)
-        pop     t0
- .endif
-.endmacro
-.macro m_push_t0
-.if (FLASHEND > 0xffff)
-        push    t0
- .endif
-.endmacro
-.macro mijmp
-.if (FLASHEND > 0xffff)
-        eijmp
-.else
-        ijmp
-.endif
-.endmacro
+#define DATE "03.11.2020"
 
 ; Symbol naming compatilibity
 ; UART1 symbols for Atmega32u4
@@ -261,6 +99,12 @@
 .equ OP_TX_=TX0_
 .equ OP_RX_=RX0_
 .equ OP_RXQ=RX0Q
+.else
+.if OPERATOR_UART == 3
+.equ OP_TX_=TXU_
+.equ OP_RX_=RXU_
+.equ OP_RXQ=RXUQ_
+.endif
 .endif
 .endif
 
@@ -346,6 +190,12 @@
 .equ BS_=0x08
 .equ TAB_=0x09
 
+.ifdef USBCON
+.equ USB_CODE = 0x1c0
+.else
+.equ USB_CODE = 0
+.endif
+
 ;;; Memory mapping prefixes
 .equ PRAM    = 0x0000                 ; 8 Kbytes of ram (atm2560)
 .equ PEEPROM = RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
@@ -354,31 +204,31 @@
 .equ PFLASH  = 0
 .equ RAMPZV  = 3
 .equ EIND__ = 1
-.equ KERNEL_SIZE=0x0d80
+.equ KERNEL_SIZE=0x0d80 + USB_CODE
 .else
 .if (FLASHEND == 0xffff)              ; 64 Kwords flash
 .equ OFLASH  = PEEPROM+EEPROMEND+1    ; 56 Kbytes available for FlashForth(atm128)
 .equ PFLASH  = 0
 .equ RAMPZV  = 1
-.equ KERNEL_SIZE=0x0d00
+.equ KERNEL_SIZE=0x0d00 + USB_CODE
 .else
 .if (FLASHEND == 0x7fff)              ; 32 Kwords flash
 .equ OFLASH = PEEPROM+EEPROMEND+1     ; 56 Kbytes available for FlashForth
 .equ PFLASH = 0
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0d00
+.equ KERNEL_SIZE=0x0d00 + USB_CODE
 .else
 .if (FLASHEND == 0x3fff)              ; 16 Kwords flash
 .equ OFLASH = 0x8000                  ; 32 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0c80
+.equ KERNEL_SIZE=0x0c80 + USB_CODE
 .else
 .if (FLASHEND == 0x1fff)              ; 8  Kwords flash
 .equ OFLASH = 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH = OFLASH
 .equ RAMPZV  = 0
-.equ KERNEL_SIZE=0x0c80
+.equ KERNEL_SIZE=0x0c80 + USB_CODE
 .endif
 .endif
 .endif
@@ -389,8 +239,8 @@
 .equ KERNEL_START=BOOT_START - KERNEL_SIZE
 
 ;;;  High values for memory areas
-.equ FLASH_HI = 0xffff - (BOOT_SIZE*2) - (KERNEL_SIZE*2)
-.equ EEPROM_HI =PEEPROM + EEPROMEND
+.equ FLASH_HI = (0xffff - (BOOT_SIZE*2) - (KERNEL_SIZE*2))& 0xFF00
+.equ EEPROM_HI = PEEPROM + EEPROMEND
 .equ RAM_HI = RAMEND
         
 ;;; USER AREA for the OPERATOR task
@@ -428,6 +278,9 @@
 
 ;****************************************************
 .dseg
+.ifdef USBCON
+.org 0x110
+.endif
 ibuf:         .byte PAGESIZEB
 ivec:         .byte INT_VECTORS_SIZE
 
@@ -485,6 +338,9 @@ dpdata:     .byte   2
 .org 0x17e80
 .else
 .org KERNEL_START
+.endif
+.ifdef USBCON
+#include  "usbcdc.asm" 
 .endif
 ;***********************************************************
 CMP:
@@ -4862,12 +4718,8 @@ FF_ISR:
         push    t1
         push    tosl
         push    tosh
-.if low(ivec) == 0x80
-        ldi     xh, low(ivec-1)
-        add     xl, xh
-.else
-        subi    xl, 1
-.endif
+        ldi     t0, low(ivec-1)
+        add     xl, t0
         ldi     xh, high(ivec)
         ld      zl, x+
         ld      zh, x+
@@ -5068,17 +4920,17 @@ RX0Q:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
-	sub_pflash_tos
+	      sub_pflash_tos
 .ifdef  RAMPZ
-	ldi     t0, RAMPZV
+	      ldi     t0, RAMPZV
 .endif
 XUPDATEBUF:
         sts     iaddrl, tosl
         sts     iaddrh, tosh
 .ifdef RAMPZ
         sts     iaddru, t0
-	cpi     t0, RAMPZV
-	brne    XUPDATEBUF2
+        cpi     t0, RAMPZV
+        brne    XUPDATEBUF2
 .endif
         cpi     tosh, high(FLASH_HI-PFLASH+1) ; Dont allow kernel writes
         brcc    ISTORERR
@@ -5334,7 +5186,11 @@ INIT_012:
         movw    r_one, zl
         ret
 ;*******************************************************
+.ifdef USBCON
+        fdw     TXU_L
+.else
         fdw     EMPTY_L
+.endif
 WARM_L:
         .db     NFA|4,"warm",0
 WARM_:
@@ -5358,7 +5214,14 @@ WARM_1:
         in_     t2, MCUSR
         sts     MCUSR, r_zero
 .endif
-        ldi     xl, 0xff  ; clear ram from y register upwards
+        ldi     xh, high(0x100)
+
+.ifdef USBCON
+  	    sbi_	USBCON, OTGPADE			; Enable USB power pads
+        ldi   xl, low(0x110)
+.else
+        ldi   xl, low(0x100)
+.endif
 WARM_2:
         st      x+, r_zero
         cpi     xh, 0x08  ; up to 0x7ff, 2 Kbytes 
@@ -5524,16 +5387,22 @@ WARM_3:
 .endif
 .endif
         rcall   DP_TO_RAM
-        sei
-
-        rcall   RQ_EMIT
-        rcall   VER
+.ifdef USBCON
+.if OPERATOR_UART == 3
+		    call	USB_ON
+.endif
+.endif
         sts     rbuf0_lv, r_zero
         sts     rbuf0_wr, r_zero
 .ifdef rbuf1_lv
         sts     rbuf1_lv, r_zero
         sts     rbuf1_wr, r_zero
 .endif
+        sei
+
+        rcall   RQ_EMIT
+        rcall   VER
+
 .if CPU_LOAD_LED == 1
         sbi_    CPU_LOAD_DDR, CPU_LOAD_BIT
 .endif
@@ -5615,10 +5484,8 @@ IRQ_V:
         movw    zl, tosl
         sbiw    zl, 1
         lsl     zl
-.if low(ivec) == 0x80
-        ldi     zh, low(ivec)
-        add     zl,  zh
-.endif
+        ldi     tosl, low(ivec)
+        add     zl, tosl
         ldi     zh, high(ivec)
         poptos
         rcall   TO_XA
@@ -5934,6 +5801,10 @@ TURNKEY:
 PAUSE_L:
         .db     NFA|5,"pause"
 PAUSE:
+.ifdef USBCON
+        call    USB_device_service
+        call    USB_ep_service
+.endif
 .if IDLE_MODE == 1
         rcall   IDLE_LOAD
 .endif
