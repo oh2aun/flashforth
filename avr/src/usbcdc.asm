@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          03.11.2020                                        *
+;    Date:          09.11.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -34,20 +34,6 @@
 #define U_PID 0xfaf0  ; Product ID used for testing FlashForth
 #define U_VID 0xfaf0  ; Vendor ID used for testing FlashForth
 
-
-;#include "config.inc"
-;#include "macros.inc"
-
-#define GET_STATUS 0x00
-#define CLEAR_FEATURE 0x01
-#define SET_FEATURE 0x03
-#define SET_ADDRESS 0x05
-#define GET_DESCRIPTOR 0x06
-#define GET_CONFIGURATION 0x08
-#define SET_CONFIGURATION 0x09
-#define GET_INTERFACE 0x0A
-#define SET_INTERFACE 0x0B
- 
 .dseg 
 .org  0x100 
 usb_config_status:  .byte 1
@@ -133,12 +119,6 @@ USB_CFG:
 
 ;*******************************************************************************
 
-USB_WAIT_TX:
-        lds     t0, UEINTX
-        andi    t0, (1<<TXINI)
-        breq    USB_WAIT_TX
-        ret
-
         fdw     EMPTY_L
 USB_ON_L:
         .db     NFA|4,"usb+",0
@@ -197,6 +177,39 @@ USB_RET1:
 USB_RET:
         ret
 
+GET_DESCRIPTOR_SEND:
+        rcall   USB_WAIT_TX
+        lds     t0, UEINTX
+        andi    t0, (1<<RXOUTI)
+        brne    USB_RET
+GET_DESCRIPTOR_SEND1:
+        lpm     t0, z+
+        sts     UEDATX, t0
+        lds     t0, UEBCLX
+        cpi     t0, 0x20
+        brne    GET_DESCRIPTOR_SEND2
+        rcall   TX_WAIT
+GET_DESCRIPTOR_SEND2:
+        dec     t1
+        brne    GET_DESCRIPTOR_SEND1
+        lds     t0, UEBCLX
+        cpi     t0, 0
+        breq    USB_RET
+        rjmp    TXINI_CLR
+
+USB_IN_MSG:
+        ld      t0, z+
+        sts     UEDATX, t0
+        dec     t1
+        brne    USB_IN_MSG
+        ret
+
+USB_STALL:
+        lds     t0, UECONX
+        ori     t0, (1 << STALLRQ) | (1 << EPEN)
+        sts     UECONX, t0
+        ret
+
 USB_ep_service:
         lds     t0, USBCON
         cpi     t0, 0x90
@@ -214,31 +227,53 @@ USB_ep_service:
         rcall   UEINTX_CLR
         lds     t0, bmRequestType
         andi    t0, 0x80
-        brne    GET_STUFF
-        rjmp    SET_STUFF
+        breq    SET_STUFF
 GET_STUFF:
         lds     t0, bRequest
-        cpi     t0, GET_DESCRIPTOR
-        breq    GET_DEVICE_DESCRIPTOR
-        rjmp    GET_CONFIG
-GET_DEVICE_DESCRIPTOR:
+        cpi     t0, 0x06
+        breq    GET_DESCRIPTOR_
+        cpi     t0, 0x08
+        breq    GET_CONFIG
+        cpi     t0, 0x00
+        breq    GET_STATUS_
+        cpi     t0, 0x21
+        breq    GET_LINE_CODING
+        rjmp    USB_STALL
+GET_CONFIG:
+        lds     t0, usb_config_status
+        sts     UEDATX, t0
+        rjmp    TXINI_SET
+GET_STATUS_:
+        sts     UEDATX, r_zero
+        rcall   TXINI_SET
+        sts     UEDATX, r_zero
+        rjmp    TXINI_SET
+GET_LINE_CODING:
+        ldi     zl, low(line_coding)
+        ldi     zh, high(line_coding)
+        ldi     t1, 7
+        rjmp    USB_IN_MSG
+
+GET_DESCRIPTOR_:
         lds     t0, wValue+1
-        cpi     t0, 1              ; DEVICE_DESCRIPTOR
-        brne    GET_CONFIGURATION_DESCRIPTOR
+        cpi     t0, 1
+        breq    GET_DEVICE_DESCRIPTOR
+        cpi     t0, 2
+        breq    GET_CONFIGURATION_DESCRIPTOR
+        cpi     t0, 3
+        breq    GET_STRING_DESCRIPTOR
+        rjmp    USB_STALL
+GET_DEVICE_DESCRIPTOR:
         ldi     zl, low(device_dsc<<1)
         ldi     zh, high(device_dsc<<1)
         ldi     t1, 0x12
         rjmp    GET_DESCRIPTOR_SEND
 GET_CONFIGURATION_DESCRIPTOR:
-        cpi     t0, 2              ; CONFIGURATION_DESCRIPTOR
-        brne    GET_STRING_DESCRIPTOR
         ldi     zl, low(USB_CFG<<1)
         ldi     zh, high(USB_CFG<<1)
         lds     t1, wLength
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
-        cpi     t0, 3              ; STRING_DESCRIPTOR
-        brne    USB_STALL
         lds     t0, wIndex
         cpi     t0, 0
         brne    GET_STR_01
@@ -251,81 +286,27 @@ GET_STR_01:
         ldi     zl, low(SD001<<1)
         ldi     zh,  high(SD001<<1)
         ldi     t1, 0xa
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GET_DESCRIPTOR_SEND:
-        rcall   USB_WAIT_TX
-        lds     t0, UEINTX
-        andi    t0, (1<<RXOUTI)
-        brne    GET_DESCRIPTOR_SEND3
-GET_DESCRIPTOR_SEND1:
-        lpm     t0, z+
-        sts     UEDATX, t0
-        lds     t0, UEBCLX
-        cpi     t0, 0x20
-        brne    GET_DESCRIPTOR_SEND2
-        rcall   TXINI_CLR
-        rcall   USB_WAIT_TX
-GET_DESCRIPTOR_SEND2:
-        dec     t1
-        brne    GET_DESCRIPTOR_SEND1
-        lds     t0, UEBCLX
-        cpi     t0, 0
-        breq    GET_DESCRIPTOR_SEND3
-        rcall   TXINI_CLR
-GET_DESCRIPTOR_SEND3:
-        ret
-USB_STALL:
-        lds     t0, UECONX
-        ori     t0, (1 << STALLRQ) | (1 << EPEN)
-        sts     UECONX, t0
-        ret
-GET_CONFIG:
-        lds     t0, bRequest
-        cpi     t0, GET_CONFIGURATION
-        brne    GET_STATUS_
-        lds     t0, usb_config_status
-        sts     UEDATX, t0
-        rcall   TXINI_SET
-        ret
-GET_STATUS_:
-        lds     t0, bRequest
-        cpi     t0, GET_STATUS
-        brne    GET_LINE_CODING
-        sts     UEDATX, r_zero
-        rcall   TXINI_SET
-        sts     UEDATX, r_zero
-        rcall   TXINI_SET
-        ret
-GET_LINE_CODING:
-        cpi     t0, 0x21
-        brne    USB_STALL
-        ldi     zl, low(line_coding)
-        ldi     zh, high(line_coding)
-        ldi     t1, 7
-        rjmp    USB_IN_MSG
-GET_END:
-        ret
-
-USB_OUT_MSG:
-        lds     t0, UEDATX
-        st      z+, t0
-        dec     t1
-        brne    USB_OUT_MSG
-        ret
-USB_IN_MSG:
-        ld      t0, z+
-        sts     UEDATX, t0
-        dec     t1
-        brne    USB_IN_MSG
-        ret
+        rjmp    GET_DESCRIPTOR_SEND
 ;**************************************************************
 SET_STUFF:
         lds     t0, bRequest
-        cpi     t0, SET_CONFIGURATION
-        brne    SET_ADDR
+        cpi     t0, 0x09
+        breq    USB_SET_CONFIGURATION
+        cpi     t0, 0x05
+        breq    SET_ADDR
+        cpi     t0, 0x22
+        breq    SET_CONTROL_LINE_STATE
+        cpi     t0, 0x20
+        breq    SET_LINE_CODING
+        rjmp    USB_STALL
+SET_LINE_CODING:
+        rcall   TX_WAIT
+        ldi     zl, low(line_coding)
+        ldi     zh, high(line_coding)
+        ldi     t1, 7
+        rjmp    USB_OUT_MSG
 USB_SET_CONFIGURATION:
-        rcall   TXINI_CLR
-        rcall   USB_WAIT_TX
+        rcall   TX_WAIT
         ; Interrupt Notification EP
         sts     UENUM, r_two
         sts     UECONX, r_one
@@ -354,32 +335,29 @@ USB_SET_CONFIGURATION:
         sts     usb_config_status, t0
         ret
 SET_ADDR:
-        cpi     t0, SET_ADDRESS
-        brne    SET_CONTROL_LINE_STATE
         lds     t0, wValue
         sts     UDADDR, t0
-        rcall   TXINI_CLR
-        rcall   USB_WAIT_TX
+        rcall   TX_WAIT
         lds     t0, UDADDR
         ori     t0, 0x80
         sts     UDADDR, t0
         ret
+
 SET_CONTROL_LINE_STATE:
-        cpi     t0, 0x22
-        brne    SET_LINE_CODING
+TX_WAIT:
         rcall   TXINI_CLR
-        rjmp    USB_WAIT_TX
-SET_LINE_CODING:
-        cpi     t0, 0x20
-        brne    SET_END
-        rcall   TXINI_CLR
-        rcall   USB_WAIT_TX
-        ldi     zl, low(line_coding)
-        ldi     zh, high(line_coding)
-        ldi     t1, 7
-        rjmp    USB_OUT_MSG
-SET_END:
-        rjmp    USB_STALL
+USB_WAIT_TX:
+        lds     t0, UEINTX
+        andi    t0, (1<<TXINI)
+        breq    USB_WAIT_TX
+        ret
+
+USB_OUT_MSG:
+        lds     t0, UEDATX
+        st      z+, t0
+        dec     t1
+        brne    USB_OUT_MSG
+        ret
 
 TXINI_SET:
         ldi     t0, (1<<TXINI)
@@ -388,6 +366,10 @@ UEINTX_SET:
         or      t4, t0
         sts     UEINTX, t4
         ret
+
+FIFOCON_CLR:
+        ldi     t0, ~(1<<FIFOCON)
+        rjmp    UEINTX_CLR
 TXINI_CLR:
         ldi     t0, ~(1<<TXINI)
 UEINTX_CLR:
@@ -408,8 +390,7 @@ RXUQ_:
         pushtos
         ldi     t0, 3
         sts     UENUM,t0
-        lds     tosl, UEINTX
-        andi    tosl, (1<<FIFOCON)
+        lds     tosl, UEBCLX
         ldi     tosh, 0
         ret
 RXUQ_2:
@@ -440,8 +421,7 @@ RXU_2:
         lds     t0, UEBCLX
         cpi     t0, 0
         brne    RXU_3
-        ldi     t0, ~(1<<FIFOCON)
-        rcall   UEINTX_CLR
+        rcall   FIFOCON_CLR
 RXU_3:        
         ret
 
@@ -458,12 +438,9 @@ TXU_:
         lds     t0, UEINTX
         andi    t0, (1<<TXINI)
         breq    TXU_
-        ldi     t0, ~(1<<TXINI)
-        rcall   UEINTX_CLR
+        rcall   TXINI_CLR
         sts     UEDATX, tosl
-        ldi     t0, ~(1<<FIFOCON)
-        rcall   UEINTX_CLR
+        rcall   FIFOCON_CLR
 TXU_2:
-        poptos
-        ret
+        jmp     DROP
 

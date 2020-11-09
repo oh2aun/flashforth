@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          03.11.2020                                        *
+;    Date:          09.11.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 .include "macros.inc"
 
 ; Define the FF version date string
-#define DATE "03.11.2020"
+#define DATE "09.11.2020"
 
 ; Symbol naming compatilibity
 ; UART1 symbols for Atmega32u4
@@ -4692,9 +4692,10 @@ FF_ISR_EXIT:
         pop     t0
         pop     zh
         pop     zl
-MS_TIMER_ISR_EXIT:
+MS_TIMER_ISR_EXIT_LOAD:
         ld      xl, y+
         ld      xh, y+
+MS_TIMER_ISR_EXIT:
         out_    SREG, xh
         ld      xh, y+
         reti
@@ -4734,12 +4735,12 @@ MS_TIMER_ISR:
 .endif
         st      -y, xh
         in_     xh, SREG
-        st      -y, xh
-        st      -y, xl
         add     ms_count,  r_one
         adc     ms_count1, r_zero
 .if CPU_LOAD == 1
 LOAD_ADD:
+        st      -y, xh
+        st      -y, xl
         in_     xl, TCNT1L
         in_     xh, TCNT1H
         out_    TCNT1H, r_zero
@@ -4753,8 +4754,10 @@ LOAD_ADD:
         brne    LOAD_ADD_END
         sbr     FLAGS2, (1<<fLOAD)
 LOAD_ADD_END:
-.endif
+        rjmp    MS_TIMER_ISR_EXIT_LOAD
+.else
         rjmp    MS_TIMER_ISR_EXIT
+.endif
 ;;; ***************************************************
 RX0_ISR:
         in_     xh, UDR0_
