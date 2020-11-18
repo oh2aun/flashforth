@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      FlashForth.asm                                    *
-;    Date:          09.11.2020                                        *
+;    Date:          18.11.2020                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 .include "macros.inc"
 
 ; Define the FF version date string
-#define DATE "09.11.2020"
+#define DATE "18.11.2020"
 
 ; Symbol naming compatilibity
 ; UART1 symbols for Atmega32u4
@@ -485,9 +485,9 @@ MSET_L:
 MSET:
         movw    zl, tosl
         poptos
-        ld      t0, z
+        ld      t0, z+
         or      t0, tosl
-        st      z, t0
+        st      -z, t0
         poptos
         ret
         
@@ -500,10 +500,10 @@ MCLR_L:
 MCLR_:
         movw    zl, tosl
         poptos
-        ld      t0, z
+        ld      t0, z+
         com     tosl
         and     t0, tosl
-        st      z, t0
+        st      -z, t0
         poptos
         ret
 
@@ -1283,6 +1283,8 @@ TYPE2:
 
 
 ; (S"    -- c-addr u      run-time code for S"
+        fdw     TYPE_L
+XSQUOTE_L:
         .db      NFA|3,"(s",0x22
 XSQUOTE:
         m_pop_zh
@@ -1305,7 +1307,7 @@ XSQUOTE:
         ror     zl
         mijmp
 
-        fdw     TYPE_L
+        fdw     XSQUOTE_L
 SQUOTE_L:
         .db      NFA|IMMED|COMPILE|2,"s",0x22,0
 SQUOTE:
@@ -1647,8 +1649,14 @@ EQUAL:
 LESS_L:
         .db     NFA|1,"<"
 LESS:
-        rcall   MINUS
-        jmp     ZEROLESS
+        rcall   MINUS       ; Status flags are valid after MINUS
+        ldi     tosl, 0xff
+        ldi     tosh, 0xff
+        brlt    LESS_1
+        com     tosl
+        com     tosh
+LESS_1:
+        ret
 
         fdw     LESS_L
 GREATER_L:
@@ -2352,19 +2360,21 @@ DIGITQ_L:
         .db     NFA|6,"digit?",0
 DIGITQ:
                                 ; 1 = 0x31    a = 0x61
-        cpi     tosl, 0x40
+        cpi     tosl, 0x3a
         brlt    DIGITQ1
+        cpi     tosl, 0x61
+        brmi    DIGITQ2
         sbiw    tosl, 0x27
 DIGITQ1:        
         sbiw    tosl, 0x30      ; 1
-        brpl    DIGITQ2
-        rjmp    FALSE_
+        brpl    DIGITQ3
 DIGITQ2:
+        rjmp    FALSE_
+DIGITQ3:
         rcall   DUP             ; 1 1
         rcall   BASE            ; 1 1 base
         rcall   FETCH_A         ; 1 1 10
         jmp     LESS            ; 1 ffff
-
 
 ; SIGN?   adr n -- adr' n' f   get optional sign
 ; + leaves $0000 flag
@@ -2825,12 +2835,12 @@ DP_TO_EEPROM:
         rcall   STORE_P_TO_R
         rcall   INI
         rcall   DOLIT
-        .dw     4
+        .dw     9
         rcall   TOR
 DP_TO_EEPROM_0: 
-        rcall   FETCHPP
+        rcall   CFETCHPP
         rcall   DUP
-        rcall   PFETCH
+        rcall   PCFETCH
         rcall   NOTEQUAL
         rcall   ZEROSENSE
         breq    DP_TO_EEPROM_1
@@ -2839,12 +2849,12 @@ DP_TO_EEPROM_0:
         .dw     'E'
         call    EMIT
 .endif
-        rcall   PSTORE
+        rcall   PCSTORE
         rjmp    DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         rcall   DROP
 DP_TO_EEPROM_2:
-        rcall   PTWOPLUS
+        rcall   PPLUS
 DP_TO_EEPROM_3:
         rcall   XNEXT
         brcc    DP_TO_EEPROM_0
@@ -3376,16 +3386,11 @@ TICKS_L:
         .db     NFA|5,"ticks"
 TICKS:  
         pushtos
-        in_     t0, SREG
-        cli
-        mov     tosl, ms_count
-        mov     tosh, ms_count1
-        out_    SREG, t0
+        movw     tosl, ms_count
         ret
 
-        
 ; ms  +n --      Pause for n millisconds
-; : ms ( +n -- )     
+; : ms ( +n -- )
 ;   ticks -
 ;   begin
 ;     pause dup ticks - 0<
@@ -3397,14 +3402,15 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
+        rcall   ONEMINUS
 MS1:    
         rcall   PAUSE
-        rcall   DUP
-        rcall   TICKS
-        rcall   MINUS
-        rcall   ZEROLESS
-        rcall   ZEROSENSE
-        breq    MS1
+        movw    t0, tosl
+        cli
+        sub     t0, ms_count      ; tos mscount -
+        sbc     t1, ms_count1
+        sei
+        brpl    MS1
         jmp     DROP
 
 ;  .id ( nfa -- ) 
@@ -4027,7 +4033,15 @@ DLESS_L:
         .db     NFA|2,"d<",0
 DLESS:
         rcall   DMINUS
-        jmp     DZEROLESS
+        ld      tosl, y+
+        ld      tosh, y+
+        ldi     tosl, 0xff
+        ldi     tosh, 0xff
+        brlt    DLESS_1
+        com     tosl
+        com     tosh
+DLESS_1:
+        ret
 ;***************************************************
         fdw     DLESS_L
 DGREATER_L:
@@ -5217,18 +5231,21 @@ WARM_1:
         in_     t2, MCUSR
         sts     MCUSR, r_zero
 .endif
-        ldi     xh, high(0x100)
+        ldi     xh, high(SRAM_START)
 
 .ifdef USBCON
   	    sbi_	USBCON, OTGPADE			; Enable USB power pads
-        ldi   xl, low(0x110)
+        ldi   xl, low(SRAM_START + 0x10)
 .else
-        ldi   xl, low(0x100)
+        ldi   xl, low(SRAM_START)
 .endif
 WARM_2:
         st      x+, r_zero
-        cpi     xh, 0x08  ; up to 0x7ff, 2 Kbytes 
+        cpi     xh, high(RAMEND) 
         brne    WARM_2
+        cpi     xl, low(RAMEND)
+        brne    WARM_2
+        st      x, r_zero
 
 ; Init empty flash buffer
 	dec     ibaseh
@@ -5738,8 +5755,6 @@ FUNLOCK_L:
         cbr     FLAGS1, (1<<fLOCK)
         ret
 
-
-
         fdw     FUNLOCK_L
 VALUE_L:
         .db     NFA|5,"value"
@@ -5811,8 +5826,6 @@ PAUSE:
 .if IDLE_MODE == 1
         rcall   IDLE_LOAD
 .endif
-        in_     t1, SREG
-        cli
         wdr               ; watchdog reset
         push    yh        ; SP
         push    yl
@@ -5821,6 +5834,7 @@ PAUSE:
         push    ph        ; P
         push    pl
         movw    zl, upl
+        cli
         in      t0, sph
         st      -z, t0
         in      t0, spl
@@ -5838,7 +5852,7 @@ PAUSE:
         pop     tosh
         pop     yl
         pop     yh
-        out_    SREG, t1
+        sei
         ret
 
 

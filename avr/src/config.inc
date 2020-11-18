@@ -1,24 +1,37 @@
 ;;; FlashForth device configuration for Atmega devices
 
 ; Select the include file for your micro controller
+; Define a symbol for which file to include. 
+; #define ffm328
+
 ;.include "m2561def.inc"  ; 
-;.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+#ifdef ffm2560
+.include "m2560def.inc"  ; Tested     Fuses: E:0xff H:0xdc L:0xff
+#endif
 ;.include "m128def.inc"   ; Tested     Fuses: E:0xff H:0xdc L:0xff
 ;.include "m168pdef.inc"
 ;.include "m328pdef.inc"  ; Tested    Fuses: E:0xff H:0xda L:0xff
+#ifdef ffm328
 .include "m328def.inc"   ; Tested    Fuses: E:0xff H:0xda L:0xff
-;.include "m32adef.inc"
+#endif
 ;.include "m644pdef.inc"
-;.include "m32U4def.inc"   ; Tested Crystal Fuses: E:0xcf H:0xda L:0xff
-;.include "m16U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
-
+#ifdef ffm32u4
+.include "m32U4def.inc"   ; Tested Crystal Fuses: E:0xcf H:0xda L:0xff
+#endif
+#ifdef ffm16u4
+.include "m16U4def.inc"  ; Not tested  Fuses : E:0xff H:0xda L:0xff
+#endif
 
 ; Oscillator frequency in herz
 .equ FREQ_OSC = 16000000
 
 ; Define the UART used for the operator
+#ifdef op0
 .equ OPERATOR_UART = 0              ; 0 or 1 (0 for 32u4 ) or 3 for USB
-
+#endif
+#ifdef op3
+.equ OPERATOR_UART = 3
+#endif
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
@@ -47,14 +60,34 @@
 
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
 .equ CPU_LOAD_LED = 1            ; set to 1 to enable
+#ifdef ffm2560
+.equ CPU_LOAD_DDR = ddrb
+.equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+.equ CPU_LOAD_BIT = 7            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
+.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
+                                 ; arduino : 1 = high on port turns on led 
+#endif
+#ifdef ffm328
 .equ CPU_LOAD_DDR = ddrb
 .equ CPU_LOAD_PORT = portb       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
 .equ CPU_LOAD_BIT = 5            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
 .equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
                                  ; arduino : 1 = high on port turns on led 
+#endif
+#ifdef ffm32u4
+.equ CPU_LOAD_DDR = ddrc
+.equ CPU_LOAD_PORT = portc       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+.equ CPU_LOAD_BIT = 7            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
+.equ CPU_LOAD_LED_POLARITY = 1   ; avr-p28:  0 = low on port turns on led, 
+                                 ; arduino : 1 = high on port turns on led 
+#endif
 
 ; Define the startup delay for the turnkey words. Milliseconds
+.if OPERATOR_UART == 3
+.equ TURNKEY_DELAY = 6000  ; milliseconds
+.else
 .equ TURNKEY_DELAY = 2000  ; milliseconds
+.endif
 
 ; UART buffer sizes
 .equ RX0_BUF_SIZE = 64  ; 8,16,32,64
