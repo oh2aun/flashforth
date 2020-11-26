@@ -198,10 +198,6 @@ SD001:
         db   0x03    ; STRING descriptor type
         dw   'F','F','5','0'
 
-USB_SD:
-        dw   SD000
-        dw   SD001
-
 USB_CFG:
         db   0x09     ; length
         db   0x02     ; configuration descriptor
@@ -337,12 +333,7 @@ USBCtrlTrfInHandler:
 USBCtrlTrfInHandler_2:
         DECF    ctrl_trf_state, W
         BNZ     USBPrepareForNextSetupTrf
-        RCALL   USBCtrlTrfTxService
-        MOVLW   _USIE|_DTSEN;0x88
-        BTFSS   ep0istat, __DTS, BANKED
-        MOVLW   _DAT1|_USIE|_DTSEN;0xC8
-        MOVWF   ep0istat, BANKED
-        return
+        bra     USBCtrlTrfTxService
 ;*******************************************************************************
 USBCtrlTrfRxService:
         movf    ep0ocnt, W, BANKED
@@ -387,7 +378,7 @@ SUB:
         movwf   ep0icnt, BANKED
         subwf   count, F       ; count = count - moveLen
 romcp:
-        lfsr    1, ep0buf;         ; DST ptr
+        lfsr    FSR1, ep0buf;         ; DST ptr
         btfsc   usb_status, MEM
         bra     ramcp_tx
         movff   dPtr, TBLPTRL
@@ -402,6 +393,11 @@ romcp2:
         bc      romcp1
         movff   TBLPTRL, dPtr
         movff   TBLPTRH, dPtr+1
+
+        MOVLW   _USIE|_DTSEN;0x88
+        BTFSS   ep0istat, __DTS, BANKED
+        MOVLW   _DAT1|_USIE|_DTSEN;0xC8
+        MOVWF   ep0istat, BANKED
         return
 
 ;*******************************************************************************
@@ -535,26 +531,21 @@ GET_DSC_CFG:
         MOVLW   0x43
         BRA     GetDsc_4
 GET_DSC_STR:
-        MOVF    ep0buf+2, W, BANKED
-        MOVWF   TBLPTR 
-        ADDWF   TBLPTR, F 
-        MOVLW   low(USB_SD)
-        ADDWF   TBLPTR, F  
-        CLRF    TBLPTRH  
-        MOVLW   high(USB_SD)
-        ADDWFC  TBLPTRH, F  
-
-        TBLRD*+
-        MOVF    TABLAT, W 
+        tstfsz  ep0buf+2, BANKED
+        bra     GET01
+GET00:
+        MOVLW   low(SD000)
         MOVWF   dPtr
-        TBLRD*
-        MOVWF   TBLPTR 
-        MOVF    TABLAT, W 
-        movwf   dPtr+1
-        MOVWF   TBLPTRH 
-
-        TBLRD*
-        MOVF    TABLAT, W 
+        MOVLW   high(SD000)
+        MOVWF   dPtr+1
+        MOVLW   0x4
+        BRA     GetDsc_4  
+GET01:
+        MOVLW   low(SD001)
+        MOVWF   dPtr
+        MOVLW   high(SD001)
+        MOVWF   dPtr+1
+        MOVLW   0xa
 GetDsc_4:
         MOVWF   count
 GetDsc_6:
@@ -570,19 +561,19 @@ USBCheckCdcRequest:
         sublw   1       ;1 - w        ; IF COMM_INTF || DATA_INTF
         bn      return6
         MOVF    ep0buf+1, W, BANKED
-        addlw   -0x20                 ; SET_LINE_CODING 0x20
-        bz      SET_LINE_CODING
-        addlw   -1                    ;  GET_LINE_CODING 0x21
+        addlw   -21                   ; GET_LINE_CODING 0x21
         bz      GET_LINE_CODING
         addlw   -1                    ; SET_CONTROL_LINE_STATE 0x22
+        bz      SET_CONTROL_LINE_STATE
+        addlw   2                     ; SET_LINE_CODING 0x20
         bnz     return6
-SET_CONTROL_LINE_STATE:
 SET_LINE_CODING:
-SET_MUID_CDC:
         movlw   low(line_coding)
         movwf   dPtr
         movlw   high(line_coding)
         movwf   dPtr+1
+SET_CONTROL_LINE_STATE:
+SET_MUID_CDC:
         bsf     usb_status, MUID_USB9
 return6:
         return
