@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          22.08.2020                                        *
+;    Date:          26.11.2020                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2865,7 +2865,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 22.08.2020\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 26.11.2020\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -4052,7 +4052,15 @@ L_LESS:
         db      NFA|1,"<"
 LESS:
         rcall   MINUS               ; n1 - n2 in TOS
-        goto    ZEROLESS            ; if negative return true
+LESS2:
+        swapf   Sminus, W
+        movf    STATUS, W
+        andlw   0x18
+        xorlw   0x10
+        bz      test_true
+        xorlw   0x18
+        bz      test_true
+        bra     test_false
 
 ;***************************************************
 ;   >       n1 n2 -- flag       return true if n1 > n2
@@ -6517,7 +6525,9 @@ L_DLESS:
         db      NFA|2,"d<"
 DLESS:
         rcall   DMINUS
-        goto    DZEROLESS
+        swapf   Sminus, W
+        swapf   Sminus, W
+        goto    LESS2
 
 ; D>    d1 d2 -- f        double greater than
         dw      L_DLESS
