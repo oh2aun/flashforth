@@ -31,9 +31,9 @@ hex ram
 \ b = bit
 \ k = literal
 
-0 constant w,     \ Destination W register
+\ 0 constant w,     \ Destination W register
 1 constant f,     \ Destination File
-0 constant a,     \ Force Access Bank
+\ 0 constant a,     \ Force Access Bank
 1 constant b,     \ Force Bank Select Register
 
 \ registers for parameter stack handling
@@ -50,9 +50,9 @@ $ffe4 constant (+tp)
   co:
   does> i, ;
 
-: as2 ( opcode "name" -- ) ( f a -- )
-  co:
-  does> rot ic, or ic, ;
+\ : as2 ( opcode "name" -- ) ( f a -- )
+\  co:
+\  does> rot ic, or ic, ;
 
 \ Not needed for structured conditionals
 \ : br1 ( opcode "name" -- ) ( rel-addr -- ) \ bcc
@@ -107,38 +107,38 @@ $0f00 as1 addlw,        ( k -- )
 $0d00 as1 andlw,        ( k -- )  
 $0900 as1 iorlw,        ( k -- )  
 : lfsr,    ( k f -- )
-  4 lshift over 8 rshift $f and or $ee00 or i, $ff and $f000 or i, ;  
+  4 lshift over 8 rshift $f and or $ee00 or i, $ff and $f000 or i, ;
 $0100 as1 movlb,        ( k -- )  
 $0e00 as1 movlw,        ( k -- )  
 $0d00 as1 mullw,        ( k -- )  
 $0800 as1 sublw,        ( k -- )  
 $0a00 as1 xorlw,        ( k -- )
 
-$d000 br2 bra,          ( n -- )  
-$ec00 br3 call,         ( n -- )  
+\ $d000 br2 bra,          ( n -- )  
+\ $ec00 br3 call,         ( n -- )  
 $0004 as0 clrwdt,       ( -- )    
 $0007 as0 daw,          ( -- )    
-$ef00 br3 goto,         ( n -- )  
+\ $ef00 br3 goto,         ( n -- )  
 $0006 as0 pop,          ( -- )    
 $0005 as0 push,         ( -- )    
-$d800 br2 rcall,        ( n -- )  
-$00ff as0 reset,        ( -- )    
-$0010 as0 retfie,       ( -- )    
+\ $d800 br2 rcall,        ( n -- )  
+\ $00ff as0 reset,        ( -- )    
+\ $0010 as0 retfie,       ( -- )    
 $0c00 as1 retlw,        ( k -- )  
-$0012 as0 return,       ( -- )    
+\ $0012 as0 return,       ( -- )    
 $0003 as0 sleep,        ( -- )    
-$f000 as0 nop,          ( -- )    
+\ $f000 as0 nop,          ( -- )    
 \ **************************************
 \ data memory <-> program memory operations 
 \ **************************************
-$0008 as0 tblrd*,       ( -- )  
-$0009 as0 tblrd*+,      ( -- )  
-$000a as0 tblrd*-,      ( -- )  
-$000b as0 tblrd+*,      ( -- )  
-$000c as0 tblwt*,       ( -- )  
-$000d as0 tblwt*+,      ( -- )  
-$000e as0 tblwt*-,      ( -- )  
-$000f as0 tblwt+*,      ( -- )  
+\ $0008 as0 tblrd*,       ( -- )  
+\ $0009 as0 tblrd*+,      ( -- )  
+\ $000a as0 tblrd*-,      ( -- )  
+\ $000b as0 tblrd+*,      ( -- )  
+\ $000c as0 tblwt*,       ( -- )  
+\ $000d as0 tblwt*+,      ( -- )  
+\ $000e as0 tblwt*-,      ( -- )  
+\ $000f as0 tblwt+*,      ( -- )  
 
 \ ***********************************************
 \ structured conditions for  if, while, and until,

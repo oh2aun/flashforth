@@ -3,8 +3,9 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 12.09.2019 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 2021 Mikael Nordman (oh2aun@gmail.com)
 # 12.09.2019 - Updated for nonblocking I/O
+# 26.1.2021  - Change default suffix to '.fs'
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -172,8 +173,8 @@ def main():
             startString = args[2]
           if len(args) > 3:
             stopString = args[3]
-          if pathfile.endswith(".txt") == False:
-            pathfile = pathfile + ".txt"
+          if pathfile.endswith(".fs") == False:
+            pathfile = pathfile + ".fs"
           line = ""
           try:
             file = open(pathfile, "r")
@@ -251,7 +252,8 @@ def main():
           waitForNL = waitForNL - 1
           continue
         line = file.readline()
-
+        if line.startswith("\\ "):
+          continue
         if startString == "":
           uploadMode = 2
         else:
@@ -276,12 +278,16 @@ def main():
       try:
         if config.newlineflowcontrol:
           waitForNL = 2000
+        prevChar = ""
         for c in line:
+          if c == " " and prevChar == " ":
+            continue;
           sleep(float(config.chardelay)/1000)
           if config.charflowcontrol:
             while waitForChar <> 'idle':
               sleep(0.001)
             waitForChar = c
+          prevChar = c
           config.ser.write(c)
           config.ser.flush()       # Send the output buffer
 

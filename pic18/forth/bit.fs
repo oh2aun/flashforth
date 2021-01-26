@@ -20,7 +20,7 @@ $0100 as1 movlb,        ( k -- )
 ( port bit -- port bit banked/access )
 : (bit)
   :
-  over $f040 $ff60 within
+  over $f060 $ff60 within
   if
     over #8 rshift $f and movlb, 
     1    \ Banked ram 
@@ -53,3 +53,10 @@ $0100 as1 movlb,        ( k -- )
   postpone [
 ;
 
+: mclr, ( c a -- ) tp lfsr, invert $ff and movlw, (tp-) f, a, andwf, ; 
+  
+: mset, ( c a -- ) tp lfsr, movlw, (tp-) f, a, iorwf, ;
+
+: mtst, ( c a -- ) tp lfsr, movlw, (tp-)  w, a, andwf z, if, true else, false then, ;
+
+: c!, ( c a -- )   tp lfsr, movlw,  (tp-) a, movwf, ; 

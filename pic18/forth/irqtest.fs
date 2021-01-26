@@ -1,8 +1,8 @@
 \ *********************************************************************
 \    Filename:      irqtest.txt                                       *
-\    Date:          06.01.2014                                        *
+\    Date:          20.01.2020                                        *
 \    FF Version:    5.0                                               *
-\    MCU:           PIC18                                             *
+\    MCU:           PIC18F26K42                                       *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
@@ -11,9 +11,13 @@
 -irqtest
 marker -irqtest
 
+$f990 constant pie0
+$f9a0 constant pir0
+
 \ Test multiplication and division in interrupts.
 : irqtest ( -- )
   [i
+    1 pir0 mclr
     #10000 #10000 um* 2dup #100000000. d= 0= if warm then
     #20000 um/mod #5000 = 0= if warm then drop
   i]
@@ -28,7 +32,7 @@ irqtest+  \ Start the interrupt routine
 \ Test ends by pressing anykey
 : */test ( -- )
   begin
-    pause
+    pause 1 pir0 mset
     #10000 #20000 um* 2dup #200000000. d= abort" err1"
     #40000 um/mod #5000 = abort" err2" drop
     key?
