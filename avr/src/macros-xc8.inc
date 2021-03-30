@@ -1,0 +1,173 @@
+#include <xc.h>
+; Register definitions
+  .equ upl, 2         ; not in interrupt 
+  .equ uph, 3         ; not in interrupt
+  .equ r_zero, 5      ; read only zero
+  .equ r_one, 6       ; read only one
+  .equ r_two, 7       ; read only two
+  .equ t8, 8          ; Not in interrupt
+  .equ wflags , 9     ; not in interrupt
+
+  .equ loadreg0, 4    ;
+  .equ loadreg1, 12
+  .equ loadreg2, 13
+
+
+  .equ ibasel, 10       ; Not in interrupt
+  .equ ibaseh, 11       ; Not in interrupt
+  .equ ms_count , 14  ; Not in interrupt
+  .equ ms_count1, 15  ; Not in interrupt
+  .equ t0, 16
+  .equ t1, 17
+  .equ t2, 0          ; Not in interrupt
+  .equ t3, 1          ; Not in interrupt
+
+  .equ al, 18
+  .equ ah, 19
+  .equ pl, 20         ; P Register and FOR##LOOP INDEX variable
+  .equ ph, 21
+
+  .equ FLAGS1, 22     ; Not in interrupt
+  .equ FLAGS2, 23     ; Not in interrupt
+  .equ tosl, 24
+  .equ tosh, 25
+;  xl, r26
+;  xh, r27
+;  yl, r28  ; StackPointer Ylo
+;  yh, r29  ; StackPointer Yhi
+;  zl, r30
+;  zh, r31
+  .equ t4, 26
+  .equ t5, 27
+  .equ t6, 30
+  .equ t7, 31
+  .equ spl, 0x3d
+  .equ sph, 0x3e
+
+; Macros
+.macro m_drop
+    ld tosl, Y+
+    ld tosh, Y+
+.endm
+
+.macro m_dup
+    st -y, tosh
+    st -y, tosl
+.endm
+
+.macro m_in reg, addr
+.if (\addr < 0x20)
+  in _SFR_IO_ADDR(\reg), \addr
+.else
+  lds \reg, \addr
+.endif
+.endm
+
+.macro m_out addr, reg
+.if (\addr < 0x20)
+  out _SFR_IO_ADDR(\addr),\reg
+.else
+  sts \addr,\reg
+.endif
+.endm
+
+.macro m_sbi addr, bit
+.if (\addr < 0x40)
+  sbi _SFR_IO_ADDR(\addr),\bit
+.else
+  m_in r16, \addr
+  ori r16, (1<<\bit)
+  m_out \addr, r16
+.endif 
+.endm
+
+.macro m_cbi addr, bit
+.if (\addr < 0x40)
+  cbi _SFR_IO_ADDR(\addr),\bit
+.else
+  m_in r16, \addr
+  andi r16, 1<<\bit
+  m_out \addr,r16
+.endif
+.endm
+
+.macro m_lpm reg
+.if (FLASHEND < 0x8000)
+        lpm \reg, z+
+.else
+        elpm \reg, z+
+.endif
+.endm
+
+.macro sub_pflash_z
+.if (PFLASH > 0)
+        subi    zh, hi8(PFLASH)
+.endif
+.endm
+
+.macro add_pflash_z
+.if (PFLASH > 0)
+        subi    zh, hi8(0x10000-PFLASH)
+.endif
+.endm
+
+
+.macro sub_pflash_tos
+.if (PFLASH > 0)
+        subi    tosh, hi8(PFLASH)
+.endif
+.endm
+
+.macro add_pflash_tos
+.if (PFLASH > 0)
+        subi    tosh, hi8(0x10000-PFLASH)
+.endif        
+.endm
+
+.macro rampv_to_c
+.if (FLASHEND >= 0x8000)
+        bset    0
+.else
+        bclr    0
+.endif
+.endm
+
+.macro fdw addr
+.if (FLASHEND >= 0x10000)
+	.long lo16(\addr+PFLASH)
+.else
+	.word (\addr+PFLASH)
+.endif
+.endm
+
+.macro m_pop_zh
+.if (FLASHEND > 0x1ffff)
+        pop     zh
+.endif
+.endm
+
+.macro m_pop_xh
+.if (FLASHEND > 0x1ffff)
+        pop     xh
+.endif
+.endm
+
+.macro m_pop_t0
+.if (FLASHEND > 0x1ffff)
+        pop     t0
+.endif
+.endm
+
+.macro m_push_t0
+.if (FLASHEND > 0x1ffff)
+        push    t0
+.endif
+.endm
+
+.macro m_ijmp
+.if (FLASHEND > 0x1ffff)
+        eijmp
+.else
+        ijmp
+.endif
+.endm
