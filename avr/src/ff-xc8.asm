@@ -151,37 +151,48 @@
 #if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 .equ OFLASH  , PEEPROM+E2END+1    ; 52 Kbytes available for FlashForth(atm2560)
 .equ PFLASH  , OFLASH
-.equ FLASH_HI, 0xfc00
-.equ KERNEL_SIZE, 0x2400
-#define FILL_WORDS ((0x40000 - KERNEL_SIZE + 0x100)/2)
+.equ FLASH_HI, 0xffff
+.equ KERNEL_SIZE, 0x2200
+#define SPM_SIZE 0x200
+#define FILL_WORDS ((0x40000 - KERNEL_SIZE - SPM_SIZE)/2)
+
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
 .equ OFLASH  , PEEPROM+E2END+1    ; 56 Kbytes available for FlashForth(atm128)
-.equ PFLASH  , 0
-.equ FLASH_HI, 0xfc00
-.equ FILL_WORDS, ((0x10000 + FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+.equ PFLASH  , OFLASH
+.equ FLASH_HI, 0xffff
 .equ KERNEL_SIZE, 0x2100
+#define SPM_SIZE 0x200
+#define FILL_WORDS ((0x20000 - KERNEL_SIZE - SPM_SIZE)/2)
+
 #elif (FLASHEND == 0xffff)             // 32 Kwords flash
 .equ OFLASH , PEEPROM+E2END+1     ; 56 Kbytes available for FlashForth
 .equ PFLASH , 0
-.equ FLASH_HI, 0xfc00
-.equ FILL_WORDS, ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
-.equ KERNEL_SIZE, 0x1f00
+.equ FLASH_HI, 0xffff
+.equ KERNEL_SIZE, 0x2000
+#define SPM_SIZE 0x200
+#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
+
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
 .equ OFLASH , 0x8000                  ; 32 Kbytes available for FlashForth
 .equ PFLASH , 0x8000
 .equ FLASH_HI, 0xfc00
-.equ KERNEL_SIZE, 0x1f00 + USB_CODE
-#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+#define LIMIT_HI 0x7c00
+.equ KERNEL_SIZE, 0x2000 + USB_CODE
+#define SPM_SIZE 0x200
+#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
+
 #elif (FLASHEND == 0x3fff)            // 8  Kwords flash
 .equ OFLASH , 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH , 0xC000
-.equ FLASH_HI, 0xbc00
-.equ FILL_WORDS, ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
-.equ KERNEL_SIZE, 0x1f00 + USB_CODE
+.equ FLASH_HI, 0xfc00
+#define LIMIT_HI 0x3c00
+.equ KERNEL_SIZE, 0x2000 + USB_CODE
+#define SPM_SIZE 0x200
+#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
 #endif
 
 ;;;  High values for memory areas
-.equ FLASH_LOW, KERNEL_SIZE+0x100
+.equ FLASH_LOW, KERNEL_SIZE + 0x100
 .equ EEPROM_HI , PEEPROM + E2END
 .equ RAM_HI , RAMEND
 
@@ -277,8 +288,8 @@ dpdata:     .space   2
 .section .text
 #define INT_VECTORS_SIZE _VECTORS_SIZE/2
 .equ  SPACE_VECTORS_SIZE, INT_VECTORS_SIZE
-.section .vectors
 
+.section .vectors
 RESET_:   jmp  WARM_0
 ISR2:     rcall FF_ISR
           nop
@@ -528,8 +539,8 @@ ISRx6e:   rcall FF_ISR
 ISRx70:   rcall FF_ISR
           nop
 #endif
-.section .text
 
+.section .text
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
@@ -753,7 +764,7 @@ WDOFF:
 #ifdef MCUCSR
         m_out     MCUCSR, r_zero
 #else
-        out     MCUSR, r_zero
+        m_out     MCUSR, r_zero
 #endif
         ldi     t0, (1<<WDCE)|(1<<WDE)
         sts     WDTCR, t0
@@ -5255,7 +5266,7 @@ IDLE_LOAD:
 #if CPU_LOAD == 1       
         sbrs    FLAGS2, fLOAD
         rjmp    CPU_LOAD_END
-        m_in     t0, SREG
+        m_in    t0, SREG
         cli
         cbr     FLAGS2, (1<<fLOAD)
         sts     load_res, loadreg0
@@ -5264,16 +5275,16 @@ IDLE_LOAD:
         clr     loadreg0
         clr     loadreg1
         clr     loadreg2
-        m_out    SREG, t0
+        m_out   SREG, t0
 CPU_LOAD_END:
 #endif
 #if CPU_LOAD_LED == 1
         sbrs    FLAGS2, fLOADled
         rjmp    LOAD_LED_END
 #if CPU_LOAD_LED_POLARITY == 1
-        m_cbi    CPU_LOAD_PORT, CPU_LOAD_BIT
+        m_cbi   CPU_LOAD_PORT, CPU_LOAD_BIT
 #else
-        m_sbi    CPU_LOAD_PORT, CPU_LOAD_BIT
+        m_sbi   CPU_LOAD_PORT, CPU_LOAD_BIT
 #endif
 LOAD_LED_END:
 #endif
@@ -5690,6 +5701,9 @@ WARM_3:
         sei
         call    RQ_EMIT
         rcall   VER
+#if CPU_LOAD_LED == 1
+        m_sbi    CPU_LOAD_DDR, CPU_LOAD_BIT
+#endif
 ; Turnkey ?
         rcall   TURNKEY
         call    ZEROSENSE
@@ -6307,62 +6321,11 @@ ISTORE_FC_END:
         ret
 
 ;*******************************************************************
-; BOOT sector END **************************************************
-;;#define m2560dbg
-#ifdef m2560dbg
-TQUIT:
-        call    RPEMPTY
-        rcall   LEFTBRACKET
-        call    FRAM
-TQUIT0:  
-        ;; Copy INI and DP's from eeprom to ram
-        call   DP_TO_RAM
-TQUIT1: 
-        call    check_sp
-        call    XSQUOTE
-        .byte   11
-        .ascii  "1234 5400 !"
-        call   DOLIT
-        .word  0x1000
-        call   PLACE
-        call   DOLIT
-        .word  0x1000
-        call    CFETCHPP
-        call    INTERPRET
-        ;movf    state, W, A
-        rjmp     TQUIT1
-        call    IFLUSH
-        call    DP_TO_EEPROM
-
-        call    XSQUOTE
-        .byte   21
-        .ascii  ": b + + + + + + dup ;"
-        call    DOLIT
-        .word   0x1000
-        call    PLACE
-        call    check_sp
-        call    DOLIT
-        .word   0x1000
-        call    CFETCHPP
-        call    INTERPRET
-        ;movf    state, W, A
-        ;bnz     TQUIT1
-        call    IFLUSH
-        call    DP_TO_EEPROM
-
-        rjmp     TQUIT0
-        ret
-#endif
-
 KERNEL_END:
 ;***********************************************************
 FILL_START:
 .fill FILL_WORDS, 2, 0xffff
-;        .section .flashprog, code
 ;*************************************************************
-
-
-;*******************************************************
 umstar0:
         .global umstar0
         push t2
@@ -6471,10 +6434,12 @@ XUPDATEBUF:
         cpi     t0, 0
         brne    XUPDATEBUF2
 #endif
-        ;cpi     tosh, hi8(FLASH_HI-PFLASH+0x100) ; Dont allow kernel writes
-        ;brcc    ISTORERR3
-        ;cpi     tosh, 0       ; Protect the interrupt vectors
-        ;req    ISTORERR3
+#ifdef LIMIT_HI
+        cpi     tosh, hi8(LIMIT_HI)  ; Don't allow kernel writes
+        brpl    ISTORERR3
+#endif
+        cpi     tosh, hi8(KERNEL_SIZE)        ; Protect the  kernel
+        brcs    ISTORERR3
 XUPDATEBUF2:	
         lds     t0, iaddrl
         andi    t0, (~(PAGESIZEB-1)&0xff)
@@ -6522,10 +6487,12 @@ IWRITE_BUFFER:
         ; Disable interrupts
         cli
         movw    zl, ibasel
-        ;cpi     zh, hi8(FLASH_HI-PFLASH+0x100)  ; Don't allow kernel writes
-        ;brcc    ISTORERR2
-        ;cpi     zh, 0       ; Protect the interrupt vectors
-        ;breq    ISTORERR2
+#ifdef LIMIT_HI
+        cpi     zh, hi8(LIMIT_HI)  ; Don't allow kernel writes
+        brpl    ISTORERR2
+#endif
+        cpi     zh, hi8(KERNEL_SIZE)        ; Protect the interrupt vectors
+        brcs    ISTORERR2
 
 #ifdef RAMPZ
         lds     t0, ibaseu

@@ -1,5 +1,6 @@
 ;;; FlashForth device configuration for Atmega devices
-
+;;; For Microchip XC8 compiler and MPLABX IDE.
+;;; Tested with ATmega328 ATmega328P ATmega2560
 ; Oscillator frequency in herz
 #define FREQ_OSC 16000000
 
@@ -25,16 +26,16 @@
 #define U1RTS_BIT 4
 
 ; Default number base  16 = hexadecimal, 10 = decimal
-#define BASE_DEFAULT 16
+#define BASE_DEFAULT 10
 
 ; Set to 1 for power save when CPU is idle
 #define IDLE_MODE 1
 
-; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE, 1
+; Enable the cpu load measurement. Uses Timer 1. Needs IDLE_MODE 1
 #define CPU_LOAD 0
 
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
-#define CPU_LOAD_LED 0            // set to 1 to enable
+#define CPU_LOAD_LED 1            // set to 1 to enable
 
 #if defined(__ATmega2560__)
 #define CPU_LOAD_DDR DDRB
