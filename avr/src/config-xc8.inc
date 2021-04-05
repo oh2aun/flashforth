@@ -1,35 +1,31 @@
 ;;; FlashForth device configuration for Atmega devices
 
 ; Oscillator frequency in herz
-.equ FREQ_OSC, 16000000
+#define FREQ_OSC 16000000
 
 ; Define the UART used for the operator
-#define op0
-#ifdef op0
-.equ OPERATOR_UART, 0              ; 0 or 1 (0 for 32u4 ) or 3 for USB
-#endif
-#ifdef op3
-.equ OPERATOR_UART, 3
-#endif
+; 0 or 1 (0 for 32u4 ) or 3 for USB
+#define OPERATOR_UART 0 
+
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
-.equ BAUDRATE0, 4800               ; Serial baudrate UART0
-.equ U0FC_TYPE, 0                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
-.equ U0RTS_PORT, portd
-.equ U0RTS_DDR, ddrd
-.equ U0RTS_BIT, 3
+#define BAUDRATE0 38400              // Serial baudrate UART0
+#define U0FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
+#define U0RTS_PORT PORTD
+#define U0RTS_DDR DDRD
+#define U0RTS_BIT 3
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400               ; Serial baudrate UART1
-.equ U1FC_TYPE, 0                  ; 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
-.equ U1RTS_PORT, portd
-.equ U1RTS_DDR, ddrd
-.equ U1RTS_BIT, 4
+#define BAUDRATE1 38400              // Serial baudrate UART1
+#define U1FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
+#define U1RTS_PORT PORTD
+#define U1RTS_DDR DDRD
+#define U1RTS_BIT 4
 
-; Default number base
-.equ BASE_DEFAULT, 16      ; 16 = hexadecimal, 10 = decimal
+; Default number base  16 = hexadecimal, 10 = decimal
+#define BASE_DEFAULT 16
 
 ; Set to 1 for power save when CPU is idle
 #define IDLE_MODE 1
@@ -41,124 +37,122 @@
 #define CPU_LOAD_LED 0            // set to 1 to enable
 
 #if defined(__ATmega2560__)
-.equ CPU_LOAD_DDR, DDRB
-.equ CPU_LOAD_PORT, PORTB       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
-.equ CPU_LOAD_BIT, 7            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
-.equ CPU_LOAD_LED_POLARITY, 1   ; avr-p28:  0 = low on port turns on led, 
-                                 ; arduino : 1 = high on port turns on led 
+#define CPU_LOAD_DDR DDRB
+#define CPU_LOAD_PORT PORTB       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+#define CPU_LOAD_BIT 7            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
+                                  // arduino : 1 = high on port turns on led 
 #endif
 #if defined(__ATmega328P__) || defined(__ATmega328__)
 #define CPU_LOAD_DDR DDRB
-#define CPU_LOAD_PORT PORTB       //; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
-#define CPU_LOAD_BIT 5            //; avr-p28:5     arduino mega:7     uno:5     leonardo:7
-#define CPU_LOAD_LED_POLARITY 1   //; avr-p28:  0 = low on port turns on led, 
-                                 //; arduino : 1 = high on port turns on led 
+#define CPU_LOAD_PORT PORTB       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+#define CPU_LOAD_BIT 5            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
+                                  // arduino : 1 = high on port turns on led 
 #endif
 #ifdef __ATmega32U4__
-.equ CPU_LOAD_DDR, DDRC
-.equ CPU_LOAD_PORT, PORTC       ; avr-p28:portc arduino mega:portb uno:portb leonardo:portc
-.equ CPU_LOAD_BIT, 7            ; avr-p28:5     arduino mega:7     uno:5     leonardo:7
-.equ CPU_LOAD_LED_POLARITY, 1   ; avr-p28:  0 = low on port turns on led, 
-                                ; arduino : 1 = high on port turns on led 
+#define CPU_LOAD_DDR DDRC
+#define CPU_LOAD_PORT PORTC       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
+#define CPU_LOAD_BIT 7            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
+                                  // arduino : 1 = high on port turns on led 
 #endif
 
 ; Define the startup delay for the turnkey words. Milliseconds
-.if OPERATOR_UART == 3
-.equ TURNKEY_DELAY, 6000  ; milliseconds
-.else
-.equ TURNKEY_DELAY, 2000  ; milliseconds
-.endif
+#if OPERATOR_UART == 3
+#define TURNKEY_DELAY 6000  // milliseconds
+#else
+#define TURNKEY_DELAY 2000  // milliseconds
+#endif
 
 ; UART buffer sizes
-.equ RX0_BUF_SIZE, 64  ; 8,16,32,64
-.equ RX0_OFF_FILL, 4   ; Fill level for XOFF
+#define RX0_BUF_SIZE 32  // 8,16,32,64
+#define RX0_OFF_FILL 4   // Fill level for XOFF
 
-.equ RX1_BUF_SIZE, 64  ; 8,16,32,64
-.equ RX1_OFF_FILL, 4   ; Fill level for XOFF
+#define RX1_BUF_SIZE 32  // 8,16,32,64
+#define RX1_OFF_FILL 4   // Fill level for XOFF
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE, 64          ; 32 cells return stack
-.equ PARAMETER_STACK_SIZE, 64       ; 32 cells parameter stack
-.equ TIB_SIZE, 90                   ; 80 chars tib size +  10 chars hold area
+#define RETURN_STACK_SIZE 64          // 32 cells return stack
+#define PARAMETER_STACK_SIZE 64       // 32 cells parameter stack
+#define TIB_SIZE 90                   // 80 chars tib size +  10 chars hold area
 
 ; Set to 1 to allow control-o to reset FlashForth from the operator UART
-.equ CTRL_O_WARM_RESET, 0
+#define CTRL_O_WARM_RESET 0
 
 ; Select which timer to use for the system millisecond ticks 0, 1, 2
 #define MS_TIMER 0
 
 ; Debug flash and eeprom writes
 ; Prints F=Write to FLASH E=Write to EEPROM
-.equ DEBUG_FLASH, 0
+#define DEBUG_FLASH 1
 
 #if defined(__ATmega2560__)
 #define partstring "ATmega2560"
 #define partlen 10
-.equ UARTS, 2
+#define UARTS 2
 
 #elif defined(__ATmega328P__)
 #define partstring "ATmega328P"
 #define partlen 10
-.equ UARTS, 1
+#define UARTS 1
 
 #elif defined(__ATmega328__)
 #define partstring "ATmega328"
 #define partlen 9
-.equ UARTS, 1
+#define UARTS 1
 
 #elif defined(__ATmega128__)
 #define partstring "ATmega128"
 #define partlen 9
-.equ UARTS, 2
+#define UARTS 2
 
 #elif defined(__ATmega2561__)
 #define partstring "ATmega2561"
 #define partlen 10
-.equ UARTS, 2
+#define UARTS 2
 
 #elif defined(__ATmega644__)
 #define partstring "ATmega644"
 #define partlen 9
-.equ UARTS, 1
+#define UARTS 1
 
 #elif defined(__ATmega32U4__)
 #define partstring "ATmega32u4"
 #define partlen 10
-.equ XXU4, 32
-.equ UARTS, 1
+#define XXU4 32
+#define UARTS 1
 
 #elif defined(__ATmega16U4__)
 #define partstring "ATmega16u4"
 #define partlen 10
-.equ XXU4, 16
-.equ UARTS, 1
+#define XXU4, 16
+#define UARTS 1
 
 #else
 #define partstring "ATmega "
 #define partlen 7
-
 #define UARTS 1
 
 #endif
-#define UARTS 1
 
 #if MS_TIMER == 0
 #define MS_VECTOR TIMER0_COMPA_vect_num + 1
 #endif
 
-.if MS_TIMER == 1
-.ifdef OC1Aaddr
-.equ MS_TIMER_ADDR, OC1Aaddr
-.else
-.equ MS_TIMER_ADDR, OC1addr
-.endif
-.endif
+#if MS_TIMER == 1
+#ifdef OC1Aaddr
+#define MS_TIMER_ADDR OC1Aaddr
+#else
+#define MS_TIMER_ADDR OC1addr
+#endif
+#endif
 
-.if MS_TIMER == 2
-.ifdef OC2Aaddr
-.equ MS_TIMER_ADDR, OC2Aaddr
-.else
-.equ MS_TIMER_ADDR, OC2addr
-.endif
-.endif
+#if MS_TIMER == 2
+#ifdef OC2Aaddr
+#define MS_TIMER_ADDR OC2Aaddr
+#else
+#define MS_TIMER_ADDR OC2addr
+#endif
+#endif
 

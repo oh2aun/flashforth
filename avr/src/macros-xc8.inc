@@ -124,20 +124,8 @@
 .endif        
 .endm
 
-.macro rampv_to_c
-.if (FLASHEND >= 0x8000)
-        bset    0
-.else
-        bclr    0
-.endif
-.endm
-
 .macro fdw addr
-.if (FLASHEND >= 0x10000)
-	.long lo16(\addr+PFLASH)
-.else
 	.word (\addr+PFLASH)
-.endif
 .endm
 
 .macro m_pop_zh
@@ -171,3 +159,40 @@
         ijmp
 .endif
 .endm
+
+; Symbol naming compatilibity
+; UART1 symbols for Atmega32u4
+#if defined(XXU4)
+.equ UCSR0A,UCSR1A
+.equ UDR0_,UDR1
+.equ UCSR0B,UCSR1B
+.equ UCSR0C,UCSR1C
+.equ URXC0addr,URXC1addr
+.equ RXEN0,RXEN1
+.equ TXEN0,TXEN1
+.equ RXCIE0,RXCIE1
+.equ UCSZ00,UCSZ10
+.equ USBS0,USBS1
+.equ UBRR0H,UBRR1H
+.equ UBRR0L,UBRR1L
+.equ URSEL_,0x00
+#else
+; UART0 symbols for Atmega32
+#ifndef UCSR0A
+.equ UCSR0A,UCSRA
+.equ UDR0_,UDR
+.equ UCSR0B,UCSRB
+.equ UCSR0C,UCSRC
+.equ RXEN0,RXEN
+.equ TXEN0,TXEN
+.equ RXCIE0,RXCIE
+.equ UCSZ00,UCSZ0
+.equ USBS0,USBS
+.equ UBRR0H,UBRRH
+.equ UBRR0L,UBRRL
+.equ URSEL_,0x80
+#else
+.equ UDR0_,UDR0
+.equ URSEL_,0
+#endif
+#endif

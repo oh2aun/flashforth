@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-atmga.asm                                      *
-;    Date:          18.11.2020                                        *
+;    Date:          05.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "29.03.2021"
+#define DATE "05.04.2021"
 #define datelen 10
 
 
@@ -140,7 +140,7 @@
 .equ TAB_,0x09
 
 #ifdef USBCON
-.equ USB_CODE, 0x1c0
+.equ USB_CODE, 0x280
 #else
 .equ USB_CODE, 0
 #endif
@@ -148,46 +148,40 @@
 ;;; Memory mapping prefixes
 .equ PRAM    , 0x0000                 ; 8 Kbytes of ram (atm2560)
 .equ PEEPROM , RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
-.if (FLASHEND == 0x3ffff)             ; 128 Kwords flash
+#if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 .equ OFLASH  , PEEPROM+E2END+1    ; 52 Kbytes available for FlashForth(atm2560)
-.equ PFLASH  , 0
-.equ RAMPZV  , 3
-.equ EIND__ , 1
-.equ KERNEL_SIZE, 0x2500 + USB_CODE
-.else
-.if (FLASHEND == 0x1ffff)              ; 64 Kwords flash
+.equ PFLASH  , OFLASH
+.equ FLASH_HI, 0xfc00
+.equ KERNEL_SIZE, 0x2400
+#define FILL_WORDS ((0x40000 - KERNEL_SIZE + 0x100)/2)
+#elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
 .equ OFLASH  , PEEPROM+E2END+1    ; 56 Kbytes available for FlashForth(atm128)
 .equ PFLASH  , 0
-.equ RAMPZV  , 1
-.equ KERNEL_SIZE, 0x2400 + USB_CODE
-.else
-.if (FLASHEND == 0xffff)              ; 32 Kwords flash
+.equ FLASH_HI, 0xfc00
+.equ FILL_WORDS, ((0x10000 + FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+.equ KERNEL_SIZE, 0x2100
+#elif (FLASHEND == 0xffff)             // 32 Kwords flash
 .equ OFLASH , PEEPROM+E2END+1     ; 56 Kbytes available for FlashForth
 .equ PFLASH , 0
-.equ RAMPZV  , 0
-.equ KERNEL_SIZE, 0x2100 + USB_CODE
-.else
-.if (FLASHEND == 0x7fff)              ; 16 Kwords flash
+.equ FLASH_HI, 0xfc00
+.equ FILL_WORDS, ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+.equ KERNEL_SIZE, 0x1f00
+#elif (FLASHEND == 0x7fff)            // 16 Kwords flash
 .equ OFLASH , 0x8000                  ; 32 Kbytes available for FlashForth
 .equ PFLASH , 0x8000
-.equ RAMPZV , 0
-.equ KERNEL_SIZE, 0x2100 + USB_CODE
-.else
-.if (FLASHEND == 0x3fff)              ; 8  Kwords flash
+.equ FLASH_HI, 0xfc00
+.equ KERNEL_SIZE, 0x1f00 + USB_CODE
+#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+#elif (FLASHEND == 0x3fff)            // 8  Kwords flash
 .equ OFLASH , 0xC000                  ; 16 Kbytes available for FlashForth
 .equ PFLASH , 0xC000
-.equ RAMPZV , 0
-.equ KERNEL_SIZE, 0x2100 + USB_CODE
-.endif
-.endif
-.endif
-.endif
-.endif
-.equ KERNEL_START, (FLASHEND + 1 - KERNEL_SIZE) & 0x3FF00
+.equ FLASH_HI, 0xbc00
+.equ FILL_WORDS, ((FLASH_HI - KERNEL_SIZE - PFLASH + 0x100)/2)
+.equ KERNEL_SIZE, 0x1f00 + USB_CODE
+#endif
 
 ;;;  High values for memory areas
-.equ FLASH_HI , (0xffff - KERNEL_SIZE) & 0xFF00
-.equ FLASH_LOW, OFLASH+0x100
+.equ FLASH_LOW, KERNEL_SIZE+0x100
 .equ EEPROM_HI , PEEPROM + E2END
 .equ RAM_HI , RAMEND
 
@@ -228,12 +222,8 @@
 
 ;****************************************************
 .section .bss
-
-#ifdef USBCON
-.org 0x110
-#endif
 ibuf:         .space PAGESIZEB
-ivec:         .space _VECTORS_SIZE
+ivec:         .space SPACE_VECTORS_SIZE
 
 rxqueue0:
 rbuf0_wr:    .space 1
@@ -284,224 +274,427 @@ dpdata:     .space   2
 ;*******************************************************************
 ; Start of kernel
 ;*******************************************************************
-
-#ifdef USBCON
-#include  "usbcdc.asm" 
-#endif
+.section .text
 #define INT_VECTORS_SIZE _VECTORS_SIZE/2
+.equ  SPACE_VECTORS_SIZE, INT_VECTORS_SIZE
 .section .vectors
 
-RESET_:     jmp  WARM_0
-ISR2:       call FF_ISR
-ISR3:       call FF_ISR
-ISR4:       call FF_ISR
+RESET_:   jmp  WARM_0
+ISR2:     rcall FF_ISR
+          nop
+ISR3:     rcall FF_ISR
+          nop
+ISR4:     rcall FF_ISR
+          nop
 ISR5:
 #if MS_VECTOR == 5
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
-ISR6:      call FF_ISR
-ISR7:      call FF_ISR
+          nop
+ISR6:     rcall FF_ISR
+          nop
+ISR7:     rcall FF_ISR
+          nop
 ISR8:
 #if MS_VECTOR == 8
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
-ISR9:     call FF_ISR
+          nop
+ISR9:     rcall FF_ISR
+          nop
 ISR10:
 #if MS_VECTOR == 10
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR11:
 #if MS_VECTOR == 11
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR12:
 #if MS_VECTOR == 12
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR13:
 #if MS_VECTOR == 13
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR14:
 #if MS_VECTOR == 14
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR15:
 #if MS_VECTOR == 15
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR16:
 #if MS_VECTOR == 16
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR17:
 #if MS_VECTOR == 17
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 ISR18:
 #if MS_VECTOR == 18
-            jmp  MS_TIMER_ISR
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
-ISR19:     call FF_ISR
+          nop
+ISR19:    rcall FF_ISR
+          nop
 #if 0x26 < INT_VECTORS_SIZE
-ISR20:     call FF_ISR
+ISR20:    rcall FF_ISR
+          nop
 #endif
 #if 0x28 < INT_VECTORS_SIZE
-ISR21:     call FF_ISR
+ISR21:    rcall FF_ISR
+          nop
 #endif
 #if 0x2a < INT_VECTORS_SIZE
 ISR22:
-#if MS_VECTOR == 0x2a
-            jmp  MS_TIMER_ISR
+#if MS_VECTOR == 22
+          rjmp  MS_TIMER_ISR
 #else
-            call FF_ISR
+          rcall FF_ISR
 #endif
+          nop
 #endif
 #if 0x2c < INT_VECTORS_SIZE
-ISR23:     call FF_ISR
+ISR23:    rcall FF_ISR
+          nop
 #endif
 #if 0x2e < INT_VECTORS_SIZE
-ISR24:     call FF_ISR
+ISR24:    rcall FF_ISR
+          nop
 #endif
 #if 0x30 < INT_VECTORS_SIZE
-ISR25:     call FF_ISR
+ISR25:    rcall FF_ISR
+          nop
 #endif
 #if 0x32 < INT_VECTORS_SIZE
-ISR26:     call FF_ISR
+ISR26:    rcall FF_ISR
+          nop
 #endif
 #if 0x34 < INT_VECTORS_SIZE
-ISR27:     call FF_ISR
+ISR27:    rcall FF_ISR
+          nop
 #endif
 #if 0x36 < INT_VECTORS_SIZE
-ISR28:     call FF_ISR
+ISR28:    rcall FF_ISR
+          nop
 #endif
 #if 0x38 < INT_VECTORS_SIZE
-ISRx38:     call FF_ISR
+ISRx38:   rcall FF_ISR
+          nop
 #endif
 #if 0x3a < INT_VECTORS_SIZE
-ISRx3a:     call FF_ISR
+ISRx3a:   rcall FF_ISR
+          nop
 #endif
 #if 0x3c < INT_VECTORS_SIZE
-ISRx3c:     call FF_ISR
+ISRx3c:   rcall FF_ISR
+          nop
 #endif
 #if 0x3e < INT_VECTORS_SIZE
-ISRx3e:     call FF_ISR
+ISRx3e:   rcall FF_ISR
+          nop
 #endif
 #if 0x40 < INT_VECTORS_SIZE
-ISRx40:     call FF_ISR
+ISRx40:   rcall FF_ISR
+          nop
 #endif
 #if 0x42 < INT_VECTORS_SIZE
-ISRx42:     call FF_ISR
+ISRx42:   rcall FF_ISR
+          nop
 #endif
 #if 0x44 < INT_VECTORS_SIZE
-ISRx44:     call FF_ISR
+ISRx44:   rcall FF_ISR
+          nop
 #endif
 #if 0x46 < INT_VECTORS_SIZE
-ISRx46:     call FF_ISR
+ISRx46:   rcall FF_ISR
+          nop
 #endif
 #if 0x48 < INT_VECTORS_SIZE
-ISRx48:     call FF_ISR
+ISRx48:   rcall FF_ISR
+          nop
 #endif
 #if 0x4a < INT_VECTORS_SIZE
-ISRx4a:     call FF_ISR
+ISRx4a:   rcall FF_ISR
+          nop
 #endif
 #if 0x4c < INT_VECTORS_SIZE
-ISRx4c:     call FF_ISR
+ISRx4c:   rcall FF_ISR
+          nop
 #endif
 #if 0x4e < INT_VECTORS_SIZE
-ISRx4e:     call FF_ISR
+ISRx4e:   rcall FF_ISR
+          nop
 #endif
 #if 0x50 < INT_VECTORS_SIZE
-ISRx50:     call FF_ISR
+ISRx50:   rcall FF_ISR
+          nop
 #endif
 #if 0x52 < INT_VECTORS_SIZE
-ISRx52:     call FF_ISR
+ISRx52:   rcall FF_ISR
+          nop
 #endif
 #if 0x54 < INT_VECTORS_SIZE
-ISRx54:     call FF_ISR
+ISRx54:   rcall FF_ISR
+          nop
 #endif
 #if 0x56 < INT_VECTORS_SIZE
-ISRx56:     call FF_ISR
+ISRx56:   rcall FF_ISR
+          nop
 #endif
 #if 0x58 < INT_VECTORS_SIZE
-ISRx58:     call FF_ISR
+ISRx58:   rcall FF_ISR
+          nop
 #endif
 #if 0x5a < INT_VECTORS_SIZE
-ISRx5a:     call FF_ISR
+ISRx5a:   rcall FF_ISR
+          nop
 #endif
 #if 0x5c < INT_VECTORS_SIZE
-ISRx5c:     call FF_ISR
+ISRx5c:   rcall FF_ISR
+          nop
 #endif
 #if 0x5e < INT_VECTORS_SIZE
-ISRx5e:     call FF_ISR
+ISRx5e:   rcall FF_ISR
+          nop
 #endif
 #if 0x60 < INT_VECTORS_SIZE
-ISRx60:     call FF_ISR
+ISRx60:   rcall FF_ISR
+          nop
 #endif
 #if 0x62 < INT_VECTORS_SIZE
-ISRx62:     call FF_ISR
+ISRx62:   rcall FF_ISR
+          nop
 #endif
 #if 0x64 < INT_VECTORS_SIZE
-ISRx64:     call FF_ISR
+ISRx64:   rcall FF_ISR
+          nop
 #endif
 #if 0x66 < INT_VECTORS_SIZE
-ISRx66:     call FF_ISR
+ISRx66:   rcall FF_ISR
+          nop
 #endif
 #if 0x68 < INT_VECTORS_SIZE
-ISRx68:     call FF_ISR
+ISRx68:   rcall FF_ISR
+          nop
 #endif
 #if 0x6a < INT_VECTORS_SIZE
-ISRx6a:     call FF_ISR
+ISRx6a:   rcall FF_ISR
+          nop
 #endif
 #if 0x6c < INT_VECTORS_SIZE
-ISRx6c:     call FF_ISR
+ISRx6c:   rcall FF_ISR
+          nop
 #endif
 #if 0x6e < INT_VECTORS_SIZE
-ISRx6e:     call FF_ISR
+ISRx6e:   rcall FF_ISR
+          nop
 #endif
 #if 0x70 < INT_VECTORS_SIZE
-ISRx70:     call FF_ISR
+ISRx70:   rcall FF_ISR
+          nop
 #endif
 .section .text
-FILL_START:
-.fill (KERNEL_START + _VECTORS_SIZE)/2, 2, 0xffff
-;***********************************************************
-CMP:
-        call    TOR
-        rjmp    CMP2
-CMP1:
-        call    NEQUALSFETCH
-        call    MINUS
-        call    ZEROSENSE
-        breq    CMP2
-        jmp     TWODROPZ
-CMP2:
-        call    XNEXT
-        brcc    CMP1
-        jmp     TWODROPNZ
 
+FF_ISR_EXIT:
+        pop     tosh
+        pop     tosl
+        pop     t1
+        pop     t0
+        pop     zh
+        pop     zl
+MS_TIMER_ISR_EXIT_LOAD:
+        ld      xl, y+
+        ld      xh, y+
+MS_TIMER_ISR_EXIT:
+        m_out    SREG, xh
+        ld      xh, y+
+        reti
+        
+FF_ISR:
+#if IDLE_MODE == 1
+#if CPU_LOAD == 1
+        m_out    TCCR1B, r_one   ; Start load counter
+#endif
+#endif
+        st      -y, xh
+        m_in     xh, SREG
+        st      -y, xh
+        st      -y, xl
+        m_pop_xh
+        pop     xh
+        pop     xl
+        push    zl
+        push    zh
+        push    t0
+        push    t1
+        push    tosl
+        push    tosh
+        clr     r_zero
+        ldi     t0, lo8(ivec-3)
+        add     xl, t0
+        ldi     xh, hi8(ivec)
+        ld      zl, x+
+        ld      zh, x+
+        m_ijmp   ;(z)
+
+;;; *************************************************
+MS_TIMER_ISR:
+#if IDLE_MODE == 1
+#if CPU_LOAD == 1
+        m_out    TCCR1B, r_one   ; Start load counter
+#endif
+#endif
+        st      -y, xh
+        m_in     xh, SREG
+        add     ms_count,  r_one
+        adc     ms_count1, r_zero
+#if CPU_LOAD == 1
+LOAD_ADD:
+        st      -y, xh
+        st      -y, xl
+        m_in     xl, TCNT1L
+        m_in     xh, TCNT1H
+        m_out    TCNT1H, r_zero
+        m_out    TCNT1L, r_two
+
+        add     loadreg0, xl
+        adc     loadreg1, xh
+        adc     loadreg2, r_zero
+
+        tst     ms_count
+        brne    LOAD_ADD_END
+        sbr     FLAGS2, (1<<fLOAD)
+LOAD_ADD_END:
+        rjmp    MS_TIMER_ISR_EXIT_LOAD
+#else
+        rjmp    MS_TIMER_ISR_EXIT
+#endif
+;;; ***************************************************
+RX0_ISR:
+        m_in     xh, UDR0_
+#if OPERATOR_UART == 0
+#if CTRL_O_WARM_RESET == 1
+        cpi     xh, 0xf
+        brne    CTRL_O_WARM_RESET_1
+        jmp     RESET_
+CTRL_O_WARM_RESET_1:
+#endif
+#endif
+        lds     xl, rbuf0_lv
+        inc     xl
+        sts     rbuf0_lv, xl
+
+#if U0FC_TYPE == 1
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX0_ISR_SKIP_XOFF
+        rcall   XXOFF_TX0_1
+#endif
+#if U0FC_TYPE == 2
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX0_ISR_SKIP_XOFF
+        m_sbi    U0RTS_PORT, U0RTS_BIT
+#endif
+RX0_ISR_SKIP_XOFF:
+        ldi     zl, lo8(rbuf0)
+        ldi     zh, hi8(rbuf0)
+
+        lds     xl, rbuf0_wr
+        add     zl, xl
+        adc     zh, r_zero
+        st      z, xh
+        inc     xl
+        andi    xl, (RX0_BUF_SIZE-1)
+        sts     rbuf0_wr, xl
+        rjmp    FF_ISR_EXIT
+;*******************************************************************
+#if UARTS == 2
+RX1_ISR:
+        m_in     xh, UDR1
+#if OPERATOR_UART == 1
+#if CTRL_O_WARM_RESET == 1
+        cpi     xh, 0xf
+        brne    CTRL_O_WARM_RESET_1
+        jmp     RESET_
+CTRL_O_WARM_RESET_1:
+#endif
+#endif
+        lds     xl, rbuf1_lv
+        inc     xl
+        sts     rbuf1_lv, xl
+
+#if U1FC_TYPE == 1
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX1_ISR_SKIP_XOFF
+        rcall   XXOFF_TX1_1
+#endif
+#if U1FC_TYPE == 2
+        cpi     xl, RX0_OFF_FILL
+        brmi    RX1_ISR_SKIP_XOFF
+        m_sbi    U1RTS_PORT, U1RTS_BIT
+#endif
+RX1_ISR_SKIP_XOFF:
+        ldi     zl, lo8(rbuf1)
+        ldi     zh, hi8(rbuf1)
+        lds     xl, rbuf1_wr
+        add     zl, xl
+        adc     zh, r_zero
+        st      z, xh
+        inc     xl
+        andi    xl, (RX1_BUF_SIZE-1)
+        sts     rbuf1_wr, xl
+        rjmp    FF_ISR_EXIT
+TX1_ISR:
+#endif
+#ifdef USBCON
+#include  "usbcdc-xc8.asm" 
+#endif
+
+;;; *************************************
+;;; EMPTY dictionary data
+; *******************************************************************
+.equ coldlitsize, 12
+COLDLIT:
+STARTV: .word      0
+DPC:    .word      (KERNEL_END+0x100+PFLASH)
+DPE:    .word      ehere
+DPD:    .word      dpdata
+LW:     fdw      lastword
+STAT:   fdw      DOTSTATUS
 ;;; *************************************************
 ;;; WARM user area data
 .equ warmlitsize, 28
@@ -514,28 +707,21 @@ WARMLIT:
         fdw      OP_RXQ
         .word      BASE_DEFAULT          ; BASE
         .word      utibbuf               ; TIB
-        fdw      OPERATOR_AREA         ; TASK
+        fdw      OPERATOR_AREA           ; TASK
         .word      0                     ; ustatus & uflg
         .word      0                     ; source
         .word      0                     ; source
         .word      0                     ; TOIN
         .word      up0                   ; Task link
 
-; M? -- caddr count    current data space string
-;        dw      L_DOTBASE
-L_MEMQ:
-        .byte     NFA|1,0x20
-        .align  1
-MEMQ:
-        call    CSE_
-        call    DOLIT
-        fdw     MEMQADDR_N
-        call    PLUS
-        call    FETCH_A
-        call    CFETCHPP
-        call    DOLIT
-        .word     NFAmask
-        jmp     AND_
+MEMQADDR_N:
+        fdw     ROM_N
+        fdw     EROM_N
+        fdw     FRAM_N
+BASEQV:
+        fdw     DECIMAL
+        fdw     HEX
+        fdw     BIN
 
 #if (FLASHEND == 0x1ffff)
         fdw     PAUSE_L
@@ -575,7 +761,49 @@ WDOFF:
         sei
         ret
 
-; WDR ( -- )    kick the dog
+#else
+
+; WD+ ( n -- )  n < 8 start watchdog timer
+        fdw     PAUSE_L
+WDON_L:
+        .byte     NFA|3
+        .ascii  "wd+"
+        .align  1
+WDON:
+        cli
+        wdr
+        lds     tosh, WDTCSR
+        ori     tosh, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, tosh
+        andi    tosl, 7
+        ori     tosl, (1<<WDE)
+        sts     WDTCSR, tosl
+        sei
+        jmp     DROP
+
+; WD- ( -- )    stop the watchdog 
+        fdw     WDON_L
+WDOFF_L:
+        .byte     NFA|3
+        .ascii  "wd-"
+        .align  1
+WDOFF:
+        cli
+        wdr
+#ifdef MCUCSR
+        sts     MCUCSR, r_zero
+#else
+        sts     MCUSR, r_zero
+#endif
+        ldi     t0, (1<<WDCE)|(1<<WDE)
+        sts     WDTCSR, t0
+        sts     WDTCSR, r_zero
+        sei
+        ret
+
+#endif
+
+; CWD ( -- )    kick the dog
         fdw     WDOFF_L
 CWD_L:
         .byte     NFA|INLINE|3
@@ -584,7 +812,7 @@ CWD_L:
 CWD:
         wdr
         ret
-#endif
+
 ;*********************************************************************
 ; EXIT --   Compile a return
 ;        variable link
@@ -920,8 +1148,7 @@ EXECUTE:
         movw    zl, tosl
         sub_pflash_z
         m_drop
-        rampv_to_c
-        ror     zh
+        lsr     zh
         ror     zl
         m_ijmp
 
@@ -1027,7 +1254,7 @@ DOCOMMAXT:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-        ror     zh
+        lsr     zh
         ror     zl
         push    zl
         push    zh
@@ -1281,17 +1508,11 @@ COMMAXT:
         rcall   ZEROSENSE
         breq    STORECF1
 STORECFF1: 
-;        rcall   CALL_
         rcall   DOLIT
-#ifdef EIND__
-        .word     0x940F  ; On Atmega 2560 all code is on 128 - 256 Kword area.
-#else
         .word     0x940E  ; call jmp:0x940d
-#endif
         call    ICOMMA
         sub_pflash_tos
-        rampv_to_c
-        ror     tosh
+        lsr     tosh
         ror     tosl
         rjmp    STORECF2
 STORECF1:
@@ -1575,8 +1796,7 @@ XSQUOTE:
         add     zl, t0
         adc     zh, tosh
         adiw    zl, 1
-        rampv_to_c
-        ror     zh
+        lsr     zh
         ror     zl
         m_ijmp
 
@@ -2573,6 +2793,18 @@ DOUSER:
         adc     tosh, uph
         ret
 
+
+        fdw     NOTEQUAL_L
+ZEROEQUAL_L:
+        .byte     NFA|2
+        .ascii  "0="
+        .align  1
+ZEROEQUAL:
+        sbiw    tosl, 1
+        sbc     tosl, tosl
+        sbc     tosh, tosh
+        ret
+
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at hi8er adrs
         fdw     USER_L
@@ -3096,7 +3328,7 @@ WORDQ:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-        ror     zh
+        lsr     zh
         ror     zl
         rcall   EQUAL
         rcall   ZEROSENSE
@@ -3341,11 +3573,11 @@ DP_TO_RAM:
         .align  1
 DP_TO_EEPROM:
         rcall   DOLIT
-        .word     dp_start
+        .word   dp_start
         rcall   STORE_P_TO_R
         rcall   INI
         rcall   DOLIT
-        .word     9
+        .word   9
         rcall   TOR
 DP_TO_EEPROM_0: 
         rcall   CFETCHPP
@@ -3354,11 +3586,6 @@ DP_TO_EEPROM_0:
         rcall   NOTEQUAL
         rcall   ZEROSENSE
         breq    DP_TO_EEPROM_1
-#if DEBUG_FLASH == 1
-        rcall   DOLIT
-        .word     'E'
-        call    EMIT
-#endif
         rcall   PCSTORE
         rjmp    DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
@@ -3510,7 +3737,7 @@ DOLIT:
         pop     zh
         pop     zl
         rcall   FETCHLIT
-        ror     zh
+        lsr     zh
         ror     zl
         m_ijmp    ; (z)
 
@@ -3522,17 +3749,6 @@ DUP_L:
         .align  1
 DUP:
         m_dup
-        ret
-
-        fdw     NOTEQUAL_L
-ZEROEQUAL_L:
-        .byte     NFA|2
-        .ascii  "0="
-        .align  1
-ZEROEQUAL:
-        sbiw    tosl, 1
-        sbc     tosl, tosl
-        sbc     tosh, tosh
         ret
 
         fdw     ZEROEQUAL_L
@@ -3738,18 +3954,20 @@ IDP:
         .align  1
 XDOES:
         m_pop_zh
-        rcall   RFROM
+        rcall   RFROM       ; dodoes-xa
         rcall   LATEST_
         rcall   FETCH_A
-        rcall   NFATOCFA
+        rcall   NFATOCFA    ; dodoes-xa markerword-cfa
         rcall   IDP
-        rcall   FETCH_A
-        rcall   TOR_A
+        rcall   FETCH_A     ;  dodoes-xa markerword-cfa idp
+        call    DOTS
+        rcall   TOR_A       ;  dodoes-xa markerword-cfa
         rcall   IDP
-        rcall   STORE_A
-        lsl     tosl
-        rol     tosh
-        rcall   STORECFF1 ; Always stores a 4 byte call
+        rcall   STORE_A     ;  dodoes-xa
+        rcall   DOLIT
+        .word     0x940E    ; call
+        call    ICOMMA
+        call    ICOMMA
         rcall   RFROM
         rcall   IDP
         jmp     STORE
@@ -3829,19 +4047,11 @@ SEMICOLON:
         breq    RCALL_TO_JMP
         m_drop
         rcall   MINUS_FETCH
-#ifdef EIND__
-        subi    tosl, 0x0f
-#else
         subi    tosl, 0x0e
-#endif
         sbci    tosh, 0x94
         brne    ADD_RETURN
 CALL_TO_JMP:
-#ifdef EIND__
-        ldi     tosl, 0x0d
-#else
         ldi     tosl, 0x0c
-#endif
         ldi     tosh, 0x94
         rcall   SWOP
         jmp     STORE
@@ -3857,15 +4067,10 @@ RCALL_TO_JMP:
         .word     -2
         rcall   IALLOT
         rcall   DOLIT
-#ifdef EIND__
-        .word     0x940d
-#else
         .word     0x940c      ; jmp:0x940c
-#endif
         rcall   ICOMMA__
         sub_pflash_tos
-        rampv_to_c
-        ror     tosh
+        lsr     tosh
         ror     tosl
         rjmp    ICOMMA__
 ADD_RETURN:
@@ -4212,7 +4417,7 @@ IALLOT:
     
 
 ;***************************************************************
-;  Store the execcution vector addr to the return stack
+;  Store the execution vector addr to the return stack
 ; leave the updated return stack pointer on the data stack
 ; x>r ( addr rsp -- rsp' )
         fdw     DUMP_L
@@ -4227,8 +4432,8 @@ X_TO_R:
         adiw    zl, 1
         st      -z, tosl
         st      -z, tosh
-#ifdef EIND__
-        st      -z, r_one
+#if (FLASHEND == 0x3ffff)
+        st      -z, r_zero
 #endif
         st      -z, r_zero
         movw    tosl, zl
@@ -4241,8 +4446,7 @@ TO_XA_L:
         .align  1
 TO_XA:
          sub_pflash_tos
-         rampv_to_c
-         ror tosh
+         lsr tosh
          ror tosl
          ret
 
@@ -4273,7 +4477,7 @@ ZFL_L:
         .align  1
 ZFL:
          call   DOCREATE
-        .word     RAMPZV
+        .word   0
 ;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .byte     NFA|4
@@ -4786,8 +4990,7 @@ XFETCH_L:
         m_lpm    tosl     ; Fetch from Flash directly
         m_lpm    tosh
 #ifdef RAMPZ
-        ldi     t0, RAMPZV
-        m_out    RAMPZ, t0
+        m_out    RAMPZ, r_zero
 #endif
 	ret
 	
@@ -4798,7 +5001,7 @@ XSTORE_L:
         .ascii  "x!"
         .align  1
         mov     t0, tosl
-        call    DROP
+        m_drop
         call   XUPDATEBUF
         jmp    ISTORE1
 #endif
@@ -4848,7 +5051,7 @@ MARKER:
         call    ROM_
         rcall   CREATE
         rcall   DOLIT
-        .word     dp_start
+        .word   dp_start
         call    HERE
         rcall   TEN
         rcall   CMOVE
@@ -5010,44 +5213,8 @@ RX1Q:
         m_cbi    U1RTS_PORT, U1RTS_BIT
 #endif
         jmp     FALSE_
-
+#endif
 ;****************************************************
-RX1_ISRR:
-        m_in     xh, UDR1
-#if OPERATOR_UART == 1
-#if CTRL_O_WARM_RESET == 1
-        cpi     xh, 0xf
-        brne    pc+2
-        rjmp    RESET_
-#endif
-#endif
-        lds     xl, rbuf1_lv
-        inc     xl
-        sts     rbuf1_lv, xl
-
-#if U1FC_TYPE == 1
-        cpi     xl, RX0_OFF_FILL
-        brmi    RX1_ISR_SKIP_XOFF
-        rcall   XXOFF_TX1_1
-#endif
-#if U1FC_TYPE == 2
-        cpi     xl, RX0_OFF_FILL
-        brmi    RX1_ISR_SKIP_XOFF
-        m_sbi    U1RTS_PORT, U1RTS_BIT
-#endif
-RX1_ISR_SKIP_XOFF:
-        ldi     zl, lo8(rbuf1)
-        ldi     zh, hi8(rbuf1)
-        lds     xl, rbuf1_wr
-        add     zl, xl
-        adc     zh, r_zero
-        st      z, xh
-        inc     xl
-        andi    xl, (RX1_BUF_SIZE-1)
-        sts     rbuf1_wr, xl
-        rjmp    FF_ISR_EXIT
-TX1_ISR:
-#endif
 ;***************************************************
 RQ_EMIT:
         sbrs    t2, PORF
@@ -5152,123 +5319,7 @@ IDLE_LOAD1:
 #endif
         ret
 #endif
-end_of_dict:
 
-;FF_DP code:
-dpcode:
-FF_ISR_EXIT:
-        pop     tosh
-        pop     tosl
-        pop     t1
-        pop     t0
-        pop     zh
-        pop     zl
-MS_TIMER_ISR_EXIT_LOAD:
-        ld      xl, y+
-        ld      xh, y+
-MS_TIMER_ISR_EXIT:
-        m_out    SREG, xh
-        ld      xh, y+
-        reti
-        
-FF_ISR:
-#if IDLE_MODE == 1
-#if CPU_LOAD == 1
-        m_out    TCCR1B, r_one   ; Start load counter
-#endif
-#endif
-        st      -y, xh
-        m_in     xh, SREG
-        st      -y, xh
-        st      -y, xl
-        m_pop_xh
-        pop     xh
-        pop     xl
-        push    zl
-        push    zh
-        push    t0
-        push    t1
-        push    tosl
-        push    tosh
-        ldi     t0, lo8(ivec-2)
-        add     xl, t0
-        ldi     xh, hi8(ivec)
-        ld      zl, x+
-        ld      zh, x+
-        m_ijmp   ;(z)
-
-;;; *************************************************
-MS_TIMER_ISR:
-#if IDLE_MODE == 1
-#if CPU_LOAD == 1
-        m_out    TCCR1B, r_one   ; Start load counter
-#endif
-#endif
-        st      -y, xh
-        m_in     xh, SREG
-        add     ms_count,  r_one
-        adc     ms_count1, r_zero
-#if CPU_LOAD == 1
-LOAD_ADD:
-        st      -y, xh
-        st      -y, xl
-        m_in     xl, TCNT1L
-        m_in     xh, TCNT1H
-        m_out    TCNT1H, r_zero
-        m_out    TCNT1L, r_two
-
-        add     loadreg0, xl
-        adc     loadreg1, xh
-        adc     loadreg2, r_zero
-
-        tst     ms_count
-        brne    LOAD_ADD_END
-        sbr     FLAGS2, (1<<fLOAD)
-LOAD_ADD_END:
-        rjmp    MS_TIMER_ISR_EXIT_LOAD
-#else
-        rjmp    MS_TIMER_ISR_EXIT
-#endif
-;;; ***************************************************
-RX0_ISR:
-        m_in     xh, UDR0
-#if OPERATOR_UART == 0
-#if CTRL_O_WARM_RESET == 1
-        cpi     xh, 0xf
-        brne    pc+2
-        rjmp    RESET_
-#endif
-#endif
-        lds     xl, rbuf0_lv
-        inc     xl
-        sts     rbuf0_lv, xl
-
-#if U0FC_TYPE == 1
-        cpi     xl, RX0_OFF_FILL
-        brmi    RX0_ISR_SKIP_XOFF
-        rcall   XXOFF_TX0_1
-#endif
-#if U0FC_TYPE == 2
-        cpi     xl, RX0_OFF_FILL
-        brmi    RX0_ISR_SKIP_XOFF
-        m_sbi    U0RTS_PORT, U0RTS_BIT
-#endif
-RX0_ISR_SKIP_XOFF:
-        ldi     zl, lo8(rbuf0)
-        ldi     zh, hi8(rbuf0)
-
-        lds     xl, rbuf0_wr
-        add     zl, xl
-        adc     zh, r_zero
-        st      z, xh
-        inc     xl
-        andi    xl, (RX0_BUF_SIZE-1)
-        sts     rbuf0_wr, xl
-        rjmp    FF_ISR_EXIT
-
-#if UARTS == 2
-RX1_ISR: rjmp   RX1_ISRR
-#endif
 ;***************************************************
 ; TX0   c --    output character to UART 0
 #if IDLE_MODE == 1
@@ -5299,7 +5350,7 @@ TX0_LOOP:
         m_in     t0, UCSR0A
         sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_LOOP
-        m_out    UDR0, tosl
+        m_out   UDR0_, tosl
         m_drop
         ret
 
@@ -5326,10 +5377,10 @@ XXOFF_TX0_1:
         ldi     zh, XOFF
 #endif
 TX0_SEND:
-        m_in     zl, UCSR0A
+        m_in    zl, UCSR0A
         sbrs    zl, 5        ; UDRE0, UDRE USART Data Register Empty
         rjmp    TX0_SEND
-        m_out    UDR0, zh
+        m_out   UDR0_, zh
         ret
 ;***************************************************
 ; RX0    -- c    get character from the UART 0 buffer
@@ -5340,15 +5391,6 @@ RX0_L:
         .align  1
 RX0_:
         rcall   PAUSE
-#if 0
-        m_in    t0, UCSR0A
-        sbrs    t0, RXC0
-        rjmp    RX0_
-        m_dup
-        m_in    tosl, UDR0
-        clr     tosh
-        ret
-#endif
         rcall   RX0Q
         call    ZEROSENSE
         breq    RX0_
@@ -5390,261 +5432,6 @@ RX0Q:
         jmp     FALSE_
 
 
-;*************************************************************
- ISTORERR:
-        call   DOTS
-        call    XSQUOTE
-        .byte     3
-        .ascii  "AD?"
-        .align  1
-        call    TYPE
-        jmp    ABORT
-        
-; Coded for max 256 byte pagesize !
-;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibaseh != iaddrh)(ibaseu != iaddru)
-;   if (idirty)
-;       writebuffer_to_imem
-;   endif
-;   fillbuffer_from_imem
-;   ibaselo = iaddrlo&(~(PAGESIZEB-1))
-;   ibasehi = iaddrhi
-;endif
-IUPDATEBUF:
-	      sub_pflash_tos
-#ifdef  RAMPZ
-	      ldi     t0, RAMPZV
-#endif
-XUPDATEBUF:
-        sts     iaddrl, tosl
-        sts     iaddrh, tosh
-#ifdef RAMPZ
-        sts     iaddru, t0
-        cpi     t0, RAMPZV
-        brne    XUPDATEBUF2
-#endif
-        cpi     tosh, hi8(FLASH_HI-PFLASH+0x100) ; Dont allow kernel writes
-        brcc    ISTORERR
-        cpi     tosh, 0       ; Protect the interrupt vectors
-        breq    ISTORERR
-XUPDATEBUF2:	
-        lds     t0, iaddrl
-        andi    t0, (~(PAGESIZEB-1)&0xff)
-        cpse    t0, ibasel
-        rjmp    IFILL_BUFFER
-        lds     t0, iaddrh
-        cpse    t0, ibaseh
-        rjmp    IFILL_BUFFER
-#ifdef RAMPZ
-        lds     t0, iaddru
-        lds     t1, ibaseu
-        cpse    t0, t1
-        rjmp    IFILL_BUFFER
-#endif
-        ret
-
-IFILL_BUFFER:
-        rcall   IFLUSH
-        lds     t0, iaddrl
-        andi    t0, (~(PAGESIZEB-1)&0xff)
-        mov     ibasel, t0
-        lds     ibaseh, iaddrh
-#ifdef RAMPZ
-        lds     t0, iaddru
-        sts     ibaseu, t0
-        m_out    RAMPZ, t0
-#endif
-IFILL_BUFFER_1:
-        ldi     t0, PAGESIZEB&0xff ; 0x100 max PAGESIZEB
-        movw    zl, ibasel
-        ldi     xl, lo8(ibuf)
-        ldi     xh, hi8(ibuf)
-IFILL_BUFFER_2:
-        m_lpm    t1
-        st      x+, t1
-        dec     t0
-        brne    IFILL_BUFFER_2
-#ifdef RAMPZ
-        ldi     t0, RAMPZV
-        m_out    RAMPZ, t0
-#endif
-        ret
-
-IWRITE_BUFFER:
-#if OPERATOR_UART == 0
-#if U0FC_TYPE == 1
-        rcall   DOLIT
-        .word     XOFF
-        call    EMIT
-#endif
-#if U0FC_TYPE == 2
-        m_sbi    U0RTS_PORT, U0RTS_BIT
-#endif
-#else
-#if U1FC_TYPE == 1
-        rcall   DOLIT
-        .word     XOFF
-        call    EMIT
-#endif
-#if U1FC_TYPE == 2
-        m_sbi    U1RTS_PORT, U1RTS_BIT
-#endif
-#endif
-        call   DOLIT
-        .word     10
-        call   MS
-
-        ; Disable interrupts
-        cli
-        movw    zl, ibasel
-        cpi     zh, hi8(FLASH_HI-PFLASH+0x100)  ; Don't allow kernel writes
-        brcc    ISTORERR2
-        cpi     zh, 0       ; Protect the interrupt vectors
-        breq    ISTORERR2
-
-#ifdef RAMPZ
-	lds     t0, ibaseu
-	m_out    RAMPZ, t0
-#endif
-        ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
-        rcall   DO_SPM
-        ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
-        rcall   DO_SPM
-
-        ; transfer data from RAM to Flash page buffer
-        ldi     t0, lo8(PAGESIZEB);init loop variable
-        ldi     xl, lo8(ibuf)
-        ldi     xh, hi8(ibuf)
-        push    r0
-        push    r1
-IWRITE_BUFFER1:
-        ld      r0, x+
-        ld      r1, x+
-        ldi     t1, (1<<SPMEN)
-        rcall   DO_SPM
-        adiw    zl, 2
-        subi    t0, 2
-        brne    IWRITE_BUFFER1
-
-        ; execute page write
-        subi    zl, lo8(PAGESIZEB) ;restore pointer
-        sbci    zh, hi8(PAGESIZEB)
-        ldi     t1, (1<<PGWRT) | (1<<SPMEN)
-        rcall   DO_SPM
-        ; re-enable the RWW section
-        rcall   IWRITE_BUFFER3
-
-        ; read back and check, optional
-        ldi     t0, lo8(PAGESIZEB);init loop variable
-        subi    xl, lo8(PAGESIZEB) ;restore pointer
-        sbci    xh, hi8(PAGESIZEB)
-IWRITE_BUFFER2:
-        m_lpm    r0
-        ld      r1, x+
-        cpse    r0, r1
-        rjmp    WARM_0     ; reset
-        subi    t0, 1
-        brne    IWRITE_BUFFER2
-        pop     r1
-        pop     r0
-ISTORERR2:
-        ser     t0
-        mov     ibaseh, t0
-#ifdef RAMPZ
-        sts     ibaseu, t0
-#endif
-#ifdef RAMPZ
-        ldi     t0, RAMPZV
-        m_out    RAMPZ, t0
-#endif
-        cbr     FLAGS1, (1<<idirty)
-        // reenable interrupts
-        sei
-#if OPERATOR_UART == 0
-#if U0FC_TYPE == 1
-        rcall   DOLIT
-        .word     XON
-        call    EMIT
-#endif
-#if U0FC_TYPE == 2
-        m_cbi    U0RTS_PORT, U0RTS_BIT
-#endif
-#else
-#if U1FC_TYPE == 1
-        rcall   DOLIT
-        .word     XON
-        call    EMIT
-#endif
-#if U1FC_TYPE == 2
-        m_cbi    U1RTS_PORT, U1RTS_BIT
-#endif
-#endif
-#if DEBUG_FLASH == 1
-        rcall   DOLIT
-        .word     'F'
-        call    EMIT
-#endif
-         ret
-        ; ret to RWW section
-        ; verify that RWW section is safe to read
-IWRITE_BUFFER3:
-        m_in     t8, SPMCSR
-        sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
-        ret
-        ; re-enable the RWW section
-        ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
-        rcall   DO_SPM
-        rjmp    IWRITE_BUFFER3
-
-; WD+ ( n -- )  n < 8 start watchdog timer
-#if (FLASHEND < 0x1ffff)
-        fdw     PAUSE_L
-WDON_L:
-        .byte     NFA|3
-        .ascii  "wd+"
-        .align  1
-WDON:
-        cli
-        wdr
-        lds     tosh, WDTCSR
-        ori     tosh, (1<<WDCE)|(1<<WDE)
-        sts     WDTCSR, tosh
-        andi    tosl, 7
-        ori     tosl, (1<<WDE)
-        sts     WDTCSR, tosl
-        sei
-        jmp     DROP
-
-; WD- ( -- )    stop the watchdog 
-        fdw     WDON_L
-WDOFF_L:
-        .byte     NFA|3
-        .ascii  "wd-"
-        .align  1
-WDOFF:
-        cli
-        wdr
-#ifdef MCUSR
-        sts     MCUSR, r_zero
-#else
-        sts     MCUCSR, r_zero
-#endif
-        ldi     t0, (1<<WDCE)|(1<<WDE)
-        sts     WDTCSR, t0
-        sts     WDTCSR, r_zero
-        sei
-        ret
-
-; WDR ( -- )    kick the dog
-        fdw     WDOFF_L
-CWD_L:
-        .byte     NFA|INLINE|3
-        .ascii  "cwd"
-        .align  1
-CWD:
-        wdr
-        ret
-
-#endif
         fdw     CWD_L
 IFLUSH_L:
         .byte     NFA|6
@@ -5652,7 +5439,7 @@ IFLUSH_L:
         .align  1
 IFLUSH:
         sbrc    FLAGS1, idirty
-        rjmp    IWRITE_BUFFER
+        jmp     IWRITE_BUFFER
         ret
 
 ;***************************************************
@@ -5669,10 +5456,14 @@ EMPTY:
         rcall   DOLIT
         fdw     COLDLIT
         rcall   DOLIT
-        .word     dp_start
+        .word   dp_start
         rcall   DOLIT
-        .word     coldlitsize
+        .word   coldlitsize
         call    CMOVE
+        call    FALSE_
+        rcall   DOLIT
+        .word   dp_flash
+        call    CSTORE
         jmp     DP_TO_RAM
 
 ; Init constant registers
@@ -5729,9 +5520,9 @@ WARM_2:
         st      x, r_zero
 
 ; Init empty flash buffer
-	dec     ibaseh
+        dec     ibaseh
 #ifdef RAMPZ
-	sts     ibaseu, ibaseh
+        sts     ibaseu, ibaseh
 #endif
 
 ; Init Stack pointer
@@ -5753,11 +5544,7 @@ WARM_2:
         movw    upl, t0
 ; Set RAMPZ for correct flash addressing
 #ifdef RAMPZ
-        ldi     t0, RAMPZV
-        m_out    RAMPZ, t0
-#endif
-#ifdef EIND__
-        m_out    EIND, r_one
+        m_out    RAMPZ, r_zero
 #endif
 ; init warm literals
         rcall   DOLIT
@@ -5769,7 +5556,7 @@ WARM_2:
         call    CMOVE
 ; init cold data to eeprom
         rcall   DOLIT
-        .word     dp_start
+        .word   dp_start
         rcall   FETCH
         rcall   TRUE_
         call    EQUAL
@@ -5777,9 +5564,6 @@ WARM_2:
         breq    WARM_3  
         rcall   EMPTY
 WARM_3:
-; Move interrupts to boot flash section
-;        m_out    MCUCR, r_one   ; (1<<IVCE)
-;        m_out    MCUCR, r_two   ; (1<<IVSEL)
 ; Start watchdog timer
 #if MS_TIMER == 0
 #ifdef TIMSK0
@@ -5838,36 +5622,42 @@ WARM_3:
 ; Init UART 0
 #if UARTS >= 1
         rcall   DOLIT
-        .word   RX0_ISR
-        call    TWOSLASH
+        .word   RX0_ISR + PFLASH
         rcall   DOLIT
-        .word   USART_RX_vect_num*2+ivec
-        rcall   STORE
+#ifdef USART_RX_vect_num
+        .word   USART_RX_vect_num + 1    ; m328
+#else
+#ifdef  USART0_RX_vect_num
+        .word   USART0_RX_vect_num + 1   ; m128 m2560
+#else
+        .word   USART1_RX_vect_num + 1   ; m32u2 m32u4
+#endif
+#endif
+        rcall   IRQ_V
 ;;;     Set baud rate
 ;        m_out    UBRR0H, r_zero
         ldi     t0, ubrr0val
-        m_out    UBRR0L, t0
+        m_out   UBRR0L, t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
-        m_out    UCSR0B,t0
+        m_out   UCSR0B,t0
         ; Set frame format: 8data, 1stop bit
-        ldi     t0, (3<<UCSZ00);|URSEL_
-        m_out    UCSR0C,t0
+        ldi     t0, (3<<UCSZ00)|URSEL_
+        m_out   UCSR0C,t0
 #if U0FC_TYPE == 1
         sbr     FLAGS2, (1<<ixoff_tx0)
 #endif
 #if U0FC_TYPE == 2
-        m_sbi    U0RTS_DDR, U0RTS_BIT
+        m_sbi   U0RTS_DDR, U0RTS_BIT
 #endif
 #endif
 ; Init UART 1
 #if UARTS == 2
         rcall   DOLIT
-        .word   RX1_ISR
-        call    TWOSLASH
+        .word   RX1_ISR + PFLASH
         rcall   DOLIT
-        .word   URXC1addr+ivec
-        rcall   STORE
+        .word   USART1_RX_vect_num + 1
+        rcall   IRQ_V
         ; Set baud rate
 ;        m_out    UBRR1H, r_zero
         ldi     t0, ubrr1val
@@ -5900,10 +5690,6 @@ WARM_3:
         sei
         call    RQ_EMIT
         rcall   VER
-
-#if CPU_LOAD_LED == 1
-        m_sbi    CPU_LOAD_DDR, CPU_LOAD_BIT
-#endif
 ; Turnkey ?
         rcall   TURNKEY
         call    ZEROSENSE
@@ -5975,19 +5761,16 @@ IRQ_SEMI_L:
         .align  1
 IRQ_SEMI:
         rcall   DOLIT
-#ifdef EIND__
-        .word     0x940D     ; jmp
-#else
-        .word     0x940C     ; jmp
-#endif
+        .word   0x940C     ; jmp
         rcall   ICOMMA
         rcall   DOLIT
-        .long     FF_ISR_EXIT
+        .word   FF_ISR_EXIT
+        call    TWOSLASH
         rcall   ICOMMA
         jmp     LEFTBRACKET
 
 
-; int!  ( addr n  --  )   store to interrupt vector number
+; int!  ( addr n  --  )   store to interrupt vector number 
         fdw     IRQ_SEMI_L
 IRQ_V_L:
         .byte     NFA|4
@@ -5995,13 +5778,13 @@ IRQ_V_L:
         .align  1
 IRQ_V:
         movw    zl, tosl
-        sbiw    zl, 1
+        sbiw    zl, 2
         lsl     zl
         ldi     tosl, lo8(ivec)
         add     zl, tosl
         ldi     zh, hi8(ivec)
         m_drop
-        call   TO_XA
+        call    TO_XA
         jmp     STORE_RAM_2
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
@@ -6032,18 +5815,9 @@ LITERAL:
         ori     tosh, 0xe0
         ori     tosl, 0x90
         jmp     ICOMMA
-
-#if 0
-LITERALruntime:
-        st      -Y, tosh    ; 0x939a
-        st      -Y, tosl    ; 0x938a
-        ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
-        ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
-#endif
-
 ;*****************************************************************
 ISTORE:
-        rcall   IUPDATEBUF
+        call    IUPDATEBUF
 ISTORE1:
         m_drop
         ldi     xl, lo8(ibuf)
@@ -6109,11 +5883,6 @@ LOCKEDQ:
 IFETCH:
         movw    z, tosl
         sub_pflash_z
-#ifdef RAMPZ
-	lds     t0, ibaseu
-	cpi     t0, RAMPZV
-	brne    IIFETCH
-#endif
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zl
@@ -6213,7 +5982,7 @@ ECFETCH:
         ret
 
 ICSTORE:
-        rcall   IUPDATEBUF
+        call    IUPDATEBUF
         m_drop
         ldi     xl, lo8(ibuf)
         ldi     xh, hi8(ibuf)
@@ -6254,6 +6023,11 @@ ECSTORE:
         out     _SFR_IO_ADDR(EEDR), tosl
         sbi     _SFR_IO_ADDR(EECR), EEMPE
         sbi     _SFR_IO_ADDR(EECR), EEPE
+#if DEBUG_FLASH == 1
+        rcall   DOLIT
+        .word     'E'
+        call    EMIT
+#endif
         rjmp    CSTORE_POP
 ;;; Disable writes to flash and eeprom
         fdw     CSTORE_L
@@ -6412,12 +6186,14 @@ ICCOMMA:
         jmp     IALLOT
 
 L_DOTBASE:
+        .global L_DOTBASE
         .byte      NFA|1
         .ascii  " "
         .align  1
 DOTBASE:
+        .global DOTBASE
         call    BASE
-        rcall   FETCH
+        call    FETCH
         cpi     tosl, 0x10
         brne    DOTBASE1
         ldi     tosl,'$'
@@ -6436,13 +6212,159 @@ DOTBASE3:
         ldi     tosl, '?'
 DOTBASEEND:
         ret
+;********************************************************************
+CMP:
+        call    TOR
+        rjmp    CMP2
+CMP1:
+        call    NEQUALSFETCH
+        call    MINUS
+        call    ZEROSENSE
+        breq    CMP2
+        jmp     TWODROPZ
+CMP2:
+        call    XNEXT
+        brcc    CMP1
+        jmp     TWODROPNZ
 
-MEMQADDR_N:
-        fdw     ROM_N
-        fdw     EROM_N
-        fdw     FRAM_N
+; M? -- caddr count    current data space string
+;        dw      L_DOTBASE
+L_MEMQ:
+        .byte     NFA|1,0x20
+        .align  1
+MEMQ:
+        call    CSE_
+        call    DOLIT
+        fdw     MEMQADDR_N
+        call    PLUS
+        call    FETCH_A
+        call    CFETCHPP
+        call    DOLIT
+        .word     NFAmask
+        jmp     AND_
+
+
+; *******************************************************************
+ISTORERR:
+        call   DOTS
+        call    XSQUOTE
+        .byte     3
+        .ascii  "AD?"
+        .align  1
+        call    TYPE
+        jmp    ABORT
+        
+IWRITE_FC_START:
+#if OPERATOR_UART == 0
+#if U0FC_TYPE == 1
+        rcall   DOLIT
+        .word     XOFF
+        call    EMIT
+#endif
+#if U0FC_TYPE == 2
+        m_sbi    U0RTS_PORT, U0RTS_BIT
+#endif
+#else
+#if U1FC_TYPE == 1
+        rcall   DOLIT
+        .word     XOFF
+        call    EMIT
+#endif
+#if U1FC_TYPE == 2
+        m_sbi    U1RTS_PORT, U1RTS_BIT
+#endif
+#endif
+        call   DOLIT
+        .word  10
+        call   MS
+        ret
+
+ISTORE_FC_END:
+#if OPERATOR_UART == 0
+#if U0FC_TYPE == 1
+        rcall   DOLIT
+        .word     XON
+        call    EMIT
+#endif
+#if U0FC_TYPE == 2
+        m_cbi    U0RTS_PORT, U0RTS_BIT
+#endif
+#else
+#if U1FC_TYPE == 1
+        rcall   DOLIT
+        .word     XON
+        call    EMIT
+#endif
+#if U1FC_TYPE == 2
+        m_cbi    U1RTS_PORT, U1RTS_BIT
+#endif
+#endif
+#if DEBUG_FLASH == 1
+        call   DOLIT
+        .word     'F'
+        call    EMIT
+#endif
+        ret
+
+;*******************************************************************
+; BOOT sector END **************************************************
+;;#define m2560dbg
+#ifdef m2560dbg
+TQUIT:
+        call    RPEMPTY
+        rcall   LEFTBRACKET
+        call    FRAM
+TQUIT0:  
+        ;; Copy INI and DP's from eeprom to ram
+        call   DP_TO_RAM
+TQUIT1: 
+        call    check_sp
+        call    XSQUOTE
+        .byte   11
+        .ascii  "1234 5400 !"
+        call   DOLIT
+        .word  0x1000
+        call   PLACE
+        call   DOLIT
+        .word  0x1000
+        call    CFETCHPP
+        call    INTERPRET
+        ;movf    state, W, A
+        rjmp     TQUIT1
+        call    IFLUSH
+        call    DP_TO_EEPROM
+
+        call    XSQUOTE
+        .byte   21
+        .ascii  ": b + + + + + + dup ;"
+        call    DOLIT
+        .word   0x1000
+        call    PLACE
+        call    check_sp
+        call    DOLIT
+        .word   0x1000
+        call    CFETCHPP
+        call    INTERPRET
+        ;movf    state, W, A
+        ;bnz     TQUIT1
+        call    IFLUSH
+        call    DP_TO_EEPROM
+
+        rjmp     TQUIT0
+        ret
+#endif
+
+KERNEL_END:
+;***********************************************************
+FILL_START:
+.fill FILL_WORDS, 2, 0xffff
+;        .section .flashprog, code
+;*************************************************************
+
+
 ;*******************************************************
 umstar0:
+        .global umstar0
         push t2
         push t3
         ld  t0, Y+
@@ -6468,15 +6390,6 @@ umstar0:
         pop t3
         pop t2
         ret
-;***********************************************************
-DO_SPM:
-        m_in     t8, SPMCSR
-        sbrc    t8, SPMEN
-        rjmp    DO_SPM       ; Wait for previous write to complete
-        m_out    SPMCSR, t1
-        spm
-        ret
-
 ;***********************************************************
 ; unsigned 32/16 -> 16/16 division
 umslashmod0:
@@ -6533,24 +6446,162 @@ umslashmod3:
         st -Y,t3
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
         ret
-BASEQV:
-        fdw     DECIMAL
-        fdw     HEX
-        fdw     BIN
+
+ISTORERR3:
+        jmp   ISTORERR
+; Coded for max 256 byte pagesize !
+;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibaseh != iaddrh)(ibaseu != iaddru)
+;   if (idirty)
+;       writebuffer_to_imem
+;   endif
+;   fillbuffer_from_imem
+;   ibaselo = iaddrlo&(~(PAGESIZEB-1))
+;   ibasehi = iaddrhi
+;endif
+IUPDATEBUF:
+	      sub_pflash_tos
+#ifdef  RAMPZ
+	      mov     t0, r_zero
+#endif
+XUPDATEBUF:
+        sts     iaddrl, tosl
+        sts     iaddrh, tosh
+#ifdef RAMPZ
+        sts     iaddru, t0
+        cpi     t0, 0
+        brne    XUPDATEBUF2
+#endif
+        ;cpi     tosh, hi8(FLASH_HI-PFLASH+0x100) ; Dont allow kernel writes
+        ;brcc    ISTORERR3
+        ;cpi     tosh, 0       ; Protect the interrupt vectors
+        ;req    ISTORERR3
+XUPDATEBUF2:	
+        lds     t0, iaddrl
+        andi    t0, (~(PAGESIZEB-1)&0xff)
+        cpse    t0, ibasel
+        rjmp    IFILL_BUFFER
+        lds     t0, iaddrh
+        cpse    t0, ibaseh
+        rjmp    IFILL_BUFFER
+#ifdef RAMPZ
+        lds     t0, iaddru
+        lds     t1, ibaseu
+        cpse    t0, t1
+        rjmp    IFILL_BUFFER
+#endif
+        ret
+
+IFILL_BUFFER:
+        call    IFLUSH
+        lds     t0, iaddrl
+        andi    t0, (~(PAGESIZEB-1)&0xff)
+        mov     ibasel, t0
+        lds     ibaseh, iaddrh
+#ifdef RAMPZ
+        lds     t0, iaddru
+        sts     ibaseu, t0
+        m_out    RAMPZ, t0
+#endif
+IFILL_BUFFER_1:
+        ldi     t0, PAGESIZEB&0xff ; 0x100 max PAGESIZEB
+        movw    zl, ibasel
+        ldi     xl, lo8(ibuf)
+        ldi     xh, hi8(ibuf)
+IFILL_BUFFER_2:
+        m_lpm    t1
+        st      x+, t1
+        dec     t0
+        brne    IFILL_BUFFER_2
+#ifdef RAMPZ
+        m_out    RAMPZ, r_zero
+#endif
+        ret
+
+IWRITE_BUFFER:
+        call    IWRITE_FC_START
+        ; Disable interrupts
+        cli
+        movw    zl, ibasel
+        ;cpi     zh, hi8(FLASH_HI-PFLASH+0x100)  ; Don't allow kernel writes
+        ;brcc    ISTORERR2
+        ;cpi     zh, 0       ; Protect the interrupt vectors
+        ;breq    ISTORERR2
+
+#ifdef RAMPZ
+        lds     t0, ibaseu
+        m_out    RAMPZ, t0
+#endif
+        ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
+        call    DO_SPM
+        ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
+        call    DO_SPM
+
+        ; transfer data from RAM to Flash page buffer
+        ldi     t0, lo8(PAGESIZEB);init loop variable
+        ldi     xl, lo8(ibuf)
+        ldi     xh, hi8(ibuf)
+        push    r0
+        push    r1
+IWRITE_BUFFER1:
+        ld      r0, x+
+        ld      r1, x+
+        ldi     t1, (1<<SPMEN)
+        call    DO_SPM
+        adiw    zl, 2
+        subi    t0, 2
+        brne    IWRITE_BUFFER1
+
+        ; execute page write
+        subi    zl, lo8(PAGESIZEB) ;restore pointer
+        sbci    zh, hi8(PAGESIZEB)
+        ldi     t1, (1<<PGWRT) | (1<<SPMEN)
+        call    DO_SPM
+        ; re-enable the RWW section
+        rcall   IWRITE_BUFFER3
+
+        ; read back and check, optional
+        ldi     t0, lo8(PAGESIZEB);init loop variable
+        subi    xl, lo8(PAGESIZEB) ;restore pointer
+        sbci    xh, hi8(PAGESIZEB)
+IWRITE_BUFFER2:
+        m_lpm    r0
+        ld      r1, x+
+        cpse    r0, r1
+        jmp     WARM_0     ; reset
+        subi    t0, 1
+        brne    IWRITE_BUFFER2
+        pop     r1
+        pop     r0
+ISTORERR2:
+        ser     t0
+        mov     ibaseh, t0
+#ifdef RAMPZ
+        sts     ibaseu, t0
+        m_out    RAMPZ, r_zero
+#endif
+        cbr     FLAGS1, (1<<idirty)
+        // reenable interrupts
+        sei
+        call    ISTORE_FC_END
+        ret
+        ; ret to RWW section
+        ; verify that RWW section is safe to read
+IWRITE_BUFFER3:
+        m_in     t8, SPMCSR
+        sbrs    t8, RWWSB ; If RWWSB is set, the RWW section is not ready yet
+        ret
+        ; re-enable the RWW section
+        ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
+        call    DO_SPM
+        rjmp    IWRITE_BUFFER3
 
 
-;;; *************************************
-;;; EMPTY dictionary data
-; *******************************************************************
-.equ coldlitsize, 12
-COLDLIT:
-STARTV: .word      0
-DPC:    .word      FLASH_LOW
-DPE:    .word      ehere
-DPD:    .word      dpdata
-LW:     fdw      lastword
-STAT:   fdw      DOTSTATUS
-;*******************************************************************
-; BOOT sector END **************************************************
-KERNEL_END:
+DO_SPM:
+        m_in    t8, SPMCSR
+        sbrc    t8, SPMEN
+        rjmp    DO_SPM       ; Wait for previous write to complete
+        m_out   SPMCSR, t1
+        spm
+        ret
+
 .end
