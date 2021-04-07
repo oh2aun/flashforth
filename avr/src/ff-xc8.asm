@@ -3904,15 +3904,22 @@ CREATE:
         rcall   DUP             
         rcall   LATEST_         ; new 'latest' link
         rcall   STORE_A         ; str len ihere
-        rcall   PLACE           ; 
-        rcall   IHERE           ; ihere
+
+        rcall   OVER
+        ori     tosl, NFA
+        rcall   OVER
+        rcall   CSTORE_A
+        rcall   CHARPLUS
+        rcall   SWOP
+        rcall   CMOVE          ; Store the name to flash
+
+        rcall   IHERE
         rcall   CFETCH_A
-        rcall   DOLIT
-        .word   NFA
-        rcall   SHB
+        andi    tosl, ~NFA
         rcall   ONEPLUS
         rcall   ALIGNED
         rcall   IALLOT          ; The header has now been created
+
         rcall   DOLIT             
         fdw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
         rcall   STORECFF1       ; Append an exeution token, CALL !
@@ -3971,7 +3978,6 @@ XDOES:
         rcall   NFATOCFA    ; dodoes-xa markerword-cfa
         rcall   IDP
         rcall   FETCH_A     ;  dodoes-xa markerword-cfa idp
-        call    DOTS
         rcall   TOR_A       ;  dodoes-xa markerword-cfa
         rcall   IDP
         rcall   STORE_A     ;  dodoes-xa
