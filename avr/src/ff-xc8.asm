@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      ff-atmga.asm                                      *
-;    Date:          05.04.2021                                        *
+;    Filename:      ff-xc8.asm                                        *
+;    Date:          07.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "05.04.2021"
+#define DATE "07.04.2021"
 #define datelen 10
 
 
@@ -140,55 +140,55 @@
 .equ TAB_,0x09
 
 #ifdef USBCON
-.equ USB_CODE, 0x280
+#define USB_CODE 0x300
 #else
-.equ USB_CODE, 0
+#define USB_CODE 0
 #endif
 
 ;;; Memory mapping prefixes
-.equ PRAM    , 0x0000                 ; 8 Kbytes of ram (atm2560)
-.equ PEEPROM , RAMEND+1               ; 4 Kbytes of eeprom (atm2560)
+#define PRAM     0x0000
+#define PEEPROM  (RAMEND + 1)
 #if (FLASHEND == 0x3ffff)             // 128 Kwords flash
-.equ OFLASH  , PEEPROM+E2END+1    ; 52 Kbytes available for FlashForth(atm2560)
-.equ PFLASH  , OFLASH
-.equ FLASH_HI, 0xffff
-.equ KERNEL_SIZE, 0x2200
-#define SPM_SIZE 0x200
-#define FILL_WORDS ((0x40000 - KERNEL_SIZE - SPM_SIZE)/2)
+#define SPM_SIZE    0x200
+#define OFLASH      (PEEPROM + E2END + 1)
+#define PFLASH      OFLASH
+#define FLASH_HI    0xffff
+#define KERNEL_SIZE 0x2200
+#define FILL_WORDS  ((0x40000 - KERNEL_SIZE - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
-.equ OFLASH  , PEEPROM+E2END+1    ; 56 Kbytes available for FlashForth(atm128)
-.equ PFLASH  , OFLASH
-.equ FLASH_HI, 0xffff
-.equ KERNEL_SIZE, 0x2100
-#define SPM_SIZE 0x200
-#define FILL_WORDS ((0x20000 - KERNEL_SIZE - SPM_SIZE)/2)
+#define SPM_SIZE    0x200
+#define OFLASH      (PEEPROM + E2END + 1)
+#define PFLASH      OFLASH
+#define FLASH_HI    0xffff
+#define KERNEL_SIZE 0x2100
+#define FILL_WORDS  ((0x20000 - KERNEL_SIZE - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0xffff)             // 32 Kwords flash
-.equ OFLASH , PEEPROM+E2END+1     ; 56 Kbytes available for FlashForth
-.equ PFLASH , 0
-.equ FLASH_HI, 0xffff
-.equ KERNEL_SIZE, 0x2000
-#define SPM_SIZE 0x200
-#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
+#define SPM_SIZE    0x200
+#define OFLASH      (PEEPROM + E2END + 1)
+#define PFLASH      OFLASH
+#define FLASH_HI    0xffff
+#define KERNEL_SIZE 0x2000
+#define FILL_WORDS  ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
-.equ OFLASH , 0x8000                  ; 32 Kbytes available for FlashForth
-.equ PFLASH , 0x8000
-.equ FLASH_HI, 0xfc00
-#define LIMIT_HI 0x7c00
-.equ KERNEL_SIZE, 0x2000 + USB_CODE
-#define SPM_SIZE 0x200
-#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
+#define SPM_SIZE    0x200
+#define OFLASH      (PEEPROM + E2END + 1)
+#define PFLASH      OFLASH
+#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
+#define LIMIT_HI    (FLASHEND - SPM_SIZE + 1)
+#define KERNEL_SIZE (0x2000 + USB_CODE)
+#define FILL_WORDS  ((FLASHEND - KERNEL_SIZE - SPM_SIZE + 0x100)/2)
 
 #elif (FLASHEND == 0x3fff)            // 8  Kwords flash
-.equ OFLASH , 0xC000                  ; 16 Kbytes available for FlashForth
-.equ PFLASH , 0xC000
-.equ FLASH_HI, 0xfc00
-#define LIMIT_HI 0x3c00
-.equ KERNEL_SIZE, 0x2000 + USB_CODE
-#define SPM_SIZE 0x200
-#define FILL_WORDS ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
+#define SPM_SIZE    0x200
+#define OFLASH      (PEEPROM + E2END + 1)
+#define PFLASH      OFLASH
+#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
+#define LIMIT_HI    (FLASHEND - SPM_SIZE + 1)
+#define KERNEL_SIZE (0x2000 + USB_CODE)
+#define FILL_WORDS  ((FLASH_HI - KERNEL_SIZE - SPM_SIZE + 0x100)/2)
 #endif
 
 ;;;  High values for memory areas
@@ -286,7 +286,7 @@ dpdata:     .space   2
 ; Start of kernel
 ;*******************************************************************
 .section .text
-#define INT_VECTORS_SIZE _VECTORS_SIZE/2
+#define INT_VECTORS_SIZE (_VECTORS_SIZE/2 + 4)
 .equ  SPACE_VECTORS_SIZE, INT_VECTORS_SIZE
 
 .section .vectors
@@ -576,7 +576,7 @@ FF_ISR:
         push    tosl
         push    tosh
         clr     r_zero
-        ldi     t0, lo8(ivec-3)
+        ldi     t0, lo8(ivec+1)
         add     xl, t0
         ldi     xh, hi8(ivec)
         ld      zl, x+
@@ -5778,8 +5778,7 @@ IRQ_SEMI:
         .word   0x940C     ; jmp
         rcall   ICOMMA
         rcall   DOLIT
-        .word   FF_ISR_EXIT
-        call    TWOSLASH
+        .word   gs(FF_ISR_EXIT) ; gs get the word address instead of byte address.
         rcall   ICOMMA
         jmp     LEFTBRACKET
 
@@ -5792,7 +5791,6 @@ IRQ_V_L:
         .align  1
 IRQ_V:
         movw    zl, tosl
-        sbiw    zl, 2
         lsl     zl
         ldi     tosl, lo8(ivec)
         add     zl, tosl
@@ -5837,6 +5835,8 @@ ISTORE1:
         ldi     xl, lo8(ibuf)
         ldi     xh, hi8(ibuf)
         lds     t0, iaddrl
+        sbrc    t0, 0
+        jmp     ISTORERR0
         andi    t0, (PAGESIZEB-1)
         add     xl, t0
         st      x+, tosl
@@ -6259,6 +6259,10 @@ MEMQ:
 
 
 ; *******************************************************************
+ISTORERR0:
+        m_dup
+        lds   tosl, iaddrl
+        lds   tosh, iaddrh
 ISTORERR:
         call   DOTS
         call    XSQUOTE
