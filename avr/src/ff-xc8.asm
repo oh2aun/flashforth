@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          07.04.2021                                        *
+;    Date:          08.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "07.04.2021"
+#define DATE "08.04.2021"
 #define datelen 10
 
 
@@ -148,48 +148,28 @@
 ;;; Memory mapping prefixes
 #define PRAM     0x0000
 #define PEEPROM  (RAMEND + 1)
-#if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 #define SPM_SIZE    0x200
 #define OFLASH      (PEEPROM + E2END + 1)
 #define PFLASH      OFLASH
-#define FLASH_HI    0xffff
+#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
+
+#if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 #define KERNEL_SIZE 0x2200
-#define FILL_WORDS  ((0x40000 - KERNEL_SIZE - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
-#define SPM_SIZE    0x200
-#define OFLASH      (PEEPROM + E2END + 1)
-#define PFLASH      OFLASH
-#define FLASH_HI    0xffff
 #define KERNEL_SIZE 0x2100
-#define FILL_WORDS  ((0x20000 - KERNEL_SIZE - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0xffff)             // 32 Kwords flash
-#define SPM_SIZE    0x200
-#define OFLASH      (PEEPROM + E2END + 1)
-#define PFLASH      OFLASH
-#define FLASH_HI    0xffff
 #define KERNEL_SIZE 0x2000
-#define FILL_WORDS  ((FLASH_HI - KERNEL_SIZE - PFLASH - SPM_SIZE)/2)
 
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
-#define SPM_SIZE    0x200
-#define OFLASH      (PEEPROM + E2END + 1)
-#define PFLASH      OFLASH
-#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
-#define LIMIT_HI    (FLASHEND - SPM_SIZE + 1)
 #define KERNEL_SIZE (0x2000 + USB_CODE)
-#define FILL_WORDS  ((FLASHEND - KERNEL_SIZE - SPM_SIZE + 0x100)/2)
 
 #elif (FLASHEND == 0x3fff)            // 8  Kwords flash
-#define SPM_SIZE    0x200
-#define OFLASH      (PEEPROM + E2END + 1)
-#define PFLASH      OFLASH
-#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
-#define LIMIT_HI    (FLASHEND - SPM_SIZE + 1)
 #define KERNEL_SIZE (0x2000 + USB_CODE)
-#define FILL_WORDS  ((FLASH_HI - KERNEL_SIZE - SPM_SIZE + 0x100)/2)
 #endif
+
+#define NRWW_START  (FLASHEND - SPM_SIZE + 1)
 
 ;;;  High values for memory areas
 .equ FLASH_LOW, KERNEL_SIZE + 0x100
@@ -285,7 +265,6 @@ dpdata:     .space   2
 ;*******************************************************************
 ; Start of kernel
 ;*******************************************************************
-.section .text
 #define INT_VECTORS_SIZE (_VECTORS_SIZE/2 + 4)
 .equ  SPACE_VECTORS_SIZE, INT_VECTORS_SIZE
 
@@ -540,7 +519,6 @@ ISRx70:   rcall FF_ISR
           nop
 #endif
 
-.section .text
 FF_ISR_EXIT:
         pop     tosh
         pop     tosl
@@ -6262,8 +6240,6 @@ MEMQ:
         call    DOLIT
         .word     NFAmask
         jmp     AND_
-
-
 ; *******************************************************************
 ISTORERR0:
         m_dup
@@ -6333,8 +6309,7 @@ ISTORE_FC_END:
 ;*******************************************************************
 KERNEL_END:
 ;***********************************************************
-FILL_START:
-.fill FILL_WORDS, 2, 0xffff
+.section .nrww, code, address(NRWW_START)
 ;*************************************************************
 umstar0:
         .global umstar0
@@ -6444,10 +6419,8 @@ XUPDATEBUF:
         cpi     t0, 0
         brne    XUPDATEBUF2
 #endif
-#ifdef LIMIT_HI
-        cpi     tosh, hi8(LIMIT_HI)  ; Don't allow kernel writes
+        cpi     tosh, hi8(NRWW_START)  ; Don't allow kernel writes
         brpl    ISTORERR3
-#endif
         cpi     tosh, hi8(KERNEL_SIZE)        ; Protect the  kernel
         brcs    ISTORERR3
 XUPDATEBUF2:	
@@ -6497,10 +6470,8 @@ IWRITE_BUFFER:
         ; Disable interrupts
         cli
         movw    zl, ibasel
-#ifdef LIMIT_HI
-        cpi     zh, hi8(LIMIT_HI)  ; Don't allow kernel writes
+        cpi     zh, hi8(NRWW_START)  ; Don't allow kernel writes
         brpl    ISTORERR2
-#endif
         cpi     zh, hi8(KERNEL_SIZE)        ; Protect the interrupt vectors
         brcs    ISTORERR2
 
