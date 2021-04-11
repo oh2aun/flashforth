@@ -1,6 +1,7 @@
 ;;; FlashForth device configuration for Atmega devices
 ;;; For Microchip XC8 compiler and MPLABX IDE.
 ;;; Tested with ATmega328 ATmega328P ATmega2560
+
 ; Oscillator frequency in herz
 #define FREQ_OSC 16000000
 
@@ -11,7 +12,8 @@
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
-;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. Or use the ff-shell.py which adds CR LF flow control.
+;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. 
+;;; Or use the ff-shell.py which adds end of line (CR LF) flow control.
 #define BAUDRATE0 38400              // Serial baudrate UART0
 #define U0FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 #define U0RTS_PORT PORTD
@@ -86,7 +88,7 @@
 
 ; Debug flash and eeprom writes
 ; Prints F=Write to FLASH E=Write to EEPROM
-#define DEBUG_FLASH 1
+#define DEBUG_FLASH 0
 
 #if defined(__ATmega2560__)
 #define partstring "ATmega2560"
@@ -141,7 +143,7 @@
 #define MS_VECTOR TIMER0_COMPA_vect_num + 1
 #endif
 
-#if MS_TIMER == 1
+#if MS_TIMER == 1 // FIXME
 #ifdef OC1Aaddr
 #define MS_TIMER_ADDR OC1Aaddr
 #else
@@ -149,7 +151,7 @@
 #endif
 #endif
 
-#if MS_TIMER == 2
+#if MS_TIMER == 2 // FIXME
 #ifdef OC2Aaddr
 #define MS_TIMER_ADDR OC2Aaddr
 #else

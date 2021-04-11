@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          08.04.2021                                        *
+;    Date:          11.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "08.04.2021"
+#define DATE "11.04.2021"
 #define datelen 10
 
 
@@ -151,10 +151,10 @@
 #define SPM_SIZE    0x200
 #define OFLASH      (PEEPROM + E2END + 1)
 #define PFLASH      OFLASH
-#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
 
 #if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 #define KERNEL_SIZE 0x2200
+#define FLASH_HI    (0x10000 - PFLASH - SPM_SIZE)
 
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
 #define KERNEL_SIZE 0x2100
@@ -164,9 +164,11 @@
 
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
 #define KERNEL_SIZE (0x2000 + USB_CODE)
+#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
 
 #elif (FLASHEND == 0x3fff)            // 8  Kwords flash
 #define KERNEL_SIZE (0x2000 + USB_CODE)
+#define FLASH_HI    (FLASHEND + PFLASH - SPM_SIZE)
 #endif
 
 #define NRWW_START  (FLASHEND - SPM_SIZE + 1)
@@ -241,7 +243,7 @@ dpLATEST:   .space 2
 
 iaddrl:     .space 1
 iaddrh:     .space 1
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
 iaddru:	    .space 1
 ibaseu:	    .space 1
 #endif
@@ -939,39 +941,26 @@ NEQUAL_L:
         .ascii  "n="
         .align  1
 NEQUAL:
-        rcall   NEQUALSFETCH
-        andi    tosl, 0xf
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        breq    NEQUAL5
-        rcall   ONEMINUS
-        rcall   CFETCHPP
-        rcall   TOR
-        rjmp    NEQUAL4
+        movw    z, tosl
+        subi    zh, hi8(PFLASH)
+        ld      xl, y+
+        ld      xh, y+
+        m_lpm   tosh
+        andi    tosh, 0xf
+        ld      tosl, x+
+        sub     tosl, tosh
+        brne    NEQUAL3
+        dec     tosh
 NEQUAL2:
-        rcall   NEQUALSFETCH
-        rcall   NOTEQUAL
-        rcall   ZEROSENSE
-        breq    NEQUAL3
-        call    TRUE_
-        call    LEAVE
-        rjmp    NEQUAL4
+        m_lpm   tosl
+        ld      t0, x+
+        sub     tosl, t0
+        brne    NEQUAL3
+        dec     tosh
+        brpl    NEQUAL2
 NEQUAL3:
-        rcall   RFETCH
-        rcall   ZEROSENSE
-        brne    NEQUAL4
-        call    FALSE_
-NEQUAL4:
-        call    XNEXT
-        brcc    NEQUAL2
-        pop     t1
-        pop     t0
-        rjmp    NEQUAL6
-NEQUAL5:
-        call    TRUE_
-NEQUAL6:
-        rcall   NIP
-        jmp     NIP
+        mov     tosh, tosl
+        ret
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
@@ -983,34 +972,28 @@ SKIP_L:
         .align  1
 SKIP:
 
-        rcall   TOR
+        ld      tosh, y+   ; count
+        ld      t0, y+
+        ld      xl, y+
+        ld      xh, y+    ; c-addr
 SKIP0:
-        rcall   DUPZEROSENSE
+        dec     tosh
         breq    SKIP2
+        ld      t0, x+
+        cpi     t0,  TAB_
+        breq    SKIP0
 
-        rcall   OVER
-        rcall   CFETCH_A
-
-        call   DUP
-        call   DOLIT
-        .word     TAB_
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        brne    SKIP05    
-        rcall   RFETCH
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        breq    SKIP2
-                rjmp    SKIP1
-SKIP05:
-        rcall   DROP
-SKIP1:
-        rcall   ONE
-        rcall   SLASHSTRING
+        cp      t0, tosl
+        brne    SKIP1
         rjmp    SKIP0
+SKIP1:
+        sbiw    xl, 1        
 SKIP2:
-        pop     t0
-        pop     t0
+        st      -y, xh
+        st      -y, xl
+        mov     tosl, tosh
+        clr     tosh
+        adiw    tosl, 1
         ret
 
 
@@ -1022,34 +1005,34 @@ SCAN_L:
         .ascii  "scan"
         .align  1
 SCAN:
-        rcall   STORE_P_TO_R
-        rcall   TOR
+        
+        mov     xl, tosl
+        ld      xh, y+
+        ld      zl, y+
+        ld      zl, y+
+        ld      zh, y+
         rjmp    SCAN3
 SCAN1:
-        rcall   CFETCHPP
-        call    DUP
-        call    DOLIT
-        .word     TAB_
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        breq    SCAN2
-        rcall   DROP
+        ld      tosl, z+
+        cpi     tosl, TAB_
+        brne    SCAN2
         rjmp    SCAN25
 SCAN2:
-        call    FETCH_P
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        breq    SCAN3
+        cp      tosl, xl
+        brne    SCAN3
 SCAN25:
-        rcall   ONEMINUS
+        sbiw    zl, 1
+        movw    tosl, z
         rjmp    SCAN4
 SCAN3:
-        call    XNEXT
-        brcc    SCAN1
+        dec     xh
+        brpl    SCAN1
+        movw    tosl, z
 SCAN4:
-        rcall   RFROM
-        rcall   ONEPLUS
-        rcall   R_TO_P
+        m_dup
+        mov     tosl, xh
+        adiw    tosl, 1
+        mov     tosh, r_zero
         ret
 
 ; : mtst ( mask addr -- flag )
@@ -1616,7 +1599,7 @@ SPACES_L:
         .align  1
 SPACES:
 SPCS1:
-        rcall   DUPZEROSENSE
+        sbiw    tosl, 0
         breq    SPCS2
         rcall   SPACE_
         rcall   ONEMINUS
@@ -2854,7 +2837,7 @@ PARSE:
         rcall   TOR             ; c a u                    R: u a (start of word
         rcall   ROT             ; a u c
         rcall   SCAN            ; a u      end of word, tib left       
-        rcall   DUPZEROSENSE
+        sbiw    tosl, 0
         breq    PARSE1
         rcall   ONEMINUS
 PARSE1: rcall   RFROM           ; a u a
@@ -2881,7 +2864,7 @@ WORD:
         jmp     CSTORE          ; Write the length into the TIB ! 
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
-; cmove swap !p for c@+ pc! p+ next drop ;
+; cmove swap !p>r for c@+ pc! p+ next r>p drop ;
         fdw     WORD_L
 CMOVE_L:
         .byte     NFA|5
@@ -2925,8 +2908,8 @@ CFETCHPP_L:
         .ascii  "c@+"
         .align  1
 CFETCHPP:
-        rcall   DUP
-        rcall   ONEPLUS
+        m_dup
+        adiw    tosl, 1
         rcall   SWOP
         jmp     CFETCH
 
@@ -2937,8 +2920,8 @@ FETCHPP_L:
         .ascii  "@+"
         .align  1
 FETCHPP:
-        rcall   DUP
-        rcall   TWOPLUS
+        m_dup
+        adiw    tosl, 2
         rcall   SWOP
         jmp     FETCH
 
@@ -2983,22 +2966,19 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
-findi1:
-FIND_1: 
-        rcall   TWODUP
-        rcall   NEQUAL
-        rcall   DUPZEROSENSE
-        breq    findi2
-        rcall   DROP
-        rcall   TWOMINUS ;;;      NFATOLFA
-        rcall   FETCH_A
-        rcall   DUP
+        rcall   TWODUP      ; c-addr nfa c-addr nfa
+        rcall   NEQUAL      ; c-addr nfa flag
+        sbiw    tosl, 0
+        m_drop              ; c-addr nfa
+        breq    findi4
+        sbiw    tosl, 2     ; c-addr lfa
+        call    FETCH       ; c-addr nfa
 findi2:
-        rcall   ZEROSENSE
-        brne    findi1
-        rcall   DUPZEROSENSE
-        breq    findi3
-        rcall   NIP
+        sbiw    tosl, 0     ; c-addr nfa
+        brne    findi
+        rjmp    findi3
+findi4:
+        rcall   NIP         ; nfa
         rcall   DUP
         rcall   NFATOCFA
         rcall   SWOP
@@ -3033,7 +3013,7 @@ FIND:
         rcall   DOLIT
         fdw     kernellink
         rcall   findi
-        rcall   DUPZEROSENSE
+        sbiw    tosl, 0
         brne    FIND1
         rcall   DROP
         rcall   LATEST_
@@ -3139,7 +3119,7 @@ TONUMBER_L:
 TONUMBER:
         ldi     al, 1
 TONUM1:
-        rcall   DUPZEROSENSE      ; ud.l ud.h adr u
+        sbiw    tosl, 0          ; ud.l ud.h adr u
         breq    TONUM3
         rcall   TOR
         push    tosl             ; dup >r
@@ -3346,7 +3326,7 @@ IPARSEWORD:
         rjmp    INOWORD
 IPARSEWORD1:
         rcall   FIND            ; sets also wflags
-        rcall   DUPZEROSENSE    ; 0 = not found, -1 = normal, 1 = immediate
+        sbiw    tosl, 0         ; 0 = not found, -1 = normal, 1 = immediate
         brne    IPARSEWORD2     ; NUMBER?
         rjmp    INUMBER
 IPARSEWORD2:
@@ -3431,7 +3411,7 @@ INUMBER:
         cbr     FLAGS1, (1<<izeroeq) | (1<<idup) | (1<<fLIT)
         rcall   DROP
         rcall   NUMBERQ
-        rcall   DUPZEROSENSE
+        sbiw    tosl, 0
         breq    IUNKNOWN
         rcall   STATE_
         rcall   ZEROSENSE
@@ -4297,7 +4277,7 @@ LIKES:
 LIKES1:
         rcall   TWOMINUS
         rcall   FETCH_A
-        rcall   DUPZEROSENSE
+        sbiw    tosl, 0
         brne    LIKES
 TWODROP__:
         jmp     TWODROP
@@ -4970,21 +4950,21 @@ FLASHHI:
         .word      EEPROM_HI
         .word      RAM_HI
 
-#if FLASHEND > 0x3fff
+#if FLASHEND > 0xffff
 ;;; x@ ( addrl addru -- x )
         fdw     A_FROM_L
 XFETCH_L:
         .byte     NFA|2
         .ascii  "x@"
         .align  1
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         m_out    RAMPZ, tosl
 #endif
         m_drop
         movw    z, tosl
         m_lpm    tosl     ; Fetch from Flash directly
         m_lpm    tosh
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         m_out    RAMPZ, r_zero
 #endif
 	ret
@@ -5516,7 +5496,7 @@ WARM_2:
 
 ; Init empty flash buffer
         dec     ibaseh
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         sts     ibaseu, ibaseh
 #endif
 
@@ -5538,7 +5518,7 @@ WARM_2:
         ldi     t1, hi8(up0)
         movw    upl, t0
 ; Set RAMPZ for correct flash addressing
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         m_out    RAMPZ, r_zero
 #endif
 ; init warm literals
@@ -5910,7 +5890,7 @@ A_FROM:
         mov     tosh, ah
         ret
 
-#if FLASHEND > 0x3fff
+#if FLASHEND > 0xffff
         fdw     XSTORE_L
 #else
         fdw     A_FROM_L
@@ -6274,9 +6254,11 @@ IWRITE_FC_START:
         m_sbi    U1RTS_PORT, U1RTS_BIT
 #endif
 #endif
+#if ((U0FC_TYPE == 1) || (U1FC_TYPE == 1))
         call   DOLIT
         .word  10
         call   MS
+#endif
         ret
 
 ISTORE_FC_END:
@@ -6305,14 +6287,12 @@ ISTORE_FC_END:
         call    EMIT
 #endif
         ret
-
 ;*******************************************************************
 KERNEL_END:
 ;***********************************************************
 .section .nrww, code, address(NRWW_START)
 ;*************************************************************
 umstar0:
-        .global umstar0
         push t2
         push t3
         ld  t0, Y+
@@ -6396,7 +6376,7 @@ umslashmod3:
         ret
 
 ISTORERR3:
-        jmp   ISTORERR
+        jmp  ISTORERR
 ; Coded for max 256 byte pagesize !
 ;if (ibaselo != (iaddrlo&(~(PAGESIZEB-1))))(ibaseh != iaddrh)(ibaseu != iaddru)
 ;   if (idirty)
@@ -6408,22 +6388,26 @@ ISTORERR3:
 ;endif
 IUPDATEBUF:
 	      sub_pflash_tos
-#ifdef  RAMPZ
 	      mov     t0, r_zero
-#endif
+        rjmp    XUPDATEBUF2
 XUPDATEBUF:
+#if FLASHEND > 0xffff
+        sts     iaddru, t0
+#endif
+XUPDATEBUF2:
         sts     iaddrl, tosl
         sts     iaddrh, tosh
-#ifdef RAMPZ
-        sts     iaddru, t0
+
+        cpi     t0, (FLASHEND>>16)
+        brne    UPDATEBUF3
+        cpi     tosh, hi8(NRWW_START&0xff00)  ; Don't allow kernel writes
+        brcc    ISTORERR3
+UPDATEBUF3:
         cpi     t0, 0
-        brne    XUPDATEBUF2
-#endif
-        cpi     tosh, hi8(NRWW_START)  ; Don't allow kernel writes
-        brpl    ISTORERR3
-        cpi     tosh, hi8(KERNEL_SIZE)        ; Protect the  kernel
+        brne    UPDATEBUF4
+        cpi     tosh, hi8(KERNEL_END+0x100) ; Protect the  kernel
         brcs    ISTORERR3
-XUPDATEBUF2:	
+UPDATEBUF4:
         lds     t0, iaddrl
         andi    t0, (~(PAGESIZEB-1)&0xff)
         cpse    t0, ibasel
@@ -6431,7 +6415,7 @@ XUPDATEBUF2:
         lds     t0, iaddrh
         cpse    t0, ibaseh
         rjmp    IFILL_BUFFER
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         lds     t0, iaddru
         lds     t1, ibaseu
         cpse    t0, t1
@@ -6445,7 +6429,7 @@ IFILL_BUFFER:
         andi    t0, (~(PAGESIZEB-1)&0xff)
         mov     ibasel, t0
         lds     ibaseh, iaddrh
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         lds     t0, iaddru
         sts     ibaseu, t0
         m_out    RAMPZ, t0
@@ -6460,7 +6444,7 @@ IFILL_BUFFER_2:
         st      x+, t1
         dec     t0
         brne    IFILL_BUFFER_2
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         m_out    RAMPZ, r_zero
 #endif
         ret
@@ -6471,11 +6455,11 @@ IWRITE_BUFFER:
         cli
         movw    zl, ibasel
         cpi     zh, hi8(NRWW_START)  ; Don't allow kernel writes
-        brpl    ISTORERR2
-        cpi     zh, hi8(KERNEL_SIZE)        ; Protect the interrupt vectors
+        brcc    ISTORERR2
+        cpi     zh, hi8(KERNEL_END+0x100) ; Protect the kernel
         brcs    ISTORERR2
 
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         lds     t0, ibaseu
         m_out    RAMPZ, t0
 #endif
@@ -6523,7 +6507,7 @@ IWRITE_BUFFER2:
 ISTORERR2:
         ser     t0
         mov     ibaseh, t0
-#ifdef RAMPZ
+#if FLASHEND > 0xffff
         sts     ibaseu, t0
         m_out    RAMPZ, r_zero
 #endif
@@ -6542,8 +6526,6 @@ IWRITE_BUFFER3:
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN)
         call    DO_SPM
         rjmp    IWRITE_BUFFER3
-
-
 DO_SPM:
         m_in    t8, SPMCSR
         sbrc    t8, SPMEN
@@ -6551,5 +6533,4 @@ DO_SPM:
         m_out   SPMCSR, t1
         spm
         ret
-
 .end
