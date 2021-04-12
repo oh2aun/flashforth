@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          09.11.2020                                        *
+;    Date:          12.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2020  Mikael Nordman
+; Copyright (C) 2021  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -33,15 +33,6 @@
 ; For a commercial product you MUST obtain your own Vendor ID and Product ID !
 #define U_PID 0xfaf0  ; Product ID used for testing FlashForth
 #define U_VID 0xfaf0  ; Vendor ID used for testing FlashForth
-
-.section .bss
-usb_config_status:  .byte 1
-bmRequestType:      .byte 1
-bRequest:           .byte 1
-wValue:             .byte 2
-wIndex:             .byte 2
-wLength:            .byte 2
-line_coding:        .byte 7
 ;*******************************************************************************
 .section .text
 device_dsc:
@@ -50,7 +41,7 @@ device_dsc:
         .word   0x0110     ; USB Spec Release Number in BCD format
         .byte   0x02,0x00  ; Class Code CDC device
                          ; Subclass 
-        .word   0x00,0x20  ; Protocol
+        .byte   0x00,0x20  ; Protocol
                          ; EP0 packet size = 32 bytes
         .word   U_VID      ; Vendor ID
         .word   U_PID      ; Product ID
@@ -143,6 +134,12 @@ USB_PLL_WAIT:
         sts     usb_config_status, r_zero
 USB_ON_RET:
         ret
+
+TX0_LOOP1:
+        m_in    t0, UCSR0A
+        sbrs    t0, 5        ; UDRE0, UDRE USART Data Register Empty
+        rjmp    TX0_LOOP1
+        m_out   UDR0_, t1
 
 
         fdw     USB_ON_L

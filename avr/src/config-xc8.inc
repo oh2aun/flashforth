@@ -7,14 +7,14 @@
 
 ; Define the UART used for the operator
 ; 0 or 1 (0 for 32u4 ) or 3 for USB
-#define OPERATOR_UART 0 
+#define OPERATOR_UART 0
 
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. 
 ;;; Or use the ff-shell.py which adds end of line (CR LF) flow control.
-#define BAUDRATE0 38400              // Serial baudrate UART0
+#define BAUDRATE0 9600               // Serial baudrate UART0
 #define U0FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 #define U0RTS_PORT PORTD
 #define U0RTS_DDR DDRD
@@ -141,21 +141,9 @@
 
 #if MS_TIMER == 0
 #define MS_VECTOR TIMER0_COMPA_vect_num + 1
-#endif
-
-#if MS_TIMER == 1 // FIXME
-#ifdef OC1Aaddr
-#define MS_TIMER_ADDR OC1Aaddr
-#else
-#define MS_TIMER_ADDR OC1addr
-#endif
-#endif
-
-#if MS_TIMER == 2 // FIXME
-#ifdef OC2Aaddr
-#define MS_TIMER_ADDR OC2Aaddr
-#else
-#define MS_TIMER_ADDR OC2addr
-#endif
+#elif MS_TIMER == 1
+#define MS_VECTOR TIMER1_COMPA_vect_num + 1
+#elif MS_TIMER == 2
+#define MS_VECTOR TIMER2_COMPA_vect_num + 1
 #endif
 

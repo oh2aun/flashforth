@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          11.04.2021                                        *
+;    Date:          12.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "11.04.2021"
+#define DATE "12.04.2021"
 #define datelen 10
 
 
@@ -215,6 +215,16 @@
 
 ;****************************************************
 .section .bss
+#ifdef USBCON
+usb_config_status:  .space 1
+bmRequestType:      .space 1
+bRequest:           .space 1
+wValue:             .space 2
+wIndex:             .space 2
+wLength:            .space 2
+line_coding:        .space 7
+#endif
+
 ibuf:         .space PAGESIZEB
 ivec:         .space SPACE_VECTORS_SIZE
 
@@ -669,7 +679,6 @@ RX1_ISR_SKIP_XOFF:
         andi    xl, (RX1_BUF_SIZE-1)
         sts     rbuf1_wr, xl
         rjmp    FF_ISR_EXIT
-TX1_ISR:
 #endif
 #ifdef USBCON
 #include  "usbcdc-xc8.asm" 
@@ -6001,6 +6010,9 @@ ECSTORE:
         out     _SFR_IO_ADDR(EEDR), tosl
         sbi     _SFR_IO_ADDR(EECR), EEMPE
         sbi     _SFR_IO_ADDR(EECR), EEPE
+ECSTORE1:
+        sbic    _SFR_IO_ADDR(EECR), EEPE
+        rjmp    ECSTORE1
 #if DEBUG_FLASH == 1
         rcall   DOLIT
         .word     'E'
@@ -6453,23 +6465,32 @@ IWRITE_BUFFER:
         call    IWRITE_FC_START
         ; Disable interrupts
         cli
-        movw    zl, ibasel
-        cpi     zh, hi8(NRWW_START)  ; Don't allow kernel writes
-        brcc    ISTORERR2
-        cpi     zh, hi8(KERNEL_END+0x100) ; Protect the kernel
-        brcs    ISTORERR2
-
 #if FLASHEND > 0xffff
         lds     t0, ibaseu
-        m_out    RAMPZ, t0
+        m_out   RAMPZ, t0
+#else
+        clr     t0
 #endif
+        movw    zl, ibasel
+
+        cpi     t0, (FLASHEND>>16)
+        brne    IWRITE_CHECK1
+        cpi     zh, hi8(NRWW_START)  ; Don't allow kernel writes
+        brcc    ISTORERR2
+IWRITE_CHECK1:
+        cpi     t0, 0
+        brne    IWRITE_CHECK2
+        cpi     zh, hi8(KERNEL_END+0x100) ; Protect the kernel
+        brcs    ISTORERR2
+IWRITE_CHECK2:
+
         ldi     t1, (1<<PGERS) | (1<<SPMEN) ; Page erase
-        call    DO_SPM
+        rcall   DO_SPM
         ldi     t1, (1<<RWWSRE) | (1<<SPMEN); re-enable the RWW section
-        call    DO_SPM
+        rcall   DO_SPM
 
         ; transfer data from RAM to Flash page buffer
-        ldi     t0, lo8(PAGESIZEB);init loop variable
+        ldi     t0, lo8(PAGESIZEB/2);init loop variable
         ldi     xl, lo8(ibuf)
         ldi     xh, hi8(ibuf)
         push    r0
@@ -6480,7 +6501,7 @@ IWRITE_BUFFER1:
         ldi     t1, (1<<SPMEN)
         call    DO_SPM
         adiw    zl, 2
-        subi    t0, 2
+        subi    t0, 1
         brne    IWRITE_BUFFER1
 
         ; execute page write
@@ -6532,5 +6553,9 @@ DO_SPM:
         rjmp    DO_SPM       ; Wait for previous write to complete
         m_out   SPMCSR, t1
         spm
+DO_SPM2:
+        m_in    t8, SPMCSR
+        sbrc    t8, SPMEN
+        rjmp    DO_SPM2       ; Wait the current write to complete
         ret
 .end

@@ -86,7 +86,7 @@
   cbi _SFR_IO_ADDR(\addr),\bit
 .else
   m_in r16, \addr
-  andi r16, 1<<\bit
+  andi r16, ~(1<<\bit)
   m_out \addr,r16
 .endif
 .endm
