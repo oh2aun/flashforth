@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          26.11.2020                                        *
+;    Date:          13.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -286,7 +286,7 @@ ustatus     equ -d'11'
 uhp         equ -d'10'
 usource     equ -d'8'           ; Two cells
 utoin       equ -d'4'
-ulink       equ -d'2'
+ulink       equ -d'2'           ; Link to next task
 urptr       equ d'0'            ; Top of the saved return stack
 uvars       res -us0
 u0          res 2 + UADDSIZE
@@ -617,16 +617,6 @@ irq_end:
 #else ; K42 K83
         retfie  1
 #endif
-;;; ******************************************
-;;; ******** HIGH PRIORITY INTERRUPT
-;irq_user:
-;        push
-;        movwf   TOSH
-;        movf    irq_v, W
-;        movwf   TOSL
-;        return              ; Now the interrupt routine is executing
-;;; *************************************************
-
 ; *******************************************************************
 ;;; WARM user area data
 warmlitsize equ d'28'
@@ -718,17 +708,36 @@ FALSE__:
 
 ; movf, ( f d a -- )
         dw      L_W_
-L_MOVF_
+L_MOVF_:
         db      NFA|5,"movf,"
-MOVF_:
         rcall   AS3_DOES
         dw      h'0050'
 
-; andlw, ( k -- )
+; movwf, ( f a -- )
         dw      L_MOVF_
+L_MOVWF_:
+        db      NFA|5,"movwf,"
+        rcall   AS2_DOES
+        dw      h'006e'
+
+; movlw, ( k -- )
+        dw      L_MOVWF_
+L_MOVLW_:
+        db      NFA|6,"movlw,"
+        rcall   AS1_DOES
+        dw      h'0e00'
+
+; movlb, ( k -- )
+        dw      L_MOVLW_
+L_MOVLB_:
+        db      NFA|6,"movlb,"
+        rcall   AS1_DOES
+        dw      h'0100'
+
+; andlw, ( k -- )
+        dw      L_MOVLB_
 L_ANDLW_:
         db      NFA|6,"andlw,"
-ANDLW_:
         rcall   AS1_DOES
         dw      h'0b00'
 
@@ -757,7 +766,7 @@ L_LI:
         movwf   ihtblptrh
         movf    TABLAT, W
         movwf   ihtablat
-        lfsr    Sptr, irq_s0 - 1  ; 0xf05f
+        lfsr    Sptr, irq_s0 - 1
         return
 
 ; i]   --    Restore registers for the Forth interrupt context
@@ -852,7 +861,7 @@ RX1_:
         bz      RX1_
         lfsr    Tptr, RXbuf
         movf    RXtail, W
-        movff_   TWrw, plusS    ;  Take a char from the buffer
+        movff_  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS
         incf    RXtail, F
         movlw   RXbufmask
@@ -1060,7 +1069,7 @@ iupdatebuf0:
 fill_buffer_from_imem:
         movlw   flash_block_size ; d'64' or d'128'
         movwf   PCLATH
-        rcall   init_ptrs             ; Init TBLPTR and ram pointer
+        rcall   init_ptrs        ; Init TBLPTR and ram pointer
 fill_buffer_from_imem_1:
         tblrd*+
         movf    TABLAT, W
@@ -1097,10 +1106,10 @@ wbtil:
         bcf     INTCON, GIE  ; Disable Interrupts
 
 #ifdef p18fxx2xx8_fix_1
-        movff_   PIE1, SPIE1
-        movff_   PIE2, SPIE2
-        movff_   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
-        clrf    INTCON       ; may be lost
+        movff   PIE1, SPIE1
+        movff   PIE2, SPIE2
+        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
+        clrf    INTCON          ; may be lost
         clrf    PIE1
         clrf    PIE2
 #endif
@@ -1130,9 +1139,9 @@ write_buffer_to_imem_2:
         bra     write_buffer_to_imem_1
         bcf     EECON1, WREN, BANKED
 #ifdef p18fxx2xx8_fix_1
-        movff_   SPIE2, PIE2
-        movff_   SPIE1, PIE1
-        movff_   SINTCON, INTCON
+        movff   SPIE2, PIE2
+        movff   SPIE1, PIE1
+        movff   SINTCON, INTCON
 #endif
         bsf     INTCON, GIE        
 verify_imem:
@@ -1151,7 +1160,7 @@ verify_imem_1:
         setf    ibase_hi ; Mark flash buffer empty
 #if XSTORE == ENABLE
         setf    ibase_up ; Mark flash buffer empty
-	clrf    TBLPTRU
+        clrf    TBLPTRU
 #endif
         return
 init_ptrs:
@@ -1208,47 +1217,38 @@ asmemit:
 #endif
         return
 ;***************************************************
-; N=    c-addr nfa u -- n   string:name cmp
-;             n=0: s1==s2, n=c-addr: s1!=s2
-; N= is specificly used for finding dictionary entries
-; It can also be used for comparing strings shorter than 16 characters,
-; but the first string must be in ram and the second in flash memory.
-        dw      L_RX1Q
+; N=    c-addr nfa(areg) -- STATUS:Z   string:name cmp
+; N= is only used for finding dictionary entries
+;        dw      L_RX1Q
 L_NEQUAL:
         db      NFA|2,"n="
 NEQUAL:
-        movf    Sminus, W           ; count_hi
+        movff_  aregh, TBLPTRH
+        movff_  areg,  TBLPTRL       ; nfa in flash
         movf    Sminus, W
-        movwf   PCLATH              ; count_lo
-        rcall   TOTBLP              ; nfa in flash
-        rcall   ICFETCH1            ; ICFETCH1 uses Tp, Tbank (=FSR1)
-        movf    Sminus, W
-        movf    Sminus, W
+        movwf   Tbank
+        movf    Splus, W
+        movwf   Tp                  ; String in ram
+        tblrd*+
+        movf    TABLAT, W
         andlw   NFAmask             ; MASK NFA, IMMED, INLINE, COMPILE BITS
-        xorwf   PCLATH, W
-        bnz     NEQUAL_TRUE         ; NO MATCH
-        call    ONEPLUS
+        movwf   PCLATH              ; Length
+        xorwf   Tplus, W
+        bnz     NEQUAL2             ; NO MATCH
 NEQUAL0:
-        call    CFETCHPP
-        rcall   ICFETCH1
-        movf    Sminus, W
-        movf    Sminus, W
-        movf    Sminus, F
-        xorwf   Sminus, W
-        bnz     NEQUAL_TRUE
-NEQUAL1:                            ; check next character
+        tblrd*+
+        movf    TABLAT, W
+        xorwf   Tplus, W
+        bnz     NEQUAL2
         decfsz  PCLATH, F
         bra     NEQUAL0
 NEQUAL2:
-        clrf    Sminus
-        clrf    Splus
-NEQUAL_TRUE:
         return
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
 ; u (count) must be smaller than 256
-        dw      L_NEQUAL
+        dw      L_RX1Q;L_NEQUAL
 L_SKIP:
         db      NFA|4,"skip"
 SKIP:
@@ -1256,12 +1256,11 @@ SKIP:
         movf    Sminus, W       ; skip count_hi
         movf    Sminus, W
         movwf   PCLATH          ; count_lo
+        bz      SKIP5           ; zero flag comes from the previous movf
         movf    Sminus, W
         movwf   Tbank
         movf    Sminus, W
         movwf   Tp              ; c-addr
-        movf    PCLATH, W
-        bz      SKIP4           ; zero flag comes from the previous movf
 SKIP0:
         movlw   0x9             ; SKIP TAB
         subwf   Trw, W
@@ -1284,6 +1283,7 @@ SKIP4:
         movf    Tbank, W
         iorlw   high(PRAM)
         movwf   plusS
+SKIP5:
         movf    PCLATH, W
         movwf   plusS
         clrf    plusS
@@ -1547,11 +1547,7 @@ ECSTORE1:
         bcf     EECON1, CFGS, BANKED
         bsf     EECON1, WREN, BANKED
         bcf     INTCON, GIE
-        movlw   h'55'
-        movwf   EECON2, BANKED
-        movlw   h'aa'
-        movwf   EECON2, BANKED
-        bsf     EECON1, WR, BANKED
+        call    magic
         bsf     INTCON, GIE
 ECSTORE2:
         btfsc   EECON1, WR, BANKED
@@ -1695,8 +1691,8 @@ TURNKEY:
 
 ;;; *******************************************************
 ; PAUSE  --     switch task
-;;;  38 us @ 12 MHz, 11,4 us @ 40 Mhz  9us at 48 Mhz  ( with 4 cells on return stack )
-;;; save stack to current uarea, link -> up, restore stack
+; 188 us @ 2 MHz, 9.4 us @ 40 Mhz  7.8us at 48 Mhz  ( 93 clocks with 2 cells on return stack )
+; save stack to current uarea, link -> up, restore stack
         dw      L_TURNKEY
 L_PAUSE
         db      NFA|5,"pause"
@@ -1704,7 +1700,7 @@ PAUSE:
         clrwdt
 #ifdef USB_CDC
         movf    upcurr, W
-        sublw   low(u0)        ; check usb only in operator task
+        sublw   low(u0)           ; check usb only in operator task
         bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
         btfss   UCON, USBEN
         bra     PAUSE_USB_CDC_END
@@ -1735,7 +1731,7 @@ PAUSE_USB_CDC_END:
 #ifndef K42
         bcf     T0CON, TMR0ON   ; TMR0 Restart in interrupt routine
 #else
-        bcf     T0CON0, T0EN   ; TMR0 Restart in interrupt routine
+        bcf     T0CON0, T0EN    ; TMR0 Restart in interrupt routine
 #endif
 #endif
         sleep
@@ -1750,15 +1746,15 @@ PAUSE_IDLE1:
 #endif
 #endif
 PAUSE000:
-        ; Set user pointer in Tp, Tbank (FSR1
+        ; Set user pointer in Tp, Tbank (FSR1)
         movf    upcurr, W
         movwf   Tp
         movf    (upcurr+1), W
         movwf   Tbank
 
-;; Switch tasks only if some background tasks are running
-        movf    Tminus, W
-        movf    Tplus, W
+        ;; Switch tasks only if some background tasks are running
+        movf    Tminus, W   ; Point to high(ulink)
+        movf    Tminus, W   ; check ulink
         bz      PAUSE_RET
 
         ; Save parameter stack pointer
@@ -1775,33 +1771,32 @@ PAUSE000:
 
         ; Remember the return stack counter
         movf    STKPTR, W
-        movwf   TBLPTRL
+        movwf   TBLPTRL           ; 17
 
-        ; Save the return stack
+        ; Save the return stack 
 pause1:
         movf    TOSL, W
         movwf   plusR
         movf    TOSH, W
         movwf   plusR
         decfsz  STKPTR, F
-        bra     pause1
+        bra     pause1            ; 13 2 items
 
         ; Save the return stack counter
         movf    TBLPTRL, W
         movwf   plusR
 
-        ; Save the saved return stack pointer urptr
+        ; Move to the next user area
+        movf    Tplus, W
+        movwf   upcurr
+        movf    Tplus, W
+        movwf   (upcurr+1)
+
+        ; Save the return stack pointer to urptr
         movf    Rp, W
         movwf   Tplus
         movf    Rbank, W
-        movwf   Tminus
-
-        ; Move to the next user area
-        movf    Tminus, W
-        movf    Tminus, W
-        movwf   (upcurr+1)
-        movf    Tminus, W
-        movwf   (upcurr)
+        movwf   Tplus
 
         ; Put new user pointer in Tp, Tbank
         movf    upcurr, W
@@ -1817,7 +1812,7 @@ pause1:
 
         ; Set the return stack counter
         movf    Rminus, W
-        movwf   TBLPTRL
+        movwf   TBLPTRL             ; 22
 
         ; Restore the return stack
 pause2:
@@ -1828,7 +1823,7 @@ pause2:
         movwf   TOSL
 
         decfsz  TBLPTRL, F
-        bra     pause2
+        bra     pause2              ; 15 2 items
 
         ; Restore the P pointer
         movf    Rminus, W
@@ -1842,7 +1837,7 @@ pause2:
         movf    Rminus, W
         movwf   Sp
 PAUSE_RET:
-        return
+        return              ; 23+2+2=27
 
 #ifdef USB_CDC
 ;***************************************************
@@ -2304,7 +2299,34 @@ LOCKED:
         return
         bra     ISTORERR
 ;******************************************************
+#ifdef  PPSLOCK
         dw      L_BTFSS
+
+L_PPS_UNLOCK:
+        db      NFA|4,"pps+"
+PPS_UNLOCK:
+        banksel PPSLOCK         ; required sequence
+        movlw   h'55'
+        movwf   PPSLOCK, BANKED
+        movlw   h'AA'
+        movwf   PPSLOCK, BANKED
+        bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
+        return
+        dw      L_PPS_UNLOCK
+L_PPS_LOCK:
+        db      NFA|4,"pps-"
+PPS_LOCK:
+        movlw   h'55'
+        movwf   PPSLOCK, BANKED
+        movlw   h'AA'
+        movwf   PPSLOCK, BANKED
+        bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
+        return
+
+        dw      L_PPS_LOCK
+#else
+        dw      L_BTFSS
+#endif
 L_EMPTY:
         db      NFA|5,"empty"
 EMPTY:
@@ -2384,13 +2406,23 @@ main:
         movlw   0x70
         movwf   OSCCON
 #endif
+#ifdef OSCCON1_VALUE
+        banksel OSCCON1
+        movlw   OSCCON1_VALUE    ; HFINTOSC SDIV = 1
+        movwf   OSCCON1, BANKED  ; K83
+        movlw   OSCFRQ_VALUE     ; 4 MHz
+        movwf   OSCFRQ, BANKED
+        movlw   OSCTUNE_VALUE
+        movwf   OSCTUNE, BANKED
+#endif
+
 #ifdef PLL
 #if PLL == ENABLE
         movlw   0x40
         movwf   OSCTUNE
 #endif
 #endif
-                                ; Clear ram
+                              ; Clear ram
 WARM:
 #ifndef K42
         movf    STKPTR, W
@@ -2542,12 +2574,7 @@ WARM_ZERO_1:
         bcf     TX_TRIS, TX_BIT
         bsf     TX_LAT, TX_BIT
 ; Unlock the PPS
-        banksel PPSLOCK         ; required sequence
-        movlw   h'55'
-        movwf   PPSLOCK, BANKED
-        movlw   h'AA'
-        movwf   PPSLOCK, BANKED
-        bcf     PPSLOCK, PPSLOCKED, BANKED  ; disable the pps lock
+        rcall   PPS_UNLOCK
 ; Set the pins
         movlw   RX_PPS 
         movwf   U1RXPPS, BANKED
@@ -2559,11 +2586,7 @@ WARM_ZERO_1:
         movwf   TX_PPS, BANKED
 
 ; Re-lock the PPS
-        movlw   h'55'
-        movwf   PPSLOCK, BANKED
-        movlw   h'AA'
-        movwf   PPSLOCK, BANKED
-        bsf     PPSLOCK, PPSLOCKED, BANKED  ; enable the pps lock
+        rcall   PPS_LOCK
 
 ; Set the Baud Rate
         movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
@@ -2865,7 +2888,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 26.11.2020\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 13.04.2021\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -3726,7 +3749,7 @@ DROP:
     
 
 ; SWAP  x1 x2 -- x2 x1          SWAP two top items
-; 17 cycles
+; 17 cycles (23 movffl)
         dw      L_DROP
 L_SWOP:
         db      NFA|4,"swap"
@@ -4768,6 +4791,17 @@ CFATONFA:
         bnn     CFATONFA
         return
 
+FETCH_LINK:
+        movlw   2
+        subwf   areg, F
+        movlw   0
+        subwfb  aregh, F
+        movff_  areg, plusS
+        movff_  aregh, plusS
+        call    IFETCH
+        movff_  Sminus, aregh
+        movff_  Sminus, areg
+        return
 ; findi   c-addr nfa -- c-addr 0   if not found
 ;                          xt  1      if immediate
 ;                          xt -1      if "normal"
@@ -4775,21 +4809,21 @@ CFATONFA:
 L_BRACFIND:
         db      NFA|3,"(f)"
 findi:
+        movff_  Sminus, aregh
+        movff_  Sminus, areg    ; nfa in flash
 findi1:
-FIND_1:
-        rcall   TWODUP
-        rcall   OVER
-        rcall   CFETCH_A
         call    NEQUAL
-        rcall   ZEROSENSE
         bz      findi2
-        rcall   TWOMINUS ;;;      NFATOLFA
-        rcall   FETCH_A
-        rcall   DUPZEROSENSE
+        rcall   FETCH_LINK
+        movf    areg, W
+        iorwf   aregh, W
         bnz     findi1
+        clrf    plusS
+        clrf    plusS
         bra     findi3
 findi2:
-        rcall   NIP
+        movff_  aregh, Sminus
+        movff_  areg, Splus
         rcall   DUP
         rcall   NFATOCFA
         rcall   SWOP
@@ -5130,15 +5164,15 @@ IPARSEWORD:
 
         rcall   FIND            ; sets also wflags
         movf    Sminus, W
-        movf    Sminus, W    ; 0 = not found, -1 = normal, 1 = immediate
+        movf    Sminus, W       ; 0 = not found, -1 = normal, 1 = immediate
         bz      INUMBER
         addlw   1
         bnz     IEXEC           ; Immediate word
-        addwf   state, W     ; 0 or ff
+        addwf   state, W        ; 0 or ff
         bn      ICOMPILE_1
 IEXEC:                          ; Execute a word
                                 ; immediate&compiling or interpreting
-        btfss   wflags, 4    ; Compile only check
+        btfss   wflags, 4       ; Compile only check
         bra     IEXECUTE        ; Not a compile only word
         rcall   STATE_          ; Compile only word check
         call    XSQUOTE
@@ -5417,7 +5451,7 @@ L_QABORT:
         db      NFA|6,"?abort"
 QABORT:
         rcall   ROT_A
-        rcall   ZEROSENSE
+        call    ZEROSENSE
         bnz     QABO1
 QABORT1:        
         call    SPACE_
@@ -5531,8 +5565,9 @@ CREATE:
         call    XSQUOTE
         db      d'15',"ALREADY DEFINED"
         rcall   QABORT         ; ABORT if word has already been defined
+        
         rcall   DUP_A           ; Check the word length 
-        rcall   CFETCH_A
+        call    CFETCH_A
         call    ONE
         rcall   LIT_A
         dw      h'10'
