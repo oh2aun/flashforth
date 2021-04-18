@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          12.04.2021                                        *
+;    Date:          18.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -37,7 +37,7 @@
 .section .text
 device_dsc:
         .byte   0x12,0x01  ; Size of this descriptor in bytes
-                         ; DEVICE descriptor type
+                           ; DEVICE descriptor type
         .word   0x0110     ; USB Spec Release Number in BCD format
         .byte   0x02,0x00  ; Class Code CDC device
                          ; Subclass 
@@ -47,9 +47,9 @@ device_dsc:
         .word   U_PID      ; Product ID
         .word   0x0000     ; Device release Number in BCD
         .byte   0x00,0x01  ; Manufacturer string index
-                         ; Product string Index
+                           ; Product string Index
         .byte   0x00,0x01  ; Device serial number string index
-                         ; Number of possible configurations
+                           ; Number of possible configurations
 
 SD000:
         .byte   0x04,0x03  ; sizeof descriptor in bytes
@@ -63,49 +63,30 @@ SD001:
         .word   'F','F','5','0'
 
 USB_CFG:
-        .byte   0x09, 0x02, 0x3e, 0x00
-        .byte   0x02, 0x01, 0x00, 0x80
-        .byte   0x32, 0x09, 0x04, 0x00
-        .byte   0x00, 0x01, 0x02, 0x02
-        .byte   0x01, 0x00, 0x05, 0x24
-        .byte   0x00, 0x10, 0x01, 0x04
-        .byte   0x24, 0x02, 0x02, 0x05
-        .byte   0x24, 0x06, 0x00, 0x01
-        .byte   0x07, 0x05, 0x82, 0x03
-        .byte   0x08, 0x00, 0x10, 0x09
-        .byte   0x04, 0x01, 0x00, 0x02
-        .byte   0x0a, 0x00, 0x00, 0x00
-        .byte   0x07, 0x05, 0x03, 0x02
-        .byte   0x08, 0x00, 0x00, 0x07
-        .byte   0x05, 0x84, 0x02, 0x08
-        .byte   0x00, 0x00
-
-/*
-        .db   0x09     ; length
-        .db   0x02     ; configuration descriptor
-        .dw   0x003e   ; total length
-        .db   0x02     ; number of interfaces
-        .db   0x01     ; configuration id
-        .db   0x00     ; string descriptor index
-        .db   0x80     ; attributes (bus powered)
-        .db   0x32     ; maxpower 100 mA
-        .db   0x09     ; length
-        .db   0x04     ; interface descriptor
-        .db   0x00     ; interface 0
-        .db   0x00     ; alternate setting
-        .db   0x01     ; number of end points
-        .db   0x02     ; interface class code
-        .db   0x02     ; interface subclass
-        .db   0x01     ; interface protocol
-        .db   0x00     ; string descriptor index
-        .db   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
-        .db   0x04,0x24,0x02,0x02      ; interface ACM FD
-        .db   0x05,0x24,0x06,0x00,0x01 ; interface Union FD
-        .db   0x07,0x05,0x82,0x03,0x08,0x00,0x10 ; endpoint notification
-        .db   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
-        .db   0x07,0x05,0x03,0x02,0x08,0x00,0x00 ; endpoint data out
-        .db   0x07,0x05,0x84,0x02,0x08,0x00,0x00 ; endpoint data in
-*/
+        .byte 0x09     ; length
+        .byte 0x02     ; configuration descriptor
+        .word 0x003e   ; total length
+        .byte 0x02     ; number of interfaces
+        .byte 0x01     ; configuration id
+        .byte 0x00     ; string descriptor index
+        .byte 0x80     ; attributes (bus powered)
+        .byte 0x32     ; maxpower 100 mA
+        .byte 0x09     ; length
+        .byte 0x04     ; interface descriptor
+        .byte 0x00     ; interface 0
+        .byte 0x00     ; alternate setting
+        .byte 0x01     ; number of end points
+        .byte 0x02     ; interface class code
+        .byte 0x02     ; interface subclass
+        .byte 0x01     ; interface protocol
+        .byte 0x00     ; string descriptor index
+        .byte 0x05,0x24,0x00,0x10,0x01 ; interface header FD  
+        .byte 0x04,0x24,0x02,0x02      ; interface ACM FD
+        .byte 0x05,0x24,0x06,0x00,0x01 ; interface Union FD
+        .byte 0x07,0x05,0x82,0x03,0x08,0x00,0x10 ; endpoint notification
+        .byte 0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
+        .byte 0x07,0x05,0x03,0x02,0x08,0x00,0x00 ; endpoint data out
+        .byte 0x07,0x05,0x84,0x02,0x08,0x00,0x00 ; endpoint data in
 
 ;*******************************************************************************
 
