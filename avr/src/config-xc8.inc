@@ -7,6 +7,7 @@
 ;;; - compile
 ;;; - get the hex file from dist/default/production/
 ;;; - program the chip with avrdude or some other tool.
+;;; - fuses: extended(0xff) high(0xdf) low(0xff)
 ;;; Tested with ATmega328 ATmega328P ATmega2560 ATmega32u4
 
 ; Oscillator frequency in herz
