@@ -1,6 +1,13 @@
 ;;; FlashForth device configuration for Atmega devices
-;;; For Microchip XC8 compiler and MPLABX IDE.
-;;; Tested with ATmega328 ATmega328P ATmega2560
+;;; For use with Microchip XC8 compiler and MPLABX IDE.
+;;; - Use XC8 v2.32 or later
+;;; - Add ff-xc8.asm as only source file in a project
+;;; - Select a chip
+;;; - Add linker option "-nostartfiles"
+;;; - compile
+;;; - get the hex file from "project"/dist/default/production/
+;;; - program the chip with avrdude or some other tool.
+;;; Tested with ATmega328 ATmega328P ATmega2560 ATmega32u4
 
 ; Oscillator frequency in herz
 #define FREQ_OSC 16000000
