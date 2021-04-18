@@ -5,7 +5,7 @@
 ;;; - Select a chip
 ;;; - Add linker option "-nostartfiles"
 ;;; - compile
-;;; - get the hex file from "project"/dist/default/production/
+;;; - get the hex file from dist/default/production/
 ;;; - program the chip with avrdude or some other tool.
 ;;; Tested with ATmega328 ATmega328P ATmega2560 ATmega32u4
 
@@ -21,7 +21,7 @@
 ;;; disturb the XON/XOFF flow control. 
 ;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. 
 ;;; Or use the ff-shell.py which adds end of line (CR LF) flow control.
-#define BAUDRATE0 9600               // Serial baudrate UART0
+#define BAUDRATE0 38400              // Serial baudrate UART0
 #define U0FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
 #define U0RTS_PORT PORTD
 #define U0RTS_DDR DDRD
