@@ -131,7 +131,7 @@ flash create d.posts , , , , , , , , , , , , , , ram
   as: cpi  r31 $f0
   as: if eq
         ." br" @p $f407 and sy2 d.sy
-        @p 3 rshift $3f and
+        @p 3 rshift $7f and
         dup $40 and if $ffc0 or then
         2* over + u.4
   as: then 
