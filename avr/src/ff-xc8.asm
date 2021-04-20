@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          12.04.2021                                        *
+;    Date:          20.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "12.04.2021"
+#define DATE "20.04.2021"
 #define datelen 10
 
 
@@ -2975,26 +2975,43 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
-        rcall   TWODUP      ; c-addr nfa c-addr nfa
-        rcall   NEQUAL      ; c-addr nfa flag
-        sbiw    tosl, 0
-        m_drop              ; c-addr nfa
-        breq    findi4
+findi1:
+        movw    al, tosl    ; c-addr nfa
+        movw    z, tosl
+        subi    zh, hi8(PFLASH)
+        ldd     xl, y+0
+        ldd     xh, y+1
+        m_lpm   tosh
+        andi    tosh, 0xf
+        ld      tosl, x+
+        sub     tosl, tosh
+        brne    FEQUAL3
+        dec     tosh
+FEQUAL2:
+        m_lpm   tosl
+        ld      t0, x+
+        sub     tosl, t0
+        brne    FEQUAL3
+        dec     tosh
+        brpl    FEQUAL2
+FEQUAL3:
+        cpi     tosl, 0
+        movw    tosl, al    ; c-addr nfa
+        breq    findi4      ; ( c-addr 0 )
         sbiw    tosl, 2     ; c-addr lfa
         call    FETCH       ; c-addr nfa
 findi2:
         sbiw    tosl, 0     ; c-addr nfa
-        brne    findi
+        brne    findi1
         rjmp    findi3
 findi4:
-        rcall   NIP         ; nfa
-        rcall   DUP
-        rcall   NFATOCFA
+        std     y+0, tosl
+        std     y+1, tosh    ; nfa nfa
+        rcall   NFATOCFA     ; nfa xt
         rcall   SWOP
-        rcall   IMMEDQ
+        rcall   IMMEDQ       ; xt flag
         rcall   ZEROEQUAL
-        rcall   ONE
-        rcall   OR_
+        ori     tosl, 1
 findi3: 
         ret
 
