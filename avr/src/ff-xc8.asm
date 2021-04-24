@@ -4216,7 +4216,6 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
-        rcall   ONEMINUS
 MS1:    
         rcall   PAUSE
         movw    t0, tosl
