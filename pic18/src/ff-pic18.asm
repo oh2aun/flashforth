@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          13.04.2021                                        *
+;    Date:          24.04.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -139,6 +139,7 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
+fFIND   equ 3           ; 0 = tblrd, 1 = IFETCH
 f32secs equ 2           ; 32 seconds since start, shut down unconfigured USB
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
@@ -1223,8 +1224,8 @@ asmemit:
 L_NEQUAL:
         db      NFA|2,"n="
 NEQUAL:
-        movff_  aregh, TBLPTRH
-        movff_  areg,  TBLPTRL       ; nfa in flash
+        movff_  Sminus, TBLPTRH
+        movff_  Sminus, TBLPTRL       ; nfa in flash
         movf    Sminus, W
         movwf   Tbank
         movf    Splus, W
@@ -1470,14 +1471,15 @@ L_TOTBLP:
 TOTBLP:
         movf    Sminus, W
         movwf   TBLPTRH
-        movff_   Sminus, TBLPTRL
+        movff_  Sminus, TBLPTRL
         return
 ; I@       a-addr -- x  fetch cell from Code mem
 ; 25 cycles when fetching from buffer
 ; 18-22 cycles when pfetching directly from flash
 IFETCH:
         rcall   TOTBLP
-        cpfseq  ibase_hi       ; compare with W
+IFETCH_FIND:
+        cpfseq  ibase_hi
         bra     pfetch0
         movlw   flash_pointer_mask
         andwf   TBLPTRL, W
@@ -1485,7 +1487,7 @@ IFETCH:
         bra     pfetch0
 ;read_cell_from_buffer
         movf    TBLPTRL, W
-        andlw   flash_block_mask;0x3f
+        andlw   flash_block_mask
         lfsr    Tptr, flash_buf
         addwf   Tp, F
         goto    FETCH2
@@ -1493,7 +1495,7 @@ IFETCH:
 ;  IC@      addr -- x  fetch char from Code mem
 ICFETCH:
         rcall   TOTBLP
-ICFETCH1:                       ; Called directly by N=
+ICFETCH1:
         movf    TBLPTRH, W
         cpfseq  ibase_hi
         bra     pcfetch0
@@ -1506,7 +1508,6 @@ ICFETCH1:                       ; Called directly by N=
         andlw   flash_block_mask
         lfsr    Tptr, flash_buf
         addwf   Tp, F
-        tblrd*+                 ; To satisfy optimisation in N=
         goto    CFETCH2
 
 
@@ -2888,7 +2889,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 13.04.2021\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 24.04.2021\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -4796,11 +4797,30 @@ FETCH_LINK:
         subwf   areg, F
         movlw   0
         subwfb  aregh, F
-        movff_  areg, plusS
-        movff_  aregh, plusS
-        call    IFETCH
-        movff_  Sminus, aregh
-        movff_  Sminus, areg
+
+        movf    areg, W
+        movwf   TBLPTRL
+        movf    aregh, W
+        movwf   TBLPTRH
+
+        btfsc   FLAGS2, fFIND
+        bra     FETCH_LINK2
+
+        tblrd*+
+        movf    TABLAT, W
+        movwf   plusS
+        tblrd*+
+        movf    TABLAT, W
+        movwf   plusS
+        bra     FETCH_LINK3
+FETCH_LINK2:               
+        call    IFETCH_FIND
+        bcf     FLAGS2, fFIND
+FETCH_LINK3:
+        movf    Sminus, W
+        movwf   aregh
+        movff_  Splus, areg
+        iorwf   areg, W
         return
 ; findi   c-addr nfa -- c-addr 0   if not found
 ;                          xt  1      if immediate
@@ -4809,21 +4829,20 @@ FETCH_LINK:
 L_BRACFIND:
         db      NFA|3,"(f)"
 findi:
+        bsf     FLAGS2, fFIND
         movff_  Sminus, aregh
-        movff_  Sminus, areg    ; nfa in flash
+        movff_  Splus, areg    ; nfa in flash
 findi1:
         call    NEQUAL
         bz      findi2
         rcall   FETCH_LINK
-        movf    areg, W
-        iorwf   aregh, W
         bnz     findi1
-        clrf    plusS
-        clrf    plusS
         bra     findi3
 findi2:
-        movff_  aregh, Sminus
-        movff_  areg, Splus
+        movf    aregh, W
+        movwf   Sminus
+        movf    areg, W
+        movwf   Splus
         rcall   DUP
         rcall   NFATOCFA
         rcall   SWOP
@@ -4831,7 +4850,7 @@ findi2:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR
-findi3: 
+findi3:
         return
 
 ; IMMED?    nfa -- f        fetch immediate flag
