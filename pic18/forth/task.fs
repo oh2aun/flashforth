@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      task.txt                                          *
-\    Date:          01.01.2018                                        *
+\    Date:          26.04.2021                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -123,11 +123,9 @@ hex ram
     while
       ul@ up!           \ t' t-ul t-up
     repeat
-    drop dup op@ =
-    if   drop false     \ Only operator task left
-    then ul!
+    drop ul!
   then
-  op!
+  op! ul@ op@ = if false ul! then
 ;
 
 \ End all tasks except the operator task
