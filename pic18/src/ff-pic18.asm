@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          24.04.2021                                        *
+;    Date:          01.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -2889,7 +2889,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 24.04.2021\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 01.09.2021\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -3113,7 +3113,7 @@ SPFETCH:
 
 ; !     x addrl addru  --   store x at addr in memory
 ; 17 clock cycles for ram. 3.5 us @ 12 Mhz
-        dw      L_SPFETCH
+        dw      L_SPSTORE
 #if XSTORE == ENABLE
 L_XSTORE:
         db      NFA|2,"x!"
@@ -3597,7 +3597,7 @@ ACC_1:
         bz      ACC_LF
         sublw   3             ;
         bz      ACC_CR
-        sublw   d'114'
+        sublw   h'8e'
         bz      ACC_BS_DEL
         bra     ACC_3
 ACC_CR:
@@ -5445,6 +5445,12 @@ L_ABORT:
 ABORT:
         rcall   S0
         rcall   FETCH_A
+        rcall   SPSTORE
+        goto    QUIT
+
+        dw      L_SPFETCH
+L_SPSTORE:
+        db      NFA|3,"sp!"
 SPSTORE:
         movf    Sminus, W
         movwf   Tp
@@ -5452,7 +5458,7 @@ SPSTORE:
         movwf   Sp
         movf    Tp, W
         movwf   Sbank
-        goto    QUIT
+        return
 
 ; ?ABORT?   f --       abort & print ?
         dw      L_ABORT
@@ -5592,10 +5598,12 @@ CREATE:
         dw      h'10'
         call    WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
+
         rcall   IHERE
         call    ALIGNED
         rcall   IDP             ; Align the flash DP.
         rcall   STORE_A
+
         rcall   LAST
         call    ICOMMA          ; Link field
         rcall   CFETCHPP        ; str len
