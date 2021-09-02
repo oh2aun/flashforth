@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          23.08.2020                                        *
+;    Date:          02.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2020  Mikael Nordman
+; Copyright (C) 2021  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1199,7 +1199,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 23.08.2020\r\n"
+        .ascii  " FlashForth 5 PIC24 02.09.2021\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -3728,8 +3728,7 @@ DEFER_DOES:
         .align  2
 IS:
         rcall   TICK
-        inc2    [W14], [W14]
-        rcall   FETCH
+        rcall   TOBODY
         rcall   STATE
         cp0     [W14--]
         bra     z, IS1
@@ -3759,7 +3758,7 @@ TO:
         .align  2
 TOBODY:
         inc2    [W14], [W14]
-        return
+        goto    FETCH
 
         .pword  paddr(9b)+PFLASH
 9:
@@ -6846,7 +6845,7 @@ TICKS:
 
 ; ms  +n --      Pause for n millisconds
 ; : ms ( +n -- )     
-;   ticks -
+;   ticks +
 ;   begin
 ;     pause dup ticks - 0<
 ;   until drop ;
