@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          01.09.2021                                        *
+;    Date:          02.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1671,7 +1671,6 @@ L_IS:
 IS:
         call    TICK
         call    TOBODY
-        rcall   FETCH
         movf    state, W
         bz      IS1
         rcall   LITERAL
@@ -2889,7 +2888,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 01.09.2021\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 02.09.2021\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -3964,13 +3963,15 @@ TWOPLUS:
         return
 
 ; >body xt -- a-addr transform a created words XT to it's data field address
-; : >body 2+ 2+ ;
+; : >body 2+ 2+ @ ;
         dw      L_TWOPLUS
 L_TOBODY:
         db      NFA|5,">body"
 TOBODY:
         rcall   TWOPLUS
-        goto    TWOPLUS
+        rcall   TWOPLUS
+        goto    FETCH
+
 
 ;   2*
         dw      L_TOBODY
