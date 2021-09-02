@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      3blink.txt                                        *
-\    Date:          27.11.2016                                        *
+\    Date:          02.09.2021                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -16,7 +16,7 @@ single
 marker -3blink
 ram hex
 
-$ff82 constant portc
+$ff8b constant latc
 $ff94 constant trisc
 $2 user bitmask    \ The bitmask
 $4 user delay      \ The delay time in milliseconds
@@ -25,9 +25,9 @@ $4 user delay      \ The delay time in milliseconds
   bitmask c@ trisc mclr
   begin
     delay @ ms
-    bitmask c@ portc mset
+    bitmask c@ latc mset
     delay @ ms
-    bitmask c@ portc mclr
+    bitmask c@ latc mclr
   again
 ;
 
