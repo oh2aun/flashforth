@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          24.04.2021                                        *
+;    Date:          04.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "24.04.2021"
+#define DATE "04.09.2021"
 #define datelen 10
 
 
@@ -1256,6 +1256,8 @@ SPFETCH:
         ret
 
 ;   SP!     addr --         store stack pointer
+        fdw     SPFETCH_L
+SPSTORE_L:
         .byte     NFA|3
         .ascii  "sp!"
         .align  1
@@ -1280,7 +1282,7 @@ RPEMPTY:
         m_ijmp
 
 ;   RP@ Fetch the return stack pointer        
-        fdw     SPFETCH_L
+        fdw     SPSTORE_L
 RPFETCH_L:
         .byte     NFA|INLINE|COMPILE|3
         .ascii  "rp@"
@@ -2110,12 +2112,12 @@ TWOPLUS:
 
         fdw     TWOPLUS_L
 TOBODY_L:
-        .byte     NFA|INLINE|5
+        .byte     NFA|5
         .ascii  ">body"
         .align  1
 TOBODY:
         adiw    tosl, 4
-        ret
+        jmp     FETCH
 
         fdw     TOBODY_L
 TWOSTAR_L:
@@ -3010,7 +3012,7 @@ FEQUAL3:
         m_lpm   tosh
         rjmp    findi2
 F_LFA_FETCH:
-        rcall   FETCH      ; c-addr nfa
+        call    FETCH      ; c-addr nfa
         cbr     FLAGS2, (1<<fFIND)
 findi2:
         sbiw    tosl, 0     ; c-addr nfa
@@ -6101,9 +6103,7 @@ IS_L:
         .align  1
 IS:
         call    TICK
-        call    TWOPLUS
-        call    TWOPLUS
-        rcall   FETCH
+        call    TOBODY
         rcall   STATE_
         call    ZEROSENSE
         breq    IS1
