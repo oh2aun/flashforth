@@ -56,14 +56,10 @@ SD001:
         .byte   0x03    ; STRING descriptor type
         .word   'F','F','5','0'
 
-USB_SD:
-        .word   SD000
-        .word   SD001
-
 USB_CFG:
         .byte   0x09     ; length
         .byte   0x02     ; configuration descriptor
-        .word   0x0043   ; total length
+        .word   0x003e   ; total length
         .byte   0x02     ; number of interfaces
         .byte   0x01     ; configuration id
         .byte   0x00     ; string descriptor index
@@ -81,7 +77,7 @@ USB_CFG:
         .byte   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
         .byte   0x04,0x24,0x02,0x02      ; interface ACM FD
         .byte   0x05,0x24,0x06,0x00,0x01 ; interface Union FD
-        .byte   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
+        ;.byte   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD 0x43
         .byte   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
         .byte   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         .byte   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
@@ -369,14 +365,15 @@ GET_DSC_CFG:
         mov     #0x43, W0
         BRA     GetDsc_4
 GET_DSC_STR:
-        clr     W0
-        mov.b   ep0buf+2, WREG
-        add     W0, W0, W0      ; 2*
-        mov     #handle(USB_SD), W1
-        addc    W0, W1, W1
-
-        tblrdl  [W1], W2
-        tblrdl.b [W2], W0
+        cp0     ep0buf+2
+        bra     z, GET_STR_0
+GET_STR_1:
+        mov     #handle(SD001), W2
+        mov     #0xa, W0
+        bra     GetDsc_4
+GET_STR_0:
+        mov     #handle(SD000), W2
+        mov     #0x4, W0
 GetDsc_4:
         mov     W2, dPtr
         mov.b   WREG, count
