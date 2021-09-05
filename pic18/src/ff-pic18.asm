@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic18.asm                                      *
-;    Date:          02.09.2021                                        *
+;    Date:          05.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -139,7 +139,6 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;;; FLAGS2
-fFIND   equ 3           ; 0 = tblrd, 1 = IFETCH
 f32secs equ 2           ; 32 seconds since start, shut down unconfigured USB
 fFC     equ 1           ; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ; 1=XOFF has been sent
@@ -1218,9 +1217,9 @@ asmemit:
 #endif
         return
 ;***************************************************
-; N=    c-addr nfa(areg) -- STATUS:Z   string:name cmp
+; N=    c-addr nfa(areg) -- flag
 ; N= is only used for finding dictionary entries
-;        dw      L_RX1Q
+        dw      L_RX1Q
 L_NEQUAL:
         db      NFA|2,"n="
 NEQUAL:
@@ -1228,7 +1227,7 @@ NEQUAL:
         movff_  Sminus, TBLPTRL       ; nfa in flash
         movf    Sminus, W
         movwf   Tbank
-        movf    Splus, W
+        movf    Sminus, W
         movwf   Tp                  ; String in ram
         tblrd*+
         movf    TABLAT, W
@@ -1244,12 +1243,14 @@ NEQUAL0:
         decfsz  PCLATH, F
         bra     NEQUAL0
 NEQUAL2:
+        movwf   plusS
+        clrf   plusS
         return
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
 ; u (count) must be smaller than 256
-        dw      L_RX1Q;L_NEQUAL
+        dw      L_NEQUAL
 L_SKIP:
         db      NFA|4,"skip"
 SKIP:
@@ -2888,7 +2889,7 @@ L_VER:
 VER:
         rcall   XSQUOTE
          ;        12345678901234 +   11  + 12345678901234567890
-        db d'38'," FlashForth 5 ",PICTYPE," 02.09.2021\r\n"
+        db d'38'," FlashForth 5 ",PICTYPE," 05.09.2021\r\n"
         goto    TYPE
 ;*******************************************************
 ISTORECHK:
@@ -3510,8 +3511,21 @@ TWODUP:
         return
 
 
-; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
+; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
+;   OVER OVER ;
         dw      L_TWODUP
+L_TWOOVER:
+        db      NFA|5,"2over"
+TWOOVER:
+        movlw   -7
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS
+        return
+
+; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
+        dw      L_TWOOVER
 L_TWOSWAP
         db      NFA|5,"2swap"
 TWOSWAP:
@@ -4793,36 +4807,6 @@ CFATONFA:
         bnn     CFATONFA
         return
 
-FETCH_LINK:
-        movlw   2
-        subwf   areg, F
-        movlw   0
-        subwfb  aregh, F
-
-        movf    areg, W
-        movwf   TBLPTRL
-        movf    aregh, W
-        movwf   TBLPTRH
-
-        btfsc   FLAGS2, fFIND
-        bra     FETCH_LINK2
-
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        tblrd*+
-        movf    TABLAT, W
-        movwf   plusS
-        bra     FETCH_LINK3
-FETCH_LINK2:               
-        call    IFETCH_FIND
-        bcf     FLAGS2, fFIND
-FETCH_LINK3:
-        movf    Sminus, W
-        movwf   aregh
-        movff_  Splus, areg
-        iorwf   areg, W
-        return
 ; findi   c-addr nfa -- c-addr 0   if not found
 ;                          xt  1      if immediate
 ;                          xt -1      if "normal"
@@ -4830,20 +4814,28 @@ FETCH_LINK3:
 L_BRACFIND:
         db      NFA|3,"(f)"
 findi:
-        bsf     FLAGS2, fFIND
-        movff_  Sminus, aregh
-        movff_  Splus, areg    ; nfa in flash
 findi1:
-        call    NEQUAL
+        movlw   -3
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS
+        movff_   SWrw, plusS    ; c-addr nfa c-addr nfa
+        call    NEQUAL          ; c-addr nfa flag
+        movf    Sminus, W
+        iorwf   Sminus, W       ; c-addr nfa
         bz      findi2
-        rcall   FETCH_LINK
+        swapf   Sminus, W
+        movlw   2
+        subwf   Splus, F
+        movlw   0
+        subwfb  Srw, F          ; c-addr lfa
+        call    IFETCH          ; c-addr nfa
+        movf    Sminus, W
+        iorwf   Splus, W
         bnz     findi1
         bra     findi3
 findi2:
-        movf    aregh, W
-        movwf   Sminus
-        movf    areg, W
-        movwf   Splus
+        rcall   NIP
         rcall   DUP
         rcall   NFATOCFA
         rcall   SWOP
@@ -4851,7 +4843,7 @@ findi2:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR
-findi3:
+findi3: 
         return
 
 ; IMMED?    nfa -- f        fetch immediate flag
@@ -5379,7 +5371,7 @@ DP_TO_EEPROM_3:
         decf    Rrw, F
         bc      DP_TO_EEPROM_0
         movf    Rminus, W
-        rcall   R_TO_P
+        call   R_TO_P
         goto    DROP
 
 ;***************************************************************
@@ -5899,14 +5891,14 @@ CFETCHPP_A: bra CFETCHPP
 L_DOTID:
         db      NFA|3,".id"
 DOTID:
-        rcall   CFETCHPP
+        rcall   CFETCHPP_A
         movf    Sminus, W
         movf    Sminus, W
         andlw   h'f'
         movwf   plusR
         bra     DOTID3
 DOTID1:
-        rcall   CFETCHPP
+        rcall   CFETCHPP_A
         rcall   TO_PRINTABLE
         rcall    EMIT_A
 DOTID3:
