@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0 20.03.2018
+Dictionary of FlashForth 5.0 05.09.2021
 
 !          ( x addr -- )
            Store x to addr
@@ -128,11 +128,14 @@ Dictionary of FlashForth 5.0 20.03.2018
 2dup       ( x1 x2  -- x1 x2 x1 x2 )
            Duplicate two top cells
 
+2over      ( x1 x2 x3 x4 --  x1 x2 x3 x4 x1 x2 )
+           PIC18
+
 2literal   ( x x -- )
            Compile a double literal 
 
-2variable ( "name" -- )
-          Define a double variable
+2variable  ( "name" -- )
+           Define a double variable
 
 :          ( "name" -- )
            Begin a colon definition
@@ -165,7 +168,7 @@ Dictionary of FlashForth 5.0 20.03.2018
            Write to the A register
 
 >body      ( xt -- a-addr )
-           Leave the parameter field address of 
+           Leave the data field address of 
            a created word
 
 >in        ( -- a-addr )      User Variable
@@ -661,9 +664,9 @@ mtst       ( mask addr -- x )
            PIC24-30-33: 16-bit operation
            ATMEGA and PIC18: 8-bit operation
 
-n=         ( c-addr nfa u -- flag )
+n=         ( c-addr c-addr(nfa) -- flag )
            Compare strings in ram(c-addr) and flash(nfa)
-           flag is true if strings match. u<16.
+           flag is zero if strings match. Length<16.
 
 negate     ( n -- -n )
            negate n
