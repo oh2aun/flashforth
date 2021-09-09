@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          02.09.2021                                        *
+;    Date:          09.09.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -59,9 +59,9 @@
 .global __AltU2TXInterrupt
 .global __AltU2RXInterrupt
 
-.ifdecl INTTREG
+;.ifdecl INTTREG
 .global __DefaultInterrupt
-.endif
+;.endif
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
@@ -1199,7 +1199,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 02.09.2021\r\n"
+        .ascii  " FlashForth 5 PIC24 09.09.2021\r\n"
         .align 2
         rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1805,15 +1805,16 @@ ISTORE_ADDRCHK:
 ISTORE_ADDRERR:
         bset    INTCON1, #ADDRERR
 
-PCFETCH1:
+ICFETCH:
+        sub     W0, W1, W0      ; W0 = address, W1 = PFLASH
+        mov     ibasel, W1
+        mov     #IBUFMASK, W2
+        and     W2, W0, W2
+        cp      W1, W2
+        bra     Z, ICFETCH1
         tblrdl.b [W0], [W14]
         return
-
-ICFETCH:
-;        clr     TBLPAG
-        rcall   IFETCH_INIT
-        cp      W1, W2
-        bra     NZ, PCFETCH1
+ICFETCH1:
         mov     #IBUFSIZEL-1, W1
         and     W1, W0, W0
         mov     #ibufl, W1
@@ -1821,17 +1822,18 @@ ICFETCH:
         mov.b   [W0],[W14]
         return
 
-PFETCH1:
+IFETCH:
+        sub      W0, W1, W0
+        mov      ibasel, W1
+        mov      #IBUFMASK, W2
+        and      W2, W0, W2
+        cp       W1, W2
+        bra      Z, IFETCH1
         clr     W3
         tblrdh.b [W0], W3
         tblrdl  [W0], [W14]
         return
-
-IFETCH:
-;        clr      TBLPAG
-        rcall    IFETCH_INIT
-        cp       W1, W2
-        bra      NZ, PFETCH1
+IFETCH1:
         mov      #IBUFSIZEL-1, W1
         and      W1, W0, W0
         lsr      W0, #1, W2
@@ -1843,14 +1845,6 @@ IFETCH:
         add      W1, W2, W2
         clr      W3
         mov.b    [W2], W3       ; hibyte
-        return
-        
-IFETCH_INIT:
-        mov      #PFLASH, W1
-        sub      W0, W1, W0
-        mov      ibasel, W1
-        mov      #IBUFMASK, W2
-        and      W2, W0, W2
         return
 
 EWENABLE:
@@ -2313,9 +2307,9 @@ RSHIFT:
         .ascii  "n="
         .align  2
 NEQUAL:
-        mov.w   [W14--], W3     ; count
         mov.w   [W14--], W4     ; caddr2 in flash
         mov.w   [W14], W5       ; caddr1 in ram
+        mov.b   [W5], W3        ; count
         mov.w   W4, [W14]
         rcall   CFETCH          ; nfu
         mov.w   [W14], W0
@@ -2324,12 +2318,9 @@ NEQUAL:
         bra     nz, NEQUAL_TRUE
 NEQUAL1:
         inc     W4, W4
-        inc     W5, W5
-        mov.w   W4, [W14]
+        mov.w   W4, [W14]       ; flash
         rcall   CFETCH
-        mov.w   W5, [++W14]
-        rcall   CFETCH
-        mov.w   [W14--], W0
+        mov.b   [++W5], W0      ; ram
         cp.b    W0, [W14]
         bra     nz, NEQUAL_TRUE
         dec     W3, W3
@@ -5280,21 +5271,19 @@ FINDI_L:
 findi:
 findi1:
 FIND_1: 
-        rcall   TWODUP
-        rcall   OVER
-        rcall   CFETCH
+        mov     [W14-0x2], W0
+        mov     W0, [++W14]
+        mov     [W14-0x2], W0
+        mov     W0, [++W14]         ; 2dup
         rcall   NEQUAL
-        cp0     [W14]
-        bra     z, findi2
-        sub     W14, #2, W14
-        rcall   TWOMINUS
-        rcall   FETCH
-        mov     [W14++], [W14]      ; dup
-findi2:
         cp0     [W14--]
-        bra     nz, findi1
+        bra     z, findi2
+        dec2    [W14], [W14]        ; 2-
+        rcall   FETCH
         cp0     [W14]
-        bra     z, findi3
+        bra     nz, findi1
+        bra     findi3
+findi2:
         mov     [W14--], [W14]      ; nip
         mov     [W14++], [W14]      ; dup
         rcall   NFATOCFA
@@ -5304,7 +5293,6 @@ findi2:
         rcall   ONE
         rcall   OR
 findi3: 
-        rcall   PAUSE
         return
 
 ; IMMED?    nfa -- f        fetch immediate flag
