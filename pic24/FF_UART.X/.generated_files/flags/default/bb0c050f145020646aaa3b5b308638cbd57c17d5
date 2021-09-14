@@ -1,0 +1,1 @@
+ -c -mcpu=$(MP_PROCESSOR_OPTION)  -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  -I"../src" -Wa,-g,--no-relax,-a=${OBJECTDIR}/_ext/1360937237/ff-pic24-30-33.lst$(MP_EXTRA_AS_POST)  -mdfp="${DFP_DIR}/xc16"/home/amith/Documents/ubuntu_electronics/forth/git_ff2/flashforth/pic24/src/ff-pic24-30-33.s
