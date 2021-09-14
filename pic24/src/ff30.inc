@@ -69,7 +69,11 @@
     .ifdecl __24FV16KM204
        .include "p24fk_config.inc"
      .else
-       .include "p24f_config.inc"
+    .ifdecl __24FJ256GA705
+       .include "p24fj_ga_config.inc"
+     .else
+	.include "p24fk_config.inc"
+    .endif
     .endif
     .endif
     .endif

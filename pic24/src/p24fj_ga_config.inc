@@ -9,16 +9,16 @@
 
 .equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
                               ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x8000   ; 0x8000  ; Ram size in bytes
+.equ RAM_SIZE,       0x3800   ; 0x8000  ; Ram size in bytes
 
 .ifndecl IOL1WAY_OFF
 .equ IOL1WAY_OFF, 0xffff
 .endif
 
 ;; Check the configuration for your particular chip from the datasheet.
-config __FWDT, FWDTEN_OFF
+;config __FWDT, FWDTEN_OFF
 ;config __FOSCSEL, IESO_ON & FNOSC_FRC
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
+;config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;config __FOSCSEL, IESO_ON & FNOSC_PRI
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
 ;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
@@ -31,8 +31,8 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
 .equ FREQ_FIN, 7372800        ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
-
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+.equ FREQ_OSC, (16000000)
 ;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
@@ -40,8 +40,8 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ OPERATOR_UART, 1        ; 1 or 2
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -54,9 +54,9 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ; Map UART1 pins
 ; See device data sheet for pin mapping explanation
 .ifdecl RPINR18
-.equ RPINR18VAL, 43          ; U1RXPIN RP43 PB11 pin22 microstickplus
-.equ U1_RPO_REGISTER, RPOR4  ; RP42         PB10 pin21 microstickplus
-.equ U1_RPO_VALUE, 0x0001    ; UART1 TX on RP42 pin
+.equ RPINR18VAL, 0x3         ; U1RXPIN RP43 PB11 pin22 microstickplus
+.equ U1_RPO_REGISTER, RPOR1  ; RP42         PB10 pin21 microstickplus
+.equ U1_RPO_VALUE, 0x0003    ; UART1 TX on RP42 pin
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12
@@ -78,6 +78,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ; Default number base
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
+.equ USB_CDC, 0	
 ; Set to 1 for power save when CPU is idle
 .equ IDLE_MODE, 1
 
@@ -96,7 +97,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 7  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
