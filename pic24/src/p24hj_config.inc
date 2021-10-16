@@ -1,20 +1,5 @@
 ;;; FlashForth device configuration for the PIC24HJ
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24HJ128GP502
-.equ FLASH_SIZE,     0x15800 ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x2000  ; Ram size in bytes
-
-.ifndecl IOL1WAY_OFF
-.equ IOL1WAY_OFF, 0xffff
-.endif
-
-;; Check the configuration for your particular chip from the datasheet.
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL; FNOSC_PRI ; FNOSC_FRCPLL
-config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_HS; POSCMD_NONE
-
 .equ PLL_DIV, 30                          ; Fcy is 27637 KHz
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2                          ; Do not change
@@ -88,7 +73,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -144,11 +129,10 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ FLASH_ERASE,    0x4042  ; Memory page erase
 .equ FLASH_WRITE,    0x4001  ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ IBUFSIZEL,      0x0400
-.equ IBUFSIZEH,      0x0200
-.equ IBUFLEN1,       0x0040   ; Inner write loop
-.equ IBUFLEN2,       0x0008   ; Outer write loop
-.equ IBUFMASK,       0xfc00
+.equ FLASH_ROWSIZE,  0x0040	; Row size, words
+.equ FLASH_ROWS,     0x0008	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 .if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
 .equ WANT_X, 1
@@ -164,7 +148,7 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .endif
 .equ write_delay, 20                    ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*4))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -174,9 +158,13 @@ config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE; POSCMD_H
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*4))  ; AND FBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
 ; Amount of interrupt vectors
 .equ IVECSIZE, 118
+
+; USB CDC support
+.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+			      

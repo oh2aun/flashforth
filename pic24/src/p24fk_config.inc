@@ -1,21 +1,5 @@
 ;;; FlashForth device configuration for the PIC24FyyKxxx
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24FV32KA302
-.equ FLASH_SIZE,     0x5800  ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x0800  ; Ram size in bytes
-.equ EEPROM_SIZE,    0x0200  ; Eeprom size
-
-;; Check the configuration for your particular chip from the datasheet.
-; For some reason the normal config macros did not work
-           .pushsection __FOSCSEL.sec, code
-           .global __FOSCSEL
-__FOSCSEL: .pword FNOSC_FRCPLL
-           .popsection
-
-
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
 
 ; Define the UART used for the operator
@@ -114,19 +98,14 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 ;;; Memory control defines
 .equ EEPROM_WRITE, 0x4004	; Write one word automatic erase
 .equ FLASH_ERASE,  0x4058	; Erase one row (64/96 bytes)
-.equ FLASH_WRITE,  0x4004   ; Write one row (64/96 bytes)
+.equ FLASH_WRITE,  0x4004	; Write one row (64/96 bytes)
 .equ PAIVT,        0x100
-.equ IBUFSIZEL,    0x0040
-.equ IBUFSIZEH,    0x0020
-.equ IBUFLEN1,     0x0020   ; Inner write loop
-.equ IBUFLEN2,     0x0001   ; Outer write loop
-.equ IBUFMASK,     0xffc0
+.equ FLASH_ROWSIZE,  0x0020	; Row size, words
+.equ FLASH_ROWS,     0x0001	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
-.if (0x10000 - PFLASH) < FLASH_SIZE
-.equ WANT_X, 1
-.else
 .equ WANT_X, 0
-.endif
 
 .equ FCY, (FREQ_OSC/2)
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
@@ -138,3 +117,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 
 ; Amount of interrupt vectors
 .equ IVECSIZE, 126
+
+; USB CDC support
+.equ USB_CDC, 0		; 1 includes the USB CDC support into FlashForth
+			      
