@@ -1,29 +1,5 @@
 ;;; FlashForth device configuration for the dsPIC30Fxxxx
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC30F4012
-.equ FLASH_SIZE,     0x8000  ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x0800  ; Ram size in bytes
-.equ EEPROM_SIZE,    0x0400  ; Eeprom size
-
-;; Check the configuration for your particular chip from the datasheet.
-config __FOSC, CSW_FSCM_OFF & FRC;_PLL8
-;config __FOSC, HS;FRC; HS            ;Turn off clock switching and
-                              ;fail-safe clock monitoring and
-                              ;use the External HS Clock as the
-                              ;system clock
-
-config __FWDT, WDT_OFF              ;Turn off Watchdog Timer
-
-config __FBORPOR, PBOR_ON & PWRT_16 & MCLR_EN
-                                    ;Set Brown-out Reset voltage and
-                                    ;and set Power-up Timer to 16msecs
-                                            
-config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
-
-
 ;.equ FREQ_OSC, 16000000;           ; Max baudrate 19200 with this clock
 .equ FREQ_OSC, (7372800)			; Oscillator frequency
                                     ; NOTE: The baud calculation depends
@@ -125,11 +101,10 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 .equ FLASH_ERASE,    0x4041
 .equ FLASH_WRITE,    0x4001
 .equ PAIVT,          0x80
-.equ IBUFSIZEL,      0x0040
-.equ IBUFSIZEH,      0x0020
-.equ IBUFLEN1,       0x0020
-.equ IBUFLEN2,       0x0001
-.equ IBUFMASK,       0xffc0
+.equ FLASH_ROWSIZE,  0x0020	; Row size, words
+.equ FLASH_ROWS,     0x0001	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 .if (0x10000 - PFLASH) < FLASH_SIZE
 .equ WANT_X, 1
@@ -148,3 +123,6 @@ config __FGS, CODE_PROT_OFF         ;Set Code Protection Off
 ; Amount of interrupt vectors
 .equ IVECSIZE, 64
 
+; USB CDC support
+.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+			      

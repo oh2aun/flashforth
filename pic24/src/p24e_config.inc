@@ -1,39 +1,13 @@
 ;;; FlashForth device configuration for the dsPIC24E
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC24E256GP502
-;;; NOTE: The last words on the last FLASH page contains the configuration bits.
-;;; If these are overwritten the the device will loose its configuration bits.
-;;; So for example on PIC24EP256GP202 the FLASH_SIZE is set to 0x2b000 - 0x00800.
-
-.equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
-                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x8000   ; 0x8000  ; Ram size in bytes
-
-.ifndecl IOL1WAY_OFF
-.equ IOL1WAY_OFF, 0xffff
-.endif
-
-;; Check the configuration for your particular chip from the datasheet.
-config __FWDT, FWDTEN_OFF
-;config __FOSCSEL, IESO_ON & FNOSC_FRC
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
-;config __FOSCSEL, IESO_ON & FNOSC_PRI
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-;config FDS, GWRP_OFF & GCP_OFF
-;config FPOR,
-;;config __FICD, JTAGEN_OFF & ICS_PGD1
-
 .equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
 .equ FREQ_FIN, 7372800        ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
-;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
+.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
 ;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ; Define the UART used for the operator
@@ -119,12 +93,12 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ UADDSIZE, 0
 
 ; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
+.equ DEBUG_INFO, 1
 
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 0
+.equ DEBUG_FLASH, 1
 
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
@@ -146,11 +120,10 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ FLASH_WRITE,    0x4001     ; Memory row write = double word
 .equ FLASH_WRITE_SINGLE, 0x4001 ; Memory double word write
 .equ FLASH_WRITE_DOUBLE, 0x4001 ; Memory double word write
-.equ IBUFSIZEL,      0x0800
-.equ IBUFSIZEH,      0x0400
-.equ IBUFLEN1,       0x0002   ; Inner write loop
-.equ IBUFLEN2,       0x0200   ; Outer write loop
-.equ IBUFMASK,       0xf800
+.equ FLASH_ROWSIZE,  0x0002	; Row size, words
+.equ FLASH_ROWS,     0x0200	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 ;;; Memory mapping prefixes
 .equ SFR_SIZE,       0x1000
@@ -176,7 +149,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*4))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -186,7 +159,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  FBUFSIZE*4))  ; AND FBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
@@ -196,3 +169,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 
 ; Amount of interrupt vectors
 .equ IVECSIZE, 126
+
+; USB CDC support
+.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+			      

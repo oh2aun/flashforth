@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          09.09.2021                                        *
+;    Date:          16.10.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -28,7 +28,8 @@
 ; in the name of this file, and in the identification
 ; displayed when FlashForth starts.
 ;**********************************************************************
-.include "ff30.inc"
+.include "xc.inc"
+.include "ff24.inc"
 
 ; Macro for inline literals 
 .macro mlit lval
@@ -145,8 +146,8 @@
 temp:        .space 2
 intcon1dbg:  .space 2
 
-ibufl:      .space IBUFSIZEL
-ibufh:      .space IBUFSIZEH
+ibufl:      .space FBUFSIZE
+ibufh:      .space FBUFSIZE/2
 
 .if TX1_BUF_SIZE > 0
 txqueue1:
@@ -548,7 +549,7 @@ iupdatebuf:
         bra     nz, iupdatebuf0
 .endif
         mov     iaddrl, W0
-        mov     #IBUFMASK, W1
+        mov     #FBUFMASK, W1
         and     W0, W1, W0
         cp      ibasel
         bra     nz, iupdatebuf0
@@ -557,7 +558,7 @@ iupdatebuf:
 iupdatebuf0:
         rcall   IFLUSH
         mov     iaddrl, W0
-        mov     #IBUFMASK, W1
+        mov     #FBUFMASK, W1
         and     W0, W1, W0
         mov     W0, ibasel
 .if WANT_X == 1
@@ -569,7 +570,7 @@ fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
 fill_buffer_from_imem1:
-        mov.w   #IBUFLEN1, W3
+        mov.w    #FLASH_ROWSIZE, W3
 fill_buffer_from_imem2:
         tblrdh.b [W2], [W1++]
         tblrdl   [W2++], [W0++]
@@ -630,7 +631,7 @@ wbti_init:
         mov.w   W2, TBLPAG
 .endif
         mov.w   ibasel, W2
-        mov.w   #IBUFLEN2, W4
+        mov.w   #FLASH_ROWS, W4
         tblwtl  W2, [W2]          ; Set page address
         return
 
@@ -672,7 +673,7 @@ wbtil3:
 wbtil31:
         clr     W2
 .endif
-        mov.w   #IBUFLEN1, W3
+        mov.w   #FLASH_ROWSIZE, W3
 wbtil4:
         tblwth.b  [W1++], [W2]
         tblwtl.w  [W0++], [W2++]
@@ -691,7 +692,7 @@ wbtil4:
         clr     W0
         rcall   wbti_init
 wbtil5:
-        mov.w   #IBUFLEN1, W3
+        mov.w   #FLASH_ROWSIZE, W3
 wbtil6:
         tblrdh.b  [W2], W5
         cp.b      W5, [W1++]
@@ -744,8 +745,8 @@ LITERAL:
         .byte   NFA|INLINE|3
         .ascii  "dps"
         .align 2
-        mlit    (DPS_ADDR+(IBUFSIZEL*4))&0xffff
-        mlit    (DPS_ADDR+(IBUFSIZEL*4))>>16
+        mlit    (DPS_ADDR+(FBUFSIZE*4))&0xffff
+        mlit    (DPS_ADDR+(FBUFSIZE*4))>>16
         return
 .endif
         .pword   paddr(9b)+PFLASH
@@ -890,6 +891,7 @@ FILL_RAM:
         mov.w   W0, [W14++]
         cp      W14, W1
         bra     nz, FILL_RAM
+
         mov     #usbuf0, W14
         setm    ibasel
 .if WANT_X == 1
@@ -1199,9 +1201,9 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 09.09.2021\r\n"
+        .ascii  " FlashForth 5 PIC24 16.10.2021\r\n"
         .align 2
-        rcall   TYPE
+       rcall   TYPE
 .if OPERATOR_UART == 1
 .if FC1_TYPE == 1
         mlit    XON
@@ -1713,11 +1715,11 @@ BFLUSH:
         mov     [W14], W2
         mov     #PFLASH, W0
         sub     W2, W0, W2
-        mov     #IBUFMASK, W1
+        mov     #FBUFMASK, W1
         and     W2, W1, W0
         cp      ibasel   ; ibasel - address
         bra     z, IFLUSH  ; FLUSH if execute on the current flash page
-        mov     #IBUFSIZEL, W1
+        mov     #FBUFSIZE, W1
         add     W0, W1, W0
         cp      ibasel   ; ibasel - address
         btss    iflags, #fwritten
@@ -1765,7 +1767,7 @@ ISTORE_SUB:
         pop     W3
         mov     iaddrl, W0
         
-        mov     #IBUFSIZEL-1, W1
+        mov     #FBUFSIZE-1, W1
         and     W0, W1, W2
         lsr     W2,#1,W0
         mov     #ibufh, W1
@@ -1808,14 +1810,14 @@ ISTORE_ADDRERR:
 ICFETCH:
         sub     W0, W1, W0      ; W0 = address, W1 = PFLASH
         mov     ibasel, W1
-        mov     #IBUFMASK, W2
+        mov     #FBUFMASK, W2
         and     W2, W0, W2
         cp      W1, W2
         bra     Z, ICFETCH1
         tblrdl.b [W0], [W14]
         return
 ICFETCH1:
-        mov     #IBUFSIZEL-1, W1
+        mov     #FBUFSIZE-1, W1
         and     W1, W0, W0
         mov     #ibufl, W1
         add     W1, W0, W0
@@ -1825,7 +1827,7 @@ ICFETCH1:
 IFETCH:
         sub      W0, W1, W0
         mov      ibasel, W1
-        mov      #IBUFMASK, W2
+        mov      #FBUFMASK, W2
         and      W2, W0, W2
         cp       W1, W2
         bra      Z, IFETCH1
@@ -1834,7 +1836,7 @@ IFETCH:
         tblrdl  [W0], [W14]
         return
 IFETCH1:
-        mov      #IBUFSIZEL-1, W1
+        mov      #FBUFSIZE-1, W1
         and      W1, W0, W0
         lsr      W0, #1, W2
         mov      #ibufl, W1
@@ -1939,7 +1941,7 @@ ECFETCH:
 ;        db      NFA|3,"ee@"
 EEREAD:
         mov     [W14], W0
-        mov     #IBUFSIZEL, W1
+        mov     #FBUFSIZE, W1
         add     W0, W1, W0      ; W0 = endof flash page.
         mov     #DPS_PAGE, W1
         mov     W1, TBLPAG
@@ -1981,9 +1983,9 @@ EEWRITE:
 .endif
         mov     [W14], W0
 .ifdef FLASH_WRITE_DOUBLE
-        mov     #IBUFSIZEH/2, W2
+        mov     #FBUFSIZE/2/2, W2
 .else
-        mov     #IBUFSIZEH, W2
+        mov     #FBUFSIZE/2, W2
 .endif
 EEWRITE1:
         tblrdl  [W0++], W1
@@ -2120,8 +2122,8 @@ STORE:
         return
 STORE1:
 .ifdef PEEPROM
-        mov.w   #PEEPROM, W1
-        cp      W0, W1
+        mov.w   #PEEPROM, W2
+        cp      W0, W2
         bra     GEU, ESTORE
         bra     ISTORE
 .endif
@@ -2145,8 +2147,8 @@ CSTORE:
         return
 CSTORE1:
 .ifdef PEEPROM
-        mov.w   #PEEPROM, W1
-        cp      W0, W1
+        mov.w   #PEEPROM, W2
+        cp      W0, W2
         bra     GEU, ECSTORE
         bra     ICSTORE
 .endif
@@ -2169,8 +2171,8 @@ FETCH:
         return
 FETCH1:
 .ifdef PEEPROM
-        mov.w   #PEEPROM, W1
-        cp      W0, W1
+        mov.w   #PEEPROM, W2
+        cp      W0, W2
         bra     GEU, EFETCH
         bra     IFETCH
 .endif
@@ -2195,8 +2197,8 @@ CFETCH:
         return
 CFETCH1:
 .ifdef PEEPROM
-        mov.w   #PEEPROM, W1
-        cp      W0, W1
+        mov.w   #PEEPROM, W2
+        cp      W0, W2
         bra     GEU, ECFETCH
         bra     ICFETCH
 .endif
@@ -5157,8 +5159,9 @@ CMOVE:
         bra     CMOVE2
 CMOVE1:
         rcall   CFETCHPP
-        rcall   PCSTORE
+        mov     W13, [++W14]
         inc     W13, W13
+        rcall   CSTORE
 CMOVE2:
         dec     [--W15], [W15++] ; XNEXT
         bra     c, CMOVE1
@@ -5811,13 +5814,13 @@ FTURNKEY_A:
         mov     #handle(DPS_BASE), W0
         bra     DPS_ALIGN
 FRAM_A:
-        mov     #handle(DPS_BASE) + IBUFSIZEL, W0
+        mov     #handle(DPS_BASE) + FBUFSIZE, W0
         bra     DPS_ALIGN
 FLATEST_A:
-        mov     #handle(DPS_BASE) + IBUFSIZEL*2, W0
+        mov     #handle(DPS_BASE) + FBUFSIZE*2, W0
         bra     DPS_ALIGN
 FFLASH_A:
-        mov     #handle(DPS_BASE) + IBUFSIZEL*3, W0
+        mov     #handle(DPS_BASE) + FBUFSIZE*3, W0
 DPS_ALIGN:
         mov     W0, [++W14]
         return
@@ -5879,7 +5882,7 @@ DP_TO_RAM2:
         goto    DROP
 
 PLUSPAGE:
-        mlit    IBUFSIZEL
+        mlit    FBUFSIZE
         bra     PLUS
 .endif
 
@@ -7178,10 +7181,10 @@ MARKER_DOES:
         mlit    MARKER_LENGTH
         goto    WMOVE
 
-.palign IBUFSIZEL, 0xff
+.palign FBUFSIZE, 0xff
 .ifndef PEEPROM
 .if DPS_LOW == 1
-.pspace IBUFSIZEL*6, 0xff
+.pspace FBUFSIZE*6, 0xff
 .endif
 .endif
 KERNEL_END:

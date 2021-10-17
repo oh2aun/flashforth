@@ -1,21 +1,5 @@
 ;;; FlashForth device configuration for the PIC24F(J)
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24FJ128GB202
-;;; NOTE: The last 2 words on the last FLASH page contains the configuration bits.
-;;; If these are overwritten the the device will loose its configuration bits.
-.equ FLASH_SIZE,     0x15000  ; Flash size in bytes without the high byte.
-                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x2000   ; Ram size in bytes
-
-;; Check the configuration for your particular chip from the datasheet.
-;config __CONFIG2, FCKSM_CSDCMD & FNOSC_FRCPLL ;POSCMOD_NONE & 
-config __CONFIG1, WDTPS_PS32768 & FWPSA_PR128 & WINDIS_OFF & FWDTEN_OFF & ICS_PGx1 & LPCFG_OFF & GWRP_OFF & GCP_OFF & JTAGEN_OFF
-config __CONFIG2, POSCMD_NONE & FNOSC_FRCPLL & WDTCLK_LPRC & OSCIOFCN_OFF & FCKSM_CSECMD & ALTRB6_APPEND & ALTCMPI_CxINC_RB & WDTCMX_WDTCLK & IESO_ON
-config __CONFIG3, WPFP_WPFP127 & SOSCSEL_OFF & WDTWIN_PS25_0 & PLLSS_PLL_FRC & BOREN_ON & WPDIS_WPDIS & WPCFG_WPCFGDIS & WPEND_WPENDMEM
-config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF & DSSWEN_ON & PLLDIV_DIVIDE2 & I2C1SEL_DISABLE & IOL1WAY_ON
-
 .equ FREQ_OSC, (8000000*4)				  ;Clock (Crystal)frequency (Hz)
 
 .equ FCY, (FREQ_OSC/2)
@@ -124,14 +108,13 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .endif
 
 ;;; Memory control defines
-.equ FLASH_ERASE,  0x4042	; Erase one row (1024/1596 bytes)
-.equ FLASH_WRITE,  0x4001   ; Write one row (128/196 bytes)
-.equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ IBUFSIZEL,    0x0400
-.equ IBUFSIZEH,    0x0200
-.equ IBUFLEN1,     0x0040   ; Inner write loop
-.equ IBUFLEN2,     0x0008   ; Outer write loop
-.equ IBUFMASK,     0xfc00
+.equ FLASH_ERASE,  0x4042	; Erase one row
+.equ FLASH_WRITE,  0x4001	; Write one row
+.equ FLASH_WRITE_SINGLE, 0x4003	; Memory word program
+.equ FLASH_ROWSIZE,  0x0040	; Row size, words
+.equ FLASH_ROWS,     0x0008	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 .if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
 .equ WANT_X, 1
@@ -146,7 +129,7 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*4))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -156,7 +139,7 @@ config __CONFIG4, DSWDTPS_DSWDTPS1F & DSWDTOSC_LPRC & DSBOREN_ON & DSWDTEN_OFF &
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*4))  ; AND FBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
