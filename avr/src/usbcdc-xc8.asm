@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          18.04.2021                                        *
+;    Date:          13.11.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -179,11 +179,12 @@ GET_DESCRIPTOR_SEND2:
         rjmp    TXINI_CLR
 
 USB_IN_MSG:
+        rcall   USB_WAIT_TX
         ld      t0, z+
         sts     UEDATX, t0
         dec     t1
         brne    USB_IN_MSG
-        ret
+        rjmp    TXINI_CLR //ret
 
 USB_STALL:
         lds     t0, UECONX
@@ -252,7 +253,14 @@ GET_DEVICE_DESCRIPTOR:
 GET_CONFIGURATION_DESCRIPTOR:
         ldi     zl, lo8(USB_CFG)
         ldi     zh, hi8(USB_CFG)
-        lds     t1, wLength
+        lds     t0, wLength
+        lds     t1, wLength+1
+        subi    t0, 0x9
+        sbci    t1, 0
+        ldi     t1, 0x9
+        breq    GET_CONFIGURATION_DESCRIPTOR2
+        ldi     t1, 0x3e //wLength
+GET_CONFIGURATION_DESCRIPTOR2:
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
         lds     t0, wIndex
@@ -314,7 +322,7 @@ USB_SET_CONFIGURATION:
         sts     UERST, r_zero
         lds     t0, wValue
         sts     usb_config_status, t0
-        ret
+        rjmp    INIT_LINE_CODING
 SET_ADDR:
         lds     t0, wValue
         sts     UDADDR, t0
@@ -357,6 +365,19 @@ UEINTX_CLR:
         lds     t4, UEINTX
         and     t4, t0
         sts     UEINTX, t4
+        ret
+
+INIT_LINE_CODING:
+        ; line coding 0x96 00 00 00 00 00 0x08
+        ldi     t0, 0x96
+        sts     line_coding+1, t0
+        sts     line_coding, r_zero
+        sts     line_coding+2, r_zero
+        sts     line_coding+3, r_zero
+        sts     line_coding+4, r_zero
+        sts     line_coding+5, r_zero
+        ldi     t0, 0x08
+        sts     line_coding+6, t0
         ret
 
 
