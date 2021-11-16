@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          13.11.2021                                        *
+;    Date:          16.11.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -184,7 +184,7 @@ USB_IN_MSG:
         sts     UEDATX, t0
         dec     t1
         brne    USB_IN_MSG
-        rjmp    TXINI_CLR //ret
+        rjmp    TXINI_CLR
 
 USB_STALL:
         lds     t0, UECONX
@@ -283,19 +283,21 @@ SET_STUFF:
         breq    USB_SET_CONFIGURATION
         cpi     t0, 0x05
         breq    SET_ADDR
-        cpi     t0, 0x22
-        breq    SET_CONTROL_LINE_STATE
         cpi     t0, 0x20
         breq    SET_LINE_CODING
+        cpi     t0, 0x22
+        breq    SET_CONTROL_LINE_STATE
         rjmp    USB_STALL
 SET_LINE_CODING:
-        rcall   TX_WAIT
+        lds     t0, UEINTX
+        andi    t0, (1<<RXOUTI)
+        breq    SET_LINE_CODING
         ldi     zl, lo8(line_coding)
         ldi     zh, hi8(line_coding)
         ldi     t1, 7
         rjmp    USB_OUT_MSG
 USB_SET_CONFIGURATION:
-        rcall   TX_WAIT
+        rcall   TXINI_CLR
         ; Interrupt Notification EP
         sts     UENUM, r_two
         sts     UECONX, r_one
@@ -346,7 +348,8 @@ USB_OUT_MSG:
         st      z+, t0
         dec     t1
         brne    USB_OUT_MSG
-        ret
+        rcall   RXOUTI_CLR
+        rjmp    TXINI_CLR
 
 TXINI_SET:
         ldi     t0, (1<<TXINI)
@@ -356,6 +359,9 @@ UEINTX_SET:
         sts     UEINTX, t4
         ret
 
+RXOUTI_CLR:
+        ldi     t0, ~(1<<RXOUTI)
+        rjmp    UEINTX_CLR
 FIFOCON_CLR:
         ldi     t0, ~(1<<FIFOCON)
         rjmp    UEINTX_CLR
@@ -368,7 +374,7 @@ UEINTX_CLR:
         ret
 
 INIT_LINE_CODING:
-        ; line coding 0x96 00 00 00 00 00 0x08
+        ; line coding 00 0x96 00 00 00 00 0x08
         ldi     t0, 0x96
         sts     line_coding+1, t0
         sts     line_coding, r_zero
@@ -415,8 +421,7 @@ RXU_:
         lds     t0, UEINTX
         andi    t0, (1<<FIFOCON)
         breq    RXU_
-        ldi     t0, ~(1<<RXOUTI)
-        rcall   UEINTX_CLR
+        rcall   RXOUTI_CLR
         lds     t0, UEBCLX
         cpi     t0, 0
         breq    RXU_2
