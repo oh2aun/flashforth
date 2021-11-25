@@ -1441,7 +1441,7 @@ ISTORE_SETUP:
         rcall   iupdatebuf
 ; set write address
         movf    iaddr_lo, W
-        andlw   flash_block_mask;0x3f
+        andlw   flash_block_mask
         lfsr    Tptr, flash_buf
         addwf   Tp, F
         return
@@ -1479,7 +1479,6 @@ TOTBLP:
 ; 18-22 cycles when pfetching directly from flash
 IFETCH:
         rcall   TOTBLP
-IFETCH_FIND:
         cpfseq  ibase_hi
         bra     pfetch0
         movlw   flash_pointer_mask
@@ -2004,13 +2003,13 @@ RQ_STKFUL:
         bra     RQ_STKUNF
         call   XSQUOTE
         db      d'1',"O"
-        rcall   TYPE
+        call    TYPE
 RQ_STKUNF:
         btfss   0, 6
         bra     RQ_BOR
         call    XSQUOTE
         db      d'1',"U"
-        rcall   TYPE
+        call    TYPE
 RQ_BOR:
         btfsc   1, BOR
         bra     RQ_POR
@@ -2020,7 +2019,7 @@ RQ_BOR:
 RQ_POR: 
         btfsc   1, POR
         bra     RQ_TO
-        rcall   XSQUOTE
+        call    XSQUOTE
         db      d'1',"P"
         rcall   TYPE
 RQ_TO:
@@ -2030,7 +2029,7 @@ RQ_TO:
         btfsc   1, RWDT
 #endif 
         bra     RQ_RI
-        rcall   XSQUOTE
+        call    XSQUOTE
         db      d'1',"W"
         rcall   TYPE
 RQ_RI:
@@ -2355,7 +2354,7 @@ USB_ON:
 #endif
 #endif
         movwf   UCFG
-        clrf    UCON,
+        clrf    UCON
         bsf     UCON, USBEN
         clrf    UIR
         banksel usb_device_state
@@ -2757,6 +2756,7 @@ WARM_ZERO_1:
 #endif
 #if MS_TMR == 4                 ;; Timer 4 for 1 ms system tick
 #ifndef K42
+        banksel T4CON
         movlw   h'7d'           ; Prescale = 4, Postscale = 16
         movwf   T4CON, BANKED
         movlw   tmr2ms_val
@@ -2777,6 +2777,7 @@ WARM_ZERO_1:
 #endif
 #if MS_TMR == 5                 ;; Timer 5 for 1 ms system tick
 #ifndef K42
+        banksel T5CON
         movlw   h'01'           ; Fosc/4,prescale = 1, 8-bit write
         movwf   T5CON, BANKED
         bsf     PIE5, TMR5IE
@@ -2794,6 +2795,7 @@ WARM_ZERO_1:
 #endif
 #if MS_TMR == 6                 ;; Timer 6 for 1 ms system tick
 #ifndef K42
+        banksel T6CON
         movlw   h'7d'           ; Prescale = 4, Postscale = 16
         movwf   T6CON, BANKED
         movlw   tmr2ms_val

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc.asm                                        *
-;    Date:          26.11.2020                                        *
+;    Date:          21.11.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2020  Mikael Nordman
+; Copyright (C) 2021  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -201,7 +201,7 @@ SD001:
 USB_CFG:
         db   0x09     ; length
         db   0x02     ; configuration descriptor
-        dw   0x0043   ; total length
+        dw   0x003e   ; total length
         db   0x02     ; number of interfaces
         db   0x01     ; configuration id
         db   0x00     ; string descriptor index
@@ -218,9 +218,8 @@ USB_CFG:
         db   0x00     ; string descriptor index
         db   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
         db   0x04,0x24,0x02,0x02      ; interface ACM FD
-        db   0x05,0x24,0x06,0x00,0x01 ; interface Union FD
         db   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
-        db   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
+        db   0x07,0x05,0x81,0x03,0x08,0x00,0xff ; endpoint notification
         db   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         db   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
         db   0x07,0x05,0x82,0x02,0x08,0x00,0x00 ; endpoint data in
@@ -228,7 +227,7 @@ USB_CFG:
 ;*******************************************************************************
 USBDriverService:
         banksel ep0ostat
-        btfsc   UIE, ACTVIE
+        btfsc   UIE, ACTVIE   ; Is suspend mode ?
         rcall   USBWake
         btfsc   UCON, SUSPND
         return
@@ -246,7 +245,7 @@ USBDriverService_2:
         return
 ;*******************************************************************************
 USBSuspend:
-        bsf     UIE, ACTVIE
+        bsf     UIE, ACTVIE   ; Signal suspend mode to the driver
         bcf     UIR, IDLEIF
         bsf     UCON, SUSPND
         return
@@ -286,7 +285,7 @@ USBCtrlEPService_out_setup:
         btfss   UCON, PKTDIS                ; SETUP token ?
         bra     USBCtrlTrfOutHandler        ; OUT token
 USBCtrlTrfSetupHandler:
-        clrf    ctrl_trf_state,             ; WAIT_SETUP
+        clrf    ctrl_trf_state              ; WAIT_SETUP
         clrf    usb_status                  ; MUID_NULL, FLASH
         clrf    count
         rcall   USBCheckStdRequest
