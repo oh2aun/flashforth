@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      usbcdc.asm                                        *
-;    Date:          16.11.2021                                        *
+;    Filename:      usbcdc-xc8.asm                                    *
+;    Date:          27.11.2021                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -83,7 +83,7 @@ USB_CFG:
         .byte 0x05,0x24,0x00,0x10,0x01 ; interface header FD  
         .byte 0x04,0x24,0x02,0x02      ; interface ACM FD
         .byte 0x05,0x24,0x06,0x00,0x01 ; interface Union FD
-        .byte 0x07,0x05,0x82,0x03,0x08,0x00,0x10 ; endpoint notification
+        .byte 0x07,0x05,0x82,0x03,0x08,0x00,0xff ; endpoint notification
         .byte 0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         .byte 0x07,0x05,0x03,0x02,0x08,0x00,0x00 ; endpoint data out
         .byte 0x07,0x05,0x84,0x02,0x08,0x00,0x00 ; endpoint data in
