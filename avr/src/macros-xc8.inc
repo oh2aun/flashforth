@@ -160,6 +160,20 @@
 .endif
 .endm
 
+; Macros for registers
+.macro mreg reg, name, len, flags
+        fdw     9b
+9:
+        .byte   NFA|\flags|\len
+        .ascii  "\name"
+        .align  1
+	m_dup
+        ldi     tosl,lo8(\reg)
+        ldi     tosh,hi8(\reg)
+        ret
+.endm
+
+
 ; Symbol naming compatilibity
 ; UART1 symbols for Atmega32u4
 #if defined(XXU4)

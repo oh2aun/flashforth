@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          16.11.2021                                        *
+;    Date:          27.11.2021                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "16.11.2021"
+#define DATE "27.11.2021"
 #define datelen 10
 
 
@@ -4974,7 +4974,7 @@ DDOT_L:
         jmp     SPACE_
 ;****************************************************
         fdw      DDOT_L
-MEMHI_L:
+9:
         .byte     NFA|2
         .ascii  "hi"
         .align  1
@@ -5021,8 +5021,9 @@ XSTORE_L:
 #endif
 
 ;***************************************************
-
-        fdw      MEMHI_L
+#include <registers.inc>
+;***************************************************
+        fdw      9b
 L_FETCH_P:
         .byte      NFA|INLINE|2
         .ascii  "@p"
