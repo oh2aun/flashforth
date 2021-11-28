@@ -160,18 +160,26 @@
 .endif
 .endm
 
-; Macros for registers
-.macro mreg reg, name, len, flags
+.macro m_header name, flags
         fdw     9b
+.equ name_len, 2f-1f
 9:
-        .byte   NFA|\flags|\len
+        .byte   NFA|\flags|name_len
+1:
         .ascii  "\name"
+2:
         .align  1
-	m_dup
-        ldi     tosl,lo8(\reg)
-        ldi     tosh,hi8(\reg)
+.endm
+
+; Macros for constants
+.macro m_const value, name, flags
+        m_header \name, \flags
+        m_dup
+        ldi     tosl,lo8(\value)
+        ldi     tosh,hi8(\value)
         ret
 .endm
+
 
 
 ; Symbol naming compatilibity

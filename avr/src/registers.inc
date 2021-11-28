@@ -1,6 +1,6 @@
-; list here the registers you want to include in the FF core dictionar
+; list here the registers and constants you want to include in the FF core dictionar
 ; The parameters are
-; register name, word name, word length, word flags (inline=0x20)
-mreg PORTB,portb,5,0
-mreg DDRB,ddrb,4,0
+; constant value, word name, word flags (inline=0x20)
+m_const PORTB,portb,0
+m_const DDRB,ddrb,0
 
