@@ -1,5 +1,3 @@
-NOLIST
-LIST
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
@@ -34,24 +32,34 @@ LIST
 #include <xc.inc>
 #include "p18f-main.cfg"
 
+; Select the operator UART
 #ifdef USB_CDC 
-#if USB_OPERATOR_UART == 0
+#if OPERATOR_UART == 0
 #define OPERATOR_TX  TX0
 #define OPERATOR_RX  RX0
 #define OPERATOR_RXQ RX0Q
-#else
+#endif
+#endif
+#if OPERATOR_UART == 1
 #define OPERATOR_TX  TX1_
 #define OPERATOR_RX  RX1_
 #define OPERATOR_RXQ RX1Q
 #define OPERATOR_RX_IS_UART
 #endif
-#else // Normal UART
-#define OPERATOR_TX  TX1_
-#define OPERATOR_RX  RX1_
-#define OPERATOR_RXQ RX1Q
+#if OPERATOR_UART == 2
+#define OPERATOR_TX  TX2_
+#define OPERATOR_RX  RX2_
+#define OPERATOR_RXQ RX2Q
+#define OPERATOR_RX_IS_UART
+#endif
+#if OPERATOR_UART == 3
+#define OPERATOR_TX  TX3_
+#define OPERATOR_RX  RX3_
+#define OPERATOR_RXQ RX3Q
 #define OPERATOR_RX_IS_UART
 #endif
 
+; NVM register renaming
 #ifndef K42
 #define movff_ movff
 #else
@@ -73,7 +81,8 @@ LIST
 #endif
 #endif
 
-#ifndef TXREG
+; UART register renaming
+#ifdef TXREG1
 #define TXREG TXREG1
 #define SPBRG SPBRG1
 #define SPBRGH SPBRGH1
@@ -82,6 +91,36 @@ LIST
 #define RCREG RCREG1
 #endif
 
+#ifdef RCIF
+#define U1RXIF RCIF
+#endif
+#ifdef RC2IF
+#define U2RXIF RC2IF
+#endif
+#ifdef RCREG
+#define U1RXB RCREG
+#endif
+#ifdef RCREG2
+#define U2RXB RCREG2
+#endif
+#ifdef TXREG
+#define U1TXB TXREG
+#endif
+#ifdef TXREG2
+#define U2TXB TXREG2
+#endif
+#ifdef TXIF
+#define U1TXIF TXIF
+#endif
+
+#ifndef U2RXIE
+#define WANT_UART2 DISABLE
+#endif
+#ifndef U3RXIE
+#define WANT_UART3 DISABLE
+#endif
+
+; Status flags defintions
 #ifndef CARRY
 #define CARRY BANKMASK(STATUS), 0, a
 #endif
@@ -166,7 +205,6 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;; BANKMASK(FLAGS2)
-f32secs equ 2           ;; 32 seconds since start, shut down unconfigured USB
 fFC     equ 1           ;; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ;; 1=XOFF has been sent
 
@@ -191,7 +229,9 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;; USE ACCESS BANK to R/W these registers
 ;; Internal variables used by asm code
 PSECT   udata_acs;;,global,class=COMRAM,space=1,delta=1,lowdata,noexec
-restartfl:ds 3
+reset0:   ds 1
+reset1:   ds 1
+reset2:   ds 1
 appdata:  ds 13      ;; 
 ms_count: ds 2       ;; millisecond counter 4 bytes
 upcurr:   ds 2       ;; Current USER area pointer
@@ -212,6 +252,16 @@ FLAGS2:   ds 1       ;; More flags
 RXhead:   ds 1       ;; Head of serial RX interrupt buffer
 RXtail:   ds 1       ;; Tail of serial RX interrupt buffer
 RXcnt:    ds 1       ;; Number of characters in the RX fifo
+#ifdef U2RXB
+RX2head:  ds 1       ;; Head of serial RX interrupt buffer
+RX2tail:  ds 1       ;; Tail of serial RX interrupt buffer
+RX2cnt:   ds 1       ;; Number of characters in the RX fifo
+#endif
+#ifdef U3RXB
+RX3head:  ds 1       ;; Head of serial RX interrupt buffer
+RX3tail:  ds 1       ;; Tail of serial RX interrupt buffer
+RX3cnt:   ds 1       ;; Number of characters in the RX fifo
+#endif
 cse:      ds 1       ;; Current data section 0=flash, 2=eeprom, 4=ram 
 state:    ds 1       ;; State value. Can only be changed by []        
 wflags:   ds 1       ;; Word flags from word header
@@ -280,6 +330,12 @@ ep2istat:	ds 1
 ep2icnt: 	ds 1
 ep2iadr:	ds 2
 
+; BUFFERS
+ep0buf:      ds 8
+cdc_data_rx: ds 8
+cdc_data_tx: ds 8
+line_coding: ds 7
+
 ; USB Device States - To be used with usb_device_state
 usb_device_state: ds 1
 #define DETACHED_STATE          0
@@ -291,11 +347,6 @@ usb_device_state: ds 1
 #define ADDRESS_STATE2          0x83  ; Shifted to h'07'
 #define CONFIGURED_STATE        0x0f
 
-; BUFFERS
-ep0buf:      ds 8
-cdc_data_rx: ds 8
-cdc_data_tx: ds 8
-line_coding: ds 7
 
 #define USBUF_DEFINED
 usbuf:       ds ussize
@@ -336,7 +387,7 @@ psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #else
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #endif
-dummy:       ds 1
+
 dpSTART:     ds 2
 dpFLASH:     ds 2
 dpEEPROM:    ds 2 
@@ -351,6 +402,15 @@ psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #endif
 #else
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
+#endif
+
+#if WANT_UART2 == ENABLE
+RX2buf:       ds RX2_BUF_SIZE
+RX2bufmask   equ RX2_BUF_SIZE - 1
+#endif
+#ifdef WANT_UART3 == ENABLE
+RX3buf:       ds RX3_BUF_SIZE
+RX3bufmask   equ RX3_BUF_SIZE - 1
 #endif
 
 ;; USER AREA for the OPERATOR task
@@ -598,73 +658,42 @@ irq_ms_end:
 ;; UART RX interrupt routine
 ;; Feeds the input buffer with characters
 ;; from the serial line
-irq_async_rx:
-#if UART == 1
-#ifndef K42
-        btfss   RCIF
-#else
+irq_async_rx1:
         banksel REG_U1RXIF
         btfss   U1RXIF
-#endif
-#else   // UART == 2
-#ifndef K42
-        btfss   PIR3, RC2IF
-#else
-        banksel REG_U2RXIF
-        btfss   U2RXIF
-#endif
-#endif
-        bra     irq_async_rx_end
+        bra     irq_async_rx1_end
 #ifndef K42
         movf    Tp, W, A
         movwf   BANKMASK(ihtp), A
         movf    Tbank, W, A
         movwf   BANKMASK(ihtbank), A
 #endif
-
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
         movf    BANKMASK(RXcnt), W, A
         addlw   0xff - RX_OFF_FILL
-        bnc     irq_async_rx_2
+        bnc     irq_async_rx1_2
         
 #if FC_TYPE_SW == ENABLE
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
-irq_async_rx_1:
+irq_async_rx1_1:
 #ifdef  HW_FC_CTS_PORT
         btfss   BANKMASK(FLAGS2), fFC
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
 
-irq_async_rx_2:
+irq_async_rx1_2:
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXhead), W, A
-#if UART == 1
+        movff_  U1RXB, TWrw
 #ifndef K42
-        movff   RCREG, TWrw
         btfsc   OERR
         bcf     CREN ;; Restart RX on case of RX overrun
         bsf     CREN
 #else
-        movffl  U1RXB, TWrw
         banksel U1ERRIR
         bcf     U1RXFOIF
-#endif
-#else  // UART 2
-#ifndef K42
-        movff   RCREG2, TWrw
-        movff   BSR, BANKMASK(ilbsr)
-        banksel RCSTA2
-        btfsc   RCSTA2, OERR2, B
-        bcf     RCSTA2, CREN2, B ;; Restart RX on case of RX overrun
-        bsf     RCSTA2, CREN2, B
-        movff   BANKMASK(ilbsr), BSR
-#else
-        movffl  U2RXB,  TWrw
-        banksel U2ERRIR
-        bcf     U2RXFOIF
-#endif
 #endif
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
@@ -672,32 +701,159 @@ irq_async_rx_2:
         bnz     irq_async_rx_3 
         reset                           ;; Make a warm start
 #endif
-irq_async_rx_3:
+irq_async_rx1_3:
 #if FC_TYPE_SW == ENABLE
         addlw   0x04                    ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
         btfss   BANKMASK(FLAGS2), fFC, A          ;; receive xoff if FC is off
-        bz      irq_async_rx_end        ;; Do not receive  xoff
+        bz      irq_async_rx1_5         ;; Do not receive  xoff
 #endif
-irq_async_rx_4:
+irq_async_rx1_4:
         incf    BANKMASK(RXhead), F, A
         movlw   RXbufmask               ;; Wrap the RXhead pointer. 
         andwf   BANKMASK(RXhead), F, A
         incf    BANKMASK(RXcnt), F, A
-irq_async_rx_end:
+irq_async_rx1_5:
+        bra     irq_end
+irq_async_rx1_end:
+
+;; UART 2
+#if WANT_UART2 == ENABLE
+irq_async_rx2:
+        banksel REG_U2RXIF
+        btfss   U2RXIF
+        bra     irq_async_rx2_end
+#ifndef K42
+        movf    Tp, W, A
+        movwf   BANKMASK(ihtp), A
+        movf    Tbank, W, A
+        movwf   BANKMASK(ihtbank), A
+#endif
+        bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
+        movf    BANKMASK(RX2cnt), W, A
+        addlw   0xff - RX_OFF_FILL
+        bnc     irq_async_rx2_2
+        
+#if FC_TYPE_SW == ENABLE
+        btfss   BANKMASK(FLAGS2), fFC, A
+        call    XXOFF
+#endif
+irq_async_rx2_1:
+#ifdef  HW_FC_CTS_PORT
+        btfss   BANKMASK(FLAGS2), fFC
+        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#endif
+
+irq_async_rx2_2:
+        lfsr    Tptr, RX2buf
+        movf    BANKMASK(RX2head), W, A
+
+        movff_   U2RXB,  TWrw
+#ifndef K42
+        movff   BSR, BANKMASK(ilbsr)
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, B
+        bcf     RCSTA2, CREN2, B ;; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, B
+        movff   BANKMASK(ilbsr), BSR
+#else
+        banksel U2ERRIR
+        bcf     U2RXFOIF
+#endif
+        movf    TWrw, W, A
+        sublw   0x0f                    ;; ctrl-o
+#if CTRL_O_WARM_RESET == ENABLE
+        bnz     irq_async_rx2_3 
+        reset                           ;; Make a warm start
+#endif
+irq_async_rx2_3:
+#if FC_TYPE_SW == ENABLE
+        addlw   0x04                     ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
+        btfss   BANKMASK(FLAGS2), fFC, A ;; receive xoff if FC is off
+        bz      irq_async_rx2_5          ;; Do not receive  xoff
+#endif
+irq_async_rx2_4:
+        incf    BANKMASK(RX2head), F, A
+        movlw   RXbufmask               ;; Wrap the RXhead pointer. 
+        andwf   BANKMASK(RX2head), F, A
+        incf    BANKMASK(RX2cnt), F, A
+irq_async_rx2_5:
+        bra     irq_end
+irq_async_rx2_end:
+#endif
+;; UART 3
+#if WANT_UART3 == ENABLE
+irq_async_rx3:
+        banksel REG_U3RXIF
+        btfss   U3RXIF
+        bra     irq_async_rx3_end
+#ifndef K42
+        movf    Tp, W, A
+        movwf   BANKMASK(ihtp), A
+        movf    Tbank, W, A
+        movwf   BANKMASK(ihtbank), A
+#endif
+        bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
+        movf    BANKMASK(RX3cnt), W, A
+        addlw   0xff - RX_OFF_FILL
+        bnc     irq_async_rx3_2
+        
+#if FC_TYPE_SW == ENABLE
+        btfss   BANKMASK(FLAGS2), fFC, A
+        call    XXOFF
+#endif
+irq_async_rx3_1:
+#ifdef  HW_FC_CTS_PORT
+        btfss   BANKMASK(FLAGS2), fFC
+        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#endif
+
+irq_async_rx3_2:
+        lfsr    Tptr, RX3buf
+        movf    BANKMASK(RX3head), W, A
+
+        movff_  U3RXB,  TWrw
+#ifndef K42
+        movff   BSR, BANKMASK(ilbsr)
+        banksel RCSTA3
+        btfsc   RCSTA3, OERR2, B
+        bcf     RCSTA3, CREN2, B ;; Restart RX on case of RX overrun
+        bsf     RCSTA3, CREN2, B
+        movff   BANKMASK(ilbsr), BSR
+#else
+        banksel U3ERRIR
+        bcf     U3RXFOIF
+#endif
+        movf    TWrw, W, A
+        sublw   0x0f                    ;; ctrl-o
+#if CTRL_O_WARM_RESET == ENABLE
+        bnz     irq_async_rx3_3 
+        reset                           ;; Make a warm start
+#endif
+irq_async_rx3_3:
+#if FC_TYPE_SW == ENABLE
+        addlw   0x04                    ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
+        btfss   BANKMASK(FLAGS2), fFC, A          ;; receive xoff if FC is off
+        bz      irq_async_rx3_end        ;; Do not receive  xoff
+#endif
+irq_async_rx3_4:
+        incf    BANKMASK(RX3head), F, A
+        movlw   RXbufmask               ;; Wrap the RXhead pointer. 
+        andwf   BANKMASK(RX3head), F, A
+        incf    BANKMASK(RX3cnt),  F, A
+irq_async_rx3_end:
+#endif
 ;; *****************************************************************
 ;;;; Restore Tp and Tbank
+irq_end:
 #ifndef K42
         movf    BANKMASK(ihtbank), W, A
         movwf   Tbank, A
         movf    BANKMASK(ihtp), W, A
         movwf   Tp, A
-#endif
-irq_end:
-#ifndef K42
         movf    BANKMASK(ilw), W, A
         movff   BANKMASK(ilstatus), STATUS
         retfie  0
-#else // K42 K83
+#else // K42 K83 Qxx
         retfie  1
 #endif
 ;; *******************************************************************
@@ -736,8 +892,941 @@ L_EXIT:
 EXIT:
         decf    STKPTR, F, A     ;; pop does not work on K42 and K83
         return
-; idle
+
+;;; *******************************************************
+; PAUSE  --     switch task
+; 188 us @ 2 MHz, 9.4 us @ 40 Mhz  7.8us at 48 Mhz  ( 93 clocks with 2 cells on return stack )
+; save stack to current uarea, link -> up, restore stack
+        dw      L_TURNKEY
+L_PAUSE:
+        NF 5,pause
+PAUSE:
+        clrwdt
+#ifdef USB_CDC
+        movf    BANKMASK(upcurr), W, A
+        sublw   low(u0)           ; check usb only in operator task
+        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
+        btfss   USBEN
+        bra     PAUSE_USB_CDC_END
+        call    USBDriverService
+        movf    ep2icount, W, A
+        bz      PAUSE_USB_CDC_END
+        movf    ep2itmo, W, A
+        subwf   BANKMASK(ms_count), W, A
+        bn      PAUSE_USB_CDC_END
+        rcall   TX0_SEND
+PAUSE_USB_CDC_END:
+#endif
+#ifdef IDLEN
+#if IDLE_MODE == ENABLE
+        movf    BANKMASK(fstatus), W, A  ; idle allowed ?
+        bz      PAUSE_IDLE1
+        movf    BANKMASK(upcurr), W, A
+        sublw   low(u0)        ; Sleep only in operator task
+        bnz     PAUSE000       ; Lowers execution delay when many tasks are running
+#if CPU_LOAD_LED == ENABLE
+        banksel CPU_LOAD_PORT
+#if CPU_LOAD_LED_POLARITY == POSITIVE
+        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#else
+        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#endif
+#endif
+#if CPU_LOAD == ENABLE
+#ifndef K42
+        bcf     TMR0ON          ; TMR0 Restart in interrupt routine
+#else
+        banksel T0CON0
+        bcf     T0EN            ; TMR0 Restart in interrupt routine
+#endif
+#endif
+        sleep
+PAUSE_IDLE1:
+#if CPU_LOAD_LED == ENABLE
+        banksel CPU_LOAD_PORT
+#if CPU_LOAD_LED_POLARITY == POSITIVE
+        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#else
+        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#endif
+#endif
+#endif
+#endif
+PAUSE000:
+        ; Set user pointer in Tp, Tbank (FSR1)
+        movf    BANKMASK(upcurr), W, A
+        movwf   Tp
+        movf    (BANKMASK(upcurr)+1), W, A
+        movwf   Tbank
+
+        ;; Switch tasks only if some background tasks are running
+        movf    Tminus, W   ; Point to high(ulink)
+        movf    Tminus, W   ; check ulink
+        bz      PAUSE_RET
+
+        ; Save parameter stack pointer
+        movf    Sp, W
+        movwf   plusR
+        movf    Sbank, W
+        movwf   plusR
+
+        ; Save P pointer
+        movf    BANKMASK(p_lo), W, A
+        movwf   plusR
+        movf    BANKMASK(p_hi), W, A
+        movwf   plusR
+
+        ; Remember the return stack counter
+        movf    STKPTR, W
+        movwf   TBLPTRL           ; 17
+
+        ; Save the return stack 
+pause1:
+        movf    TOSL, W
+        movwf   plusR
+        movf    TOSH, W
+        movwf   plusR
+        decfsz  STKPTR, F
+        bra     pause1            ; 13 2 items
+
+        ; Save the return stack counter
+        movf    TBLPTRL, W
+        movwf   plusR
+
+        ; Move to the next user area
+        movf    Tplus, W
+        movwf   BANKMASK(upcurr), A
+        movf    Tplus, W
+        movwf   (BANKMASK(upcurr)+1), A
+
+        ; Save the return stack pointer to urptr
+        movf    Rp, W
+        movwf   Tplus
+        movf    Rbank, W
+        movwf   Tplus
+
+        ; Put new user pointer in Tp, Tbank
+        movf    BANKMASK(upcurr), W, A
+        movwf   Tp
+        movf    (BANKMASK(upcurr)+1), W, A
+        movwf   Tbank
+
+        ; Set the return stack restore pointer  in Rp
+        movf    Tplus, W
+        movwf   Rp
+        movf    Tminus, W
+        movwf   Rbank
+
+        ; Set the return stack counter
+        movf    Rminus, W
+        movwf   TBLPTRL             ; 22
+
+        ; Restore the return stack
+pause2:
+        push
+        movf    Rminus, W
+        movwf   TOSH
+        movf    Rminus, W
+        movwf   TOSL
+
+        decfsz  TBLPTRL, F
+        bra     pause2              ; 15 2 items
+
+        ; Restore the P pointer
+        movf    Rminus, W
+        movwf   BANKMASK(p_hi), A
+        movf    Rminus, W
+        movwf   BANKMASK(p_lo), A
+
+        ; Restore the parameter stack pointer
+        movf    Rminus, W
+        movwf   Sbank
+        movf    Rminus, W
+        movwf   Sp
+PAUSE_RET:
+        return              ; 23+2+2=27
+
+        dw      L_IR
+L_WARM:
+        NF 4,warm
+WARM_:  
+#ifndef USB_CDC
+        reset                   ; Perform a reset, jumps to 0000 and resets stuff
+#endif
+main:
+#ifndef K42
+        movlw   0xf
+        iorwf   ADCON1, F
+#endif 
+        clrf    TBLPTRU
+#ifdef OSCCON
+        movlw   0x70
+        movwf   OSCCON
+#endif
+#ifdef OSCCON1_VALUE
+        banksel OSCCON1
+        movlw   OSCCON1_VALUE    ; HFINTOSC SDIV = 1
+        movwf   OSCCON1, B  ; K83
+        movlw   OSCFRQ_VALUE     ; 4 MHz
+        movwf   OSCFRQ, B
+        movlw   OSCTUNE_VALUE
+        movwf   OSCTUNE, B
+#endif
+
+#ifdef PLL
+#if PLL == ENABLE
+        movlw   0x40
+        movwf   OSCTUNE
+#endif
+#endif
+                              ; Clear ram
+WARM:
+#ifndef K42
+        movf    STKPTR, W
+        movwf   BANKMASK(reset0), A ; Save return stack reset reasons
+        movf    RCON, W
+        movwf   BANKMASK(reset1), A ; Save reset reasons
+        movf    BANKMASK(fstatus), W, A
+        movwf   BANKMASK(reset2), A
+        movlw   0x9f
+        movwf   BANKMASK(RCON), A
+#else
+        movf    PCON0, W
+        movwf   BANKMASK(reset0), A ; Save reset reasons
+        movwf   BANKMASK(reset1), A ; Save reset reasons
+        movf    BANKMASK(fstatus), W, A
+        movwf   BANKMASK(reset2), A
+        movlw   0x3f            ; Clearing the flags in PCON0
+        banksel PCON0
+        movwf   PCON0
+#endif
+        clrf    STKPTR, A       ; Clear return stack
+
+        lfsr    Sptr, appdata   ; Zero ram from 3 upwards
+#ifdef USB_CDC
+        lfsr    Tptr, usb_device_state+1
+WARM_ZERO_1:
+        clrf    Splus
+        movf    Sbank, W
+        subwf   Tbank, W
+        bnz     WARM_ZERO_1
+WARM_ZERO_3:
+        clrf    Tplus
+        movf    Tbank, W
+        sublw   0x0f
+        bnz     WARM_ZERO_3
+#else
+WARM_ZERO_1:
+        clrf    Splus
+        movf    Sbank, W
+        sublw   0x0f
+        bnz     WARM_ZERO_1
+#endif
+        setf    BANKMASK(ibase_hi), A   ; Mark flash buffer empty
+
+        lfsr    Sptr, (usbuf-1)         ; Initalise Parameter stack
+        lfsr    Rptr, urbuf
+
+        banksel PIE1            
+#ifdef PIE0                     ; Disable all peripheral interrupts
+        clrf    PIE0, B
+#endif
+        clrf    PIE1, B    ; Disable all peripheral interrupts
+        clrf    PIE2, B
+#ifdef PIE3
+        clrf    PIE3, B
+#endif
+#ifdef PIE4
+        clrf    PIE4, B
+#endif
+#ifdef PIE5
+        clrf    PIE5, B
+#endif
+#ifdef PIE6
+        clrf    PIE6, B
+#endif
+#ifdef PIE7
+        clrf    PIE7, B
+#endif 
+#ifdef PIE8
+        clrf    PIE8, B
+#endif
+#ifdef PIE9
+        clrf    PIE9, B
+#endif
+#ifdef PIE10
+        clrf    PIE10, B
+#endif
+        banksel TOSU   ; SFR bank
+
+#ifndef K42
+;; UART == 1  ----------------------------------------------
+#ifdef BRG16
+        bsf     BRG16
+        movlw   high(spbrgvalx4)
+        movwf   SPBRGH, A
+        movlw   low(spbrgvalx4)
+#else
+        movlw   spbrgval
+#endif
+        movwf   SPBRG, A
+; TX enable
+        movlw   00100100B
+        movwf   TXSTA, A
+#ifdef USB_CDC
+        movlw   00000000B    ; Reset the UART since
+        movwf   RCSTA, A     ; USB warm start does not reset the chip
+#endif
+; RX enable
+        movlw   10010000B
+        movwf   RCSTA, A
+        bsf     RCIE
+        bcf     RCIP
+#ifdef ANSELH
+#ifdef ANS11
+        bcf     ANS11         ; Enable digital RB5 for RX
+#endif
+#endif
+#ifdef ANSELC
+#ifdef ANSC7
+        bcf     ANSC7         ; Enable digital RC7 for RX
+#endif
+#endif
+;; UART == 2 ---------------------------------------
+#if WANT_UART2 == ENABLE
+#ifdef BRG16
+        bsf     BAUDCON2, BRG16
+        movlw   high(spbrgvalx4)
+        movwf   SPBRGH2
+        movlw   spbrgvalx4
+#else
+        movlw   spbrgval
+#endif
+        movwf   SPBRG2, B
+; TX enable
+        movlw   b'00100100'
+        movwf   TXSTA2, B
+; RX enable
+        movlw   b'10010000'
+        movwf   RCSTA2, B
+        bsf     PIE3, RC2IE
+        bcf     IPR3, RC2IP
+
+        bcf     ANCON2, ANSEL18, B ; Configure RX pin as input
+#endif
+#else  ; K42 K83 Q41 Q43
+;; UART == 1 
+; PPS configure pins for RX and TX
+        banksel RX_ANSEL
+        bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
+        bcf     TX_ANSEL, TX_BIT, B    ; disable analogue on PORTx so TX can function
+        bcf     TX_TRIS, TX_BIT
+        bsf     TX_LAT, TX_BIT
+; Unlock the PPS
+        call    PPS_UNLOCK
+; Set the pins
+        banksel U1RXPPS
+        movlw   RX_PPS 
+        movwf   U1RXPPS, B
+        
+        clrf    U1CTSPPS, B
+
+        movlw   TX_CODE
+        movwf   TX_PPS, B
+
+; Re-lock the PPS
+        call    PPS_LOCK
+
+; Set the Baud Rate
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
+        banksel U1BRGL
+        movwf   U1BRGL, B
+        movlw   high(spbrgvalx4)
+        movwf   U1BRGH, B
+
+; TX enable
+        movlw   10110000B       ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
+        movwf   U1CON0, B
+        bsf     U1RUNOVF
+        bsf     U1ON            ; turn on TX
+
+; RX enable
+        banksel REG_U1RXIE
+        bsf     U1RXIE              ; enable RX interupt
+        banksel REG_U1RXIP
+        bcf     U1RXIP              ; low priority
+        bsf     RX_TRIS, RX_BIT, A  ; configure XY as an input
+
+;; UART == 2 ---------------------------------------
+#if WANT_UART2 == ENABLE
+; PPS configure pins for RX and TX
+        banksel RX2_ANSEL
+        bcf     RX2_ANSEL, RX2_BIT, B    ; disable analogue on PORTx so RX can function
+        banksel TX2_ANSEL
+        bcf     TX2_ANSEL, TX2_BIT, B    ; disable analogue on PORTx so TX can function
+; Unlock the PPS
+        call    PPS_UNLOCK
+; Set the pins
+        banksel U2RXPPS
+        movlw   RX2_PPS
+        movwf   U2RXPPS, B        ; configure the RX pin to XY
+        
+        banksel U2CTSPPS
+        clrf    U2CTSPPS, B        ; clear so always disabled
+        
+        banksel TX2_PPS          ; configure TX pin to XY
+        movlw   TX2_CODE
+        movwf   TX2_PPS, B
+
+; Re-lock the PPS
+        call    PPS_LOCK
+
+; Set the Baud Rate
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
+        banksel U2BRGL
+        movwf   U2BRGL, B
+        movlw   high(spbrgvalx4)
+        movwf   U2BRGH, B
+
+; TX enable
+        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
+        movwf   U2CON0, B
+        bsf     U2RUNOVF
+        bsf     U2ON            ; turn on TX
+; RX enable
+        banksel REG_U2RXIE
+        bsf     U2RXIE              ; enable RX interupt
+        banksel REG_U2RXIP
+        bcf     U2RXIP              ; low priority
+
+        banksel RX2_TRIS
+        bsf     RX2_TRIS, RX2_BIT, B ; configure RX pin as an input
+
+#endif
+;; UART == 3 ---------------------------------------
+#if WANT_UART3 == ENABLE
+; PPS configure pins for RX and TX
+        banksel RX3_ANSEL
+        bcf     RX3_ANSEL, RX3_BIT, B    ; disable analogue on PORTx so RX can function
+        banksel TX3_ANSEL
+        bcf     TX3_ANSEL, TX3_BIT, B    ; disable analogue on PORTx so TX can function
+; Unlock the PPS
+        call    PPS_UNLOCK
+; Set the pins
+        banksel U3RXPPS
+        movlw   RX3_PPS
+        movwf   U3RXPPS, B        ; configure the RX pin to XY
+        
+        banksel U3CTSPPS
+        clrf    U3CTSPPS, B        ; clear so always disabled
+        
+        banksel TX3_PPS          ; configure TX pin to XY
+        movlw   TX3_CODE
+        movwf   TX3_PPS, B
+
+; Re-lock the PPS
+        call    PPS_LOCK
+
+; Set the Baud Rate
+        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
+        banksel U3BRGL
+        movwf   U3BRGL, B
+        movlw   high(spbrgvalx4)
+        movwf   U3BRGH, B
+
+; TX enable
+        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
+        movwf   U3CON0, B
+        bsf     U3RUNOVF
+        bsf     U3ON            ; turn on TX
+; RX enable
+        banksel REG_U3RXIE
+        bsf     U3RXIE              ; enable RX interupt
+        banksel REG_U3RXIP
+        bcf     U3RXIP              ; low priority
+
+        banksel RX3_TRIS
+        bsf     RX3_TRIS, RX3_BIT, B ; configure RX pin as an input
+#endif
+#endif
+
+#ifdef IDLEN
+#if IDLE_MODE == ENABLE
+#if CPU_LOAD_LED == ENABLE
+        banksel CPU_LOAD_TRIS
+        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, B
+#endif
+#ifndef K42
+        bsf     IDLEN           ; Only IDLE mode supported
+#else
+        banksel CPUDOZE
+        bsf     IDLEN           ; Only IDLE mode supported  
+#endif  
+#endif
+#endif
+
+#if CPU_LOAD == ENABLE
+#ifndef K42
+        movlw   08                  ; TMR0 used for CPU_LOAD
+        movwf   T0CON               ; prescale = 1
+        bsf     TMR0IE
+        bcf     TMR0IP
+#else
+        banksel T0CON0
+        bsf     T0MD16              ; 16 bit timer
+        movlw   0x40                ; TMR0 used for CPU_LOAD
+        movwf   T0CON1, B           ; Instruction clock 1:1 
+        banksel PIE3 
+        bsf     TMR0IE
+        banksel IPR3
+        bcf     TMR0IP              ; Low priority
+#endif
+#endif
+        movlw   low(tmr1ms_val)
+        movwf   BANKMASK(tickval), A
+        movlw   high(tmr1ms_val)
+        movwf   BANKMASK(tickval)+1, A
+#if MS_TMR == 1                 // Timer 1 for 1 ms system tick
+#ifndef K42
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T1CON
+        bsf     TMR1IE
+        bcf     TMR1IP
+#else
+        banksel T1CON
+        movlw   01              ; fosc/4
+        movwf   T1CLK, B
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T1CON, B
+#ifndef Q43
+        banksel PIE4
+#else
+        banksel PIE3
+#endif
+        bsf     TMR1IE
+#ifndef Q43
+        banksel IPR4
+#else
+        banksel IPR3
+#endif
+        bcf     TMR1IP
+#endif
+#endif
+#if MS_TMR == 2                 // Timer 2 for 1 ms system tick
+#ifndef K42
+        movlw   0x7d            ; Prescale = 4, Postscale = 16
+        movwf   T2CON
+        movlw   tmr2ms_val
+        movwf   PR2
+        bsf     TMR2IE
+        bcf     TMR2IP
+#else
+        movlw   01
+        movwf   T2CLKCON
+        movlw   tmr2ms_val
+        movwf   T2PR, A
+        movlw   0xaf         ; Prescale = 4, Postscale = 16
+        movwf   T2CON
+        banksel PIE4
+        bsf     TMR2IE
+        bcf     TMR2IP
+#endif
+#endif
+#if MS_TMR == 3                 // Timer 3 for 1 ms system tick
+#ifndef K42
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T3CON
+        bsf     TMR3IE
+        bcf     TMR3IP
+#else
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T3CON
+        movlw   01              ; fosc/4
+        movwf   T3CLK
+        banksel PIE6
+        bsf     TMR3IE
+        bcf     TMR3IP
+#endif
+#endif
+#if MS_TMR == 4                 // Timer 4 for 1 ms system tick
+#ifndef K42
+        banksel T4CON
+        movlw   0x7d            ; Prescale = 4, Postscale = 16
+        movwf   T4CON, B
+        movlw   tmr2ms_val
+        movwf   PR4, B
+        bsf     TMR4IE
+        bcf     TMR4IP
+#else
+        movlw   01
+        movwf   T4CLKCON
+        movlw   tmr2ms_val
+        movwf   T4PR, A
+        movlw   0xaf         ; Prescale = 4, Postscale = 16
+        movwf   T4CON
+        banksel PIE7
+        bsf     TMR4IE
+        bcf     TMR4IP
+#endif
+#endif
+#if MS_TMR == 5                 // Timer 5 for 1 ms system tick
+#ifndef K42
+        banksel T5CON
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T5CON, B
+        bsf     TMR5IE
+        bcf     TMR5IP
+#else
+        banksel T5CON
+        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
+        movwf   T5CON, B
+        movlw   01              ; fosc/4
+        movwf   T5CLK
+        banksel PIE8
+        bsf     TMR5IE
+        bcf     TMR5IP
+#endif
+#endif
+#if MS_TMR == 6                 // Timer 6 for 1 ms system tick
+#ifndef K42
+        banksel T6CON
+        movlw   7d              ; Prescale = 4, Postscale = 16
+        movwf   T6CON, B
+        movlw   tmr2ms_val
+        movwf   PR6, B
+        bsf     TMR6IE
+        bcf     TMR6IP
+#else
+        movlw   01
+        movwf   T6CLKCON
+        movlw   tmr2ms_val
+        movwf   T6PR, A
+        movlw   0xaf          ; Prescale = 4, Postscale = 16
+        movwf   T6CON
+        banksel PIE9
+        bsf     TMR6IE
+        bcf     TMR6IP
+#endif
+#endif
+
+        movlw   low(u0+PRAM)        ; UP
+        movwf   BANKMASK(upcurr), A
+        movlw   high(u0+PRAM)
+        movwf   BANKMASK(upcurr)+1, A
+
+        call    LIT
+        dw      WARMLIT
+        call    LIT
+        dw      userarea+PRAM
+        call    LIT
+        dw      warmlitsize
+        call    CMOVE
+        call    FRAM
+        clrf    INTCON
+#ifdef K42
+        bsf     INTCON, INTCON0_IPEN_POSN   ; Enable interrupt priority
+#endif
+        bsf     GIEL
+        bsf     GIEH
+
+        call    LIT
+        dw      dp_start
+        call    FETCH
+        call    TRUE_
+        call    EQUAL
+        call    ZEROSENSE
+        bz      WARM_2
+        call    LIT
+        dw      20
+        call    MS        ; Write to EEPROM fails with a shorter delay, why ?
+        call    EMPTY
+WARM_2:
+        call    DP_TO_RAM
+
+#if FC_TYPE_SW == ENABLE
+        bsf     BANKMASK(FLAGS2), ixoff, A ; Force sending of XON in RX1?
+#endif
+#ifdef HW_FC_CTS_TRIS
+        bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN
+#endif
+#ifdef USB_CDC
+        rcall   USB_ON
+#endif
+        rcall   RQ
+        rcall   VER
+        
+        rcall   TURNKEY   ; 0xca
+        call    ZEROSENSE
+        bz      STARTQ2
+        call    XSQUOTE
+        db      3
+        STRING  ESC
+        call    TYPE
+        call    LIT
+        dw      TURNKEY_DELAY
+        call    MS
+        call    KEYQ
+        call    ZEROSENSE
+        bz      STARTQ1
+        call    KEY
+        call    LIT
+        dw      0x1b
+        call    XOR ; NOTEQUAL
+        call    ZEROSENSE
+        bz      STARTQ2
+STARTQ1:
+        rcall   TURNKEY
+        call    DUP
+        call    SPACE_
+        call    CFATONFA
+        call    DOTID
+        call    EXECUTE
+STARTQ2:
+        goto    ABORT
+
+;*******************************************************
+        dw      L_WARM
+L_VER:
+        NF 3,ver
+VER:
+        call    XSQUOTE
+        db 38,' '                ; 1
+        STRING  FlashForth       ; 10
+        db      ' ','5',' '      ; 3
+        STRING PICTYPE           ; 11
+        db      ' '              ; 1
+        STRING 01.01.2022        ; 10
+        db    0xa,0xd            ; 2
+        align 2
+        nop
+        nop
+        goto    TYPE
+
+;***************************************************
+; TX1   c --    output character to the TX1 buffer
         dw      L_EXIT
+L_TX1_:
+        NF 3,tx1
+TX1_:
+        banksel REG_U1RXIF
+        btfsc   U1TXIF
+        bra     TX1_SEND
+        rcall   PAUSE
+        bra     TX1_
+TX1_SEND:
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        banksel U1TXB
+        movwf   U1TXB, B
+        return
+
+;***************************************************
+; RX1    -- c    get character from the serial line
+        dw      L_TX1_
+L_RX1_:
+        NF 3,rx1
+RX1_:
+        rcall   PAUSE
+        rcall   RX1Q
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        bz      RX1_
+        lfsr    Tptr, RXbuf
+        movf    BANKMASK(RXtail), W, A
+        movff_  TWrw, plusS    ;  Take a char from the buffer
+        clrf    plusS, A
+        incf    BANKMASK(RXtail), F, A
+        movlw   RXbufmask
+        andwf   BANKMASK(RXtail), F, A
+        decf    BANKMASK(RXcnt), F, A
+        return
+;***************************************************
+; RX1?  -- n    return the number of characters in queue
+        dw      L_RX1_
+L_RX1Q:
+        NF 4,rx1?
+RX1Q:
+#ifndef K42
+        btfsc   OERR
+        bcf     CREN ; Restart RX on case of RX overrun
+        bsf     CREN    
+#else
+        banksel U1ERRIR
+        btfsc   U1RXFOIF
+        bcf     U1RXFOIF   ; Restart RX on case of RX overrun
+        bsf     U1RXFOIF
+#endif 
+        movf    BANKMASK(RXhead), W, A
+        subwf   BANKMASK(RXtail), W, A
+        movwf   plusS, A
+        bnz     RX1Q2
+#if FC_TYPE_SW == ENABLE
+        btfss   BANKMASK(FLAGS2), fFC, A
+        rcall   XXON
+#endif
+#ifdef  HW_FC_CTS_PORT
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#endif
+        clrf    BANKMASK(RXcnt), A
+RX1Q2:
+        clrf    plusS, A
+        return
+#if WANT_UART2 == ENABLE
+;***************************************************
+; TX2   c --    output character to the TX1 buffer
+        dw      L_RX1Q
+L_TX2_:
+        NF 3,tx2
+TX2_:
+        banksel REG_U2RXIF
+        btfsc   U2TXIF
+        bra     TX2_SEND
+        rcall   PAUSE
+        bra     TX2_
+TX2_SEND:
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        banksel U2TXB
+        movwf   U2TXB, B
+        return
+;***************************************************
+; RX2    -- c    get character from the serial line
+        dw      L_TX2_
+L_RX2_:
+        NF 3,rx2
+RX2_:
+        rcall   PAUSE
+        rcall   RX2Q
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        bz      RX2_
+        lfsr    Tptr, RX2buf
+        movf    BANKMASK(RX2tail), W, A
+        movff_  TWrw, plusS    ;  Take a char from the buffer
+        clrf    plusS, A
+        incf    BANKMASK(RX2tail), F, A
+        movlw   RX2bufmask
+        andwf   BANKMASK(RX2tail), F, A
+        decf    BANKMASK(RX2cnt), F, A
+        return
+;***************************************************
+; RX2?  -- n    return the number of characters in queue
+        dw      L_RX2_
+L_RX2Q:
+        NF 4,rx2?
+RX2Q:
+#ifndef K42
+        banksel RCSTA2
+        btfsc   RCSTA2, OERR2, B
+        bcf     RCSTA2, CREN2, B ; Restart RX on case of RX overrun
+        bsf     RCSTA2, CREN2, B
+#else 
+        banksel U2ERRIR
+        btfsc   U2RXFOIF
+        bcf     U2RXFOIF    ; Restart RX on case of RX overrun
+        bsf     U2RXFOIF
+#endif 
+
+        movf    BANKMASK(RX2head), W, A
+        subwf   BANKMASK(RX2tail), W, A
+        movwf   plusS, A
+        bnz     RX2Q2
+#if FC_TYPE_SW == ENABLE
+        btfss   BANKMASK(FLAGS2), fFC, A
+        rcall   XXON
+#endif
+#ifdef  HW_FC_CTS_PORT
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#endif
+        clrf    BANKMASK(RX2cnt), A
+RX2Q2:
+        clrf    plusS, A
+        return
+#endif
+
+#if WANT_UART3 == ENABLE
+;***************************************************
+; TX3   c --    output character to the TX1 buffer
+#if WANT_UART2 == ENABLE
+        dw      L_RX2Q
+#else
+        dw      L_RX1Q
+#endif
+L_TX3_:
+        NF 3,tx3
+TX3_:
+        banksel REG_U3RXIF
+        btfsc   U3TXIF
+        bra     TX3_SEND
+        rcall   PAUSE
+        bra     TX3_
+TX3_SEND:
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        banksel U3TXB
+        movwf   U3TXB, B
+        return
+;***************************************************
+; RX3    -- c    get character from the serial line
+        dw      L_TX3_
+L_RX3_:
+        NF 3,rx3
+RX3_:
+        rcall   PAUSE
+        rcall   RX3Q
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        bz      RX3_
+        lfsr    Tptr, RX3buf
+        movf    BANKMASK(RX3tail), W, A
+        movff_  TWrw, plusS    ;  Take a char from the buffer
+        clrf    plusS, A
+        incf    BANKMASK(RX3tail), F, A
+        movlw   RX3bufmask
+        andwf   BANKMASK(RX3tail), F, A
+        decf    BANKMASK(RX3cnt), F, A
+        return
+;***************************************************
+; RX3?  -- n    return the number of characters in queue
+        dw      L_RX3_
+L_RX3Q:
+        NF 4,rx3?
+RX3Q:
+        banksel U3ERRIR
+        btfsc   U3RXFOIF
+        bcf     U3RXFOIF    ; Restart RX on case of RX overrun
+        bsf     U3RXFOIF
+
+        movf    BANKMASK(RX3head), W, A
+        subwf   BANKMASK(RX3tail), W, A
+        movwf   plusS, A
+        bnz     RX3Q2
+#if FC_TYPE_SW == ENABLE
+        btfss   BANKMASK(FLAGS2), fFC, A
+        rcall   XXON
+#endif
+#ifdef  HW_FC_CTS_PORT
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#endif
+        clrf    BANKMASK(RX3cnt), A
+RX3Q2:
+        clrf    plusS, A
+        return
+#endif
+
+; idle
+#if WANT_UART3 == ENABLE
+        dw      L_RX3Q
+#else
+#if WANT_UART2 == ENABLE
+        dw      L_RX2Q
+#else
+        dw      L_RX1Q
+#endif
+#endif
 #if IDLE_MODE == ENABLE
 L_IDLE:
         NF 4,idle
@@ -766,7 +1855,7 @@ LOAD:
         movf    BANKMASK(load_res)+2, W, A
         movwf   plusS, A
         clrf    plusS, A
-        call    LIT
+        rcall   LIT
         dw      CPU_LOAD_VAL
         call    UMSLASHMOD
         goto    NIP
@@ -890,114 +1979,6 @@ L_IR:
         movwf   TBLPTRL, A
         movf    BANKMASK(ihtblptrh), W, A
         movwf   TBLPTRH, A
-        return
-
-;***************************************************
-; TX1   c --    output character to the TX1 buffer
-        dw      L_IR
-L_TX1_:
-        NF 3,tx1
-TX1_:
-        banksel PIR1
-#if UART == 1
-#ifndef U1TXIF
-        btfsc   TXIF
-#else
-        btfsc   U1TXIF
-#endif
-#else
-        btfsc   U2TXIF
-#endif
-        bra     TX1_SEND
-        rcall   PAUSE
-        bra     TX1_
-TX1_SEND:
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-#if USE_8BIT_ASCII == DISABLE
-        andlw   0x7f
-#endif
-#if UART == 1
-#ifndef U1TXB
-        movwf   TXREG, A
-#else
-        banksel U1TXB
-        movwf   U1TXB, B
-#endif 
-#else
-#ifndef U2TXB
-        banksel TXREG2
-        movwf   TXREG2, B
-#else 
-        banksel U2TXB
-        movwf   U2TXB, B
-#endif 
-#endif
-        goto    PAUSE
-;***************************************************
-; RX1    -- c    get character from the serial line
-        dw      L_TX1_
-L_RX1_:
-        NF 3,rx1
-RX1_:
-        rcall   PAUSE
-        rcall   RX1Q
-        movf    Sminus, W, A
-        iorwf   Sminus, W, A
-        bz      RX1_
-        lfsr    Tptr, RXbuf
-        movf    BANKMASK(RXtail), W, A
-        movff_  TWrw, plusS    ;  Take a char from the buffer
-        clrf    plusS, A
-        incf    BANKMASK(RXtail), F, A
-        movlw   RXbufmask
-        andwf   BANKMASK(RXtail), F, A
-        decf    BANKMASK(RXcnt), F, A
-        return
-;***************************************************
-; RX1?  -- n    return the number of characters in queue
-        dw      L_RX1_
-L_RX1Q:
-        NF 4,rx1?
-RX1Q:
-#if UART == 1
-#ifndef K42
-        btfsc   OERR
-        bcf     CREN ; Restart RX on case of RX overrun
-        bsf     CREN    
-#else
-        banksel U1ERRIR
-        btfsc   U1RXFOIF
-        bcf     U1RXFOIF   ; Restart RX on case of RX overrun
-        bsf     U1RXFOIF
-#endif 
-#else ; UART == 2
-#ifndef K42
-        banksel RCSTA2
-        btfsc   RCSTA2, OERR2, B
-        bcf     RCSTA2, CREN2, B ; Restart RX on case of RX overrun
-        bsf     RCSTA2, CREN2, B
-#else 
-        banksel U2ERRIR
-        btfsc   U2RXFOIF
-        bcf     U2RXFOIF    ; Restart RX on case of RX overrun
-        bsf     U2RXFOIF
-#endif 
-#endif
-        movf    BANKMASK(RXhead), W, A
-        subwf   BANKMASK(RXtail), W, A
-        movwf   plusS, A
-        bnz     RX1Q2
-#if FC_TYPE_SW == ENABLE
-        btfss   BANKMASK(FLAGS2), fFC, A
-        rcall   XXON
-#endif
-#ifdef  HW_FC_CTS_PORT
-        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
-#endif
-        clrf    BANKMASK(RXcnt), A
-RX1Q2:
-        clrf    plusS, A
         return
 
 ;*******************************************************
@@ -1179,7 +2160,7 @@ fill_buffer_from_imem_1:
 ;***********************************************************
 write_buffer_to_imem:
 ;; Loop here until there are no more characters has been received for a while
-;; from the UART.
+;; from the operator UART.
 ;; The assumption is that the serial line is silent then.
 #ifdef OPERATOR_RX_IS_UART
 #if FC_TYPE_SW == ENABLE
@@ -1193,7 +2174,7 @@ write_buffer_to_imem:
 
 wbtil:
         bcf     BANKMASK(FLAGS1), istream, A
-        call    LIT
+        rcall   LIT
         dw      (19200/baud)+2
         call    MS
         btfsc   BANKMASK(FLAGS1), istream, A
@@ -1317,37 +2298,33 @@ magic:
 
 ;***************************************************
 asmemit:
-#if UART == 1
-#ifndef K42
-        btfss   TXIF
-        bra     asmemit
-        movwf   TXREG, A
-#else 
-        banksel PIR3
+#if OPERATOR_UART == 1
+        banksel REG_U1RXIF
         btfss   U1TXIF
         bra     asmemit
         banksel U1TXB
         movwf   U1TXB, B
 #endif 
-#else ; UART == 2
-#ifndef K42
-        btfss   PIR3, TX2IF
-        bra     asmemit
-        banksel TXREG2
-        movwf   TXREG2, B
-#else 
-        banksel PIR1
+#if OPERATOR_UART == 2
+        banksel REG_U2RXIF
         btfss   U2TXIF
         bra     asmemit
         banksel U2TXB
         movwf   U2TXB, B
-#endif 
+#endif
+#if OPERATOR_UART == 3
+        banksel REG_U3RXIF
+        btfss   U3TXIF
+        bra     asmemit
+        banksel U3TXB
+        movwf   U3TXB, B
 #endif
         return
+
 ;***************************************************
 ; N=    c-addr nfa -- flag
 ; N= is only used for finding dictionary entries
-        dw      L_RX1Q
+        dw      L_VER
 L_NEQUAL:
         NF 2,n=
 NEQUAL:
@@ -1563,7 +2540,20 @@ pcfetch0:
 ISTORE_SETUP:
         rcall   LOCKED
 ; check that writes are not to the kernel code
-        rcall   ISTORECHK
+ISTORECHK:
+#if XSTORE == ENABLE
+        tstfsz  BANKMASK(iaddr_up), A
+        bra     ISTOREOK
+#else
+        movlw   HIGH FLASH_HI+1
+        cpfslt  Srw
+        bra     ISTORERR
+#endif
+        movlw   HIGH((dpcode+0x100)&0xff00)
+        cpfslt  Srw
+        bra     ISTOREOK
+        bra     ISTORERR
+ISTOREOK:
 ;check if program memory row is already in buffer
         movf    Sminus, W, A
         movwf   BANKMASK(iaddr_hi), A
@@ -1815,7 +2805,7 @@ L_VALUE:
         NF 5,value
 VALUE:
         call    CREATE
-        call    COMMA
+        rcall   COMMA
         call    XDOES
 VALUE_DOES:
         rcall   DODOES
@@ -1829,7 +2819,7 @@ L_DEFER:
         call    CREATE
         rcall   LIT
         dw      ABORT
-        call    COMMA
+        rcall   COMMA
         call    XDOES
 DEFER_DOES:
         rcall   DODOES
@@ -1866,159 +2856,6 @@ L_TURNKEY:
 TURNKEY:
         call    VALUE_DOES      ; Must be call for IS to work.
         dw      dpSTART+PRAM
-
-;;; *******************************************************
-; PAUSE  --     switch task
-; 188 us @ 2 MHz, 9.4 us @ 40 Mhz  7.8us at 48 Mhz  ( 93 clocks with 2 cells on return stack )
-; save stack to current uarea, link -> up, restore stack
-        dw      L_TURNKEY
-L_PAUSE:
-        NF 5,pause
-PAUSE:
-        clrwdt
-#ifdef USB_CDC
-        movf    BANKMASK(upcurr), W, A
-        sublw   low(u0)           ; check usb only in operator task
-        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
-        btfss   USBEN
-        bra     PAUSE_USB_CDC_END
-        call    USBDriverService
-        movf    ep2icount, W, A
-        bz      PAUSE_USB_CDC_END
-        movf    ep2itmo, W, A
-        subwf   BANKMASK(ms_count), W, A
-        bn      PAUSE_USB_CDC_END
-        rcall   TX0_SEND
-PAUSE_USB_CDC_END:
-#endif
-#ifdef IDLEN
-#if IDLE_MODE == ENABLE
-        movf    BANKMASK(fstatus), W, A  ; idle allowed ?
-        bz      PAUSE_IDLE1
-        movf    BANKMASK(upcurr), W, A
-        sublw   low(u0)        ; Sleep only in operator task
-        bnz     PAUSE000       ; Lowers execution delay when many tasks are running
-#if CPU_LOAD_LED == ENABLE
-        banksel CPU_LOAD_PORT
-#if CPU_LOAD_LED_POLARITY == POSITIVE
-        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
-#else
-        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
-#endif
-#endif
-#if CPU_LOAD == ENABLE
-#ifndef K42
-        bcf     TMR0ON          ; TMR0 Restart in interrupt routine
-#else
-        banksel T0CON0
-        bcf     T0EN            ; TMR0 Restart in interrupt routine
-#endif
-#endif
-        sleep
-PAUSE_IDLE1:
-#if CPU_LOAD_LED == ENABLE
-        banksel CPU_LOAD_PORT
-#if CPU_LOAD_LED_POLARITY == POSITIVE
-        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
-#else
-        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
-#endif
-#endif
-#endif
-#endif
-PAUSE000:
-        ; Set user pointer in Tp, Tbank (FSR1)
-        movf    BANKMASK(upcurr), W, A
-        movwf   Tp
-        movf    (BANKMASK(upcurr)+1), W, A
-        movwf   Tbank
-
-        ;; Switch tasks only if some background tasks are running
-        movf    Tminus, W   ; Point to high(ulink)
-        movf    Tminus, W   ; check ulink
-        bz      PAUSE_RET
-
-        ; Save parameter stack pointer
-        movf    Sp, W
-        movwf   plusR
-        movf    Sbank, W
-        movwf   plusR
-
-        ; Save P pointer
-        movf    BANKMASK(p_lo), W, A
-        movwf   plusR
-        movf    BANKMASK(p_hi), W, A
-        movwf   plusR
-
-        ; Remember the return stack counter
-        movf    STKPTR, W
-        movwf   TBLPTRL           ; 17
-
-        ; Save the return stack 
-pause1:
-        movf    TOSL, W
-        movwf   plusR
-        movf    TOSH, W
-        movwf   plusR
-        decfsz  STKPTR, F
-        bra     pause1            ; 13 2 items
-
-        ; Save the return stack counter
-        movf    TBLPTRL, W
-        movwf   plusR
-
-        ; Move to the next user area
-        movf    Tplus, W
-        movwf   BANKMASK(upcurr), A
-        movf    Tplus, W
-        movwf   (BANKMASK(upcurr)+1), A
-
-        ; Save the return stack pointer to urptr
-        movf    Rp, W
-        movwf   Tplus
-        movf    Rbank, W
-        movwf   Tplus
-
-        ; Put new user pointer in Tp, Tbank
-        movf    BANKMASK(upcurr), W, A
-        movwf   Tp
-        movf    (BANKMASK(upcurr)+1), W, A
-        movwf   Tbank
-
-        ; Set the return stack restore pointer  in Rp
-        movf    Tplus, W
-        movwf   Rp
-        movf    Tminus, W
-        movwf   Rbank
-
-        ; Set the return stack counter
-        movf    Rminus, W
-        movwf   TBLPTRL             ; 22
-
-        ; Restore the return stack
-pause2:
-        push
-        movf    Rminus, W
-        movwf   TOSH
-        movf    Rminus, W
-        movwf   TOSL
-
-        decfsz  TBLPTRL, F
-        bra     pause2              ; 15 2 items
-
-        ; Restore the P pointer
-        movf    Rminus, W
-        movwf   BANKMASK(p_hi), A
-        movf    Rminus, W
-        movwf   BANKMASK(p_lo), A
-
-        ; Restore the parameter stack pointer
-        movf    Rminus, W
-        movwf   Sbank
-        movf    Rminus, W
-        movwf   Sp
-PAUSE_RET:
-        return              ; 23+2+2=27
 
 #ifdef USB_CDC
 ;***************************************************
@@ -2174,51 +3011,51 @@ MCLR_:
 RQ:
         call    CR
 RQ_DIVZERO:
-        btfss   2, 0
+        btfss   BANKMASK(reset2), 0, A
         bra     RQ_STKFUL
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,'M'
-        call    TYPE
+        rcall   TYPE
 RQ_STKFUL:
-        btfss   0, 7
+        btfss   BANKMASK(reset0), 7, A
         bra     RQ_STKUNF
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"O"
-        call    TYPE
+        rcall   TYPE
 RQ_STKUNF:
-        btfss   0, 6, A
+        btfss   BANKMASK(reset0), 6, A
         bra     RQ_BOR
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"U"
-        call    TYPE
+        rcall   TYPE
 RQ_BOR:
-        btfsc   1, 0, A       ; BOR
+        btfsc   BANKMASK(reset1), 0, A       ; BOR
         bra     RQ_POR
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"B"
-        call    TYPE
+        rcall   TYPE
 RQ_POR: 
-        btfsc   1, 1, A       ; POR
+        btfsc   BANKMASK(reset1), 1, A       ; POR
         bra     RQ_TO
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"P"
-        call    TYPE
+        rcall   TYPE
 RQ_TO:
 #ifndef K42
-        btfsc   1, 3, A
+        btfsc   BANKMASK(reset1), 3, A
 #else
-        btfsc   1, 4, A         ; RWDT
+        btfsc   BANKMASK(reset1), 4, A         ; RWDT
 #endif 
         bra     RQ_RI
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"W"
-        call    TYPE
+        rcall   TYPE
 RQ_RI:
-        btfsc   1, 2, A         ; RI
+        btfsc   BANKMASK(reset1), 2, A         ; RI
         bra     RQ_END
-        call    XSQUOTE
+        rcall   XSQUOTE
         db      1,"S"
-        call    TYPE
+        rcall   TYPE
 RQ_END:
         return
 
@@ -2347,7 +3184,7 @@ AS2:
         call    XDOES
 AS2_DOES:
         rcall   DODOES
-        call    ROT
+        rcall   ROT
         rcall   ICCOMMA
         bra     AS3_2
 
@@ -2361,13 +3198,13 @@ AS3:
         call    XDOES
 AS3_DOES:
         rcall   DODOES          ;  f d/b a opcode
-        call    TOR             ;  f d/b A
-        call    ROT             ;  d/b a f
+        rcall   TOR             ;  f d/b A
+        rcall   ROT             ;  d/b a f
         rcall   ICCOMMA         ;  d/b a
-        call    SWOP            ;  a d/b
+        rcall   SWOP            ;  a d/b
         call    TWOSTAR
         rcall   OR_A
-        call    RFROM
+        rcall   RFROM
 AS3_2:  
         rcall   OR_A
         bra     ICCOMMA
@@ -2396,15 +3233,15 @@ BR3:
         call    XDOES
 BR3_DOES:
         rcall   DODOES          ; abs-addr opcode
-        call    TOR             ; abs-addr
+        rcall   TOR             ; abs-addr
         rcall   LIT
         dw      01
         rcall   RSHIFT          ; abs-addr
-        call    DUP
+        rcall   DUP
         rcall   LIT             ; abs-addr abs-addr ff
         dw      0xff
-        call    AND_
-        call    RFROM
+        rcall   AND_
+        rcall   RFROM
         rcall   OR_A
         rcall   ICOMMA
         rcall   LIT
@@ -2540,8 +3377,8 @@ EMPTY:
         call    CMOVE
         goto    DP_TO_RAM
 
-        dw      L_EMPTY
 #ifdef USB_CDC
+        dw      L_EMPTY
 L_USB_ON:
         NF 4,usb+
 USB_ON:
@@ -2588,530 +3425,7 @@ USB_OFF:
 ;*******************************************************
         dw      L_USB_OFF
 #endif
-L_WARM:
-        NF 4,warm
-WARM_:  
-#ifndef USB_CDC
-        reset                   ; Perform a reset, jumps to 0000 and resets stuff
-#endif
-main:
-#ifndef K42
-        movlw   0xf
-        iorwf   ADCON1, F
-#endif 
-        clrf    TBLPTRU
-#ifdef OSCCON
-        movlw   0x70
-        movwf   OSCCON
-#endif
-#ifdef OSCCON1_VALUE
-        banksel OSCCON1
-        movlw   OSCCON1_VALUE    ; HFINTOSC SDIV = 1
-        movwf   OSCCON1, B  ; K83
-        movlw   OSCFRQ_VALUE     ; 4 MHz
-        movwf   OSCFRQ, B
-        movlw   OSCTUNE_VALUE
-        movwf   OSCTUNE, B
-#endif
-
-#ifdef PLL
-#if PLL == ENABLE
-        movlw   0x40
-        movwf   OSCTUNE
-#endif
-#endif
-                              ; Clear ram
-WARM:
-#ifndef K42
-        movf    STKPTR, W
-        movwf   0               ; Save return stack reset reasons
-        movf    RCON, W
-        movwf   1               ; Save reset reasons
-        movf    BANKMASK(fstatus), W, A
-        movwf   2
-        movlw   0x9f
-        movwf   RCON
-#else
-        movf    PCON0, W
-        movwf   0               ; Save reset reasons
-        movwf   1               ; Save reset reasons
-        movf    BANKMASK(fstatus), W, A
-        movwf   2
-        movlw   0x3f            ; Clearing the flags in PCON0
-        movwf   PCON0
-#endif
-        clrf    STKPTR, A       ; Clear return stack
-
-        lfsr    Sptr, appdata   ; Zero ram from 3 upwards
-#ifdef USB_CDC
-        lfsr    Tptr, usb_device_state+1
-WARM_ZERO_1:
-        clrf    Splus
-        movf    Sbank, W
-        subwf   Tbank, W
-        bnz     WARM_ZERO_1
-WARM_ZERO_3:
-        clrf    Tplus
-        movf    Tbank, W
-        sublw   0x0f
-        bnz     WARM_ZERO_3
-#else
-WARM_ZERO_1:
-        clrf    Splus
-        movf    Sbank, W
-        sublw   0x0f
-        bnz     WARM_ZERO_1
-#endif
-        setf    BANKMASK(ibase_hi), A   ; Mark flash buffer empty
-
-        lfsr    Sptr, (usbuf-1)         ; Initalise Parameter stack
-        lfsr    Rptr, urbuf
-
-        banksel PIE1            
-#ifdef PIE0                     ; Disable all peripheral interrupts
-        clrf    PIE0, B
-#endif
-        clrf    PIE1, B    ; Disable all peripheral interrupts
-        clrf    PIE2, B
-#ifdef PIE3
-        clrf    PIE3, B
-#endif
-#ifdef PIE4
-        clrf    PIE4, B
-#endif
-#ifdef PIE5
-        clrf    PIE5, B
-#endif
-#ifdef PIE6
-        clrf    PIE6, B
-#endif
-#ifdef PIE7
-        clrf    PIE7, B
-#endif 
-#ifdef PIE8
-        clrf    PIE8, B
-#endif
-#ifdef PIE9
-        clrf    PIE9, B
-#endif
-#ifdef PIE10
-        clrf    PIE10, B
-#endif
-        banksel TOSU   ; SFR bank
-
-#ifndef K42
-#if UART == 1 // ----------------------------------------------
-#ifdef BRG16
-        bsf     BRG16
-        movlw   high(spbrgvalx4)
-        movwf   SPBRGH, A
-        movlw   low(spbrgvalx4)
-#else
-        movlw   spbrgval
-#endif
-        movwf   SPBRG, A
-; TX enable
-        movlw   00100100B
-        movwf   TXSTA, A
-#ifdef USB_CDC
-        movlw   00000000B    ; Reset the UART since
-        movwf   RCSTA, A     ; USB warm start does not reset the chip
-#endif
-; RX enable
-        movlw   10010000B
-        movwf   RCSTA, A
-        bsf     RCIE
-        bcf     RCIP
-#ifdef ANSELH
-#ifdef ANS11
-        bcf     ANS11         ; Enable digital RB5 for RX
-#endif
-#endif
-#ifdef ANSELC
-#ifdef ANSC7
-        bcf     ANSC7         ; Enable digital RC7 for RX
-#endif
-#endif
-#else  ; UART == 2 ---------------------------------------
-#ifdef BRG16
-        bsf     BAUDCON2, BRG16
-        movlw   high(spbrgvalx4)
-        movwf   SPBRGH2
-        movlw   spbrgvalx4
-#else
-        movlw   spbrgval
-#endif
-        movwf   SPBRG2, B
-; TX enable
-        movlw   b'00100100'
-        movwf   TXSTA2, B
-; RX enable
-        movlw   b'10010000'
-        movwf   RCSTA2, B
-        bsf     PIE3, RC2IE
-        bcf     IPR3, RC2IP
-
-        bcf     ANCON2, ANSEL18, B ; Enable digital RG2 for RX2 (18F87K22 family)
-                                        ; Other values may be needed depending on chip
-#endif
-#else  ; K42 K83 Q41 Q43
-#if UART == 1 
-; PPS configure pins for RX and TX
-        banksel RX_ANSEL
-        bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
-        bcf     TX_ANSEL, TX_BIT, B    ; disable analogue on PORTx so TX can function
-        bcf     TX_TRIS, TX_BIT
-        bsf     TX_LAT, TX_BIT
-; Unlock the PPS
-        rcall   PPS_UNLOCK
-; Set the pins
-        movlw   RX_PPS 
-        movwf   U1RXPPS, B
-        
-        clrf    U1CTSPPS, B
-
-        movlw   TX_CODE
-        movwf   TX_PPS, B
-
-; Re-lock the PPS
-        rcall   PPS_LOCK
-
-; Set the Baud Rate
-        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
-        banksel U1BRGL
-        movwf   U1BRGL, B
-        movlw   high(spbrgvalx4)
-        movwf   U1BRGH, B
-
-; TX enable
-        movlw   10110000B       ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
-                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
-        movwf   U1CON0, B
-        bsf     U1RUNOVF
-        bsf     U1ON            ; turn on TX
-
-; RX enable
-        banksel REG_U1RXIE
-        bsf     U1RXIE              ; enable RX interupt
-        banksel REG_U1RXIP
-        bcf     U1RXIP              ; low priority
-        bsf     RX_TRIS, RX_BIT, A  ; configure XY as an input
-
-#else  ; UART == 2 ---------------------------------------
-
-; PPS configure pins for RX and TX
-        banksel RX_ANSEL
-        bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
-        banksel TX_ANSEL
-        bcf     TX_ANSEL, TX_BIT, B    ; disable analogue on PORTx so TX can function
-; Unlock the PPS
-        rcall   PPS_UNLOCK
-; Set the pins
-        movlw   RX2_PPS
-        movwf   U2RXPPS, B        ; configure the RX pin to XY
-        
-        banksel U2CTSPPS
-        clrf    U2CTSPPS, B        ; clear so always disabled
-        
-        banksel TX_PPS          ; configure TX pin to XY
-        movlw   TX2_CODE
-        movwf   TX_PPS, B
-
-; Re-lock the PPS
-        rcall   PPS_LOCK
-
-; Set the Baud Rate
-        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
-        banksel U2BRGL
-        movwf   U2BRGL, B
-        movlw   high(spbrgvalx4)
-        movwf   U2BRGH, B
-
-; TX enable
-        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
-                                ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
-        movwf   U2CON0, B
-        bsf     U2RUNOVF
-        bsf     U2ON            ; turn on TX
-; RX enable
-        banksel REG_U2RXIE
-        bsf     U2RXIE              ; enable RX interupt
-        banksel REG_U2RXIP
-        bcf     U2RXIP              ; low priority
-
-        banksel RX_TRIS
-        bsf     RX_TRIS, RX_BIT, B ; configure C7 as an input
-#endif
-#endif
-#ifdef IDLEN
-#if IDLE_MODE == ENABLE
-#if CPU_LOAD_LED == ENABLE
-        banksel CPU_LOAD_TRIS
-        bcf     CPU_LOAD_TRIS, CPU_LOAD_BIT, B
-#endif
-#ifndef K42
-        bsf     IDLEN           ; Only IDLE mode supported
-#else
-        banksel CPUDOZE
-        bsf     IDLEN           ; Only IDLE mode supported  
-#endif  
-#endif
-#endif
-
-#if CPU_LOAD == ENABLE
-#ifndef K42
-        movlw   08                  ; TMR0 used for CPU_LOAD
-        movwf   T0CON               ; prescale = 1
-        bsf     TMR0IE
-        bcf     TMR0IP
-#else
-        banksel T0CON0
-        bsf     T0MD16              ; 16 bit timer
-        movlw   0x40                ; TMR0 used for CPU_LOAD
-        movwf   T0CON1, B           ; Instruction clock 1:1 
-        banksel PIE3 
-        bsf     TMR0IE
-        banksel IPR3
-        bcf     TMR0IP              ; Low priority
-#endif
-#endif
-        movlw   low(tmr1ms_val)
-        movwf   BANKMASK(tickval), A
-        movlw   high(tmr1ms_val)
-        movwf   BANKMASK(tickval)+1, A
-#if MS_TMR == 1                 // Timer 1 for 1 ms system tick
-#ifndef K42
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T1CON
-        bsf     TMR1IE
-        bcf     TMR1IP
-#else
-        banksel T1CON
-        movlw   01              ; fosc/4
-        movwf   T1CLK, B
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T1CON, B
-#ifndef Q43
-        banksel PIE4
-#else
-        banksel PIE3
-#endif
-        bsf     TMR1IE
-#ifndef Q43
-        banksel IPR4
-#else
-        banksel IPR3
-#endif
-        bcf     TMR1IP
-#endif
-#endif
-#if MS_TMR == 2                 // Timer 2 for 1 ms system tick
-#ifndef K42
-        movlw   0x7d            ; Prescale = 4, Postscale = 16
-        movwf   T2CON
-        movlw   tmr2ms_val
-        movwf   PR2
-        bsf     TMR2IE
-        bcf     TMR2IP
-#else
-        movlw   01
-        movwf   T2CLKCON
-        movlw   tmr2ms_val
-        movwf   T2PR, A
-        movlw   0xaf         ; Prescale = 4, Postscale = 16
-        movwf   T2CON
-        banksel PIE4
-        bsf     TMR2IE
-        bcf     TMR2IP
-#endif
-#endif
-#if MS_TMR == 3                 // Timer 3 for 1 ms system tick
-#ifndef K42
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T3CON
-        bsf     TMR3IE
-        bcf     TMR3IP
-#else
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T3CON
-        movlw   01              ; fosc/4
-        movwf   T3CLK
-        banksel PIE6
-        bsf     TMR3IE
-        bcf     TMR3IP
-#endif
-#endif
-#if MS_TMR == 4                 // Timer 4 for 1 ms system tick
-#ifndef K42
-        banksel T4CON
-        movlw   0x7d            ; Prescale = 4, Postscale = 16
-        movwf   T4CON, B
-        movlw   tmr2ms_val
-        movwf   PR4, B
-        bsf     TMR4IE
-        bcf     TMR4IP
-#else
-        movlw   01
-        movwf   T4CLKCON
-        movlw   tmr2ms_val
-        movwf   T4PR, A
-        movlw   0xaf         ; Prescale = 4, Postscale = 16
-        movwf   T4CON
-        banksel PIE7
-        bsf     TMR4IE
-        bcf     TMR4IP
-#endif
-#endif
-#if MS_TMR == 5                 // Timer 5 for 1 ms system tick
-#ifndef K42
-        banksel T5CON
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T5CON, B
-        bsf     TMR5IE
-        bcf     TMR5IP
-#else
-        banksel T5CON
-        movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T5CON, B
-        movlw   01              ; fosc/4
-        movwf   T5CLK
-        banksel PIE8
-        bsf     TMR5IE
-        bcf     TMR5IP
-#endif
-#endif
-#if MS_TMR == 6                 // Timer 6 for 1 ms system tick
-#ifndef K42
-        banksel T6CON
-        movlw   7d              ; Prescale = 4, Postscale = 16
-        movwf   T6CON, B
-        movlw   tmr2ms_val
-        movwf   PR6, B
-        bsf     TMR6IE
-        bcf     TMR6IP
-#else
-        movlw   01
-        movwf   T6CLKCON
-        movlw   tmr2ms_val
-        movwf   T6PR, A
-        movlw   0xaf          ; Prescale = 4, Postscale = 16
-        movwf   T6CON
-        banksel PIE9
-        bsf     TMR6IE
-        bcf     TMR6IP
-#endif
-#endif
-
-        movlw   low(u0+PRAM)        ; UP
-        movwf   BANKMASK(upcurr), A
-        movlw   high(u0+PRAM)
-        movwf   BANKMASK(upcurr)+1, A
-
-        rcall   LIT
-        dw      WARMLIT
-        rcall   LIT
-        dw      userarea+PRAM
-        rcall   LIT
-        dw      warmlitsize
-        call    CMOVE
-        rcall   FRAM
-        clrf    INTCON
-#ifdef K42
-        bsf     INTCON, INTCON0_IPEN_POSN   ; Enable interrupt priority
-#endif
-        bsf     GIEL
-        bsf     GIEH
-
-        rcall   LIT
-        dw      dp_start
-        rcall   FETCH
-        call    TRUE_
-        call    EQUAL
-        call    ZEROSENSE
-        bz      WARM_2
-        rcall   LIT
-        dw      20
-        call    MS        ; Write to EEPROM fails with a shorter delay, why ?
-        rcall   EMPTY
-WARM_2:
-        call    DP_TO_RAM
-
-#if FC_TYPE_SW == ENABLE
-        bsf     BANKMASK(FLAGS2), ixoff, A ; Force sending of XON in RX1?
-#endif
-#ifdef HW_FC_CTS_TRIS
-        bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN
-#endif
-#ifdef USB_CDC
-        rcall   USB_ON
-#endif
-        rcall   RQ
-        rcall   VER
-        
-        rcall   TURNKEY   ; 0xca
-        call    hexemit
-        call    ZEROSENSE
-        bz      STARTQ2
-        rcall   XSQUOTE
-        db      3
-        STRING  ESC
-        rcall   TYPE
-        rcall   LIT
-        dw      TURNKEY_DELAY
-        call    MS
-        rcall   KEYQ
-        call    ZEROSENSE
-        bz      STARTQ1
-        rcall   KEY
-        rcall   LIT
-        dw      0x1b
-        rcall   XOR ; NOTEQUAL
-        call    ZEROSENSE
-        bz      STARTQ2
-STARTQ1:
-        goto    ABORT
-        rcall   TURNKEY
-        rcall   DUP
-        rcall   SPACE_
-        call    CFATONFA
-        call    DOTID
-        rcall   EXECUTE
-STARTQ2:
-        goto    ABORT
-
 ;*******************************************************
-        dw      L_WARM
-L_VER:
-        NF 3,ver
-VER:
-        rcall   XSQUOTE
-         ;        12345678901234 +   11  + 12345678901234567890
-        db 38,' '                ; 1
-        STRING  FlashForth       ; 10
-        db      ' ','5',' '      ; 3
-        STRING PICTYPE           ; 11
-        db      ' '              ; 1
-        STRING 26.12.2021        ; 10
-        db    0xa,0xd            ; 2
-        align 2
-        nop
-        nop
-        goto    TYPE
-;*******************************************************
-ISTORECHK:
-#if XSTORE == ENABLE
-        tstfsz  BANKMASK(iaddr_up), A
-        return
-#else
-        movlw   HIGH FLASH_HI+1
-        cpfslt  Srw
-        bra     ISTORERR
-#endif
-        movlw   HIGH((dpcode+0x100)&0xff00)
-        cpfslt  Srw
-        return
-        bra     ISTORERR
-
 ;**********************************************************             
         NF 2,or
 OR_A:   
@@ -3132,7 +3446,11 @@ check_sp:
         return
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
-        dw      L_VER
+#ifdef USB_CDC
+        dw      L_USB_OFF
+#else
+        dw      L_EMPTY
+#endif
 L_EMIT:
         NF 4,emit
 EMIT:
@@ -3284,7 +3602,7 @@ DODOES:
         movf    TOSL, W
         movwf   TBLPTRL
         movf    TOSH, W
-        rcall   FETCHLIT
+        call    FETCHLIT
         movf    PCLATH, W
         movwf   TOSH
         movf    Tp, W
@@ -3430,7 +3748,7 @@ CFETCH:
         bra     CFETCH1
         movlw   high(PEEPROM)
         cpfslt  Srw
-        bra     ECFETCH
+        bra     ECFETCH_
         bra     ICFETCH_
 CFETCH1:
         movf    Sminus, W   
@@ -3444,6 +3762,8 @@ CFETCH2:
         return
 ICFETCH_:
         goto    ICFETCH
+ECFETCH_:
+        goto    ECFETCH
 
 ;   RPEMPTY     -- EMPTY THE RETURN STACK       
 ;   empty the return stack and jump to the caller
@@ -3466,10 +3786,12 @@ ISTORERR:
 ISTORERR2:
         call    DOTS
         rcall   XSQUOTE
-        db      3
+        db      4
         STRING  AD?
+        db      0x17
+        align   2
         rcall   TYPE
-        bra     STARTQ2        ; goto    ABORT
+        goto    STARTQ2        ; goto    ABORT
 
 ;   x@       addrl addru -- x    fetch cell from flash
         dw      L_CFETCH
@@ -7023,7 +7345,7 @@ MEMQ:
         goto    AND_
 
 #ifdef USB_CDC
-#include "usbcdc.S"
+#include "ff-usbcdc.S"
 #endif
 hexemit:
         swapf Srw, W, A
