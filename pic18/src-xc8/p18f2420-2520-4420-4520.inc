@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18f2458-2553-4458-4553.cfg                       *
-;    Date:          08.09.2019                                        *
+;    Filename:      p18f2420-2520-4420-4520.inc                       *
+;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -12,43 +12,31 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
-;;; Define USB_CDC if you want to use USB serial emulation
-;;; If you use CDC, you must also compile usbcdc.asm
-; #define USB_CDC
-#define USB_SPEED 1  ; 0 = low speed, 1 = high speed
-#define USB_BANK 4
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
 
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
-#if CONFIG_RESET == 0x0000
-        config PLLDIV = 3           ; 12 MHz XT xtal
-        config CPUDIV = OSC3_PLL4   ; 24 MHz cpu clock
-        config USBDIV = 2           ; USB clock from 96 MHZ PLL divided by 2
-        config FOSC = HSPLL_HS
+
+        config OSC = INTIO7 ; HS
         config FCMEN = OFF
         config IESO = OFF
         config PWRT = ON
-        config BOR = ON
-        config BORV = 3
-#ifdef USB_CDC
-        config VREGEN = ON
-#else
-        config VREGEN = OFF
-#endif
-        config WDT = OFF
-        config WDTPS = 128
+        config BOREN = SBORDIS
+        config WDT = ON
+        config WDTPS = 256
         config MCLRE = ON
         config LPT1OSC = OFF
         config PBADEN = OFF
-        config CCP2MX = ON
+        config CCP2MX = PORTC
         config STVREN = ON
         config LVP = OFF
         config XINST = OFF
         config DEBUG = OFF
-        config WRT1 = OFF
-        config WRT0 = OFF
-        config WRTB = OFF
-        config WRTC = OFF
-#endif
+        config CP0 = ON
+        config CPB = ON
+        config WRTC = ON
 
-
+#define REG_U1RXIF PIR1
+#define REG_U1RXIE PIE1 
+#define REG_U1RXIP IPR1

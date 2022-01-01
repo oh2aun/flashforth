@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18f24k50-25k50-45k50.cfg                         *
-;    Date:          21.11.2021                                        *
+;    Filename:      p18f24k50-25k50-45k50.inc                         *
+;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    MCU            18f24k50 18f25k50 18f45k50                        *
 ;    Copyright:     Mikael Nordman                                    *
@@ -13,21 +13,23 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
+
 ;;; Define USB_CDC if you want to use USB serial emulation
 ;;; If you use CDC, you must also compile usbcdc.asm
 ;;; Low speed USB CDC is not standard, but it works on linux.
 ;;; Windows does not support a low speed USB CDC device.
 
-#define USB_CDC
+;#define USB_CDC
 #define USB_SPEED 1  // 0 = low speed, 1 = high speed
 #define USB_BANK 4
-#define INTOSC  0    // 0 = external oscillator  1 = internal oscillator
+#define INTOSC  1    // 0 = external oscillator  1 = internal oscillator
 
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 ; See datasheet for USB clock configuration rules.
 
-#if CONFIG_RESET == 0x0000
 #ifdef USB_CDC
 #if INTOSC == 0                     // External oscillator
         config FOSC = HSH           ; 12 MHz HS Xtal oscillator
@@ -48,7 +50,7 @@
 #endif
 #endif
 #else                               // NOT USB_CDC
-        config FOSC = INTOSCIO      ; Internal oscillator
+        config FOSC = INTOSCCLKO      ; Internal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
         config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
 #endif
@@ -66,5 +68,7 @@
         config STVREN = ON
         config LVP = OFF
         config XINST = OFF
-#endif
 
+#define REG_U1RXIF PIR1
+#define REG_U1RXIE PIE1 
+#define REG_U1RXIP IPR1

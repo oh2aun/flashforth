@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18fxxq43.cfg                                   *
-;    Date:          26.12.2021                                        *
-;    FF Version:    5                                                 *
+;    Filename:      p18fxxk42.inc                                     *
+;    Date:          01.01.2022                                        *
+;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -12,10 +12,12 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
+
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-#if CONFIG_RESET == 0x0000
         ;CONFIG  FEXTOSC = XT ; OFF         
         CONFIG  RSTOSC = HFINTOSC_64MHZ
         CONFIG  CLKOUTEN = OFF        
@@ -48,21 +50,51 @@
         CONFIG  WRTSAF = OFF          
         CONFIG  LVP = ON              
         CONFIG  CP = OFF              
-#endif
 
 #define K42
-#define Q43
 
-;;; Define UART pins for PPS
-; Choose UART TX pin
-#define TX_TRIS  TRISC
-#define TX_ANSEL ANSELC
-#define TX_BIT   6
-#define TX_PPS   RC6PPS 
-#define TX_LAT   LATC
+;;; Define UART 1 pins for PPS
+; Define UART TX pin
+#define TX_TRIS  TRISB
+#define TX_ANSEL ANSELB
+#define TX_BIT   4
+#define TX_PPS   RB4PPS 
+#define TX_LAT   LATB
+#define TX_CODE  0x10
 
-; Choose UART RX pin
-#define RX_TRIS  TRISC
-#define RX_ANSEL ANSELC
+; Define UART TX pin
+#define RX_TRIS  TRISB
+#define RX_ANSEL ANSELB
 #define RX_BIT   7
-#define RX_PPS   00010111B // from datasheet
+#define RX_PPS   00001111B // pin: bits0-2, port: bits3-5
+
+;;; Define UART 2 pins for PPS
+
+; Define UART2 TX pin
+#if WANT_UART2 == ENABLE
+#define TX2_TRIS  TRISB
+#define TX2_ANSEL ANSELB
+#define TX2_BIT   6
+#define TX2_PPS   RB6PPS 
+#define TX2_LAT   LATB
+#define TX2_CODE  0x13
+
+; Define UART2 RX pin
+#define RX2_TRIS  TRISB
+#define RX2_ANSEL ANSELB
+#define RX2_BIT   5
+#define RX2_PPS   00001101B  // pin: bits0-2, port: bits3-5
+#endif
+
+#define REG_U1RXIF PIR3
+#define REG_U1RXIE PIE3 
+#define REG_U1RXIP IPR3 
+#define REG_U2RXIF PIR6
+#define REG_U2RXIE PIE6 
+#define REG_U2RXIP IPR6 
+#define REG_TMR1IF PIR4
+#define REG_TMR2IF PIR4
+#define REG_TMR3IF PIR6
+#define REG_TMR4IF PIR7
+#define REG_TMR5IF PIR8
+#define REG_TMR6IF PIR9

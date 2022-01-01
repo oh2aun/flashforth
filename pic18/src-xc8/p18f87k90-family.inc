@@ -1,42 +1,46 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18f2525-2620-4525-4620.cfg                       *
-;    Date:          17.03.2014                                        *
+;    Filename:      p18f87k90-family.inc                              *
+;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
-;    Modified:                                                        *
+;    NOTE: Only 65k90, 66k90, 85k90, 86k90 supported                  *
 ;**********************************************************************
 ;    FlashForth is licensed acording to the GNU General Public License*
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
+
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-
-#if CONFIG_RESET == 0x0000
-        config OSC = HS; PLL
+        config FOSC = INTIO2
+        config PLLCFG = OFF
         config FCMEN = OFF
         config IESO = OFF
-        config PWRT = ON
-        config BOREN = SBORDIS
+        config PWRTEN = ON
+        config BOREN = OFF
         config BORV = 3
-        config WDT = ON
-        config WDTPS = 1024
-        config MCLRE = ON
-        config LPT1OSC = OFF
-        config PBADEN = OFF
+        config WDTEN = OFF
+        config WDTPS = 256
         config CCP2MX = PORTC
-        config STVREN = ON
-        config LVP = OFF
+        config MCLRE = ON
         config XINST = OFF
         config DEBUG = OFF
-        config WRT0 = OFF
-        config WRTB = ON
+        config CP0 = OFF
+        config CPB = OFF
         config WRTC = ON
-#endif
 
-;;; Activate 4xPLL from SW for INTOSC modes.
+;;; Activate 4xPLL from SW 
 #define PLL DISABLE	         ; ENABLE or DISABLE
+
+#define REG_U1RXIF PIR1
+#define REG_U1RXIE PIE1 
+#define REG_U1RXIP IPR1
+#define REG_U2RXIF PIR3
+#define REG_U2RXIE PIE3 
+#define REG_U2RXIP IPR3

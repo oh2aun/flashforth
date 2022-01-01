@@ -1,6 +1,6 @@
 //**********************************************************************
 //                                                                     *
-//    Filename:      p18f-main.cfg                                     *
+//    Filename:      p18f-main.inc                                     *
 //    Date:          1.1.2022                                          *
 //    FF Version:    5.0                                               *
 //    Copyright:     Mikael Nordman                                    *
@@ -12,27 +12,25 @@
 //**********************************************************************
 // FlashForth processor main configuration file
 
+; Use PIC-AS global options for all variants except the pic18fxxQyy chips:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
+
+; Use PIC-AS global options for the pic18fxxQyy chips:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
+
 #define ENABLE 1
 #define DISABLE 0
 #define POSITIVE 1
 #define NEGATIVE 0
 
-#define CONFIG_RESET     0x0000  // No bootloader, application start at 0x0000
-                                 // Link with FF_0000.lkr or FF_USB_0000.lkr
-//#define CONFIG_RESET     0x0800  // Bootloader, application start at 0x0800
-                                 // Link with FF_0800.lkr or FF_USB_0800.lkr
-//#define CONFIG_RESET     0x0C00  // Bootloader, application start at 0x0C00
-                                  // Link with FF_0C00.lkr or FF_USB_0C00.lkr
-
 //  Specify the cpu clock frequency here
 //  It must be aligned with the processor specific configuration bits 
-//  In case of bootloader, it is the boot loader configuration that
-//  determines the clock frequency.
+clock   equ 48000000  // Hz
 
-clock   equ 64000000  // Hz
-
-// Specify RS-232 the baud rate for UART1 (TX1, RX1)
+// Specify the baud rate for the UARTs
 baud    equ 38400
+baud2   equ 38400
+baud3   equ 38400
 
 // The default number base
 #define DEFAULT_BASE 16
@@ -41,7 +39,6 @@ baud    equ 38400
 // Timer 1 2 3 4 5 6 can be used
 #define MS_TMR 1
 // TMR 2 4 6 gives exactly 1 ms ticks only with clocks like 4096, 8192, 16384 KHz. N*256KHz.
-
 
 // System tick time in milliseconds.
 // TIMERS 1, 3, 5
@@ -67,8 +64,8 @@ baud    equ 38400
 
 // CPU load indicator led definitions. Needs IDLE_MODE.
 #define CPU_LOAD_LED ENABLE       // ENABLE or DISABLE
-#define CPU_LOAD_TRIS TRISA
-#define CPU_LOAD_PORT LATA
+#define CPU_LOAD_TRIS TRISC
+#define CPU_LOAD_PORT LATC
 #define CPU_LOAD_BIT 0
 #define CPU_LOAD_LED_POLARITY POSITIVE   // POSITIVE or NEGATIVE
 
@@ -77,13 +74,13 @@ baud    equ 38400
 // connection and reset the turnkey
 #define TURNKEY_DELAY 2000  // Milliseconds
 
-// Define  if extra UARTs are included
-#define WANT_UART2 kjkjhENABLE
+// Define if extra UARTs are included
+#define WANT_UART2 ENABLE
 #define WANT_UART3 ENABLE
 
 // Define if USB or which UART is used for the operator task
 // 0=USB 1=UART1 2=UART2 3=UART3
-#define OPERATOR_UART 3
+#define OPERATOR_UART 1
 
 // UART buffer size. Must be a power of 2. max size 128 bytes.
 // The maximum RX_BUF_SIZE is d'64'(32 for usb pic14k50)
@@ -92,36 +89,26 @@ baud    equ 38400
 #define RX2_BUF_SIZE 32
 #define RX3_BUF_SIZE 32
 
-
+// Flow control for the operator UART interface
 // Define the RX buffer fill level for XOFF or
 // Define the RX buffer fill level for CTS off
 // Smaller fill levels for RX_OFF_FILL may be needed for high latency flow control
 RX_OFF_FILL     equ 4
 
 // Flow control defintions ********************************
+#define NONE 0
+#define XONXOFF 1
+#define CTS 2
 
-// Use SW flow control XON/XOFF as default
-#define FC_TYPE_SW ENABLE    // ENABLE OR DISABLE
+#define FC_TYPE XONXOFF    // XONXOFF or CTS or NONE
 
 // If SW flow control is disabled, HW flow control is enabled.
-#if FC_TYPE_SW == DISABLE
+#if FC_TYPE == CTS
 // Clear To Send to the computer, DB9 PIN 8
 #define HW_FC_CTS_PORT LATC
 #define HW_FC_CTS_TRIS TRISC
 #define HW_FC_CTS_PIN  5
-
-// Define if also RTS flow control should be included
-// RTS lets the terminal control if FF is allowed to transmit data
-// #define HW_FC_RTS // Comment out to leave out RTS
-
-// Request To Send from the computer, DB9 PIN 7.
-#ifdef HW_FC_RTS
-#define HW_FC_RTS_PORT PORTC
-#define HW_FC_RTS_TRIS TRISC
-#define HW_FC_RTS_PIN  4
-#endif  // HW_FC_RTS
 #endif
-
 // The PIC18 has a separate HW return stack for call/return (= not in ram).
 // A ram buffer is used for R> >R and for saving the HW return stack in a task switch.
 // If you nest PAUSE shallower, the return stack size save area can be decreased.
@@ -132,7 +119,7 @@ RX_OFF_FILL     equ 4
 // Each nesting of DO..LOOP uses 2 cells of ram.
 #define RETURN_STACK_SAVE_SIZE 64    // 32 cells. Can be decreased to save memory
 #define PARAMETER_STACK_SIZE 56      // 28 cells parameter stack
-#define TIB_SIZE 76                  // 76 chars tib size 
+#define TIB_SIZE 80                  // 80 chars tib size 
 #define HOLD_SIZE 10                 // 10 chars hold area
 
 // Storage space for OPERATOR uservariables 2 and upwards
@@ -143,19 +130,22 @@ RX_OFF_FILL     equ 4
 #define PARAMETER_STACK_SIZE_IRQ 10
 
 // X! and X@
-#define XSTORE ENABLE
+#define XSTORE DISABLE
 
 
 // Calculate the baud rate control value
 spbrgval    equ ((clock/baud)/16) - 1
 spbrgvalx4  equ ((clock/baud)/4) - 1
+spbrg2val    equ ((clock/baud2)/16) - 1
+spbrg2valx4  equ ((clock/baud2)/4) - 1
+spbrg3valx4  equ ((clock/baud3)/4) - 1
 
 // Constant for the MS word.
 tmr2prescaler   equ 4
 tmr2postscaler  equ 16
-tmr2ms_val      equ ((clock/4000/tmr2prescaler/tmr2postscaler)*TICK_TIME)-1
+tmr2ms_val      equ (((clock/4000/tmr2prescaler/tmr2postscaler)*TICK_TIME)-1)
 tmr1prescaler   equ 1
-tmr1ms_val      equ (clock/4000/tmr1prescaler)*TICK_TIME
+tmr1ms_val      equ ((clock/4000/tmr1prescaler)*TICK_TIME)
 
 // Calculate the program memory write delay
 write_delay     equ clock / 1000000  + 1

@@ -28,9 +28,9 @@
 ;; in the header of this file, and in the identification
 ;; displayed by the word VER.
 ;;**********************************************************************
-#include "p18fxxxx.cfg"
+#include "p18fxxxx.inc"
 #include <xc.inc>
-#include "p18f-main.cfg"
+#include "p18f-main.inc"
 
 ; Select the operator UART
 #ifdef USB_CDC 
@@ -269,7 +269,6 @@ fstatus:  ds 1       ;; if zero, cpu idle is allowed
 irq_v:    ds 2       ;; Interrupt vector
 areg:     ds 1       ;; A register
 aregh:    ds 1
-tickval:  ds 2       ;; timer value for system tick
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 load_acc: ds 1       ;;
@@ -361,7 +360,7 @@ irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
 RXbuf:       ds RX_BUF_SIZE
 RXbufmask   equ RX_BUF_SIZE - 1
 
-;; The UART interface interrupt buffer areas
+;; The flash buffer area
 #ifdef USB_CDC
 #if USB_BANK == 4
 psect udata_bank7
@@ -369,13 +368,13 @@ psect udata_bank7
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #endif
 #else
-#ifndef Q43
+#ifndef Qxx
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #else
 psect udata_bank21
 #endif
 #endif
-flash_buf:   ds 0x2
+flash_buf:   ds flash_block_size
 
 ;; FORTH memry allocation cache variables
 #ifdef USB_CDC
@@ -522,61 +521,13 @@ irq_t0_end:
 #endif
 #endif
 #endif
-;; ****** LOW PRIORITY INTERRUPT    
 ;; The tick counter interrupt and UART interrupt must be marked as low priority    
 irq_low:
 ;;;; 1 millisecond tick counter
 irq_ms:
-#ifndef K42
-#if MS_TMR == 1  
-        btfss   TMR1IF
-        bra     irq_ms_end
-        movf    BANKMASK(tickval), W, A   ;;   low(tmr1ms_val)
-        subwf   TMR1L, F, A
-        movf    BANKMASK(tickval)+1, W, A ;;   high(tmr1ms_val)
-        subwfb  TMR1H, F, A
-        bcf     TMR1IF
-#endif
-#if MS_TMR == 2
-        btfss   TMR2IF
-        bra     irq_ms_end
-        bcf     TMR2IF
-#endif
-#if MS_TMR == 3
-        btfss   TMR3IF
-        bra     irq_ms_end
-        movlw   low(tmr1ms_val)
-        subwf   TMR3L, F, A
-        movlw   high(tmr1ms_val)
-        subwfb  TMR3H, F, A
-        bcf     TMR3IF
-#endif
-#if MS_TMR == 4
-        btfss   TMR4IF
-        bra     irq_ms_end
-        bcf     TMR4IF
-#endif
-#if MS_TMR == 5
-        btfss   TMR5IF
-        bra     irq_ms_end
-        banksel T5CON
-        movlw   low(tmr1ms_val)
-        subwf   TMR5L, F, B
-        movlw   high(tmr1ms_val)
-        subwfb  TMR5H, F, B
-        bcf     TMR5IF
-#endif
-#if MS_TMR == 6
-        btfss   TMR6IF
-        bra     irq_ms_end
-        bcf     TMR6IF
-#endif
-#else // K42 K83
 #if MS_TMR == 1
-#ifndef Q43
-        banksel PIR4
-#else
-        banksel PIR3
+#ifdef REG_TMR1IF
+        banksel REG_TMR1IF
 #endif
         btfss   TMR1IF
         bra     irq_ms_end
@@ -588,43 +539,54 @@ irq_ms:
         subwfb  TMR1H, F, B
 #endif
 #if MS_TMR == 2
-        banksel PIR4
+#ifdef REG_TMR2IF
+        banksel REG_TMR2IF
+#endif
         btfss   TMR2IF
         bra     irq_ms_end
         bcf     TMR2IF
 #endif
 #if MS_TMR == 3
-        banksel PIR6
+#ifdef REG_TMR3IF
+        banksel REG_TMR3IF
+#endif
         btfss   TMR3IF
         bra     irq_ms_end
-        movlw   low(tmr1ms_val)
-        subwf   TMR3L, F, A
-        movlw   high(tmr1ms_val)
-        subwfb  TMR3H, F, A
         bcf     TMR3IF
+        banksel TMR3L
+        movlw   low(tmr1ms_val)
+        subwf   TMR3L, F, B
+        movlw   high(tmr1ms_val)
+        subwfb  TMR3H, F, B
 #endif
 #if MS_TMR == 4
-        banksel PIR7
+#ifdef REG_TMR4IF
+        banksel REG_TMR4IF
+#endif
         btfss   TMR4IF
         bra     irq_ms_end
-        bcf     TMR4IF        
+        bcf     TMR4IF
 #endif
 #if MS_TMR == 5
-        banksel PIR8
+#ifdef REG_TMR5IF
+        banksel REG_TMR5IF
+#endif
         btfss   TMR5IF
         bra     irq_ms_end
-        movlw   low(tmr1ms_val)
-        subwf   TMR5L, F, A
-        movlw   high(tmr1ms_val)
-        subwfb  TMR5H, F, A
         bcf     TMR5IF
+        banksel TMR5L
+        movlw   low(tmr1ms_val)
+        subwf   TMR5L, F, B
+        movlw   high(tmr1ms_val)
+        subwfb  TMR5H, F, B
 #endif
 #if MS_TMR == 6
-        banksel PIR9
+#ifdef REG_TMR6IF
+        banksel REG_TMR6IF
+#endif
         btfss   TMR6IF
         bra     irq_ms_end
-        bcf     TMR6IF        
-#endif
+        bcf     TMR6IF
 #endif
         movlw   TICK_TIME
         addwf   BANKMASK(ms_count), F, A
@@ -670,19 +632,20 @@ irq_async_rx1:
 #endif
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
         movf    BANKMASK(RXcnt), W, A
+#if OPERATOR_UART == 1       
+#if FC_TYPE == XONXOFF
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx1_2
-        
-#if FC_TYPE_SW == ENABLE
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
-irq_async_rx1_1:
-#ifdef  HW_FC_CTS_PORT
-        btfss   BANKMASK(FLAGS2), fFC
-        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#if FC_TYPE == CTS
+        addlw   0xff - RX_OFF_FILL
+        bnc     irq_async_rx1_2
+        btfss   BANKMASK(FLAGS2), fFC, A
+        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
-
+#endif
 irq_async_rx1_2:
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXhead), W, A
@@ -697,15 +660,17 @@ irq_async_rx1_2:
 #endif
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
+#if OPERATOR_UART == 1
 #if CTRL_O_WARM_RESET == ENABLE
-        bnz     irq_async_rx_3 
+        bnz     irq_async_rx1_3 
         reset                           ;; Make a warm start
 #endif
 irq_async_rx1_3:
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         addlw   0x04                    ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
         btfss   BANKMASK(FLAGS2), fFC, A          ;; receive xoff if FC is off
         bz      irq_async_rx1_5         ;; Do not receive  xoff
+#endif
 #endif
 irq_async_rx1_4:
         incf    BANKMASK(RXhead), F, A
@@ -713,6 +678,12 @@ irq_async_rx1_4:
         andwf   BANKMASK(RXhead), F, A
         incf    BANKMASK(RXcnt), F, A
 irq_async_rx1_5:
+#ifndef K42
+        movf    BANKMASK(ihtbank), W, A
+        movwf   Tbank, A
+        movf    BANKMASK(ihtp), W, A
+        movwf   Tp, A
+#endif
         bra     irq_end
 irq_async_rx1_end:
 
@@ -732,17 +703,16 @@ irq_async_rx2:
         movf    BANKMASK(RX2cnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx2_2
-        
-#if FC_TYPE_SW == ENABLE
+#if OPERATOR_UART == 2
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
-irq_async_rx2_1:
-#ifdef  HW_FC_CTS_PORT
+#if FC_TYPE == CTS
         btfss   BANKMASK(FLAGS2), fFC
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
-
+#endif
 irq_async_rx2_2:
         lfsr    Tptr, RX2buf
         movf    BANKMASK(RX2head), W, A
@@ -761,15 +731,17 @@ irq_async_rx2_2:
 #endif
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
+#if OPERATOR_UART == 2
 #if CTRL_O_WARM_RESET == ENABLE
         bnz     irq_async_rx2_3 
         reset                           ;; Make a warm start
 #endif
 irq_async_rx2_3:
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         addlw   0x04                     ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
         btfss   BANKMASK(FLAGS2), fFC, A ;; receive xoff if FC is off
         bz      irq_async_rx2_5          ;; Do not receive  xoff
+#endif
 #endif
 irq_async_rx2_4:
         incf    BANKMASK(RX2head), F, A
@@ -777,6 +749,12 @@ irq_async_rx2_4:
         andwf   BANKMASK(RX2head), F, A
         incf    BANKMASK(RX2cnt), F, A
 irq_async_rx2_5:
+#ifndef K42
+        movf    BANKMASK(ihtbank), W, A
+        movwf   Tbank, A
+        movf    BANKMASK(ihtp), W, A
+        movwf   Tp, A
+#endif
         bra     irq_end
 irq_async_rx2_end:
 #endif
@@ -786,27 +764,21 @@ irq_async_rx3:
         banksel REG_U3RXIF
         btfss   U3RXIF
         bra     irq_async_rx3_end
-#ifndef K42
-        movf    Tp, W, A
-        movwf   BANKMASK(ihtp), A
-        movf    Tbank, W, A
-        movwf   BANKMASK(ihtbank), A
-#endif
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
         movf    BANKMASK(RX3cnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx3_2
-        
-#if FC_TYPE_SW == ENABLE
+#if OPERATOR_UART == 3
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
 irq_async_rx3_1:
-#ifdef  HW_FC_CTS_PORT
+#if FC_TYPE == CTS
         btfss   BANKMASK(FLAGS2), fFC
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
-
+#endif
 irq_async_rx3_2:
         lfsr    Tptr, RX3buf
         movf    BANKMASK(RX3head), W, A
@@ -825,15 +797,17 @@ irq_async_rx3_2:
 #endif
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
+#if OPERATOR_UART == 3
 #if CTRL_O_WARM_RESET == ENABLE
         bnz     irq_async_rx3_3 
         reset                           ;; Make a warm start
 #endif
 irq_async_rx3_3:
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         addlw   0x04                    ;; ctrl-s, xoff 0x13, 0xf - 0x13 + 0x4 = 0
         btfss   BANKMASK(FLAGS2), fFC, A          ;; receive xoff if FC is off
         bz      irq_async_rx3_end        ;; Do not receive  xoff
+#endif
 #endif
 irq_async_rx3_4:
         incf    BANKMASK(RX3head), F, A
@@ -846,10 +820,6 @@ irq_async_rx3_end:
 ;;;; Restore Tp and Tbank
 irq_end:
 #ifndef K42
-        movf    BANKMASK(ihtbank), W, A
-        movwf   Tbank, A
-        movf    BANKMASK(ihtp), W, A
-        movwf   Tp, A
         movf    BANKMASK(ilw), W, A
         movff   BANKMASK(ilstatus), STATUS
         retfie  0
@@ -1198,9 +1168,9 @@ WARM_ZERO_1:
         bsf     BAUDCON2, BRG16
         movlw   high(spbrgvalx4)
         movwf   SPBRGH2
-        movlw   spbrgvalx4
+        movlw   spbrg2valx4
 #else
-        movlw   spbrgval
+        movlw   spbrg2val
 #endif
         movwf   SPBRG2, B
 ; TX enable
@@ -1214,7 +1184,7 @@ WARM_ZERO_1:
 
         bcf     ANCON2, ANSEL18, B ; Configure RX pin as input
 #endif
-#else  ; K42 K83 Q41 Q43
+#else  ; K42 K83 Qxx
 ;; UART == 1 
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
@@ -1283,10 +1253,10 @@ WARM_ZERO_1:
         call    PPS_LOCK
 
 ; Set the Baud Rate
-        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
+        movlw   low(spbrg2valx4)        ; ((clock/baud)/d'4') - 1
         banksel U2BRGL
         movwf   U2BRGL, B
-        movlw   high(spbrgvalx4)
+        movlw   high(spbrg2valx4)
         movwf   U2BRGH, B
 
 ; TX enable
@@ -1330,10 +1300,10 @@ WARM_ZERO_1:
         call    PPS_LOCK
 
 ; Set the Baud Rate
-        movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
+        movlw   low(spbrg3valx4)        ; ((clock/baud)/d'4') - 1
         banksel U3BRGL
         movwf   U3BRGL, B
-        movlw   high(spbrgvalx4)
+        movlw   high(spbrg3valx4)
         movwf   U3BRGH, B
 
 ; TX enable
@@ -1385,10 +1355,7 @@ WARM_ZERO_1:
         bcf     TMR0IP              ; Low priority
 #endif
 #endif
-        movlw   low(tmr1ms_val)
-        movwf   BANKMASK(tickval), A
-        movlw   high(tmr1ms_val)
-        movwf   BANKMASK(tickval)+1, A
+
 #if MS_TMR == 1                 // Timer 1 for 1 ms system tick
 #ifndef K42
         movlw   01              ; Fosc/4,prescale = 1, 8-bit write
@@ -1401,13 +1368,13 @@ WARM_ZERO_1:
         movwf   T1CLK, B
         movlw   01              ; Fosc/4,prescale = 1, 8-bit write
         movwf   T1CON, B
-#ifndef Q43
+#ifndef Qxx
         banksel PIE4
 #else
         banksel PIE3
 #endif
         bsf     TMR1IE
-#ifndef Q43
+#ifndef Qxx
         banksel IPR4
 #else
         banksel IPR3
@@ -1546,14 +1513,14 @@ WARM_ZERO_1:
 WARM_2:
         call    DP_TO_RAM
 
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         bsf     BANKMASK(FLAGS2), ixoff, A ; Force sending of XON in RX1?
 #endif
 #ifdef HW_FC_CTS_TRIS
         bcf     HW_FC_CTS_TRIS, HW_FC_CTS_PIN
 #endif
 #ifdef USB_CDC
-        rcall   USB_ON
+        call    USB_ON
 #endif
         rcall   RQ
         rcall   VER
@@ -1663,11 +1630,11 @@ RX1Q:
         subwf   BANKMASK(RXtail), W, A
         movwf   plusS, A
         bnz     RX1Q2
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
 #endif
-#ifdef  HW_FC_CTS_PORT
+#if FC_TYPE == CTS
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
         clrf    BANKMASK(RXcnt), A
@@ -1734,12 +1701,12 @@ RX2Q:
         subwf   BANKMASK(RX2tail), W, A
         movwf   plusS, A
         bnz     RX2Q2
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
 #endif
-#ifdef  HW_FC_CTS_PORT
-        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#if FC_TYPE == CTS
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
         clrf    BANKMASK(RX2cnt), A
 RX2Q2:
@@ -1804,12 +1771,12 @@ RX3Q:
         subwf   BANKMASK(RX3tail), W, A
         movwf   plusS, A
         bnz     RX3Q2
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
 #endif
-#ifdef  HW_FC_CTS_PORT
-        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+#if FC_TYPE == CTS
+        bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
         clrf    BANKMASK(RX3cnt), A
 RX3Q2:
@@ -1855,7 +1822,7 @@ LOAD:
         movf    BANKMASK(load_res)+2, W, A
         movwf   plusS, A
         clrf    plusS, A
-        rcall   LIT
+        call    LIT
         dw      CPU_LOAD_VAL
         call    UMSLASHMOD
         goto    NIP
@@ -2135,7 +2102,7 @@ iupdatebuf0:
         movwf   BANKMASK(ibase_up), A
 #endif
 fill_buffer_from_imem:
-#ifndef Q43
+#ifndef Qxx
         movlw   flash_block_size ; d'64' or d'128'
         movwf   PCLATH, A
         rcall   init_ptrs        ; Init TBLPTR and ram pointer
@@ -2148,7 +2115,7 @@ fill_buffer_from_imem_1:
 #if XSTORE == ENABLE
         clrf    TBLPTRU, A
 #endif
-#else   // Q41 Q43
+#else   // Qxx
         rcall   init_ptrs
         movlw   2
         movwf   NVMCON1, B
@@ -2163,13 +2130,13 @@ write_buffer_to_imem:
 ;; from the operator UART.
 ;; The assumption is that the serial line is silent then.
 #ifdef OPERATOR_RX_IS_UART
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXXOFF
 #endif
-#ifdef  HW_FC_CTS_PORT
+#if FC_TYPE == CTS
         btfss   BANKMASK(FLAGS2), fFC
-        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
+        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
 #endif
 
 wbtil:
@@ -2190,7 +2157,7 @@ wbtil:
         clrf    PIE1
         clrf    PIE2
 #endif
-#ifndef Q43
+#ifndef Qxx
         rcall   init_ptrs             ; Init TBLPTR, ram pointer, banksel
                                       ; Erase the flash block
         bsf     BANKMASK(EECON1), 7, B    ; EEPGD 
@@ -2236,7 +2203,7 @@ write_buffer_to_imem_2:
         bsf     GIE
 
 verify_imem:
-#ifndef Q43
+#ifndef Qxx
         movlw   flash_block_size     ; d'64' or d'128'
         movwf   PCLATH, A
 #else
@@ -2270,7 +2237,7 @@ init_ptrs:
         movf    BANKMASK(ibase_up), W, A
         movwf   TBLPTRU, A
 #endif
-#ifdef Q43
+#ifdef Qxx
         movf    BANKMASK(ibase_lo), W, A
         movwf   NVMADRL, B
         movf    BANKMASK(ibase_hi), W, A
@@ -2287,7 +2254,7 @@ magic:
         movwf   EECON2, B
         movlw   0xaa
         movwf   EECON2, B
-#ifndef Q43
+#ifndef Qxx
         bsf     EECON1, 1, B    ; WR
 #else
         bsf     NVMGO
@@ -2297,6 +2264,7 @@ magic:
         return
 
 ;***************************************************
+#if FC_TYPE == XONXOFF
 asmemit:
 #if OPERATOR_UART == 1
         banksel REG_U1RXIF
@@ -2305,6 +2273,7 @@ asmemit:
         banksel U1TXB
         movwf   U1TXB, B
 #endif 
+#if WANT_UART3 == ENABLE
 #if OPERATOR_UART == 2
         banksel REG_U2RXIF
         btfss   U2TXIF
@@ -2312,6 +2281,8 @@ asmemit:
         banksel U2TXB
         movwf   U2TXB, B
 #endif
+#endif
+#if WANT_UART3 == ENABLE
 #if OPERATOR_UART == 3
         banksel REG_U3RXIF
         btfss   U3TXIF
@@ -2319,8 +2290,9 @@ asmemit:
         banksel U3TXB
         movwf   U3TXB, B
 #endif
+#endif
         return
-
+#endif
 ;***************************************************
 ; N=    c-addr nfa -- flag
 ; N= is only used for finding dictionary entries
@@ -2562,7 +2534,7 @@ ISTOREOK:
         rcall   iupdatebuf
 ; set write address
         movf    BANKMASK(iaddr_lo), W, A
-#ifndef Q43
+#ifndef Qxx
         andlw   flash_block_mask
 #endif
         lfsr    Tptr, flash_buf
@@ -2604,7 +2576,7 @@ IFETCH:
         rcall   TOTBLP
         cpfseq  BANKMASK(ibase_hi), A
         bra     pfetch0
-#ifndef Q43
+#ifndef Qxx
         movlw   flash_pointer_mask
         andwf   TBLPTRL, W, A
         cpfseq  BANKMASK(ibase_lo), A
@@ -2612,7 +2584,7 @@ IFETCH:
 #endif
 ;read_cell_from_buffer
         movf    TBLPTRL, W, A
-#ifndef Q43
+#ifndef Qxx
         andlw   flash_block_mask
 #endif
         lfsr    Tptr, flash_buf
@@ -2626,7 +2598,7 @@ ICFETCH1:
         movf    TBLPTRH, W, A
         cpfseq  BANKMASK(ibase_hi), A
         bra     pcfetch0
-#ifndef Q43
+#ifndef Qxx
         movlw   flash_pointer_mask 
         andwf   TBLPTRL, W, A
         cpfseq  BANKMASK(ibase_lo), A
@@ -2634,7 +2606,7 @@ ICFETCH1:
 #endif
 ;read_byte_from_buffer
         movf    TBLPTRL, W, A
-#ifndef Q43
+#ifndef Qxx
         andlw   flash_block_mask
 #endif
         lfsr    Tptr, flash_buf
@@ -2648,7 +2620,7 @@ ESTORE:
         movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
-#ifdef Q43
+#ifdef Qxx
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2670,7 +2642,7 @@ ECSTORE:
         movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
-#ifdef Q43
+#ifdef Qxx
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2681,7 +2653,7 @@ ECSTORE:
         movf    Sminus, W, A
         movwf   EEDATA, B
 ECSTORE1:
-#ifndef Q43
+#ifndef Qxx
         bcf     EECON1, 7, B        ; EEPGD
         bcf     EECON1, 6, B        ; EEFS
         bsf     EECON1, 2, B        ; WREN
@@ -2695,7 +2667,7 @@ ECSTORE1:
         call    magic
         bsf     GIE
 ECSTORE2:
-#ifndef Q43
+#ifndef Qxx
         btfsc   EECON1, 1, B        ; WR
         bra     ECSTORE2
         bcf     EECON1, 2, B        ; WREN
@@ -2711,7 +2683,7 @@ EFETCH:
         movf    Sminus, W
         banksel EEADR
 #ifdef EEADRH
-#ifdef Q43
+#ifdef Qxx
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2728,7 +2700,7 @@ ECFETCH:
         movf    Sminus, W
         banksel EEADR
 #ifdef EEADRH
-#ifdef Q43
+#ifdef Qxx
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2739,7 +2711,7 @@ ECFETCH:
         clrf    plusS
         return
 asmecfetch:
-#ifndef Q43
+#ifndef Qxx
 #ifdef p18fxx2xx8_fix_1
         bcf     GIE                 ; 18f252 ERRATA
 #endif
@@ -2905,7 +2877,7 @@ TX0_END:
 L_RX0:
         NF 3,rxu
 RX0:
-        rcall   PAUSE
+        call    PAUSE
         banksel ep2ostat
         btfsc   BANKMASK(usb_device_state), 3, B
         btfsc   BANKMASK(ep2ostat), UOWN, B
@@ -2941,7 +2913,7 @@ RX0Q1:
         goto    TRUE_
 #endif
 ; ***************************************************
-#if FC_TYPE_SW == ENABLE
+#if FC_TYPE == XONXOFF
 XXOFF:
         btfsc   BANKMASK(FLAGS2), ixoff, A
         return
@@ -6385,7 +6357,7 @@ BL:
 ; STATE   -- flag                 holds compiler BANKMASK(state)
         dw      L_BL
 L_STATE:
-        NF 5,BANKMASK(state)
+        NF 5,state
 STATE_:
         movf    BANKMASK(state), W, A
         movwf   plusS
@@ -6412,7 +6384,7 @@ S0:
 ; In RAM
 ;        dw      link
 ;link    set     $
-        NF 3,ini
+;        NF 3,ini
 INI:
         rcall   DOCREATE_A
         dw      dpSTART+PRAM
@@ -7347,6 +7319,7 @@ MEMQ:
 #ifdef USB_CDC
 #include "ff-usbcdc.S"
 #endif
+#if 0
 hexemit:
         swapf Srw, W, A
         rcall hexemit2
@@ -7368,7 +7341,7 @@ hexemit3:
         addlw   0x3a
         call  asmemit
         return
-
+#endif
 dpcode:
 ;;****************************************************
         END resetVec

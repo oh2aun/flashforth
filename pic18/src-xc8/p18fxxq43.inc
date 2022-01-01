@@ -1,22 +1,23 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18fxxq41.cfg                                     *
+;    Filename:      p18fxxq43.inc                                     *
 ;    Date:          01.01.2022                                        *
-;    FF Version:    5                                                 *
+;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
 ;    Modified:                                                        *
 ;**********************************************************************
-;   FlashForth is licensed according to the GNU General Public License*
+;    FlashForth is licensed acording to the GNU General Public License*
 ;**********************************************************************
-; FlashForth processor specific configuration
-; PIC-AS params 
-; -Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
+;;; FlashForth processor specific configuration
+
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
+
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-#if CONFIG_RESET == 0x0000
         ;CONFIG  FEXTOSC = XT ; OFF         
         CONFIG  RSTOSC = HFINTOSC_64MHZ
         CONFIG  CLKOUTEN = OFF        
@@ -27,8 +28,7 @@
         CONFIG  PWRTS = PWRT_64       
         CONFIG  MVECEN = OFF
         CONFIG  IVT1WAY = OFF         
-        CONFIG  LPBOREN = OFF        
-        CONFIG  LVP = OFF
+        CONFIG  LPBOREN = OFF         
         CONFIG  BOREN = OFF          
         CONFIG  BORV = VBOR_2P45      
         CONFIG  ZCD = OFF             
@@ -39,7 +39,7 @@
         CONFIG  WDTCPS = WDTCPS_31    
         CONFIG  WDTE = OFF           
         CONFIG  WDTCWS = WDTCWS_7     
-        CONFIG  WDTCCS = LFINTOSC
+        CONFIG  WDTCCS = SC           
         CONFIG  BBSIZE = BBSIZE_512   
         CONFIG  BBEN = OFF            
         CONFIG  SAFEN = OFF           
@@ -48,11 +48,11 @@
         CONFIG  WRTC = OFF            
         CONFIG  WRTD = OFF            
         CONFIG  WRTSAF = OFF          
+        CONFIG  LVP = ON              
         CONFIG  CP = OFF              
-#endif
 
 #define K42
-#define Q43
+#define Qxx
 
 ;;; Define UART 1 pins for PPS
 ; Define UART TX pin
@@ -106,12 +106,11 @@
 
 #define REG_U1RXIF PIR4
 #define REG_U1RXIE PIE4 
-#define REG_U1RXIP IPR4
-
+#define REG_U1RXIP IPR4 
 #define REG_U2RXIF PIR8
 #define REG_U2RXIE PIE8 
-#define REG_U2RXIP IPR8 
-
+#define REG_U2RXIP IPR8
 #define REG_U3RXIF PIR9
 #define REG_U3RXIE PIE9 
-#define REG_U3RXIP IPR9 
+#define REG_U3RXIP IPR9
+// Timer interrupt flags are in the access bank

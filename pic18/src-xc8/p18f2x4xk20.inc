@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18f14k50                                         *
-;    Date:          24.08.2020                                        *
+;    Filename:      p18f2x4xk20.inc                                   *
+;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -12,44 +12,36 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
-;;; Define USB_CDC if you want to use USB serial emulation
-#define USB_CDC
-#define USB_SPEED 0  // 0 = low speed, 1 = high speed
-#define USB_BANK 2
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
 
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
-#if CONFIG_RESET == 0x0000
-#if USB_SPEED == 0
-        config CPUDIV = NOCLKDIV    ; 24 MHz cpu clock
-        config USBDIV = OFF         ; 6 MHz USB clock
-        config FOSC = HS            ; 6 MHz HS Xtal oscillator
-        config PLLEN = ON           ; 24 MHz System clock
-#else
-        config CPUDIV = NOCLKDIV;   ; 48 MHz cpu clock
-        config USBDIV = ON          ; USB clock from 96 MHZ PLL divided by 2
-        config FOSC = HS            ; 12 MHz HS Xtal oscillator
-        config PLLEN = ON           ; 48 MHz system clock 
-#endif
-        config PCLKEN = ON
+
+        config FOSC = INTIO67
         config FCMEN = OFF
         config IESO = OFF
-        config PWRTEN = ON
-        config BOREN = SBORDIS
+        config PWRT= ON
+        config BOREN = OFF
         config BORV = 30
-        config WDTEN = OFF
-        config WDTPS = 1024
-        config MCLRE = OFF
+        config WDTEN = ON
+        config WDTPS = 256
+        config MCLRE = ON
         config HFOFST = OFF
+        config LPT1OSC = OFF
+        config PBADEN = OFF
+        config CCP2MX = PORTC
         config STVREN = ON
         config LVP = OFF
         config XINST = OFF
-        config BBSIZ = ON
+        config DEBUG = OFF
         config CP0 = OFF
-        config CP1 = OFF
         config CPB = OFF
-        config WRTC = OFF
-#endif
+        config WRTC = ON
 
 ;;; Activate 4xPLL from SW
-#define PLL DISABLE	         // ENABLE or DISABLE
+#define PLL DISABLE	         ; ENABLE or DISABLE
+
+#define REG_U1RXIF PIR1
+#define REG_U1RXIE PIE1 
+#define REG_U1RXIP IPR1

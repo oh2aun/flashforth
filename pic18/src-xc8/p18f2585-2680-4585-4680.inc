@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18f2455-2550-4455-4550.cfg                       *
-;    Date:          07.10.2017                                        *
+;    Filename:      p18f2585-2680-4585-4680.inc                       *
+;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -12,42 +12,32 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
+; Use PIC-AS global options:
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
 
-;;; Define USB_CDC if you want to use USB serial emulation
-;;; If you use CDC, you must also compile usbcdc.asm
-// #define USB_CDC
-#define USB_SPEED 1  // 0 = low speed, 1 = high speed
-#define USB_BANK 4
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
-#if CONFIG_RESET == 0x0000
-        config PLLDIV = 3           ;1 for 4 MHZ; 3 for 12 MHz XT xtal
-        config CPUDIV = OSC1_PLL2   ; 48 MHz cpu clock
-        config USBDIV = 2           ; USB clock from 96 MHZ PLL divided by 2
-        config FOSC = HSPLL_HS
- ;       config FCMEN = OFF
+
+        config OSC = HS
+        config FCMEN = OFF
         config IESO = OFF
         config PWRT = ON
-       ; config BOR = ON
+        config BOREN = BOHW
         config BORV = 3
-#ifdef USB_CDC
-        config VREGEN = ON
-#else
-        config VREGEN = OFF
-#endif
-        config WDT = OFF
+        config WDT = ON
         config WDTPS = 128
         config MCLRE = ON
-        config LPT1OSC = OFF
         config PBADEN = OFF
-        config CCP2MX = ON
+        config LPT1OSC = OFF
         config STVREN = ON
         config LVP = OFF
+        config BBSIZ = 4096 ; How does he boot block size work. Not described in the datasheet.
         config XINST = OFF
         config DEBUG = OFF
-        config WRT1 = OFF
-        config WRT0 = OFF
-        config WRTB = OFF
-        config WRTC = OFF
-#endif
+        config WRT0 = OFF ; Not needed because of BBSIZ = 4096 ?
+        config WRTC = ON
+        config WRTB = ON
 
+#define REG_U1RXIF PIR1
+#define REG_U1RXIE PIE1 
+#define REG_U1RXIP IPR1

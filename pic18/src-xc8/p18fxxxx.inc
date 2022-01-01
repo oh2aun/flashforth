@@ -1,6 +1,6 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      p18fxxxx.cfg                                      *
+;    Filename:      p18fxxxx.inc                                      *
 ;    Date:          01.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
@@ -12,7 +12,7 @@
 ;**********************************************************************
 ;;; FlashForth processor configuration selection
 #ifdef __18F242
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F242
     #define FLASH_LO  0x0000
@@ -23,7 +23,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F442
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F442
     #define FLASH_LO  0x0000
@@ -34,7 +34,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F252
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F252
     #define FLASH_LO  0x0000
@@ -45,7 +45,7 @@
     #define RAM_HI    0xf5ff 
 #endif
 #ifdef __18F452
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F452
     #define FLASH_LO  0x0000
@@ -56,7 +56,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F248
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F248
     #define FLASH_LO  0x0000
@@ -67,7 +67,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F258
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F258  
     #define FLASH_LO  0x0000
@@ -78,7 +78,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F448
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F448
     #define FLASH_LO  0x0000
@@ -89,7 +89,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F458
-    #include "p18fxx2xx8.cfg"
+    #include "p18fxx2xx8.inc"
     #define  p18fxx2xx8_fix_1
     #define  PICTYPE PIC18F458
     #define FLASH_LO  0x0000
@@ -100,7 +100,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F2455
-    #include "p18f2455-2550-4455-4550.cfg"
+    #include "p18f2455-2550-4455-4550.inc"
     #define  PICTYPE PIC18F2455
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -115,7 +115,7 @@
     #endif   
 #endif
 #ifdef __18F2550
-    #include "p18f2455-2550-4455-4550.cfg"
+    #include "p18f2455-2550-4455-4550.inc"
     #define  PICTYPE PIC18F2550
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -130,7 +130,7 @@
     #endif  
 #endif
 #ifdef __18F4455
-    #include "p18f2455-2550-4455-4550.cfg"
+    #include "p18f2455-2550-4455-4550.inc"
     #define  PICTYPE PIC18F4455
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x5fff
@@ -145,7 +145,7 @@
     #endif
 #endif
 #ifdef __18F4550
-    #include "p18f2455-2550-4455-4550.cfg"
+    #include "p18f2455-2550-4455-4550.inc"
     #define  PICTYPE PIC18F4550
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -155,7 +155,7 @@
     #define RAM_HI    0xf3ff
 #endif
 #ifdef __18F2420
-    #include "p18f2420-2520-4420-4520.cfg"
+    #include "p18f2420-2520-4420-4520.inc"
     #define  PICTYPE PIC18F2420
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -165,7 +165,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F2520
-    #include "p18f2420-2520-4420-4520.cfg"
+    #include "p18f2420-2520-4420-4520.inc"
     #define  PICTYPE PIC18F2520
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -175,7 +175,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F4420
-    #include "p18f2420-2520-4420-4520.cfg"
+    #include "p18f2420-2520-4420-4520.inc"
     #define  PICTYPE PIC18F4420
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -185,7 +185,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F4520
-    #include "p18f2420-2520-4420-4520.cfg"
+    #include "p18f2420-2520-4420-4520.inc"
     #define  PICTYPE PIC18F4520
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -195,7 +195,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F2525
-    #include "p18f2525-2620-4525-4620.cfg"
+    #include "p18f2525-2620-4525-4620.inc"
     #define  PICTYPE PIC18F2525
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -205,7 +205,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F2620
-    #include "p18f2525-2620-4525-4620.cfg"
+    #include "p18f2525-2620-4525-4620.inc"
     #define  PICTYPE PIC18F2620
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -215,7 +215,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F4525
-    #include "p18f2525-2620-4525-4620.cfg"
+    #include "p18f2525-2620-4525-4620.inc"
     #define  PICTYPE PIC18F4525
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -225,7 +225,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F4620
-    #include "p18f2525-2620-4525-4620.cfg"
+    #include "p18f2525-2620-4525-4620.inc"
     #define  PICTYPE PIC18F4620
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -236,7 +236,7 @@
 #endif
 
 #ifdef __18F6527
-    #include "p18f6722-family.cfg"
+    #include "p18f6722-family.inc"
     #define  PICTYPE PIC18F6527
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -246,7 +246,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F6622
-    #include "p18f6722-family.cfg"
+    #include "p18f6722-family.inc"
     #define  PICTYPE PIC18F6622
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -256,7 +256,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F6627
-    #include "p18f6722-family.cfg"
+    #include "p18f6722-family.inc"
     #define  PICTYPE PIC18F6627
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -266,7 +266,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F6722
-    #include "p18f6722-family.cfg"
+    #include "p18f6722-family.inc"
     #define  PICTYPE PIC18F6722
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -276,7 +276,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F8527
-    #include "p18f8722-family.cfg"
+    #include "p18f8722-family.inc"
     #define  PICTYPE PIC18F8527
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -286,7 +286,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F8622
-    #include "p18f8722-family.cfg"
+    #include "p18f8722-family.inc"
     #define  PICTYPE PIC18F8622
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -296,7 +296,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F8627
-    #include "p18f8722-family.cfg"
+    #include "p18f8722-family.inc"
     #define  PICTYPE PIC18F8627
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -306,7 +306,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F8722
-    #include "p18f8722-family.cfg"
+    #include "p18f8722-family.inc"
     #define  PICTYPE PIC18F8722
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -316,7 +316,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F2458
-    #include "p18f2458-2553-4458-4553.cfg"
+    #include "p18f2458-2553-4458-4553.inc"
     #define  PICTYPE PIC18F2458
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x5fff
@@ -331,7 +331,7 @@
     #endif
 #endif
 #ifdef __18F2553
-    #include "p18f2458-2553-4458-4553.cfg"
+    #include "p18f2458-2553-4458-4553.inc"
     #define  PICTYPE PIC18F2553
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -346,7 +346,7 @@
     #endif
 #endif
 #ifdef __18F4458
-    #include "p18f2458-2553-4458-4553.cfg"
+    #include "p18f2458-2553-4458-4553.inc"
     #define  PICTYPE PIC18F4458
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x5fff
@@ -361,7 +361,7 @@
     #endif
 #endif
 #ifdef __18F4553
-    #include "p18f2458-2553-4458-4553.cfg"
+    #include "p18f2458-2553-4458-4553.inc"
     #define  PICTYPE PIC18F4553
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -371,7 +371,7 @@
     #define RAM_HI    0xf3ff
 #endif
 #ifdef __18F2480
-    #include "p18f2480-2580-4480-4580.cfg"
+    #include "p18f2480-2580-4480-4580.inc"
     #define  PICTYPE PIC18F2480
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -381,7 +381,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F2580
-    #include "p18f2480-2580-4480-4580.cfg"
+    #include "p18f2480-2580-4480-4580.inc"
     #define  PICTYPE PIC18F2580
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -391,7 +391,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F4480
-    #include "p18f2480-2580-4480-4580.cfg"
+    #include "p18f2480-2580-4480-4580.inc"
     #define  PICTYPE PIC18F4480
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -401,7 +401,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F4580
-    #include "p18f2480-2580-4480-4580.cfg"
+    #include "p18f2480-2580-4480-4580.inc"
     #define  PICTYPE PIC18F4580
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -411,7 +411,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F2423
-    #include "p18f2423-2523-4423-4523.cfg"
+    #include "p18f2423-2523-4423-4523.inc"
     #define  PICTYPE PIC18F2423
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -421,7 +421,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F2523
-    #include "p18f2423-2523-4423-4523.cfg"
+    #include "p18f2423-2523-4423-4523.inc"
     #define  PICTYPE PIC18F2523
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -431,7 +431,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F4423
-    #include "p18f2423-2523-4423-4523.cfg"
+    #include "p18f2423-2523-4423-4523.inc"
     #define  PICTYPE PIC18F4423
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -441,7 +441,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F4523
-    #include "p18f2423-2523-4423-4523.cfg"
+    #include "p18f2423-2523-4423-4523.inc"
     #define  PICTYPE PIC18F4523
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -451,7 +451,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F2585
-    #include "p18f2585-2680-4585-4680.cfg"
+    #include "p18f2585-2680-4585-4680.inc"
     #define  PICTYPE PIC18F2585
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -461,7 +461,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F2680
-    #include "p18f2585-2680-4585-4680.cfg"
+    #include "p18f2585-2680-4585-4680.inc"
     #define  PICTYPE PIC18F2680
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -471,7 +471,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F4585
-    #include "p18f2585-2680-4585-4680.cfg"
+    #include "p18f2585-2680-4585-4680.inc"
     #define  PICTYPE PIC18F4585
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbfff
@@ -481,7 +481,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F4680
-    #include "p18f2585-2680-4585-4680.cfg"
+    #include "p18f2585-2680-4585-4680.inc"
     #define  PICTYPE PIC18F4680
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -491,7 +491,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F2682
-    #include "p18f2682-2685-4682-4685.cfg"
+    #include "p18f2682-2685-4682-4685.inc"
     #define  PICTYPE PIC18F2682
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -501,7 +501,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F2685
-    #include "p18f2682-2685-4682-4685.cfg"
+    #include "p18f2682-2685-4682-4685.inc"
     #define  PICTYPE PIC18F2685
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -511,7 +511,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F4682
-    #include "p18f2682-2685-4682-4685.cfg"
+    #include "p18f2682-2685-4682-4685.inc"
     #define  PICTYPE PIC18F4682
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -521,7 +521,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F4685
-    #include "p18f2682-2685-4682-4685.cfg"
+    #include "p18f2682-2685-4682-4685.inc"
     #define  PICTYPE PIC18F4685
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -531,7 +531,7 @@
     #define RAM_HI    0xfcff
 #endif
 #ifdef __18F14K22
-    #include "p18f14k22.cfg"
+    #include "p18f14k22.inc"
     #define PICTYPE PIC18F14K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -541,7 +541,7 @@
     #define RAM_HI    0xf1ff
 #endif
 #ifdef __18LF14K22
-    #include "p18f14k22.cfg"
+    #include "p18f14k22.inc"
     #define PICTYPE PIC18F14K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -551,7 +551,7 @@
     #define RAM_HI    0xf1ff
 #endif
 #ifdef __18F24K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F24K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -561,7 +561,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F25K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F25K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -571,7 +571,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F26K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F26K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -581,7 +581,7 @@
     #define RAM_HI    0xff5f
 #endif
 #ifdef __18F44K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F44K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -591,7 +591,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F45K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F45K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -601,7 +601,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F46K20
-    #include "p18f2x4xk20.cfg"
+    #include "p18f2x4xk20.inc"
     #define PICTYPE PIC18F46K20
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -612,7 +612,7 @@
 #endif
 
 #ifdef __18F24K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F24K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -622,7 +622,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F25K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F25K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -632,7 +632,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F26K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F26K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -642,7 +642,7 @@
     #define RAM_HI    0xff37
 #endif
 #ifdef __18F44K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F44K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -652,7 +652,7 @@
     #define RAM_HI    0xf2ff
 #endif
 #ifdef __18F45K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F45K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -662,7 +662,7 @@
     #define RAM_HI    0xf5ff
 #endif
 #ifdef __18F46K22
-    #include "p18f2x4xk22.cfg"
+    #include "p18f2x4xk22.inc"
     #define PICTYPE PIC18F46K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -672,7 +672,7 @@
     #define RAM_HI    0xff37
 #endif
 #ifdef __18F65K22
-    #include "p18f87k22-family.cfg"
+    #include "p18f87k22-family.inc"
     #define PICTYPE PIC18F65K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -682,7 +682,7 @@
     #define RAM_HI    0xf7ff
 #endif
 #ifdef __18F66K22
-    #include "p18f87k22-family.cfg"
+    #include "p18f87k22-family.inc"
     #define PICTYPE PIC18F66K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -692,7 +692,7 @@
     #define RAM_HI    0xff15
 #endif
 #ifdef __18F85K22
-    #include "p18f87k22-family.cfg"
+    #include "p18f87k22-family.inc"
     #define PICTYPE PIC18F85K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -702,7 +702,7 @@
     #define RAM_HI    0xf7ff
 #endif
 #ifdef __18F86K22
-    #include "p18f87k22-family.cfg"
+    #include "p18f87k22-family.inc"
     #define PICTYPE PIC18F86K22
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -712,7 +712,7 @@
     #define RAM_HI    0xff15
 #endif
 #ifdef __18F65K90
-    #include "p18f87k90-family.cfg"
+    #include "p18f87k90-family.inc"
     #define PICTYPE PIC18F65K90
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -722,7 +722,7 @@
     #define RAM_HI    0xf7ff
 #endif
 #ifdef __18F66K90
-    #include "p18f87k90-family.cfg"
+    #include "p18f87k90-family.inc"
     #define PICTYPE PIC18F66K90
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -732,7 +732,7 @@
     #define RAM_HI    0xfef3
 #endif
 #ifdef __18F85K90
-    #include "p18f87k90-family.cfg"
+    #include "p18f87k90-family.inc"
     #define PICTYPE PIC18F85K90
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -742,7 +742,7 @@
     #define RAM_HI    0xf7ff
 #endif
 #ifdef __18F86K90
-    #include "p18f87k90-family.cfg"
+    #include "p18f87k90-family.inc"
     #define PICTYPE PIC18F86K90
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xebff
@@ -752,7 +752,7 @@
     #define RAM_HI    0xfef3
 #endif
 #ifdef __18F14K50
-    #include "p18f14k50.cfg"
+    #include "p18f14k50.inc"
     #define PICTYPE PIC18F14K50
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -767,7 +767,7 @@
     #endif
 #endif
 #ifdef __18LF14K50
-    #include "p18f14k50.cfg"
+    #include "p18f14k50.inc"
     #define PICTYPE PIC18F14K50
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -782,7 +782,7 @@
     #endif
 #endif
 #ifdef __18F24K50
-    #include "p18f24k50-25k50-45k50.cfg"
+    #include "p18f24k50-25k50-45k50.inc"
     #define PICTYPE PIC18F24K50
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x3fff
@@ -797,7 +797,7 @@
     #endif
 #endif
 #ifdef __18F25K50
-    #include "p18f24k50-25k50-45k50.cfg"
+    #include "p18f24k50-25k50-45k50.inc"
     #define PICTYPE PIC18F25K50
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -812,7 +812,7 @@
     #endif
 #endif
 #ifdef __18F45K50
-    #include "p18f24k50-25k50-45k50.cfg"
+    #include "p18f24k50-25k50-45k50.inc"
     #define PICTYPE PIC18F45K50
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -834,7 +834,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xc3ff
-    #include "p18f24k42.cfg"
+    #include "p18f24k42.inc"
 #endif
 #ifdef __18F25K42
     #define PICTYPE PIC18F25K42
@@ -844,7 +844,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xc7ff
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F26K42
     #define PICTYPE PIC18F26K42
@@ -854,7 +854,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F27K42
     #define PICTYPE PIC18F27K42
@@ -864,7 +864,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F45K42
     #define PICTYPE PIC18F45K42
@@ -875,7 +875,7 @@
     #define RAM_LO    0xc000
     #define RAM_HI    0xc7ff
     #define SFR_LO    0xf800
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F46K42
     #define PICTYPE PIC18F46K42
@@ -885,7 +885,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F47K42
     #define PICTYPE PIC18F47K42
@@ -895,7 +895,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F55K42
     #define PICTYPE PIC18F55K42
@@ -906,7 +906,7 @@
     #define RAM_LO    0xc000
     #define RAM_HI    0xc7ff
     #define SFR_LO    0xf800
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F56K42
     #define PICTYPE PIC18F56K42
@@ -916,7 +916,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F57K42
     #define PICTYPE PIC18F57K42
@@ -926,10 +926,10 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
-    #include "p18fxxk42.cfg"
+    #include "p18fxxk42.inc"
 #endif
 #ifdef __18F25K83
-    #include "p18fxxk83.cfg"
+    #include "p18fxxk83.inc"
     #define PICTYPE PIC18F25K83
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbbff
@@ -940,7 +940,7 @@
     #define SFR_LO    0xf800
 #endif
 #ifdef __18F26K83
-    #include "p18fxxk83.cfg"
+    #include "p18fxxk83.inc"
     #define PICTYPE PIC18F26K83
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbbff
@@ -950,7 +950,7 @@
     #define RAM_HI    0xcfff   
 #endif
 #ifdef __18F16Q41
-    #include "p18fxxq41.cfg"
+    #include "p18fxxq41.inc"
     #define PICTYPE PIC18F16Q41
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbdff
@@ -964,7 +964,7 @@
     #define EEPROM_MASKH 0x01
 #endif
 #ifdef __18F25Q43
-    #include "p18fxxq43.cfg"
+    #include "p18fxxq43.inc"
     #define PICTYPE PIC18F25Q43
     #define FLASH_LO  0x0000
     #define FLASH_HI  0x7fff
@@ -978,7 +978,7 @@
     #define EEPROM_MASKH 0x01
 #endif
 #ifdef __18F26Q43
-    #include "p18fxxq43.cfg"
+    #include "p18fxxq43.inc"
     #define PICTYPE PIC18F26Q43
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbbff
@@ -992,7 +992,7 @@
     #define EEPROM_MASKH 0x01
 #endif
 #ifdef __18F27Q43
-    #include "p18fxxq43.cfg"
+    #include "p18fxxq43.inc"
     #define PICTYPE PIC18F27Q43
     #define FLASH_LO  0x0000
     #define FLASH_HI  0xbbff
