@@ -352,10 +352,10 @@ usbuf:       ds ussize
 #define TIB_DEFINED
 wordlenchar: ds 1
 utibbuf:     ds utibsize
-
 #else        // NOT USB
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #endif       // USB_CDC
+
 irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
 RXbuf:       ds RX_BUF_SIZE
 RXbufmask   equ RX_BUF_SIZE - 1
@@ -376,12 +376,12 @@ psect udata_bank21
 #endif
 flash_buf:   ds flash_block_size
 
-;; FORTH memry allocation cache variables
+;; FORTH memory allocation cache variables
 #ifdef USB_CDC
 #if USB_BANK == 4
 psect udata_bank7
 #else
-psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
+psect udata_bank2
 #endif
 #else
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
@@ -407,14 +407,12 @@ psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 RX2buf:       ds RX2_BUF_SIZE
 RX2bufmask   equ RX2_BUF_SIZE - 1
 #endif
-#ifdef WANT_UART3 == ENABLE
+#if WANT_UART3 == ENABLE
 RX3buf:       ds RX3_BUF_SIZE
 RX3bufmask   equ RX3_BUF_SIZE - 1
 #endif
 
 ;; USER AREA for the OPERATOR task
-ursize      equ  RETURN_STACK_SAVE_SIZE
-;; ursize can be decreased depending on how deep PAUSE has been nested in your application.
 userarea:
 us0         equ -26          ;; Start of parameter stack
 uemit       equ -24
@@ -432,7 +430,7 @@ ulink       equ -2           ;; Link to next task
 urptr       equ 0            ;; Top of the saved return stack
 uvars:       ds -us0 + 2
 u0:          ds 2 + UADDSIZE
-urbuf:       ds ursize
+urbuf:       ds RETURN_STACK_SAVE_SIZE
 #ifndef USBUF_DEFINED
 usbuf:       ds ussize
 #endif
@@ -3056,7 +3054,7 @@ OPERATOR:
         dw      OPERATOR_AREA
 OPERATOR_AREA:  
         dw      u0+PRAM         ; User pointer
-        dw      UADDSIZE, ursize
+        dw      UADDSIZE, RETURN_STACK_SAVE_SIZE
         dw      ussize, utibsize
 
 ; I,   x --             append cell to Flash
@@ -3743,11 +3741,7 @@ ECFETCH_:
 ;link   set     $
         NF 3,rp0
 RPEMPTY:
-        movlw   low(urbuf)
-        movwf   Rp
-        movlw   high(urbuf)
-        movwf   Rbank
-
+        lfsr    Rptr, urbuf
         movf    TOSH, W
         movwf   PCLATH    ; Save the return address
         movf    TOSL, W

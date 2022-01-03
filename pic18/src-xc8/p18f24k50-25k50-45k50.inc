@@ -21,8 +21,8 @@
 ;;; Low speed USB CDC is not standard, but it works on linux.
 ;;; Windows does not support a low speed USB CDC device.
 
-;#define USB_CDC
-#define USB_SPEED 1  // 0 = low speed, 1 = high speed
+#define USB_CDC
+#define USB_SPEED 0  // 0 = low speed, 1 = high speed
 #define USB_BANK 4
 #define INTOSC  1    // 0 = external oscillator  1 = internal oscillator
 
@@ -35,7 +35,6 @@
         config FOSC = HSH           ; 12 MHz HS Xtal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
         config PLLSEL = PLL4X       ; 4 x 12 MHz = 48 MHz system and USB clock 
-        ;config LS48MHZ = SYS48x8
 #endif
 #if INTOSC == 1                     // Internal oscillator
 #if USB_SPEED == 1                  // High speed
@@ -44,9 +43,10 @@
         config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
 #else                               // low speed
         config FOSC = INTOSCIO      ; Internal oscillator
-        config CPUDIV = CLKDIV6     ; 8 MHZ cpu clock
+        config CPUDIV = NOCLKDIV    ; 4
+8 MHZ cpu clock
         config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
-        config LS48MHZ = SYS48x8    ; 6 MHz USB clock
+        CONFIG  LS48MHZ = SYS48X8   ; 6 MHz USB clock
 #endif
 #endif
 #else                               // NOT USB_CDC

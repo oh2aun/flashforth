@@ -13,10 +13,10 @@
 // FlashForth processor main configuration file
 
 ; Use PIC-AS global options for all variants except the pic18fxxQyy chips:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=050h -Wl,-Map=test.map
 
 ; Use PIC-AS global options for the pic18fxxQyy chips:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
+;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=550h -Wl,-Map=test.map
 
 #define ENABLE 1
 #define DISABLE 0
@@ -25,7 +25,7 @@
 
 //  Specify the cpu clock frequency here
 //  It must be aligned with the processor specific configuration bits 
-clock   equ 48000000  // Hz
+clock   equ 24000000  // Hz
 
 // Specify the baud rate for the UARTs
 baud    equ 38400
@@ -33,11 +33,11 @@ baud2   equ 38400
 baud3   equ 38400
 
 // The default number base
-#define DEFAULT_BASE 16
+#define DEFAULT_BASE 10
 
 // Define which timer is stepping TICKS and MS.
 // Timer 1 2 3 4 5 6 can be used
-#define MS_TMR 1
+#define MS_TMR 2
 // TMR 2 4 6 gives exactly 1 ms ticks only with clocks like 4096, 8192, 16384 KHz. N*256KHz.
 
 // System tick time in milliseconds.
@@ -75,15 +75,15 @@ baud3   equ 38400
 #define TURNKEY_DELAY 2000  // Milliseconds
 
 // Define if extra UARTs are included
-#define WANT_UART2 ENABLE
-#define WANT_UART3 ENABLE
+#define WANT_UART2 DISABLE
+#define WANT_UART3 DISABLE
 
 // Define if USB or which UART is used for the operator task
 // 0=USB 1=UART1 2=UART2 3=UART3
-#define OPERATOR_UART 1
+#define OPERATOR_UART 0
 
 // UART buffer size. Must be a power of 2. max size 128 bytes.
-// The maximum RX_BUF_SIZE is d'64'(32 for usb pic14k50)
+// The maximum RX_BUF_SIZE is 64 (32 for usb pic14k50)
 // Larger RX buffer size may be needed for high latency flow control
 #define RX_BUF_SIZE 32
 #define RX2_BUF_SIZE 32
@@ -117,9 +117,9 @@ RX_OFF_FILL     equ 4
 // The multitasking examples needs 16 cells of operator return stack.
 // Each nesting of FOR..NEXT uses 1 cell of ram.
 // Each nesting of DO..LOOP uses 2 cells of ram.
-#define RETURN_STACK_SAVE_SIZE 64    // 32 cells. Can be decreased to save memory
-#define PARAMETER_STACK_SIZE 56      // 28 cells parameter stack
-#define TIB_SIZE 80                  // 80 chars tib size 
+#define RETURN_STACK_SAVE_SIZE 48    // 24 cells.
+#define PARAMETER_STACK_SIZE   60    // 30 cells parameter stack
+#define TIB_SIZE 76                  // 76 chars tib size 
 #define HOLD_SIZE 10                 // 10 chars hold area
 
 // Storage space for OPERATOR uservariables 2 and upwards
