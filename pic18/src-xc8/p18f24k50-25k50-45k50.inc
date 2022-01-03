@@ -43,8 +43,7 @@
         config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
 #else                               // low speed
         config FOSC = INTOSCIO      ; Internal oscillator
-        config CPUDIV = NOCLKDIV    ; 4
-8 MHZ cpu clock
+        config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
         config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
         CONFIG  LS48MHZ = SYS48X8   ; 6 MHz USB clock
 #endif

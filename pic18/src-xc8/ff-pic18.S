@@ -1071,6 +1071,7 @@ WARM:
         clrf    STKPTR, A       ; Clear return stack
 
         lfsr    Sptr, appdata   ; Zero ram from 3 upwards
+
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
