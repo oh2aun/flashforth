@@ -13,7 +13,7 @@
 ;; Copyright (C) 2022  Mikael Nordman
 ;;
 ;; This program is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License version 3 as 
+;; it under the terms of the GNU General Public License version 3 as
 ;; published by the Free Software Foundation.
 ;;
 ;; This program is distributed in the hope that it will be useful,
@@ -24,7 +24,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http:;;www.gnu.org/licenses/>.
 ;;
-;; Modified versions of FlashForth must be clearly marked as such, 
+;; Modified versions of FlashForth must be clearly marked as such,
 ;; in the header of this file, and in the identification
 ;; displayed by the word VER.
 ;;**********************************************************************
@@ -33,7 +33,7 @@
 #include "p18f-main.inc"
 
 ; Select the operator UART
-#ifdef USB_CDC 
+#ifdef USB_CDC
 #if OPERATOR_UART == 0
 #define OPERATOR_TX  TX0
 #define OPERATOR_RX  RX0
@@ -71,7 +71,7 @@
 #endif
 #define EEDATA NVMDAT
 #define EECON1 NVMCON1
-#define EEPGD 
+#define EEPGD
 #define CFGS 6
 #ifdef NVMCON2
 #define EECON2 NVMCON2
@@ -91,26 +91,45 @@
 #define RCREG RCREG1
 #endif
 
+#ifdef OERR1
+#define OERR OERR1
+#define CREN CREN1
+#endif
+
+#ifndef U1RXIF
 #ifdef RCIF
 #define U1RXIF RCIF
 #endif
+#endif
+#ifndef U2RXIF
 #ifdef RC2IF
 #define U2RXIF RC2IF
 #endif
+#endif
+#ifndef U1RXB
 #ifdef RCREG
 #define U1RXB RCREG
 #endif
+#endif
+#ifndef U2RXB
 #ifdef RCREG2
 #define U2RXB RCREG2
 #endif
+#endif
+#ifndef U1TXB
 #ifdef TXREG
 #define U1TXB TXREG
 #endif
+#endif
+#ifndef U2TXB
 #ifdef TXREG2
 #define U2TXB TXREG2
 #endif
+#endif
+#ifndef U1TXIF
 #ifdef TXIF
 #define U1TXIF TXIF
+#endif
 #endif
 
 #ifndef U2RXIE
@@ -129,14 +148,14 @@
 #endif
 
 NF MACRO arg0,arg1
-  db arg0|0x80 
+  db arg0|0x80
   IRPC char, arg1
   db 'char'
   ENDM
   align 2
 ENDM NF
 NF2 MACRO arg0,arg1
-  db arg0|0x80 
+  db arg0|0x80
   IRPC char, arg1
   db 'char'
   ENDM
@@ -156,25 +175,25 @@ ENDM STRING
 ;;               safe temporary registers.
 ;; The parameter stack grows upwards
 ;; Parameter stack only contains 16 bit values. (= A cell is 16 bits)
-;; When leaving a word the stack pointer points to 
+;; When leaving a word the stack pointer points to
 ;; the Most Significant Byte (odd address)
 ;; Single precision arithmetic is 16 bit aritmetic.
 ;; A Character value on the stack is always 16 bits wide
 
 Sptr    equ 0           ;; Only for lfsr
-Sp      equ FSR0L       ;; current parameter stack pointer points 
+Sp      equ FSR0L       ;; current parameter stack pointer points
                         ;; to the MS byte of the 16 bit value
 Sbank   equ FSR0H
 Srw     equ INDF0       ;; read/write TOS
 Sminus  equ POSTDEC0    ;; pop one byte
-Splus   equ POSTINC0    ;; 
+Splus   equ POSTINC0    ;;
 plusS   equ PREINC0     ;; push one byte
 SWrw    equ PLUSW0      ;; Offset to Sp in W
 
 Tptr    equ 1           ;; Only for lfsr
 Tp      equ FSR1L       ;; Temporary ram pointer
 Tbank   equ FSR1H
-Trw     equ INDF1       ;; Read/write 
+Trw     equ INDF1       ;; Read/write
 Tminus  equ POSTDEC1    ;; pop
 Tplus   equ POSTINC1    ;; push
 plusT   equ PREINC1
@@ -209,12 +228,12 @@ fFC     equ 1           ;; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ;; 1=XOFF has been sent
 
 ;; BANKMASK(FLAGS1)
-noclear equ 6           ;; dont clear optimisation flags         
-idup    equ 5           ;; Use dupzeroequal instead of zeroequal 
-izeroeq equ 4           ;; Use bnz instead of bz if zeroequal    
+noclear equ 6           ;; dont clear optimisation flags
+idup    equ 5           ;; Use dupzeroequal instead of zeroequal
+izeroeq equ 4           ;; Use bnz instead of bz if zeroequal
 istream equ 3
-fLOCK   equ 2           ;; Lock writes to flash and eeprom  
-fTAILC  equ 1           ;; Disable tailcall optimisation    
+fLOCK   equ 2           ;; Lock writes to flash and eeprom
+fTAILC  equ 1           ;; Disable tailcall optimisation
 idirty  equ 0           ;; Flash buffer dirty flag
 
 ;; Memory mapping prefixes
@@ -232,7 +251,7 @@ PSECT   udata_acs;;,global,class=COMRAM,space=1,delta=1,lowdata,noexec
 reset0:   ds 1
 reset1:   ds 1
 reset2:   ds 1
-appdata:  ds 13      ;; 
+appdata:  ds 13      ;;
 ms_count: ds 2       ;; millisecond counter 4 bytes
 upcurr:   ds 2       ;; Current USER area pointer
 p_lo:     ds 1       ;; P and DO LOOP INDEX
@@ -247,7 +266,7 @@ iaddr_hi: ds 1       ;; Instruction Memory access address
 #if XSTORE == ENABLE
 iaddr_up: ds 1       ;; Instruction Memory access address
 #endif
-FLAGS1:   ds 1       ;; Some flags                                    
+FLAGS1:   ds 1       ;; Some flags
 FLAGS2:   ds 1       ;; More flags
 RXhead:   ds 1       ;; Head of serial RX interrupt buffer
 RXtail:   ds 1       ;; Tail of serial RX interrupt buffer
@@ -262,8 +281,8 @@ RX3head:  ds 1       ;; Head of serial RX interrupt buffer
 RX3tail:  ds 1       ;; Tail of serial RX interrupt buffer
 RX3cnt:   ds 1       ;; Number of characters in the RX fifo
 #endif
-cse:      ds 1       ;; Current data section 0=flash, 2=eeprom, 4=ram 
-state:    ds 1       ;; State value. Can only be changed by []        
+cse:      ds 1       ;; Current data section 0=flash, 2=eeprom, 4=ram
+state:    ds 1       ;; State value. Can only be changed by []
 wflags:   ds 1       ;; Word flags from word header
 fstatus:  ds 1       ;; if zero, cpu idle is allowed
 irq_v:    ds 2       ;; Interrupt vector
@@ -329,12 +348,6 @@ ep2istat:	ds 1
 ep2icnt: 	ds 1
 ep2iadr:	ds 2
 
-; BUFFERS
-ep0buf:      ds 8
-cdc_data_rx: ds 8
-cdc_data_tx: ds 8
-line_coding: ds 7
-
 ; USB Device States - To be used with usb_device_state
 usb_device_state: ds 1
 #define DETACHED_STATE          0
@@ -346,19 +359,26 @@ usb_device_state: ds 1
 #define ADDRESS_STATE2          0x83  ; Shifted to h'07'
 #define CONFIGURED_STATE        0x0f
 
+; BUFFERS
+line_coding: ds 7
+ep0buf:      ds 8
+cdc_data_rx: ds 8
+cdc_data_tx: ds 8
 
-#define USBUF_DEFINED
-usbuf:       ds ussize
 #define TIB_DEFINED
 wordlenchar: ds 1
 utibbuf:     ds utibsize
-#else        // NOT USB
-psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
-#endif       // USB_CDC
 
+#define USBUF_DEFINED
+usbuf:       ds ussize
+
+#define RXBUF_DEFINED
 irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
 RXbuf:       ds RX_BUF_SIZE
 RXbufmask   equ RX_BUF_SIZE - 1
+#else        // NOT USB
+psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
+#endif       // USB_CDC
 
 ;; The flash buffer area
 #ifdef USB_CDC
@@ -376,10 +396,17 @@ psect udata_bank21
 #endif
 flash_buf:   ds flash_block_size
 
+#ifndef RXBUF_DEFINED
+psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
+irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
+RXbuf:       ds RX_BUF_SIZE
+RXbufmask   equ RX_BUF_SIZE - 1
+#endif
+
 ;; FORTH memory allocation cache variables
 #ifdef USB_CDC
 #if USB_BANK == 4
-psect udata_bank7
+psect udata_bank4
 #else
 psect udata_bank2
 #endif
@@ -389,7 +416,7 @@ psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 
 dpSTART:     ds 2
 dpFLASH:     ds 2
-dpEEPROM:    ds 2 
+dpEEPROM:    ds 2
 dpRAM:       ds 2
 dpLATEST:    ds 2
 
@@ -421,7 +448,7 @@ ukeyq       equ -20
 utask       equ -18
 ubase       equ -16
 utib        equ -14
-uflg        equ -12           ;; ACCEPT true =  CR has been received  
+uflg        equ -12           ;; ACCEPT true =  CR has been received
 ustatus     equ -11
 uhp         equ -10
 usource     equ -8           ;; Two cells
@@ -454,8 +481,11 @@ prompt      equ beeprom + 10 ;; Deferred prompt action
 dpeeprom    equ beeprom + 12
 
 ;;**************************************************
+;; Ensure the EEPROM is intialized even if the
+;; eeprom is not erased when programming the chip
 PSECT   edata
         db  0xff, 0xff
+
 ;; Code **********************************************
 ;   Reset vector
     PSECT   resetVec,global,reloc=2,class=CODE,delta=1
@@ -477,7 +507,7 @@ resetVec:
 #endif
 #endif
 #endif
-;; NOTE: irq_v must be initialized before any interrupt is enabled. 
+;; irq_v must be initialized before any high priority interrupt is enabled.
 ;; ' interrupt-routine 0 int!
 irq_user:
         push
@@ -487,13 +517,14 @@ irq_user:
         movwf   TOSL, A
         return              ;; Now the interrupt routine is executing
 ;; *******************************************
-;; ****** LOW PRIORITY INTERRUPT     
-;; Timer 0 interrupt must be marked low priority   
+;; ****** LOW PRIORITY INTERRUPT
+;; Timer 0 interrupt must be marked low priority
 ;   Low priority interrupt vector and handler
     PSECT   lo_int,global,reloc=2,class=CODE,delta=1
 #ifndef K42
         movwf   BANKMASK(ilw), A
-        movff   STATUS, BANKMASK(ilstatus)
+        movff   STATUS, ilstatus
+        movff   BSR, ilbsr
 #endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
@@ -505,7 +536,7 @@ irq_user:
         bcf     TMR0IF
         incf    BANKMASK(load_acc), A
         bra     irq_end
-#else 
+#else
         banksel T0CON0
         bsf     T0EN
         banksel PIR3
@@ -519,7 +550,7 @@ irq_t0_end:
 #endif
 #endif
 #endif
-;; The tick counter interrupt and UART interrupt must be marked as low priority    
+;; The tick counter interrupt and UART interrupt must be marked as low priority
 irq_low:
 ;;;; 1 millisecond tick counter
 irq_ms:
@@ -630,7 +661,7 @@ irq_async_rx1:
 #endif
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
         movf    BANKMASK(RXcnt), W, A
-#if OPERATOR_UART == 1       
+#if OPERATOR_UART == 1
 #if FC_TYPE == XONXOFF
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx1_2
@@ -660,7 +691,7 @@ irq_async_rx1_2:
         sublw   0x0f                    ;; ctrl-o
 #if OPERATOR_UART == 1
 #if CTRL_O_WARM_RESET == ENABLE
-        bnz     irq_async_rx1_3 
+        bnz     irq_async_rx1_3
         reset                           ;; Make a warm start
 #endif
 irq_async_rx1_3:
@@ -672,7 +703,7 @@ irq_async_rx1_3:
 #endif
 irq_async_rx1_4:
         incf    BANKMASK(RXhead), F, A
-        movlw   RXbufmask               ;; Wrap the RXhead pointer. 
+        movlw   RXbufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RXhead), F, A
         incf    BANKMASK(RXcnt), F, A
 irq_async_rx1_5:
@@ -717,12 +748,12 @@ irq_async_rx2_2:
 
         movff_   U2RXB,  TWrw
 #ifndef K42
-        movff   BSR, BANKMASK(ilbsr)
+        movff   BSR, ilbsr
         banksel RCSTA2
         btfsc   RCSTA2, OERR2, B
         bcf     RCSTA2, CREN2, B ;; Restart RX on case of RX overrun
         bsf     RCSTA2, CREN2, B
-        movff   BANKMASK(ilbsr), BSR
+        movff   ilbsr, BSR
 #else
         banksel U2ERRIR
         bcf     U2RXFOIF
@@ -731,7 +762,7 @@ irq_async_rx2_2:
         sublw   0x0f                    ;; ctrl-o
 #if OPERATOR_UART == 2
 #if CTRL_O_WARM_RESET == ENABLE
-        bnz     irq_async_rx2_3 
+        bnz     irq_async_rx2_3
         reset                           ;; Make a warm start
 #endif
 irq_async_rx2_3:
@@ -743,7 +774,7 @@ irq_async_rx2_3:
 #endif
 irq_async_rx2_4:
         incf    BANKMASK(RX2head), F, A
-        movlw   RXbufmask               ;; Wrap the RXhead pointer. 
+        movlw   RXbufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX2head), F, A
         incf    BANKMASK(RX2cnt), F, A
 irq_async_rx2_5:
@@ -783,12 +814,12 @@ irq_async_rx3_2:
 
         movff_  U3RXB,  TWrw
 #ifndef K42
-        movff   BSR, BANKMASK(ilbsr)
+        movff   BSR, ilbsr
         banksel RCSTA3
         btfsc   RCSTA3, OERR2, B
         bcf     RCSTA3, CREN2, B ;; Restart RX on case of RX overrun
         bsf     RCSTA3, CREN2, B
-        movff   BANKMASK(ilbsr), BSR
+        movff   ilbsr, BSR
 #else
         banksel U3ERRIR
         bcf     U3RXFOIF
@@ -797,7 +828,7 @@ irq_async_rx3_2:
         sublw   0x0f                    ;; ctrl-o
 #if OPERATOR_UART == 3
 #if CTRL_O_WARM_RESET == ENABLE
-        bnz     irq_async_rx3_3 
+        bnz     irq_async_rx3_3
         reset                           ;; Make a warm start
 #endif
 irq_async_rx3_3:
@@ -809,7 +840,7 @@ irq_async_rx3_3:
 #endif
 irq_async_rx3_4:
         incf    BANKMASK(RX3head), F, A
-        movlw   RXbufmask               ;; Wrap the RXhead pointer. 
+        movlw   RXbufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX3head), F, A
         incf    BANKMASK(RX3cnt),  F, A
 irq_async_rx3_end:
@@ -819,7 +850,8 @@ irq_async_rx3_end:
 irq_end:
 #ifndef K42
         movf    BANKMASK(ilw), W, A
-        movff   BANKMASK(ilstatus), STATUS
+        movff   ilstatus, STATUS
+        movff   ilbsr, BSR
         retfie  0
 #else // K42 K83 Qxx
         retfie  1
@@ -833,7 +865,7 @@ WARMLIT:
         dw      OPERATOR_TX    ;; EMIT vector
         dw      OPERATOR_RX    ;; KEY vector
         dw      OPERATOR_RXQ   ;; KEY? vector
-        dw      OPERATOR_AREA  ;; TASK vector 
+        dw      OPERATOR_AREA  ;; TASK vector
         dw      DEFAULT_BASE   ;; BASE
         dw      utibbuf+(PRAM) ;; TIB
         dw      0              ;; ustatus & uflg
@@ -851,7 +883,7 @@ DPD:    dw      dpdata+PRAM
 LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ;; *******************************************************************
-    PSECT   code 
+    PSECT   code
 ;; EXIT --   Compile a return
 ;;        variable link
         dw      0
@@ -948,7 +980,7 @@ PAUSE000:
         movf    STKPTR, W
         movwf   TBLPTRL           ; 17
 
-        ; Save the return stack 
+        ; Save the return stack
 pause1:
         movf    TOSL, W
         movwf   plusR
@@ -1017,7 +1049,7 @@ PAUSE_RET:
         dw      L_IR
 L_WARM:
         NF 4,warm
-WARM_:  
+WARM_:
 #ifndef USB_CDC
         reset                   ; Perform a reset, jumps to 0000 and resets stuff
 #endif
@@ -1025,7 +1057,7 @@ main:
 #ifndef K42
         movlw   0xf
         iorwf   ADCON1, F
-#endif 
+#endif
         clrf    TBLPTRU
 #ifdef OSCCON
         movlw   0x70
@@ -1041,8 +1073,8 @@ main:
         movwf   OSCTUNE, B
 #endif
 
-#ifdef PLL
-#if PLL == ENABLE
+#ifdef PLL_ENABLE
+#if PLL_ENABLE == 1
         movlw   0x40
         movwf   OSCTUNE
 #endif
@@ -1096,7 +1128,7 @@ WARM_ZERO_1:
         lfsr    Sptr, (usbuf-1)         ; Initalise Parameter stack
         lfsr    Rptr, urbuf
 
-        banksel PIE1            
+        banksel PIE1
 #ifdef PIE0                     ; Disable all peripheral interrupts
         clrf    PIE0, B
 #endif
@@ -1116,7 +1148,7 @@ WARM_ZERO_1:
 #endif
 #ifdef PIE7
         clrf    PIE7, B
-#endif 
+#endif
 #ifdef PIE8
         clrf    PIE8, B
 #endif
@@ -1184,7 +1216,7 @@ WARM_ZERO_1:
         bcf     ANCON2, ANSEL18, B ; Configure RX pin as input
 #endif
 #else  ; K42 K83 Qxx
-;; UART == 1 
+;; UART == 1
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
@@ -1195,9 +1227,9 @@ WARM_ZERO_1:
         call    PPS_UNLOCK
 ; Set the pins
         banksel U1RXPPS
-        movlw   RX_PPS 
+        movlw   RX_PPS
         movwf   U1RXPPS, B
-        
+
         clrf    U1CTSPPS, B
 
         movlw   TX_CODE
@@ -1214,7 +1246,7 @@ WARM_ZERO_1:
         movwf   U1BRGH, B
 
 ; TX enable
-        movlw   10110000B       ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   10110000B       ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD /
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U1CON0, B
         bsf     U1RUNOVF
@@ -1240,10 +1272,10 @@ WARM_ZERO_1:
         banksel U2RXPPS
         movlw   RX2_PPS
         movwf   U2RXPPS, B        ; configure the RX pin to XY
-        
+
         banksel U2CTSPPS
         clrf    U2CTSPPS, B        ; clear so always disabled
-        
+
         banksel TX2_PPS          ; configure TX pin to XY
         movlw   TX2_CODE
         movwf   TX2_PPS, B
@@ -1259,7 +1291,7 @@ WARM_ZERO_1:
         movwf   U2BRGH, B
 
 ; TX enable
-        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD /
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U2CON0, B
         bsf     U2RUNOVF
@@ -1287,10 +1319,10 @@ WARM_ZERO_1:
         banksel U3RXPPS
         movlw   RX3_PPS
         movwf   U3RXPPS, B        ; configure the RX pin to XY
-        
+
         banksel U3CTSPPS
         clrf    U3CTSPPS, B        ; clear so always disabled
-        
+
         banksel TX3_PPS          ; configure TX pin to XY
         movlw   TX3_CODE
         movwf   TX3_PPS, B
@@ -1306,7 +1338,7 @@ WARM_ZERO_1:
         movwf   U3BRGH, B
 
 ; TX enable
-        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD / 
+        movlw   10110000B     ; HIGH SPEED BAUD RATE / NO AUTO DETECT BOARD /
                                 ; ENABLE TX / ENABLE RX / ASYNC 8 BIT MODE
         movwf   U3CON0, B
         bsf     U3RUNOVF
@@ -1332,8 +1364,8 @@ WARM_ZERO_1:
         bsf     IDLEN           ; Only IDLE mode supported
 #else
         banksel CPUDOZE
-        bsf     IDLEN           ; Only IDLE mode supported  
-#endif  
+        bsf     IDLEN           ; Only IDLE mode supported
+#endif
 #endif
 #endif
 
@@ -1347,8 +1379,8 @@ WARM_ZERO_1:
         banksel T0CON0
         bsf     T0MD16              ; 16 bit timer
         movlw   0x40                ; TMR0 used for CPU_LOAD
-        movwf   T0CON1, B           ; Instruction clock 1:1 
-        banksel PIE3 
+        movwf   T0CON1, B           ; Instruction clock 1:1
+        banksel PIE3
         bsf     TMR0IE
         banksel IPR3
         bcf     TMR0IP              ; Low priority
@@ -1477,7 +1509,6 @@ WARM_ZERO_1:
         bcf     TMR6IP
 #endif
 #endif
-
         movlw   low(u0+PRAM)        ; UP
         movwf   BANKMASK(upcurr), A
         movlw   high(u0+PRAM)
@@ -1523,7 +1554,7 @@ WARM_2:
 #endif
         rcall   RQ
         rcall   VER
-        
+
         rcall   TURNKEY   ; 0xca
         call    ZEROSENSE
         bz      STARTQ2
@@ -1545,10 +1576,13 @@ WARM_2:
         bz      STARTQ2
 STARTQ1:
         rcall   TURNKEY
+#if OPERATOR_UART == 0
+#else
         call    DUP
         call    SPACE_
         call    CFATONFA
         call    DOTID
+#endif
         call    EXECUTE
 STARTQ2:
         goto    ABORT
@@ -1618,13 +1652,13 @@ RX1Q:
 #ifndef K42
         btfsc   OERR
         bcf     CREN ; Restart RX on case of RX overrun
-        bsf     CREN    
+        bsf     CREN
 #else
         banksel U1ERRIR
         btfsc   U1RXFOIF
         bcf     U1RXFOIF   ; Restart RX on case of RX overrun
         bsf     U1RXFOIF
-#endif 
+#endif
         movf    BANKMASK(RXhead), W, A
         subwf   BANKMASK(RXtail), W, A
         movwf   plusS, A
@@ -1689,12 +1723,12 @@ RX2Q:
         btfsc   RCSTA2, OERR2, B
         bcf     RCSTA2, CREN2, B ; Restart RX on case of RX overrun
         bsf     RCSTA2, CREN2, B
-#else 
+#else
         banksel U2ERRIR
         btfsc   U2RXFOIF
         bcf     U2RXFOIF    ; Restart RX on case of RX overrun
         bsf     U2RXFOIF
-#endif 
+#endif
 
         movf    BANKMASK(RX2head), W, A
         subwf   BANKMASK(RX2tail), W, A
@@ -1799,7 +1833,7 @@ L_IDLE:
 IDLE:
         bsf    BANKMASK(fstatus), 7, A
         return
-        
+
 ; busy
         dw      L_IDLE
 L_BUSY:
@@ -1825,7 +1859,7 @@ LOAD:
         dw      CPU_LOAD_VAL
         call    UMSLASHMOD
         goto    NIP
-        
+
 ; a, ( -- 0 ) Force Access bank
         dw      L_LOAD
 #endif
@@ -1905,7 +1939,7 @@ L_LI:
         movf    Sp, W, A
         movwf   BANKMASK(ihsp), A
         movf    Sbank, W, A
-        movwf   BANKMASK(ihsbank), A 
+        movwf   BANKMASK(ihsbank), A
         movf    Tp, W, A
         movwf   BANKMASK(ihtp), A
         movf    Tbank, W, A
@@ -1959,7 +1993,7 @@ umstar0:
         movf    Sminus, W, A
         movwf   TABLAT, A
         movf    TBLPTRL, W, A
-        
+
         push
         mulwf   TABLAT, A       ; ARG1L * ARG2L ->  PRODH:PRODL
         movf    PRODL, W, A
@@ -1983,7 +2017,7 @@ umstar0:
         clrf    WREG, A
         addwfc  TOSH, F, A
 
-        movf    TBLPTRH, W, A   
+        movf    TBLPTRH, W, A
         mulwf   TABLAT, A       ; ARG1H * ARG2L -> PRODH:PRODL
         movf    PRODL, W, A     ;
         addwf   Srw, F, A       ; Add cross
@@ -2063,7 +2097,7 @@ UMSLASHMOD2:
         movwf   plusS , A           ; quotient
         movf    DIVIDEND_1, W, A
         movwf   plusS, A
-        return                  ; 11 cycles 
+        return                  ; 11 cycles
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
 ;   if (idirty)
@@ -2151,7 +2185,7 @@ wbtil:
 #ifdef p18fxx2xx8_fix_1
         movff   PIE1, SPIE1
         movff   PIE2, SPIE2
-        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF 
+        movff   INTCON, SINTCON ; TMR0IF, INT0IF, RBIF
         clrf    INTCON          ; may be lost
         clrf    PIE1
         clrf    PIE2
@@ -2159,7 +2193,7 @@ wbtil:
 #ifndef Qxx
         rcall   init_ptrs             ; Init TBLPTR, ram pointer, banksel
                                       ; Erase the flash block
-        bsf     BANKMASK(EECON1), 7, B    ; EEPGD 
+        bsf     BANKMASK(EECON1), 7, B    ; EEPGD
         bcf     BANKMASK(EECON1), 6, B    ; CFGS
         bsf     BANKMASK(EECON1), 2, B    ; WREN
         bsf     BANKMASK(EECON1), 4, B    ; FREE
@@ -2263,16 +2297,24 @@ magic:
         return
 
 ;***************************************************
-#if FC_TYPE == XONXOFF
 asmemit:
+#if 0
+        banksel REG_U1RXIF
+        btfss   U1TXIF
+        bra     asmemit
+        banksel U1TXB
+        movwf   U1TXB, B
+        return
+#endif
+#if FC_TYPE == XONXOFF
 #if OPERATOR_UART == 1
         banksel REG_U1RXIF
         btfss   U1TXIF
         bra     asmemit
         banksel U1TXB
         movwf   U1TXB, B
-#endif 
-#if WANT_UART3 == ENABLE
+#endif
+#if WANT_UART2 == ENABLE
 #if OPERATOR_UART == 2
         banksel REG_U2RXIF
         btfss   U2TXIF
@@ -2290,8 +2332,8 @@ asmemit:
         movwf   U3TXB, B
 #endif
 #endif
-        return
 #endif
+        return
 ;***************************************************
 ; N=    c-addr nfa -- flag
 ; N= is only used for finding dictionary entries
@@ -2372,7 +2414,7 @@ SKIP5:
 ; u(count) must be smaller than 256
 ; TAB will always give a match. This works OK
 ; with tabbed source files that have space as a delimiter.
-; When using scan with other delimiters there may be 
+; When using scan with other delimiters there may be
 ; problems, because TAB will always terminate the scan.
 
         dw      L_SKIP
@@ -2419,14 +2461,14 @@ L_EI:
         NF INLINE|2,ei
         bsf     GIE
         return
-        
+
 ; di  ( -- )    Disable interrupts
         dw      L_EI
 L_DI:
         NF INLINE|2,di
         bcf     GIE
         return
-        
+
 ; ;i  ( -- )    End definition of user interrupt routine
         dw      L_DI
 L_IRQ_SEMI:
@@ -2437,7 +2479,7 @@ IRQ_SEMI:
         dw      0x11      ; retfie 1
         rcall   ICOMMA
         goto    LEFTBRACKET
-        
+
 ; INT!   addr vector --     Store the interrupt vector
         dw      L_IRQ_SEMI
 L_INT:
@@ -2447,7 +2489,7 @@ L_INT:
 INT:
         call    DROP
         movf    Sminus, W, A
-        movff_	Sminus, BANKMASK(irq_v)
+        movff_	Sminus, irq_v
         movwf   BANKMASK(irq_v)+1, A
         return
 
@@ -2507,7 +2549,7 @@ pcfetch0:
         movwf   plusS, A
         clrf    plusS, A
         return
-        
+
 ISTORE_SETUP:
         rcall   LOCKED
 ; check that writes are not to the kernel code
@@ -2598,7 +2640,7 @@ ICFETCH1:
         cpfseq  BANKMASK(ibase_hi), A
         bra     pcfetch0
 #ifndef Qxx
-        movlw   flash_pointer_mask 
+        movlw   flash_pointer_mask
         andwf   TBLPTRL, W, A
         cpfseq  BANKMASK(ibase_lo), A
         bra     pcfetch0
@@ -2883,7 +2925,7 @@ RX0:
         bra     RX0
         lfsr    Tptr, cdc_data_rx
         movf    ep2optr, W, A
-        movff_  TWrw, plusS
+        movff   TWrw, plusS
         incf    ep2optr, F, A
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
@@ -2916,14 +2958,14 @@ RX0Q1:
 XXOFF:
         btfsc   BANKMASK(FLAGS2), ixoff, A
         return
-XXXOFF: 
+XXXOFF:
         bsf     BANKMASK(FLAGS2), ixoff, A
         movlw   XOFF_
         bra     asmemit
 XXON:
         btfss   BANKMASK(FLAGS2), ixoff, A
         return
-XXXON:  
+XXXON:
         bcf     BANKMASK(FLAGS2), ixoff, A
         movlw   XON_
         bra     asmemit
@@ -2961,7 +3003,7 @@ MSET:
         movf    Sminus, W
         iorwf   Trw, F
         return
-        
+
 ; : mclr  ( mask addr -- )
 ;  dup >r c@ swap invert and r> c!
 ; ;
@@ -3005,7 +3047,7 @@ RQ_BOR:
         rcall   XSQUOTE
         db      1,"B"
         rcall   TYPE
-RQ_POR: 
+RQ_POR:
         btfsc   BANKMASK(reset1), 1, A       ; POR
         bra     RQ_TO
         rcall   XSQUOTE
@@ -3016,7 +3058,7 @@ RQ_TO:
         btfsc   BANKMASK(reset1), 3, A
 #else
         btfsc   BANKMASK(reset1), 4, A         ; RWDT
-#endif 
+#endif
         bra     RQ_RI
         rcall   XSQUOTE
         db      1,"W"
@@ -3031,7 +3073,7 @@ RQ_END:
         return
 
 ; : mtst ( mask addr -- flag )
-;   c@ and 
+;   c@ and
 ; ;
         dw      L_MCLR
 L_MTST:
@@ -3040,7 +3082,7 @@ MTST:
         rcall   CFETCH
         goto    AND_
 
-;;; Fcy returns the cpu clock Fcy in KHz. Unsigned value. 
+;;; Fcy returns the cpu clock Fcy in KHz. Unsigned value.
         dw      L_MTST
 L_CPUCLK:
         NF 3,Fcy
@@ -3050,10 +3092,10 @@ L_CPUCLK:
         dw      L_CPUCLK
 L_OPERATOR:
         NF 8,operator
-OPERATOR:       
+OPERATOR:
         call    DOCREATE        ; Must be a call !
         dw      OPERATOR_AREA
-OPERATOR_AREA:  
+OPERATOR_AREA:
         dw      u0+PRAM         ; User pointer
         dw      UADDSIZE, RETURN_STACK_SAVE_SIZE
         dw      ussize, utibsize
@@ -3113,14 +3155,14 @@ RSHIFT:
         movf    Sminus, W
         bz      RSHIFT2
         movwf   Tp
-RSHIFT1: 
+RSHIFT1:
         bcf     CARRY
         rrcf    Sminus, F
-        rrcf    Splus, F    
+        rrcf    Splus, F
 
         decfsz  Tp, F
         bra     RSHIFT1
-RSHIFT2:        
+RSHIFT2:
         return
 ;*******************************************************
 ; Assembler
@@ -3142,7 +3184,7 @@ AS1:
         call    XDOES
 AS1_DOES:
         rcall   DODOES
-AS1_1:  
+AS1_1:
         rcall   OR_A
         bra     ICOMMA
 
@@ -3159,12 +3201,12 @@ AS2_DOES:
         rcall   ICCOMMA
         bra     AS3_2
 
-;       as3 ( opcode "name" --) ( f d/b a -- )  
+;       as3 ( opcode "name" --) ( f d/b a -- )
 ;       write a 3 operand asm intruction to flash
         dw      L_AS2
 L_AS3:
         NF IMMED|3,as3
-AS3:    
+AS3:
         rcall   CONSTANT_
         call    XDOES
 AS3_DOES:
@@ -3176,7 +3218,7 @@ AS3_DOES:
         call    TWOSTAR
         rcall   OR_A
         rcall   RFROM
-AS3_2:  
+AS3_2:
         rcall   OR_A
         bra     ICCOMMA
 
@@ -3261,7 +3303,7 @@ L_BRA:
 BRA_:
         rcall   BR2_DOES
         dw      0xd000
-        
+
 ;       bcf, ( f b a -- )
         dw      L_BRA
 L_BCF:
@@ -3271,17 +3313,17 @@ L_BCF:
 BCF_:
         rcall   AS3_DOES
         dw      0x0090
-        
+
 ;       bsf, ( f b a -- )
         dw      L_BCF
 L_BSF:
         NF2     4,bsf
-        db      ',' 
+        db      ','
         align   2
 BSF_:
         rcall   AS3_DOES
         dw      0x0080
-        
+
 ;       btfsc, ( f b a -- )
         dw      L_BSF
 L_BTFSC:
@@ -3291,7 +3333,7 @@ L_BTFSC:
 BTFSC_:
         rcall   AS3_DOES
         dw      0x00b0
-        
+
 ;       btfss, ( f b a -- )
         dw      L_BTFSC
 L_BTFSS:
@@ -3397,9 +3439,9 @@ USB_OFF:
         dw      L_USB_OFF
 #endif
 ;*******************************************************
-;**********************************************************             
+;**********************************************************
         NF 2,or
-OR_A:   
+OR_A:
         bra     OR
 ;************************************************************
 ;;; Check parameter stack pointer
@@ -3413,6 +3455,7 @@ check_sp:
         rcall   XSQUOTE
         db      3
         STRING  SP?
+        align   2
         call    QABORT
         return
 ;***************************************************
@@ -3462,7 +3505,7 @@ LIT:
         movf    TBLPTRL, W
         movwf   TOSL
         return
-    
+
 ;****************************************************
 ; EXECUTE  xt -- execute word at xt
 ; 6 clock cycles
@@ -3579,8 +3622,8 @@ DODOES:
         movf    Tp, W
         movwf   TOSL
         return
-	
-;;; Compile inline address as subroutine call  
+
+;;; Compile inline address as subroutine call
         db      NFA|3,'(',',',')'
         align   2
 DOCOMMAXT:
@@ -3722,7 +3765,7 @@ CFETCH:
         bra     ECFETCH_
         bra     ICFETCH_
 CFETCH1:
-        movf    Sminus, W   
+        movf    Sminus, W
         movwf   Tbank
         movf    Sminus, W
         movwf   Tp
@@ -3736,7 +3779,7 @@ ICFETCH_:
 ECFETCH_:
         goto    ECFETCH
 
-;   RPEMPTY     -- EMPTY THE RETURN STACK       
+;   RPEMPTY     -- EMPTY THE RETURN STACK
 ;   empty the return stack and jump to the caller
 ;       dw      link
 ;link   set     $
@@ -3782,7 +3825,7 @@ XFETCH:
         dw      L_XFETCH
 #endif
 L_FLASH:
-ROM_N:  
+ROM_N:
         NF 5,flash
 ROM:
         clrf    BANKMASK(cse), A
@@ -3791,24 +3834,24 @@ ROM:
 ; EEPROM -- sets the data section to EEPROM data memory
         dw      L_FLASH
 L_EEPROM:
-EROM_N: 
+EROM_N:
         NF 6,eeprom
 EROM:
         movlw   2
         movwf   BANKMASK(cse), A
         return
-        
+
 ; RAM -- sets the data section to RAM memory
         dw      L_EEPROM
 L_RAM:
-FRAM_N: 
+FRAM_N:
         NF 3,ram
 FRAM:
         movlw   4
         movwf   BANKMASK(cse), A
         return
 
-; DP    -- a-addr          
+; DP    -- a-addr
 ; Fetched from EEPROM
         dw      L_RAM
 L_DP:
@@ -3819,7 +3862,7 @@ DP:
         goto    PLUS
 
 
-;;; 
+;;;
         NF 3,BANKMASK(cse)
 CSE:
         movf    BANKMASK(cse), W, A
@@ -3837,7 +3880,7 @@ HERE:
         goto    FETCH
 
         NF 5,ihere
-IHERE_P: 
+IHERE_P:
         goto   IHERE
 ; ,   x --             append cell to current data space
 ;   HERE ! CELL ALLOT ;
@@ -3853,7 +3896,7 @@ COMMA:
 
 ; C,  c --             append char to current data space
 ;   HERE C! 1 ALLOT ;
-        dw      L_COMMA 
+        dw      L_COMMA
 L_CCOMMA:
         db      NFA|2,'c',','
         align   2
@@ -3936,15 +3979,15 @@ COMMAXT:
         rcall   DUP
         rcall   IHERE_P
         rcall   MINUS
-        rcall   ABS 
+        rcall   ABS
         rcall   LIT
         dw      0x7f0
         rcall   GREATER
         rcall   ZEROSENSE
         bz      STORECF1
-STORECFF1: 
+STORECFF1:
         rcall   CALL_
-        bra     STORECF2 
+        bra     STORECF2
 STORECF1:
         rcall   IHERE_P
         rcall   MINUS
@@ -3954,7 +3997,7 @@ STORECF2:
         return
 
 ; !COLON   --       change code field to docolon
-;   -6 IALLOT ; 
+;   -6 IALLOT ;
 ;       dw      link
 ;link   set     $
         NF 6,!colon
@@ -4054,7 +4097,7 @@ TWOSWAP:
         dw      L_TWOSWAP
 L_SPACE:
         NF 5,space
-SPACE_:  
+SPACE_:
         call    BL
         goto    EMIT
 
@@ -4098,7 +4141,7 @@ L_ONE:
         NF INLINE|1,1
 ONE:
         movlw   1
-WTOS:   
+WTOS:
         movwf   plusS
         clrf    plusS
         return
@@ -4118,7 +4161,7 @@ ACC_1:
         movf    Splus, W
         sublw   8             ; L - W
         bz      ACC_BS_DEL
-        sublw   -2            ; 
+        sublw   -2            ;
         bz      ACC_LF
         sublw   3             ;
         bz      ACC_CR
@@ -4182,7 +4225,7 @@ L_TYPE:
 TYPE:
         rcall   TOR             ; XFOR
         bra     TYPE2           ; XFOR
-TYPE1:  
+TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
@@ -4222,13 +4265,13 @@ SQUOTE:
         rcall   ROM
         rcall   CQUOTE
         goto    FRAM
-        
+
 ; ,"      --           store a string to current data space
         dw      L_SQUOTE
 L_CQUOTE:
         db      NFA|2,',','"'
         align   2
-CQUOTE: 
+CQUOTE:
         rcall   LIT
         dw      0x22
         rcall   PARSE
@@ -4244,7 +4287,7 @@ CQUOTE:
         dw      L_CQUOTE
 L_DOTQUOTE:
         NF IMMED|COMPILE|2,."
-DOTQUOTE: 
+DOTQUOTE:
         rcall   SQUOTE
         rcall   DOCOMMAXT
         dw      TYPE
@@ -4273,7 +4316,7 @@ DROP:
         subfsr  Sptr, 2
 #endif
         return
-    
+
 
 ; SWAP  x1 x2 -- x2 x1          SWAP two top items
 ; 17 cycles (23 movffl)
@@ -4336,7 +4379,7 @@ RFROM:
         movwf   plusS
         return
 ;  R@  -- x  R: x -- x         fetch from R stack
-;  4 cycles 
+;  4 cycles
         dw      L_RFROM
 L_RFETCH:
         NF 2,r@
@@ -4389,17 +4432,17 @@ MPLUS:
         call    STOD
         goto    DPLUS
 
-;   -   n1/u1 n2/u2 -- n3/u3 n3 = n1 - n2 
+;   -   n1/u1 n2/u2 -- n3/u3 n3 = n1 - n2
         dw      L_MPLUS
 L_MINUS:
         NF 1,-
 MINUS:
         swapf   Sminus, W
-        movwf   Tp 
+        movwf   Tp
         movf    Sminus, W
         movf    Sminus, F
         subwf   Srw, F
-        swapf   Tp, W 
+        swapf   Tp, W
         subwfb  plusS, F
         return
 
@@ -4535,7 +4578,7 @@ PLUSSTORE:
         rcall   PLUS
         rcall   SWOP
         goto    STORE
-        
+
 ;***************************************************
 ;   WITHIN      ( u ul uh -- t )
 ;               Return true if u is within the range of ul and uh. ( ul <= u < uh )
@@ -4551,7 +4594,7 @@ WITHIN:
         goto    ULESS
 
 ;***************************************************
-;   <>      x1 x2 -- flag       return true if not equal 
+;   <>      x1 x2 -- flag       return true if not equal
         dw      L_WITHIN
 L_NOTEQUAL:
         db      NFA|2,'<','>'
@@ -4692,7 +4735,7 @@ PFETCH:
         movf    BANKMASK(p_hi), W, A
         movwf   plusS
         goto    FETCH
-;***************************************************    
+;***************************************************
         dw      L_PFETCH
 L_PSTORE:
         db      NFA|2,'p','!'   ; store cell to pointer
@@ -4703,7 +4746,7 @@ PSTORE:
         movf    BANKMASK(p_hi), W, A
         movwf   plusS
         goto    STORE
-;***************************************************    
+;***************************************************
         dw      L_PSTORE
 L_PCSTORE:
         db      NFA|3
@@ -4716,7 +4759,7 @@ PCSTORE:
         movf    BANKMASK(p_hi), W, A
         movwf   plusS
         goto    CSTORE
-;***************************************************    
+;***************************************************
         dw      L_PCSTORE
 L_PPLUS:
         NF INLINE|2,p+  ; Increment p by one
@@ -4745,7 +4788,7 @@ L_UEMIT:
 UEMIT:
         rcall   DOUSER
         dw      uemit&0xffff
-        
+
 ;***************************************************
 ; UKEY  -- addr         Address of KEY user vector
         dw      L_UEMIT
@@ -4756,7 +4799,7 @@ L_UKEY:
 UKEY:
         rcall   DOUSER
         dw      ukey&0xffff
-        
+
 ;***************************************************
 ; UKEYQ  -- addr         Address of KEYQ user vector
         dw      L_UKEY
@@ -4767,8 +4810,8 @@ L_UKEYQ:
 UKEYQ:
         rcall   DOUSER
         dw      ukeyq&0xffff
-        
-;***************************************************    
+
+;***************************************************
 
 ;  n --    Set the Zero STATUS bit if TOS is zero.
 ;          ALWAYS inlined by the compiler.
@@ -4820,7 +4863,7 @@ USLASHMOD:
         dw      L_USLASHMOD
 L_STAR:
         NF 1,*
-STAR: 
+STAR:
         rcall   UMSTAR
         goto    DROP
 
@@ -4850,7 +4893,7 @@ USSMOD:
         dw      L_USSMOD
 L_SLASH:
         NF 1,/
-SLASH: 
+SLASH:
         rcall   TWODUP
         rcall   XOR
         rcall   TOR
@@ -4899,7 +4942,7 @@ QNEGATE1:
         dw      L_QNEGATE
 L_MAX:
         NF 3,max
-MAX:    
+MAX:
         rcall   TWODUP
         rcall   LESS
 MINMAX:
@@ -4919,10 +4962,10 @@ MIN:    rcall   TWODUP
         bra     MINMAX
 
         NF 2,c@
-CFETCH_A:       
+CFETCH_A:
         bra     CFETCH
 
-        
+
 ; UP    -- a-addr       Current User Area pointer
         dw      L_MIN
 L_UPTR:
@@ -4950,7 +4993,7 @@ HOLD:   rcall   TRUE_
 L_LESSNUM:
         db      NFA|2,'<','#'
         align   2
-LESSNUM: 
+LESSNUM:
         rcall   PAD
         rcall   HP
         goto    STORE
@@ -5014,11 +5057,11 @@ NUMGREATER:
 
 
 ; SIGN  n --               add minus sign if n<0
-;   0< IF 2D HOLD THEN ; 
+;   0< IF 2D HOLD THEN ;
         dw      L_NUMGREATER
 L_SIGN:
         NF 4,sign
-SIGN:   
+SIGN:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         bz      SIGN1
@@ -5041,7 +5084,7 @@ UDOT:
         rcall   TYPE
         goto    SPACE_
 
-; U.R    u +n --      display u unsigned in field of n. 1<n<=255 
+; U.R    u +n --      display u unsigned in field of n. 1<n<=255
 ;    0 swap <# 1- for # next #s #> type space ;
         dw      L_UDOT
 L_UDOTR:
@@ -5054,7 +5097,7 @@ UDOTR:
         bra     UDOTR2
 UDOTR1:
         rcall   NUM
-UDOTR2: 
+UDOTR2:
         decf    Rrw, F      ;  XNEXT
         bc      UDOTR1
         movwf   Rminus
@@ -5086,7 +5129,7 @@ DOT:    rcall   LESSNUM
         dw      L_DOT
 L_DECIMAL:
         NF 7,decimal
-DECIMAL: 
+DECIMAL:
         rcall   TEN
         rcall   BASE
         goto    STORE
@@ -5173,7 +5216,7 @@ DOUSER:
         addwfc  BANKMASK(upcurr)+1, W, A
         movwf   plusS, A
         decf    STKPTR, F, A         ; return to the callers caller
-        return  
+        return
 
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at higher adrs
@@ -5223,11 +5266,11 @@ PARSE:
         rcall   DUP             ; c c a u u
         rcall   TOR             ; c c a u                  R: u (new tib len
         rcall   ROT             ; c a u c
-        call    SKIP            ; c a u        
+        call    SKIP            ; c a u
         rcall   OVER            ; c a u a
         rcall   TOR             ; c a u                    R: u a (start of word
         rcall   ROT             ; a u c
-        call    SCAN            ; a u      end of word, tib left       
+        call    SCAN            ; a u      end of word, tib left
         rcall   DUPZEROSENSE
         bz      PARSE1
         rcall   ONEMINUS
@@ -5239,7 +5282,7 @@ PARSE1: rcall   RFROM           ; a u a
         rcall   PLUSSTORE       ; aend astart
         rcall   TUCK            ; astart aend astart
         goto    MINUS           ; astart wlen
-     
+
 
 ; WORD   char -- c-addr        word delimited by char and/or TAB
         dw      L_PARSE
@@ -5250,7 +5293,7 @@ WORD:
         rcall   SWOP
         rcall   ONEMINUS
         rcall   TUCK
-        goto    CSTORE          ; Write the length into the TIB ! 
+        goto    CSTORE          ; Write the length into the TIB !
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p for c@+ pc! p+ next drop ;
@@ -5260,7 +5303,7 @@ L_CMOVE:
 CMOVE:
         rcall   SWOP
         rcall   STORE_P_TO_R
-        rcall   TOR             ; Count to return stack 
+        rcall   TOR             ; Count to return stack
         bra     CMOVE2
 CMOVE1:
         rcall   CFETCHPP
@@ -5281,7 +5324,7 @@ CMOVE2:
         dw      L_CMOVE
 L_PLACE:
         NF 5,place
-PLACE: 
+PLACE:
         rcall   TWODUP
         call    CSTORE
         call    CHARPLUS
@@ -5300,7 +5343,7 @@ CFETCHPP:
         bnc     CFETCHPP1
         movlw   -2
         incf    SWrw, F
-CFETCHPP1:      
+CFETCHPP1:
         return
 
 ; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
@@ -5314,7 +5357,7 @@ FETCHPP:
         goto    FETCH
 ;;; ******************************************************
         db      NFA|1,'!'
-STORE_A:        
+STORE_A:
         goto    STORE
 
 ; N>C   nfa -- cfa    name adr -> code field
@@ -5376,14 +5419,14 @@ findi2:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR
-findi3: 
+findi3:
         return
 
 ; IMMED?    nfa -- f        fetch immediate flag
         dw      L_BRACFIND
 L_IMMEDQ:
         NF 6,immed?
-IMMEDQ: 
+IMMEDQ:
         rcall   CFETCH_A
         movf    Sminus, W
         movf    Splus, W
@@ -5398,7 +5441,7 @@ IMMEDQ:
         dw      L_IMMEDQ
 L_FIND:
         NF 4,find
-FIND:   
+FIND:
         rcall   LIT_A
         dw      kernellink
         rcall   findi
@@ -5475,13 +5518,13 @@ UDSTAR:
         rcall   UMSTAR
         rcall   ROT
         goto    PLUS
-        
+
 ; UD/MOD  ud u --u(rem) ud(quot)
         dw      L_UDSTAR
 L_UDSLASHMOD:
         NF 6,ud/mod
 UDSLASHMOD:
-        rcall   TOR             ; ud.l ud.h 
+        rcall   TOR             ; ud.l ud.h
         rcall   FALSE_          ; ud.l ud.h 0
         rcall   RFETCH          ; ud.l ud.h 0 u
         rcall   UMSLASHMOD      ; ud.l r.h q.h
@@ -5512,7 +5555,7 @@ A_FROM:
         movwf   plusS
         return
 
-        
+
 ; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
 ;                       convert string to number
         dw      L_A_FROM
@@ -5540,7 +5583,7 @@ TONUM1:
         rcall   RFROM           ; ud.l ud.h adr
         rcall   RFROM           ; ud.l ud.h adr u
         bra     TONUM3
-TONUM2: 
+TONUM2:
         rcall   TOR             ; ud.l ud.h
         rcall   BASE
         rcall   FETCH_A
@@ -5560,7 +5603,7 @@ TONUM3:
         rcall   A_FROM
         goto    PLUS
 
-BASEQV:   
+BASEQV:
         dw      DECIMAL
         dw      HEX_
         dw      BIN
@@ -5584,7 +5627,7 @@ NUMBERQ:
         rcall   BASE
         rcall   FETCH_A
         rcall   TOR             ; a 0 0 a' u
-        
+
         rcall   OVER
         rcall   CFETCH_A
 
@@ -5658,8 +5701,8 @@ L_TIB:
 TIB:
         rcall   TIU
         goto    FETCH
-        
-; TIU     -- a-addr        Terminal Input Buffer user variable 
+
+; TIU     -- a-addr        Terminal Input Buffer user variable
         dw      L_TIB
 L_TIU:
         NF 3,tiu
@@ -5692,7 +5735,7 @@ DUP_A:  goto    DUP
         dw      L_TICKSOURCE
 L_INTERPRET:
         NF 9,interpret
-INTERPRET: 
+INTERPRET:
         rcall   TICKSOURCE
         call    TWOSTORE
         rcall   FALSE_
@@ -5764,7 +5807,7 @@ ICOMPILE:
         bra     ICOMMAXT
         rcall   INLINE0
         bra     IPARSEWORD
-INUMBER: 
+INUMBER:
         bcf     BANKMASK(FLAGS1), izeroeq, A ; Clear 0= encountered in compilation
         bcf     BANKMASK(FLAGS1), idup, A    ; Clear DUP encountered in compilation
         rcall   NUMBERQ
@@ -5778,7 +5821,7 @@ INUMBER:
 IDOUBLE:
         rcall   SWOP_A
         call    LITERAL
-ISINGLE:        
+ISINGLE:
         call    LITERAL
 INUMBER1:
         bra     IPARSEWORD
@@ -5788,14 +5831,14 @@ IUNKNOWN:
         call    TYPE
         rcall   FALSE_
         rcall   QABORTQ         ; Never returns & resets the stacks
-INOWORD: 
+INOWORD:
         goto    DROP
 
         NF 1,@
-FETCH_A:        
+FETCH_A:
         goto    FETCH
 
-;;;    bitmask -- 
+;;;    bitmask --
         dw      L_INTERPRET
 L_SHB:
         NF 3,shb     ; Set header bit
@@ -5807,10 +5850,10 @@ SHB:
         call    OR
         rcall   SWOP_A
         goto    CSTORE
-        
+
         dw      L_SHB
 L_IMMEDIATE:
-        NF 9,immediate ; 
+        NF 9,immediate ;
 IMMEDIATE:
         rcall   LIT_A
         dw      IMMED
@@ -5823,14 +5866,14 @@ SWOP_A:
 ;***************************************************************
         dw      L_IMMEDIATE
 L_INLINED:
-        NF 7,inlined ; 
+        NF 7,inlined ;
 INLINED:
         rcall   LIT_A
         dw      INLINE
         bra     SHB
 EMIT_A: goto    EMIT
 ;; .st ( -- ) output a string with current data section and current base info
-;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type 
+;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type
 ;;;     <# [char] > hold BANKMASK(cse) @ #s #> type base ! ;
         dw      L_INLINED
 L_DOTSTATUS:
@@ -5850,11 +5893,11 @@ DOTSTATUS:
         dw      0x003e
         rcall    EMIT_A
         goto    DOTS
-        
+
         NF 3,lit
 LIT_A:
         goto    LIT
-        
+
 
         NF 2,>r
 TOR_A:  goto    TOR
@@ -5889,7 +5932,7 @@ DP_TO_EEPROM:
         movlw   5
         movwf   plusR
         bra     DP_TO_EEPROM_3
-DP_TO_EEPROM_0: 
+DP_TO_EEPROM_0:
         rcall   FETCHPP
         call    DUP
         rcall   PFETCH
@@ -5926,7 +5969,7 @@ TRUE_:                      ; TOS is ffff (TRUE)
         setf    plusS
         setf    plusS
         return
-        
+
 ; QUIT     --    R: i*x --    interpret from kbd
         dw      L_TRUE
 L_QUIT:
@@ -5935,10 +5978,10 @@ QUIT:
         call    RPEMPTY
         rcall   LEFTBRACKET
         call    FRAM
-QUIT0:  
+QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
-QUIT1: 
+QUIT1:
         call    check_sp
         rcall   CR
         rcall   TIB
@@ -5984,7 +6027,7 @@ L_SPSTORE:
 SPSTORE:
         movf    Sminus, W
         movwf   Tp
-        movf    Sminus, W 
+        movf    Sminus, W
         movwf   Sp
         movf    Tp, W
         movwf   Sbank
@@ -6009,7 +6052,7 @@ QABORT:
         rcall   ROT_A
         call    ZEROSENSE
         bnz     QABO1
-QABORT1:        
+QABORT1:
         call    SPACE_
         call    TYPE
         rcall   ABORT  ; ABORT never returns
@@ -6096,17 +6139,17 @@ CR:
         goto    TYPE
 
 ; CREATE   --         create an empty definition
-; Create a definition header and append 
+; Create a definition header and append
 ; doCREATE and the current data space dictionary pointer
 ; in FLASH.
-;  Examples :   
+;  Examples :
 ; : table create 10 cells allot does> swap cells + ;
 ; ram table table_a     flash table table_b    eeprom table table_c
 ; ram variable  qqq
 ; eeprom variable www ram
-; flash variable  rrr ram 
+; flash variable  rrr ram
 ; eeprom create calibrationtable 30 allot ram
-; 
+;
         dw      L_CR
 L_CREATE:
         NF 6,create
@@ -6122,8 +6165,8 @@ CREATE:
         db      15
         STRING  ALREADY_DEFINED
         rcall   QABORT         ; ABORT if word has already been defined
-        
-        rcall   DUP_A           ; Check the word length 
+
+        rcall   DUP_A           ; Check the word length
         call    CFETCH_A
         call    ONE
         rcall   LIT_A
@@ -6140,10 +6183,10 @@ CREATE:
         call    ICOMMA          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
-        rcall   DUP_A             
+        rcall   DUP_A
         rcall   LATEST          ; new 'latest' link
         rcall   STORE_A         ; str len ihere
-        rcall   PLACE           ; 
+        rcall   PLACE           ;
         rcall   IHERE           ; ihere
         call    CFETCH_A
         rcall   LIT_A
@@ -6182,7 +6225,7 @@ POSTPONE:
 POSTPONE1:
         goto   COMMAXT
 ;***************************************************************
-; IDP    -- a-addr  Dictonary pointer storage        
+; IDP    -- a-addr  Dictonary pointer storage
 ; Stored in EEPROM
         ;;      dw link
         ;; link set $
@@ -6311,7 +6354,6 @@ ADD_RETURN_1:
         dw      0x0012
         goto    ICOMMA
 
-
         dw      L_SEMICOLON
 L_MINUS_FETCH:
         NF 2,-@
@@ -6340,7 +6382,7 @@ TWOMINUS:
         subwfb  Srw, F
         return
 
-        
+
 ; BL      -- char                 an ASCII space
         dw      L_TWOMINUS
 L_BL:
@@ -6359,7 +6401,7 @@ STATE_:
         movwf   plusS
         return
 
-; LATEST    -- a-addr           
+; LATEST    -- a-addr
         dw      L_STATE
 L_LATEST:
         NF 6,latest
@@ -6374,7 +6416,7 @@ L_S0:
 S0:
         call    DOUSER
         dw      us0&0xffff
-        
+
 ; ini -- a-addr       ini variable contains the user-start xt
 ; In RAM
 ;        dw      link
@@ -6396,10 +6438,10 @@ TICKS:
         movwf   plusS
         bsf     GIE
         return
-        
+
 
 ; ms  +n --      Pause for n millisconds
-; : ms ( +n -- )     
+; : ms ( +n -- )
 ;   ticks +
 ;   begin
 ;     pause dup ticks - 0<
@@ -6442,7 +6484,7 @@ DOTID1:
         rcall    EMIT_A
 DOTID3:
         decf    Rrw, F
-        bc      DOTID1  
+        bc      DOTID1
         movf    Rminus, W
         goto    DROP
 
@@ -6450,7 +6492,7 @@ DOTID3:
         dw      L_DOTID
 L_TO_PRINTABLE:
         NF 3,>pr
-TO_PRINTABLE:   
+TO_PRINTABLE:
         movf    Sminus, W
         movf    Srw, W
         bn      TO_PRINTABLE1
@@ -6542,7 +6584,7 @@ L_WORDS:
         dw      kernellink
         rcall   WORDS1
         rcall   LAST
-WORDS1: 
+WORDS1:
         rcall   CR
         bra     LIKES
 
@@ -6564,7 +6606,7 @@ DOTS1:
         call    FETCHPP
         call    UDOT
         bra     DOTS1
-DOTS2:  
+DOTS2:
         goto    TWODROP
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
@@ -6577,7 +6619,7 @@ DUMP:
         call    USLASH
         rcall   TOR_A
         bra     DUMP7
-DUMP1:  
+DUMP1:
         rcall   CR
         rcall   DUP_A
         rcall   LIT_A
@@ -6602,7 +6644,7 @@ DUMP2:
         call    MINUS
         movlw   0x10
         movwf   plusR
-DUMP4:  
+DUMP4:
         rcall   CFETCHPP_A
         rcall   TO_PRINTABLE
         rcall   EMIT_A
@@ -6624,7 +6666,7 @@ DUMP7:
 IALLOT:
         rcall   IDP
         goto    PLUSSTORE
-        
+
 ;***************************************************************
 ; check that the relative address is within reach of conditional branch
 ; instructions and leave the clipped relative address on the stack
@@ -6742,14 +6784,14 @@ THENC:
                               ; bra has longer range
         sublw   0xd0          ; Also DUP
         bz      THENC1
-THENC0: 
+THENC0:
         rcall   LIT_A
-        dw      0x1ff         ;  back-addr mask 
+        dw      0x1ff         ;  back-addr mask
         bra     THENC2
 THENC1:
         rcall   LIT_A
         dw      0x0fff         ; back-addr mask
-THENC2: 
+THENC2:
         rcall   TOR_A           ; back-addr
         rcall   IHERE           ; back-addr ihere
         call    OVER            ; back-addr ihere back-addr
@@ -6761,7 +6803,7 @@ THENC2:
         call    OR              ; back-addr instruction
         rcall   SWOP_A
         goto    STORE
-        
+
 ; else, ( back-addr -- here )  Assembler else
         dw      L_THENC
 L_ELSEC:
@@ -6785,7 +6827,7 @@ L_BEGINC:
         align   2
 BEGINC:
         goto    IHERE
-        
+
 ; again,    adrs --      uncond'l backward branch
 ;   unconditional backward branch
         dw      L_BEGINC
@@ -6821,12 +6863,12 @@ UNTILC:
         goto    ICCOMMA
 
 ; IF       -- adrs   conditional forward branch
-; Leaves address of branch instruction 
+; Leaves address of branch instruction
 ; and compiles the condition byte
         dw      L_UNTILC
 L_IF:
         NF IMMED|COMPILE|2,if
-IF_:    
+IF_:
         btfsc   BANKMASK(FLAGS1), izeroeq, A
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
@@ -6835,7 +6877,7 @@ IF_:
         rcall   NOTC
         bcf     BANKMASK(FLAGS1), izeroeq, A
         goto    IFC
-        
+
 
 ; THEN     adrs  --        resolve forward branch
         dw      L_IF
@@ -6859,7 +6901,7 @@ L_BEGIN:
         NF IMMED|COMPILE|5,begin
 BEGIN:
         goto    IHERE
-        
+
 ;;; Forget the latest compiled two cell instruction
         NF 1,_
 IDPMINUS:
@@ -6880,7 +6922,7 @@ UNTIL:
         rcall   NOTC
         bcf     BANKMASK(FLAGS1), izeroeq, A
         goto    UNTILC
-        
+
 ; AGAIN    adrs --      uncond'l backward branch
 ;   unconditional backward branch
         dw      L_UNTIL
@@ -6921,7 +6963,7 @@ L_INLINE:
 L_INLINEC:
         db      NFA|3,'i','n',','
         align   2
-INLINE0:        
+INLINE0:
         call    FETCHPP
         movf    Srw, W
         bnz     INLINE2
@@ -6966,7 +7008,7 @@ NEXT:
 
 
 ; (next) decrement top of return stack
-XNEXT:  
+XNEXT:
         decf    Rminus, F
         movlw   0
         subwfb  Rplus, F
@@ -6996,9 +7038,9 @@ L_STOD:
         NF 3,s>d
 STOD:
         btfsc   Splus, 7
-        goto    test_true        
+        goto    test_true
         goto    test_false
-        
+
 
 ; DNEGATE  +d -- -d
         dw      L_STOD
@@ -7039,7 +7081,7 @@ DPLUS:
         subwf   Sp, F
         movlw   0
         subwfb  Sbank, F
-        
+
         movlw   4
         movf    SWrw, W
         addwf   Splus, F
@@ -7055,7 +7097,7 @@ DPLUS:
         movlw   4
         movf    SWrw, W
         addwfc  Srw, F
-        
+
         return
 
 ; D-    d1 d2 -- d3        double minus
@@ -7096,7 +7138,7 @@ DTWOSTAR:
         rlcf    Splus, F
         rlcf    Srw, F
         return
-        
+
 ; DINVERT    d1 -- d2        double invert
         dw      L_DTWOSTAR
 L_DINVERT:
@@ -7108,8 +7150,8 @@ DINVERT:
         comf    Splus, F
         movf    Splus, W
         movf    Splus, W
-        return        
-        
+        return
+
 ; D0=    d1 -- f        double zeroequal
         dw      L_DINVERT
 L_DZEROEQUAL:
@@ -7137,8 +7179,8 @@ DZEROLESS:
         bn      DZEROEQUAL_TRUE
 DZEROLESS_FALSE:
         goto    FALSE_
-        
-        
+
+
 ; D=    d1 d2 -- f        double equal
         dw      L_DZEROLESS
 L_DEQUAL:
@@ -7146,7 +7188,7 @@ L_DEQUAL:
 DEQUAL:
         rcall   DMINUS
         goto    DZEROEQUAL
-        
+
 ; D<    d1 d2 -- f        double less than
         dw      L_DEQUAL
 L_DLESS:
@@ -7177,7 +7219,7 @@ UDDOT:
         call    NUMGREATER
         call    TYPE
         goto    SPACE_
-        
+
 ; D.       d --         signed double dot
         dw      L_UDDOT
 L_DDOT:
@@ -7340,4 +7382,3 @@ hexemit3:
 dpcode:
 ;;****************************************************
         END resetVec
-        

@@ -17,14 +17,15 @@
 
 ;;; Define USB_CDC if you want to use USB serial emulation
 ;;; If you use CDC, you must also compile usbcdc.asm
-// #define USB_CDC
+#define USB_CDC
 #define USB_SPEED 1  // 0 = low speed, 1 = high speed
 #define USB_BANK 4
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
-        config PLLDIV = 3           ;1 for 4 MHZ; 3 for 12 MHz XT xtal
+
+        config PLLDIV = 2           ; 0 for 4 MHZ; 2 for 12 MHz XT xtal
         config CPUDIV = OSC1_PLL2   ; 48 MHz cpu clock
-        config USBDIV = 2           ; USB clock from 96 MHZ PLL divided by 2
+        config USBDIV = 1           ; USB clock from 96 MHZ PLL divided by 2
         config FOSC = HSPLL_HS
  ;       config FCMEN = OFF
         config IESO = OFF
@@ -37,7 +38,7 @@
         config VREGEN = OFF
 #endif
         config WDT = OFF
-        config WDTPS = 128
+        ;config WDTPS = 128
         config MCLRE = ON
         config LPT1OSC = OFF
         config PBADEN = OFF
@@ -54,3 +55,5 @@
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1 
 #define REG_U1RXIP IPR1
+;CONFIG1L 0x22
+;CONFIG1H 0x0e

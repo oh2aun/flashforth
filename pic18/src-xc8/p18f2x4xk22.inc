@@ -5,7 +5,7 @@
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
-;                                                                     * 
+;                                                                     *
 ;    Modified:                                                        *
 ;**********************************************************************
 ;    FlashForth is licensed acording to the GNU General Public License*
@@ -40,12 +40,12 @@
         config CPB = OFF
         config WRTC = ON
 
-;;; Activate 4xPLL from SW 
-#define PLL DISABLE	         ; ENABLE or DISABLE
+;;; Activate 4xPLL from SW
+#define PLL 0	         ; 1=ENABLE or 0=DISABLE
 
 #define REG_U1RXIF PIR1
-#define REG_U1RXIE PIE1 
+#define REG_U1RXIE PIE1
 #define REG_U1RXIP IPR1
 #define REG_U2RXIF PIR3
-#define REG_U2RXIE PIE3 
+#define REG_U2RXIE PIE3
 #define REG_U2RXIP IPR3

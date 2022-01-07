@@ -5,7 +5,7 @@
 //    FF Version:    5.0                                               *
 //    Copyright:     Mikael Nordman                                    *
 //    Author:        Mikael Nordman                                    *
-//                                                                     * 
+//                                                                     *
 //    Modified:                                                        *
 //**********************************************************************
 //    FlashForth is licensed acording to the GNU General Public License*
@@ -24,8 +24,8 @@
 #define NEGATIVE 0
 
 //  Specify the cpu clock frequency here
-//  It must be aligned with the processor specific configuration bits 
-clock   equ 24000000  // Hz
+//  It must be aligned with the processor specific configuration bits
+clock   equ 48000000  // Hz
 
 // Specify the baud rate for the UARTs
 baud    equ 38400
@@ -37,7 +37,7 @@ baud3   equ 38400
 
 // Define which timer is stepping TICKS and MS.
 // Timer 1 2 3 4 5 6 can be used
-#define MS_TMR 2
+#define MS_TMR 1
 // TMR 2 4 6 gives exactly 1 ms ticks only with clocks like 4096, 8192, 16384 KHz. N*256KHz.
 
 // System tick time in milliseconds.
@@ -57,13 +57,13 @@ baud3   equ 38400
 
 // Put CPU in idle when operator task calls PAUSE
 // Saves power on CPUs that support IDLE mode.
-#define IDLE_MODE ENABLE   // ENABLE or DISABLE
+#define IDLE_MODE DISABLE   // ENABLE or DISABLE
 
 // Measure CPU load, uses TIMER0. Needs IDLE_MODE ENABLE
-#define CPU_LOAD ENABLE    // ENABLE or DISABLE
+#define CPU_LOAD DISABLE    // ENABLE or DISABLE
 
 // CPU load indicator led definitions. Needs IDLE_MODE.
-#define CPU_LOAD_LED ENABLE       // ENABLE or DISABLE
+#define CPU_LOAD_LED DISABLE       // ENABLE or DISABLE
 #define CPU_LOAD_TRIS TRISC
 #define CPU_LOAD_PORT LATC
 #define CPU_LOAD_BIT 0
@@ -80,7 +80,7 @@ baud3   equ 38400
 
 // Define if USB or which UART is used for the operator task
 // 0=USB 1=UART1 2=UART2 3=UART3
-#define OPERATOR_UART 0
+#define OPERATOR_UART 1
 
 // UART buffer size. Must be a power of 2. max size 128 bytes.
 // The maximum RX_BUF_SIZE is 64 (32 for usb pic14k50)
@@ -100,7 +100,7 @@ RX_OFF_FILL     equ 4
 #define XONXOFF 1
 #define CTS 2
 
-#define FC_TYPE XONXOFF    // XONXOFF or CTS or NONE
+#define FC_TYPE NONE    // XONXOFF or CTS or NONE
 
 // If SW flow control is disabled, HW flow control is enabled.
 #if FC_TYPE == CTS
@@ -119,7 +119,7 @@ RX_OFF_FILL     equ 4
 // Each nesting of DO..LOOP uses 2 cells of ram.
 #define RETURN_STACK_SAVE_SIZE 48    // 24 cells.
 #define PARAMETER_STACK_SIZE   60    // 30 cells parameter stack
-#define TIB_SIZE 76                  // 76 chars tib size 
+#define TIB_SIZE 76                  // 76 chars tib size
 #define HOLD_SIZE 10                 // 10 chars hold area
 
 // Storage space for OPERATOR uservariables 2 and upwards

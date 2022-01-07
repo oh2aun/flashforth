@@ -61,7 +61,7 @@
 #define TX_LAT   LATB
 #define TX_CODE  0x10
 
-; Define UART TX pin
+; Define UART RX pin
 #define RX_TRIS  TRISB
 #define RX_ANSEL ANSELB
 #define RX_BIT   5

@@ -82,7 +82,7 @@ device_dsc:
         db   0x01    ; DEVICE descriptor type
         dw   0x0200  ; USB Spec Release Number in BCD format
         db   0x02    ; Class Code CDC device
-        db   0x00    ; Subclass 
+        db   0x00    ; Subclass
         db   0x00    ; Protocol
         db   0x08    ; EP0 packet size
         dw   U_VID   ; Vendor ID
@@ -122,7 +122,7 @@ USB_CFG:
         db   0x02     ; interface subclass
         db   0x01     ; interface protocol
         db   0x00     ; string descriptor index
-        db   0x05,0x24,0x00,0x10,0x01 ; interface header FD  
+        db   0x05,0x24,0x00,0x10,0x01 ; interface header FD
         db   0x04,0x24,0x02,0x02      ; interface ACM FD
         db   0x05,0x24,0x01,0x00,0x01 ; interface Call Management FD
         db   0x07,0x05,0x81,0x03,0x08,0x00,0xff ; endpoint notification
@@ -137,17 +137,17 @@ USBDriverService:
         rcall   USBWake
         btfsc   SUSPND
         return
-        BTFSC   URSTIF 
+        BTFSC   URSTIF
         rcall   USBReset
         btfsc   IDLEIF
         rcall   USBSuspend
         btfss   BANKMASK(usb_device_state), 0, B
         return
 USBDriverService_2:
-        BTFSS   TRNIF 
+        BTFSS   TRNIF
         return
         RCALL   USBCtrlEPService
-        BCF     TRNIF 
+        BCF     TRNIF
         return
 ;*******************************************************************************
 USBSuspend:
@@ -172,9 +172,9 @@ USBReset:
         MOVWF   UEP0, B
         banksel ep0ostat
 USBReset_1:
-        BTFSC   TRNIF 
+        BTFSC   TRNIF
         BRA     USBReset_1
-        BCF     PKTDIS 
+        BCF     PKTDIS
         RCALL   USBPrepareForNextSetupTrf
         MOVLW   DEFAULT_STATE
         MOVWF   BANKMASK(usb_device_state), B
@@ -337,27 +337,26 @@ DATADIR_DEV_TO_HOST:
         MOVWF   ctrl_trf_state, A
         MOVLW   low(ep0buf)
         MOVWF   BANKMASK(ep0iadr), B
-        MOVLW   0x80; _USIE; 0x80
+        MOVLW   0x80; _USIE
         MOVWF   BANKMASK(ep0ostat), B
-        MOVLW   0xc8;_DAT1|_USIE|_DTSEN;0xC8
+        MOVLW   0xc8;_DAT1|_USIE|_DTSEN
         MOVWF   BANKMASK(ep0istat), B
         BRA     USBCtrlEPServiceComplete_4
 DATADIR_HOST_TO_DEV:
         MOVLW   CTRL_TRF_RX
         MOVWF   ctrl_trf_state, A
         CLRF    BANKMASK(ep0icnt), B
-        MOVLW   0xc8;_DAT1|_USIE|_DTSEN;0xC8
+        MOVLW   0xc8;_DAT1|_USIE|_DTSEN
         MOVWF   BANKMASK(ep0istat), B
         MOVWF   BANKMASK(ep0ostat), B
         MOVLW   low(ep0buf)
         MOVWF   BANKMASK(ep0oadr), B
 USBCtrlEPServiceComplete_4:
-        BCF     PKTDIS 
+        BCF     PKTDIS
         RETURN
 
 ;*******************************************************************************
 USBCheckStdRequest:
-        MOVLW   0x60
         ANDWF   BANKMASK(ep0buf), W, B
         BNZ     RETURN__
         MOVF    BANKMASK(ep0buf+1), W, B
@@ -370,10 +369,11 @@ USBCheckStdRequest:
 SET_ADR:
         MOVLW   ADR_PENDING_STATE
         MOVWF   BANKMASK(usb_device_state), B
+
 SESSION_OWNER_USB9:
         bsf     usb_status, 1, A
 RETURN__:
-        return
+       return
 SET_CFG:
         MOVLW   ADDRESS_STATE
         TSTFSZ  BANKMASK(ep0buf+2), B
@@ -444,7 +444,7 @@ GET00:
         MOVLW   high(SD000)
         MOVWF   dPtr+1, A
         MOVLW   0x4
-        BRA     GetDsc_4  
+        BRA     GetDsc_4
 GET01:
         MOVLW   low(SD001)
         MOVWF   dPtr, A
@@ -488,4 +488,3 @@ GET_LINE_CODING:
         bsf     usb_status, 0, A
         bra     SET_MUID_CDC
 dpusb:
-        

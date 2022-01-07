@@ -6,7 +6,7 @@
 ;    MCU            18f24k50 18f25k50 18f45k50                        *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
-;                                                                     * 
+;                                                                     *
 ;    Modified:                                                        *
 ;**********************************************************************
 ;    FlashForth is licensed acording to the GNU General Public License*
@@ -34,24 +34,24 @@
 #if INTOSC == 0                     // External oscillator
         config FOSC = HSH           ; 12 MHz HS Xtal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
-        config PLLSEL = PLL4X       ; 4 x 12 MHz = 48 MHz system and USB clock 
+        config PLLSEL = PLL4X       ; 4 x 12 MHz = 48 MHz system and USB clock
 #endif
 #if INTOSC == 1                     // Internal oscillator
 #if USB_SPEED == 1                  // High speed
         config FOSC = INTOSCIO      ; Internal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
-        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
+        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock
 #else                               // low speed
         config FOSC = INTOSCIO      ; Internal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
-        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
+        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock
         CONFIG  LS48MHZ = SYS48X8   ; 6 MHz USB clock
 #endif
 #endif
 #else                               // NOT USB_CDC
         config FOSC = INTOSCCLKO      ; Internal oscillator
         config CPUDIV = NOCLKDIV    ; 48 MHZ cpu clock
-        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock 
+        config PLLSEL = PLL3X       ; 3 x 16 MHz = 48 MHz system clock
 #endif
         config CFGPLLEN = ON
         config PCLKEN = ON
@@ -69,5 +69,5 @@
         config XINST = OFF
 
 #define REG_U1RXIF PIR1
-#define REG_U1RXIE PIE1 
+#define REG_U1RXIE PIE1
 #define REG_U1RXIP IPR1
