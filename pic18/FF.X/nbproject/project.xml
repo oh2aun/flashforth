@@ -3,18 +3,17 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>FF_UART</name>
-            <creation-uuid>8199bf80-85a7-4585-9d64-1f5b17280ebf</creation-uuid>
+            <name>FF</name>
+            <creation-uuid>0fe2a7f4-7276-4570-8153-1928a08dced6</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions/>
             <cpp-extensions/>
             <header-extensions/>
-            <asminc-extensions/>
+            <asminc-extensions>inc</asminc-extensions>
             <sourceEncoding>ISO-8859-1</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>
-                <sourceRootElem>../src</sourceRootElem>
-                <sourceRootElem>../lkr</sourceRootElem>
+                <sourceRootElem>../src-xc8</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

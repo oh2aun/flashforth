@@ -1011,3 +1011,7 @@
     flash_block_size equ _FLASH_ERASE_SIZE
     flash_block_mask equ flash_block_size - 1;
     flash_pointer_mask equ ( ~ flash_block_mask ) & 0xff
+
+#ifndef FLASH_HI
+#error CHIP NOT SUPPORTED
+#endif

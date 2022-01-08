@@ -75,8 +75,8 @@ baud3   equ 38400
 #define TURNKEY_DELAY 2000  // Milliseconds
 
 // Define if extra UARTs are included
-#define WANT_UART2 DISABLE
-#define WANT_UART3 DISABLE
+#define WANT_UART2 DISABLE      // ENABLE or DISABLE
+#define WANT_UART3 DISABLE      // ENABLE or DISABLE
 
 // Define if USB or which UART is used for the operator task
 // 0=USB 1=UART1 2=UART2 3=UART3

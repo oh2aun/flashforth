@@ -99,11 +99,20 @@
 #ifndef U1RXIF
 #ifdef RCIF
 #define U1RXIF RCIF
+#else
+#ifdef RC1IF
+#define U1RXIF RC1IF
+#endif
 #endif
 #endif
 #ifndef U2RXIF
 #ifdef RC2IF
 #define U2RXIF RC2IF
+#endif
+#endif
+#ifndef U3RXIF
+#ifdef RC3IF
+#define U3RXIF RC3IF
 #endif
 #endif
 #ifndef U1RXB
