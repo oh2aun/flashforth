@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../src-xc8/ff-pic18.S
+SOURCEFILES_QUOTED_IF_SPACED=../src/ff-pic18.S
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/659812853/ff-pic18.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/659812853/ff-pic18.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1360937237/ff-pic18.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1360937237/ff-pic18.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/659812853/ff-pic18.o
+OBJECTFILES=${OBJECTDIR}/_ext/1360937237/ff-pic18.o
 
 # Source Files
-SOURCEFILES=../src-xc8/ff-pic18.S
+SOURCEFILES=../src/ff-pic18.S
 
 
 
@@ -95,21 +95,21 @@ FINAL_IMAGE_NAME_MINUS_EXTENSION=${DISTDIR}/FF.X.${IMAGE_TYPE}
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: pic-as-assembler
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/659812853/ff-pic18.o: ../src-xc8/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
-	@${MKDIR} "${OBJECTDIR}/_ext/659812853" 
-	@${RM} ${OBJECTDIR}/_ext/659812853/ff-pic18.o 
+${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
 	${MP_AS} -mcpu=PIC18F25K50 -c \
-	-o ${OBJECTDIR}/_ext/659812853/ff-pic18.o \
-	../src-xc8/ff-pic18.S \
+	-o ${OBJECTDIR}/_ext/1360937237/ff-pic18.o \
+	../src/ff-pic18.S \
 	 -D__DEBUG=1  -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -w -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
 	
 else
-${OBJECTDIR}/_ext/659812853/ff-pic18.o: ../src-xc8/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
-	@${MKDIR} "${OBJECTDIR}/_ext/659812853" 
-	@${RM} ${OBJECTDIR}/_ext/659812853/ff-pic18.o 
+${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
+	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
 	${MP_AS} -mcpu=PIC18F25K50 -c \
-	-o ${OBJECTDIR}/_ext/659812853/ff-pic18.o \
-	../src-xc8/ff-pic18.S \
+	-o ${OBJECTDIR}/_ext/1360937237/ff-pic18.o \
+	../src/ff-pic18.S \
 	 -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -w -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
 	
 endif

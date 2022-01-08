@@ -2,30 +2,30 @@
 <configurationDescriptor version="65">
   <logicalFolder name="root" displayName="root" projectFiles="true">
     <logicalFolder name="f1" displayName="Config" projectFiles="true">
-      <itemPath>../src-xc8/p18f-main.inc</itemPath>
-      <itemPath>../src-xc8/p18f14k22.inc</itemPath>
-      <itemPath>../src-xc8/p18f14k50.inc</itemPath>
-      <itemPath>../src-xc8/p18f2420-2520-4420-4520.inc</itemPath>
-      <itemPath>../src-xc8/p18f2423-2523-4423-4523.inc</itemPath>
-      <itemPath>../src-xc8/p18f2455-2550-4455-4550.inc</itemPath>
-      <itemPath>../src-xc8/p18f2458-2553-4458-4553.inc</itemPath>
-      <itemPath>../src-xc8/p18f2480-2580-4480-4580.inc</itemPath>
-      <itemPath>../src-xc8/p18f24k50-25k50-45k50.inc</itemPath>
-      <itemPath>../src-xc8/p18f2525-2620-4525-4620.inc</itemPath>
-      <itemPath>../src-xc8/p18f2585-2680-4585-4680.inc</itemPath>
-      <itemPath>../src-xc8/p18f2682-2685-4682-4685.inc</itemPath>
-      <itemPath>../src-xc8/p18f2x4xk20.inc</itemPath>
-      <itemPath>../src-xc8/p18f2x4xk22.inc</itemPath>
-      <itemPath>../src-xc8/p18f6722-family.inc</itemPath>
-      <itemPath>../src-xc8/p18f8722-family.inc</itemPath>
-      <itemPath>../src-xc8/p18f87k22-family.inc</itemPath>
-      <itemPath>../src-xc8/p18f87k90-family.inc</itemPath>
-      <itemPath>../src-xc8/p18fxx2xx8.inc</itemPath>
-      <itemPath>../src-xc8/p18fxxk42.inc</itemPath>
-      <itemPath>../src-xc8/p18fxxk83.inc</itemPath>
-      <itemPath>../src-xc8/p18fxxq41.inc</itemPath>
-      <itemPath>../src-xc8/p18fxxq43.inc</itemPath>
-      <itemPath>../src-xc8/p18fxxxx.inc</itemPath>
+      <itemPath>../src/p18f-main.inc</itemPath>
+      <itemPath>../src/p18f14k22.inc</itemPath>
+      <itemPath>../src/p18f14k50.inc</itemPath>
+      <itemPath>../src/p18f2420-2520-4420-4520.inc</itemPath>
+      <itemPath>../src/p18f2423-2523-4423-4523.inc</itemPath>
+      <itemPath>../src/p18f2455-2550-4455-4550.inc</itemPath>
+      <itemPath>../src/p18f2458-2553-4458-4553.inc</itemPath>
+      <itemPath>../src/p18f2480-2580-4480-4580.inc</itemPath>
+      <itemPath>../src/p18f24k50-25k50-45k50.inc</itemPath>
+      <itemPath>../src/p18f2525-2620-4525-4620.inc</itemPath>
+      <itemPath>../src/p18f2585-2680-4585-4680.inc</itemPath>
+      <itemPath>../src/p18f2682-2685-4682-4685.inc</itemPath>
+      <itemPath>../src/p18f2x4xk20.inc</itemPath>
+      <itemPath>../src/p18f2x4xk22.inc</itemPath>
+      <itemPath>../src/p18f6722-family.inc</itemPath>
+      <itemPath>../src/p18f8722-family.inc</itemPath>
+      <itemPath>../src/p18f87k22-family.inc</itemPath>
+      <itemPath>../src/p18f87k90-family.inc</itemPath>
+      <itemPath>../src/p18fxx2xx8.inc</itemPath>
+      <itemPath>../src/p18fxxk42.inc</itemPath>
+      <itemPath>../src/p18fxxk83.inc</itemPath>
+      <itemPath>../src/p18fxxq41.inc</itemPath>
+      <itemPath>../src/p18fxxq43.inc</itemPath>
+      <itemPath>../src/p18fxxxx.inc</itemPath>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
@@ -38,7 +38,7 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
-      <itemPath>../src-xc8/ff-pic18.S</itemPath>
+      <itemPath>../src/ff-pic18.S</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -48,6 +48,7 @@
   </logicalFolder>
   <sourceRootList>
     <Elem>../src-xc8</Elem>
+    <Elem>../src</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -57,7 +58,7 @@
         <targetDevice>PIC18F25K50</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>pk4hybrid</platformTool>
+        <platformTool>noID</platformTool>
         <languageToolchain>pic-as</languageToolchain>
         <languageToolchainVersion>2.32</languageToolchainVersion>
         <platform>2</platform>
