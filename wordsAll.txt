@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0 05.09.2021
+Dictionary of FlashForth 5 01.01.2022
 
 !          ( x addr -- )
            Store x to addr
@@ -22,13 +22,13 @@ Dictionary of FlashForth 5.0 05.09.2021
            Parse word and find it in dictionary
 
 'emit      ( -- addr )  User Variable
-           EMIT vector. TX0, TX1, TX2 or TXU
+           EMIT vector. TX0, TX1, TX2, TX3 or TXU
 
 'key       ( -- addr )  User Variable
-           KEY vector.  RX0, RX1, TX2, or RXU
+           KEY vector.  RX0, RX1, RX2, RX3 or RXU
 
 'key?      ( -- addr )  User Variable
-           KEY? vector. RX0?, RX1?, TX2?, or RXU?
+           KEY? vector. RX0?, RX1?, RX2?, RX3? or RXU?
 
 'source    ( -- a-addr )     User Variable 
            Current input source
@@ -800,23 +800,31 @@ rx1q       ( -- queue-addr )
 
 rx2        ( -- c )
            Receive a character from UART2.
-           PIC24-30-33
+           PIC18-24-30-33
 
 rx2?       ( -- f )
            Leave TRUE if UART2 receive buffer is not empty.
-           PIC24-30-33
+           PIC18-24-30-33
 
 rx2q       ( -- queue-addr )
            Leave the address of the queue for UART2.
            PIC24-30-33
 
+rx3        ( -- c )
+           Receive a character from UART3.
+           PIC18
+
+rx3?       ( -- f )
+           Leave TRUE if UART3 receive buffer is not empty.
+           PIC18
+
 rxu        ( -- c )
            Receive a character from USB UART.
-           PIC18 USB
+           PIC18-24 USB
 
 rxu?       ( -- f )
            Leave TRUE if USB UART receive buffer is not empty. 
-           PIC18 USB
+           PIC18-24 USB
 
 s>d        ( n -- d )
            Sign extend single to double precision number
@@ -929,11 +937,15 @@ tx1q       ( -- queue-addr )
 
 tx2        ( c -- )
            Send a character to UART 2.
-           PIC24-30-33
+           PIC18-24-30-33
 
 tx2q       ( -- queue-addr )
            Leave the address of the queue for UART2.
            PIC24-30-33
+
+tx3        ( c -- )
+           Send a character to UART 2.
+           PIC18
 
 txu        ( c -- )
            Send a character to USB UART.
