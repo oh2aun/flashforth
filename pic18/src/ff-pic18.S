@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          01.01.2022                                        *
+;;    Date:          16.01.2022                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -393,17 +393,19 @@ psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #ifdef USB_CDC
 #if USB_BANK == 4
 psect udata_bank7
+flash_buf:   ds flash_block_size
 #else
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
+flash_buf:   ds flash_block_size
 #endif
 #else
 #ifndef Qxx
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
-#else
-psect udata_bank21
-#endif
-#endif
 flash_buf:   ds flash_block_size
+#else
+#define flash_buf FBUFFER
+#endif
+#endif
 
 #ifndef RXBUF_DEFINED
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
@@ -964,94 +966,94 @@ PAUSE_IDLE1:
 PAUSE000:
         ; Set user pointer in Tp, Tbank (FSR1)
         movf    BANKMASK(upcurr), W, A
-        movwf   Tp
+        movwf   Tp, A
         movf    (BANKMASK(upcurr)+1), W, A
-        movwf   Tbank
+        movwf   Tbank, A
 
         ;; Switch tasks only if some background tasks are running
-        movf    Tminus, W   ; Point to high(ulink)
-        movf    Tminus, W   ; check ulink
+        movf    Tminus, W, A   ; Point to high(ulink)
+        movf    Tminus, W, A   ; check ulink
         bz      PAUSE_RET
 
         ; Save parameter stack pointer
-        movf    Sp, W
-        movwf   plusR
-        movf    Sbank, W
-        movwf   plusR
+        movf    Sp, W, A
+        movwf   plusR, A
+        movf    Sbank, W, A
+        movwf   plusR, A
 
         ; Save P pointer
         movf    BANKMASK(p_lo), W, A
-        movwf   plusR
+        movwf   plusR, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusR
+        movwf   plusR, A
 
         ; Remember the return stack counter
-        movf    STKPTR, W
-        movwf   TBLPTRL           ; 17
+        movf    STKPTR, W, A
+        movwf   TBLPTRL, A           ; 17
 
         ; Save the return stack
 pause1:
-        movf    TOSL, W
-        movwf   plusR
-        movf    TOSH, W
-        movwf   plusR
-        decfsz  STKPTR, F
+        movf    TOSL, W, A
+        movwf   plusR, A
+        movf    TOSH, W, A
+        movwf   plusR, A
+        decfsz  STKPTR, F, A
         bra     pause1            ; 13 2 items
 
         ; Save the return stack counter
-        movf    TBLPTRL, W
-        movwf   plusR
+        movf    TBLPTRL, W, A
+        movwf   plusR, A
 
         ; Move to the next user area
-        movf    Tplus, W
+        movf    Tplus, W, A
         movwf   BANKMASK(upcurr), A
-        movf    Tplus, W
+        movf    Tplus, W, A
         movwf   (BANKMASK(upcurr)+1), A
 
         ; Save the return stack pointer to urptr
-        movf    Rp, W
-        movwf   Tplus
-        movf    Rbank, W
-        movwf   Tplus
+        movf    Rp, W, A
+        movwf   Tplus, A
+        movf    Rbank, W, A
+        movwf   Tplus, A
 
         ; Put new user pointer in Tp, Tbank
         movf    BANKMASK(upcurr), W, A
-        movwf   Tp
+        movwf   Tp, A
         movf    (BANKMASK(upcurr)+1), W, A
-        movwf   Tbank
+        movwf   Tbank, A
 
         ; Set the return stack restore pointer  in Rp
-        movf    Tplus, W
-        movwf   Rp
-        movf    Tminus, W
-        movwf   Rbank
+        movf    Tplus, W, A
+        movwf   Rp, A
+        movf    Tminus, W, A
+        movwf   Rbank, A
 
         ; Set the return stack counter
-        movf    Rminus, W
-        movwf   TBLPTRL             ; 22
+        movf    Rminus, W, A
+        movwf   TBLPTRL, A             ; 22
 
         ; Restore the return stack
 pause2:
         push
-        movf    Rminus, W
-        movwf   TOSH
-        movf    Rminus, W
-        movwf   TOSL
+        movf    Rminus, W, A
+        movwf   TOSH, A
+        movf    Rminus, W, A
+        movwf   TOSL, A
 
-        decfsz  TBLPTRL, F
+        decfsz  TBLPTRL, F, A
         bra     pause2              ; 15 2 items
 
         ; Restore the P pointer
-        movf    Rminus, W
+        movf    Rminus, W, A
         movwf   BANKMASK(p_hi), A
-        movf    Rminus, W
+        movf    Rminus, W, A
         movwf   BANKMASK(p_lo), A
 
         ; Restore the parameter stack pointer
-        movf    Rminus, W
-        movwf   Sbank
-        movf    Rminus, W
-        movwf   Sp
+        movf    Rminus, W, A
+        movwf   Sbank, A
+        movf    Rminus, W, A
+        movwf   Sp, A
 PAUSE_RET:
         return              ; 23+2+2=27
 
@@ -1065,12 +1067,12 @@ WARM_:
 main:
 #ifndef K42
         movlw   0xf
-        iorwf   ADCON1, F
+        iorwf   ADCON1, F, A
 #endif
-        clrf    TBLPTRU
+        clrf    TBLPTRU, A
 #ifdef OSCCON
         movlw   0x70
-        movwf   OSCCON
+        movwf   OSCCON, A
 #endif
 #ifdef OSCCON1_VALUE
         banksel OSCCON1
@@ -1091,23 +1093,23 @@ main:
                               ; Clear ram
 WARM:
 #ifndef K42
-        movf    STKPTR, W
+        movf    STKPTR, W, A
         movwf   BANKMASK(reset0), A ; Save return stack reset reasons
-        movf    RCON, W
+        movf    RCON, W, A
         movwf   BANKMASK(reset1), A ; Save reset reasons
         movf    BANKMASK(fstatus), W, A
         movwf   BANKMASK(reset2), A
         movlw   0x9f
         movwf   BANKMASK(RCON), A
 #else
-        movf    PCON0, W
+        movf    PCON0, W, A
         movwf   BANKMASK(reset0), A ; Save reset reasons
         movwf   BANKMASK(reset1), A ; Save reset reasons
         movf    BANKMASK(fstatus), W, A
         movwf   BANKMASK(reset2), A
         movlw   0x3f            ; Clearing the flags in PCON0
         banksel PCON0
-        movwf   PCON0
+        movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
 
@@ -1116,19 +1118,19 @@ WARM:
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
-        clrf    Splus
-        movf    Sbank, W
-        subwf   Tbank, W
+        clrf    Splus, A
+        movf    Sbank, W, A
+        subwf   Tbank, W, A
         bnz     WARM_ZERO_1
 WARM_ZERO_3:
-        clrf    Tplus
-        movf    Tbank, W
+        clrf    Tplus, A
+        movf    Tbank, W, A
         sublw   0x0f
         bnz     WARM_ZERO_3
 #else
 WARM_ZERO_1:
-        clrf    Splus
-        movf    Sbank, W
+        clrf    Splus, A
+        movf    Sbank, W, A
         sublw   0x0f
         bnz     WARM_ZERO_1
 #endif
@@ -1138,7 +1140,7 @@ WARM_ZERO_1:
         lfsr    Rptr, urbuf
 
         banksel PIE1
-#ifdef PIE0                     ; Disable all peripheral interrupts
+#ifdef PIE0                     // Disable all peripheral interrupts
         clrf    PIE0, B
 #endif
         clrf    PIE1, B    ; Disable all peripheral interrupts
@@ -1224,14 +1226,14 @@ WARM_ZERO_1:
 
         bcf     ANCON2, ANSEL18, B ; Configure RX pin as input
 #endif
-#else  ; K42 K83 Qxx
+#else  // K42 K83 Qxx
 ;; UART == 1
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
         bcf     TX_ANSEL, TX_BIT, B    ; disable analogue on PORTx so TX can function
-        bcf     TX_TRIS, TX_BIT
-        bsf     TX_LAT, TX_BIT
+        bcf     TX_TRIS, TX_BIT, A
+        bsf     TX_LAT, TX_BIT, A
 ; Unlock the PPS
         call    PPS_UNLOCK
 ; Set the pins
@@ -1399,7 +1401,7 @@ WARM_ZERO_1:
 #if MS_TMR == 1                 // Timer 1 for 1 ms system tick
 #ifndef K42
         movlw   01              ; Fosc/4,prescale = 1, 8-bit write
-        movwf   T1CON
+        movwf   T1CON, A
         bsf     TMR1IE
         bcf     TMR1IP
 #else
@@ -1531,9 +1533,9 @@ WARM_ZERO_1:
         dw      warmlitsize
         call    CMOVE
         call    FRAM
-        clrf    INTCON
+        clrf    INTCON, A
 #ifdef K42
-        bsf     INTCON, INTCON0_IPEN_POSN   ; Enable interrupt priority
+        bsf     INTCON, INTCON0_IPEN_POSN, A   ; Enable interrupt priority
 #endif
         bsf     GIEL
         bsf     GIEH
@@ -1607,7 +1609,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 11
         db      ' '              ; 1
-        STRING 01.01.2022        ; 10
+        STRING 16.01.2022        ; 10
         db    0xa,0xd            ; 2
         align 2
         nop
@@ -2568,11 +2570,11 @@ ISTORECHK:
         bra     ISTOREOK
 #else
         movlw   HIGH FLASH_HI+1
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     ISTORERR
 #endif
         movlw   HIGH((dpcode+0x100)&0xff00)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     ISTOREOK
         bra     ISTORERR
 ISTOREOK:
@@ -2730,7 +2732,7 @@ ECSTORE2:
 
 ; E@       a-addr -- x  fetch cell from data EEPROM
 EFETCH:
-        movf    Sminus, W
+        movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
 #ifdef Qxx
@@ -2738,7 +2740,7 @@ EFETCH:
 #endif
         movwf   EEADRH, B
 #endif
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   EEADR, B
         rcall   asmecfetch
         incf    EEADR, F, B
@@ -2747,7 +2749,7 @@ EFETCH:
 
 ; EC@      addr -- c  fetch char from data EEPROM
 ECFETCH:
-        movf    Sminus, W
+        movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
 #ifdef Qxx
@@ -2755,10 +2757,10 @@ ECFETCH:
 #endif
         movwf   EEADRH, B
 #endif
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   EEADR, B
         rcall   asmecfetch
-        clrf    plusS
+        clrf    plusS, A
         return
 asmecfetch:
 #ifndef Qxx
@@ -2947,7 +2949,7 @@ RX0:
         bsf     BANKMASK(ep2ostat), UOWN, B
         clrf    ep2optr, A
 RX0_END:
-        clrf    plusS
+        clrf    plusS, A
         return
 ;***************************************************
 ; KEY?  -- f    return true if a char is waiting
@@ -3004,13 +3006,13 @@ IFLUSH:
 L_MSET:
         NF 4,mset
 MSET:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        movf    Sminus, W
-        iorwf   Trw, F
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        iorwf   Trw, F, A
         return
 
 ; : mclr  ( mask addr -- )
@@ -3020,13 +3022,13 @@ MSET:
 L_MCLR:
         NF 4,mclr
 MCLR_:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        comf    Sminus, W
-        andwf   Trw, F
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        comf    Sminus, W, A
+        andwf   Trw, F, A
         return
 
 ; Print restart reason
@@ -3139,19 +3141,19 @@ ICCOMMA:
 L_LSHIFT:
         NF 6,lshift
 LSHIFT:
-        swapf   Sminus, W
-        movf    Sminus, W
+        swapf   Sminus, W, A
+        movf    Sminus, W, A
         bz      LSHIFT2
-        movwf   Tp
-        swapf   Sminus, W
+        movwf   Tp, A
+        swapf   Sminus, W, A
 LSHIFT1:
         bcf     CARRY
-        rlcf    Splus, F
-        rlcf    Sminus, F
+        rlcf    Splus, F, A
+        rlcf    Sminus, F, A
 
-        decfsz  Tp, F
+        decfsz  Tp, F, A
         bra     LSHIFT1
-        swapf   plusS, W
+        swapf   plusS, W, A
 LSHIFT2:
         return
 
@@ -3160,16 +3162,16 @@ LSHIFT2:
 L_RSHIFT:
         NF 6,rshift
 RSHIFT:
-        swapf   Sminus, W
-        movf    Sminus, W
+        swapf   Sminus, W, A
+        movf    Sminus, W, A
         bz      RSHIFT2
-        movwf   Tp
+        movwf   Tp, A
 RSHIFT1:
         bcf     CARRY
-        rrcf    Sminus, F
-        rrcf    Splus, F
+        rrcf    Sminus, F, A
+        rrcf    Splus, F, A
 
-        decfsz  Tp, F
+        decfsz  Tp, F, A
         bra     RSHIFT1
 RSHIFT2:
         return
@@ -3413,10 +3415,10 @@ USB_ON:
         movlw   0x14
 #endif
 #endif
-        movwf   UCFG
-        clrf    UCON
+        movwf   UCFG, A
+        clrf    UCON, A
         bsf     USBEN
-        clrf    UIR
+        clrf    UIR, A
         banksel usb_device_state
         clrf    BANKMASK(usb_device_state), B
         clrf    ep2icount, A
@@ -3436,7 +3438,7 @@ L_USB_OFF:
         NF 4,usb-
 USB_OFF:
         bsf     SUSPND
-        clrf    UCON
+        clrf    UCON, A
         banksel usb_device_state
         clrf    BANKMASK(usb_device_state), B
 #ifdef ACTCON
@@ -3505,14 +3507,14 @@ KEYQ:
 ;link    set     $
         NF 3,lit
 LIT:
-        movf    TOSL, W
-        movwf   TBLPTRL
-        movf    TOSH, W
+        movf    TOSL, W, A
+        movwf   TBLPTRL, A
+        movf    TOSH, W, A
         rcall	  FETCHLIT
-        movf    TBLPTRH, W
-        movwf   TOSH
-        movf    TBLPTRL, W
-        movwf   TOSL
+        movf    TBLPTRH, W, A
+        movwf   TOSH, A
+        movf    TBLPTRL, W, A
+        movwf   TOSL, A
         return
 
 ;****************************************************
@@ -3522,10 +3524,10 @@ LIT:
 L_EXECUTE:
         NF 7,execute
 EXECUTE:
-        movf    Sminus, W
-        movwf   PCLATH
-        movf    Sminus, W
-        movwf   PCL           ;  after this, xt is executing
+        movf    Sminus, W, A
+        movwf   PCLATH, A
+        movf    Sminus, W, A
+        movwf   PCL, A           ;  after this, xt is executing
 
 ; @EX  addr -- execute xt from addr
 ; 6 clock cycles
@@ -3603,9 +3605,9 @@ TWOCON:
 ;link    set     $
         NF 3,(c)
 DOCREATE: ; -- addr  exec action of CREATE
-        movf    TOSL, W
-        movwf   TBLPTRL
-        movf    TOSH, W
+        movf    TOSL, W, A
+        movwf   TBLPTRL, A
+        movf    TOSH, W, A
         rcall   FETCHLIT
         decf    STKPTR, F, A
 RETURN2:
@@ -3617,33 +3619,33 @@ RETURN2:
 ;link   set     $
         NF 3,(d)
 DODOES:
-        movf    TOSL, W
-        movwf   Tp
-        movf    TOSH, W
-        movwf   PCLATH
+        movf    TOSL, W, A
+        movwf   Tp, A
+        movf    TOSH, W, A
+        movwf   PCLATH, A
         decf    STKPTR, F, A
-        movf    TOSL, W
-        movwf   TBLPTRL
-        movf    TOSH, W
+        movf    TOSL, W, A
+        movwf   TBLPTRL, A
+        movf    TOSH, W, A
         call    FETCHLIT
-        movf    PCLATH, W
-        movwf   TOSH
-        movf    Tp, W
-        movwf   TOSL
+        movf    PCLATH, W, A
+        movwf   TOSH, A
+        movf    Tp, W, A
+        movwf   TOSL, A
         return
 
 ;;; Compile inline address as subroutine call
         db      NFA|3,'(',',',')'
         align   2
 DOCOMMAXT:
-        movf    TOSL, W
-        movwf   TBLPTRL
-        movf    TOSH, W
+        movf    TOSL, W, A
+        movwf   TBLPTRL, A
+        movf    TOSH, W, A
         call    FETCHLIT
-        movf    TBLPTRH, W
-        movwf   TOSH
-        movf    TBLPTRL, W
-        movwf   TOSL
+        movf    TBLPTRH, W, A
+        movwf   TOSH, A
+        movf    TBLPTRL, W, A
+        movwf   TOSL, A
         goto    COMMAXT
 
 ;   SP@     -- addr         get parameter stack pointer
@@ -3651,12 +3653,12 @@ DOCOMMAXT:
 L_SPFETCH:
         NF 3,sp@
 SPFETCH:
-        movf    Sp, W
-        movwf   Tp
-        movf    Sbank, W
+        movf    Sp, W, A
+        movwf   Tp, A
+        movf    Sbank, W, A
         movff_   Tp, plusS
         iorlw   high(PRAM)
-        movwf   plusS
+        movwf   plusS, A
         return
 
 
@@ -3684,22 +3686,22 @@ L_STORE:
         align   2
 STORE:
         movlw   high(PRAM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     STORE1
         movlw   high(PEEPROM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     ESTORE
         bra     ISTORE_
 STORE1:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
-        movf    Tplus, W
-        movf    Sminus, W
-        movwf   Tminus
-        movf    Sminus, W
-        movwf   Trw
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Tplus, W, A
+        movf    Sminus, W, A
+        movwf   Tminus, A
+        movf    Sminus, W, A
+        movwf   Trw, A
 return1:
         return
 ISTORE_:
@@ -3713,20 +3715,20 @@ L_CSTORE:
         align   2
 CSTORE:
         movlw   high(PRAM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     CSTORE1
         movlw   high(PEEPROM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     ECSTORE
         bra     ICSTORE_
 CSTORE1:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        movf    Sminus, W
-        movwf   Trw
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        movwf   Trw, A
         return
 ICSTORE_:
         goto    ICSTORE
@@ -3739,22 +3741,22 @@ L_FETCH:
         NF 1,@
 FETCH:
         movlw   high(PRAM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     FETCH1
         movlw   high(PEEPROM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     EFETCH
         bra     IFETCH_
 FETCH1:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
 FETCH2:
-        movf    Tplus, W
-        movwf   plusS
-        movf    Tplus, W
-        movwf   plusS
+        movf    Tplus, W, A
+        movwf   plusS, A
+        movf    Tplus, W, A
+        movwf   plusS, A
         return
 IFETCH_:
         goto    IFETCH
@@ -3767,21 +3769,21 @@ L_CFETCH:
         NF 2,c@
 CFETCH:
         movlw   high(PRAM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     CFETCH1
         movlw   high(PEEPROM)
-        cpfslt  Srw
+        cpfslt  Srw, A
         bra     ECFETCH_
         bra     ICFETCH_
 CFETCH1:
-        movf    Sminus, W
-        movwf   Tbank
-        movf    Sminus, W
-        movwf   Tp
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Sminus, W, A
+        movwf   Tp, A
 CFETCH2:
-        movf    Trw, W
-        movwf   plusS
-        clrf    plusS
+        movf    Trw, W, A
+        movwf   plusS, A
+        clrf    plusS, A
         return
 ICFETCH_:
         goto    ICFETCH
@@ -3795,11 +3797,11 @@ ECFETCH_:
         NF 3,rp0
 RPEMPTY:
         lfsr    Rptr, urbuf
-        movf    TOSH, W
-        movwf   PCLATH    ; Save the return address
-        movf    TOSL, W
-        clrf    STKPTR
-        movwf   PCL
+        movf    TOSH, W, A
+        movwf   PCLATH, A    ; Save the return address
+        movf    TOSL, W, A
+        clrf    STKPTR, A
+        movwf   PCL, A
 
 ISTORERR:
 ISTORERR2:
@@ -3875,8 +3877,8 @@ DP:
         NF 3,BANKMASK(cse)
 CSE:
         movf    BANKMASK(cse), W, A
-        movwf   plusS
-        clrf    plusS
+        movwf   plusS, A
+        clrf    plusS, A
         return
 
 ; HERE    -- addr    get current data space ptr
@@ -3941,11 +3943,11 @@ ALIGN_:
 L_ALIGNED:
         NF 7,aligned
 ALIGNED:
-        swapf   Sminus, W
-        incf    Srw, F
-        bcf     Splus, 0
+        swapf   Sminus, W, A
+        incf    Srw, F, A
+        bcf     Splus, 0, A
         bnc     ALIGNED1
-        incf    Srw, F
+        incf    Srw, F, A
 ALIGNED1:
         return
 
@@ -4151,8 +4153,8 @@ L_ONE:
 ONE:
         movlw   1
 WTOS:
-        movwf   plusS
-        clrf    plusS
+        movwf   plusS, A
+        clrf    plusS, A
         return
 
 ; ACCEPT  c-addr +n -- +n'  get line from terminal
@@ -4166,8 +4168,8 @@ ACCEPT:
         rcall   DUP
 ACC_1:
         rcall   KEY
-        movf    Sminus, W
-        movf    Splus, W
+        movf    Sminus, W, A
+        movf    Splus, W, A
         sublw   8             ; L - W
         bz      ACC_BS_DEL
         sublw   -2            ;
@@ -4238,10 +4240,10 @@ TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
-        decf    Rrw , F      ; XNEXT
+        decf    Rrw , F, A      ; XNEXT
         bc      TYPE1           ; XNEXT
-        movwf   Rminus
-        movwf   Rminus    ; UNNEXT
+        movwf   Rminus, A
+        movwf   Rminus, A    ; UNNEXT
         goto    DROP
 
 ; (S"    -- c-addr u      run-time code for S"
@@ -4249,18 +4251,18 @@ TYPE2:
 L_XSQUOTE:
         NF 3,(s"
 XSQUOTE:
-        movf    TOSL, W
-        movwf   plusS
-        movf    TOSH, W
-        movwf   plusS
+        movf    TOSL, W, A
+        movwf   plusS, A
+        movf    TOSH, W, A
+        movwf   plusS, A
         rcall   CFETCHPP
         rcall   TWODUP
         rcall   PLUS
         rcall   ALIGNED
-        movf    Sminus, W
-        movwf   TOSH
-        movf    Sminus, W
-        movwf   TOSL
+        movf    Sminus, W, A
+        movwf   TOSH, A
+        movf    Sminus, W, A
+        movwf   TOSL, A
         return
 
 
@@ -4319,8 +4321,8 @@ L_DROP:
         NF INLINE|4,drop
 DROP:
 #ifndef K42
-        movwf   Sminus       ; no status change
-        movwf   Sminus
+        movwf   Sminus, A       ; no status change
+        movwf   Sminus, A
 #else
         subfsr  Sptr, 2
 #endif
@@ -4339,8 +4341,8 @@ SWOP:
         movff_   Tp, Sminus
         movff_   SWrw, Tp
         movff_   Srw, SWrw
-        movf    Tp, W
-        movwf   Splus
+        movf    Tp, W, A
+        movwf   Splus, A
         return
 
 ; OVER  x1 x2 -- x1 x2 x1           OVER
@@ -4370,10 +4372,10 @@ ROT:
 L_TOR:
         NF 2,>r
 TOR:
-        movf    Sminus, W
-        movwf   plusR
-        movf    Sminus, W
-        movwf   plusR
+        movf    Sminus, W, A
+        movwf   plusR, A
+        movf    Sminus, W, A
+        movwf   plusR, A
         return
 
 ;   R> -- x R: x --             pop from R stack
@@ -4382,10 +4384,10 @@ TOR:
 L_RFROM:
         NF 2,r>
 RFROM:
-        movf    Rminus, W
-        movwf   plusS
-        movf    Rminus, W
-        movwf   plusS
+        movf    Rminus, W, A
+        movwf   plusS, A
+        movf    Rminus, W, A
+        movwf   plusS, A
         return
 ;  R@  -- x  R: x -- x         fetch from R stack
 ;  4 cycles
@@ -4393,10 +4395,10 @@ RFROM:
 L_RFETCH:
         NF 2,r@
 RFETCH:
-        movf    Rminus, W
-        movwf   plusS
-        movf    Rplus,  W
-        movwf   plusS
+        movf    Rminus, W, A
+        movwf   plusS, A
+        movf    Rplus,  W, A
+        movwf   plusS, A
         return
 
 ;   DUP x -- x x    duplicate top of stack cell
@@ -4424,13 +4426,13 @@ ABS:
 L_PLUS:
         NF 1,+
 PLUS:
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        movf    Sminus, F
-        addwf   Srw, F
-        movf    Tp, W
-        addwfc  plusS, F
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        movf    Sminus, F, A
+        addwf   Srw, F, A
+        movf    Tp, W, A
+        addwfc  plusS, F, A
         return
 
 ; M+       d n -- d         add single to double
@@ -4446,13 +4448,13 @@ MPLUS:
 L_MINUS:
         NF 1,-
 MINUS:
-        swapf   Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        movf    Sminus, F
-        subwf   Srw, F
-        swapf   Tp, W
-        subwfb  plusS, F
+        swapf   Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        movf    Sminus, F, A
+        subwf   Srw, F, A
+        swapf   Tp, W, A
+        subwfb  plusS, F, A
         return
 
 ;   AND
@@ -4460,11 +4462,11 @@ MINUS:
 L_AND:
         NF 3,and
 AND_:
-        movf    Sminus, W
+        movf    Sminus, W, A
         movff_   Sminus, Tp
-        andwf   Sminus, F
-        movf    Tp, W
-        andwf   Splus, F
+        andwf   Sminus, F, A
+        movf    Tp, W, A
+        andwf   Splus, F, A
         return
 
 ;   OR ( n n -- )
@@ -4472,11 +4474,11 @@ AND_:
 L_OR:
         NF 2,or
 OR:
-        movf    Sminus, W
+        movf    Sminus, W, A
         movff_   Sminus, Tp
-        iorwf   Sminus, F
-        movf    Tp, W
-        iorwf   Splus, F
+        iorwf   Sminus, F, A
+        movf    Tp, W, A
+        iorwf   Splus, F, A
         return
 
 ;   XOR   ( n n -- )
@@ -4484,11 +4486,11 @@ OR:
 L_XOR:
         NF 3,xor
 XOR:
-        movf    Sminus, W
+        movf    Sminus, W, A
         movff_   Sminus, Tp
-        xorwf   Sminus, F
-        movf    Tp, W
-        xorwf   Splus, F
+        xorwf   Sminus, F, A
+        movf    Tp, W, A
+        xorwf   Splus, F, A
         return
 
 ;   INVERT
@@ -4496,8 +4498,8 @@ XOR:
 L_INVERT:
         NF 6,invert
 INVERT:
-        comf   Sminus, F
-        comf   Splus, F
+        comf   Sminus, F, A
+        comf   Splus, F, A
         return
 
 ;   NEGATE
@@ -4513,9 +4515,9 @@ NEGATE:
 L_ONEPLUS:
         NF 2,1+
 ONEPLUS:
-        swapf   Sminus, W
-        infsnz  Splus, F
-        incf    Srw, F
+        swapf   Sminus, W, A
+        infsnz  Splus, F, A
+        incf    Srw, F, A
         return
 
 ;   1-
@@ -4523,10 +4525,10 @@ ONEPLUS:
 L_ONEMINUS:
         NF 2,1-
 ONEMINUS:
-        swapf   Sminus, W
-        decf    Splus, F
+        swapf   Sminus, W, A
+        decf    Splus, F, A
         movlw   0
-        subwfb  Srw, F
+        subwfb  Srw, F, A
         return
 
 ; 2+    n -- n-2      2 + CELL+
@@ -4534,11 +4536,11 @@ ONEMINUS:
 L_TWOPLUS:
         NF 2,2+
 TWOPLUS:
-        swapf   Sminus, W
+        swapf   Sminus, W, A
         movlw   2
-        addwf   Splus, F
+        addwf   Splus, F, A
         movlw   0
-        addwfc  Srw, F
+        addwfc  Srw, F, A
         return
 
 ; >body xt -- a-addr transform a created words XT to it's data field address
@@ -4557,10 +4559,10 @@ TOBODY:
 L_TWOSTAR:
         NF 2,2*
 TWOSTAR:
-        swapf   Sminus, W
+        swapf   Sminus, W, A
         bcf     CARRY
-        rlcf    Splus, F
-        rlcf    Srw, F
+        rlcf    Splus, F, A
+        rlcf    Srw, F, A
         return
 
 ;   2/
@@ -4569,10 +4571,10 @@ L_TWOSLASH:
         NF 2,2/
 TWOSLASH:
         bcf     CARRY
-        btfsc   Srw, 7
+        btfsc   Srw, 7, A
         bsf     CARRY
-        rrcf    Sminus, F
-        rrcf    Splus, F
+        rrcf    Sminus, F, A
+        rrcf    Splus, F, A
         return
 
 ;   +!      n/u addr --     add cell to data memory
@@ -4610,8 +4612,8 @@ L_NOTEQUAL:
         align   2
 NOTEQUAL:
         rcall   MINUS
-        movf    Sminus, W
-        iorwf   Srw
+        movf    Sminus, W, A
+        iorwf   Srw, A
         bnz     test_true               ; x1 not equal to x2
         bra     test_false              ; x1 equal to x2
 
@@ -4621,12 +4623,12 @@ NOTEQUAL:
 L_ZEROEQUAL:
         NF 2,0=
 ZEROEQUAL:
-        movf    Sminus, W
-        iorwf   Srw, W
+        movf    Sminus, W, A
+        iorwf   Srw, W, A
         bnz     test_false
 test_true:                      ; TOS is ffff (TRUE)
-        setf    Srw
-        setf    plusS
+        setf    Srw, A
+        setf    plusS, A
         return
 
 ;***************************************************
@@ -4636,11 +4638,11 @@ L_ZEROLESS:
         db      NFA|2,'0','<'
         align   2
 ZEROLESS:
-        btfsc   Sminus, 7
+        btfsc   Sminus, 7, A
         bra     test_true
 test_false:                    ; TOS is 0000 (FALSE)
-        clrf    Srw         ; TOS_LO = 00
-        clrf    plusS       ; TOS_HI = 00
+        clrf    Srw, A         ; TOS_LO = 00
+        clrf    plusS, A       ; TOS_HI = 00
         return
 
 ;***************************************************
@@ -4661,8 +4663,8 @@ L_LESS:
 LESS:
         rcall   MINUS               ; n1 - n2 in TOS
 LESS2:
-        swapf   Sminus, W
-        movf    STATUS, W
+        swapf   Sminus, W, A
+        movf    STATUS, W, A
         andlw   0x18
         xorlw   0x10
         bz      test_true
@@ -4687,7 +4689,7 @@ L_ULESS:
         align   2
 ULESS:
         rcall   MINUS
-        swapf   Sminus, W
+        swapf   Sminus, W, A
         bnc     test_true
         bra     test_false
 
@@ -4706,9 +4708,9 @@ L_STORE_P:
         db      NFA|2,'!','p'
         align   2
 STORE_P:
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   BANKMASK(p_hi), A
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   BANKMASK(p_lo), A
         return
 
@@ -4720,18 +4722,18 @@ L_STORE_P_TO_R:
         align   2
 STORE_P_TO_R:
         movf    BANKMASK(p_hi), W, A
-        movwf   plusR
+        movwf   plusR, A
         movf    BANKMASK(p_lo), W, A
-        movwf   plusR
+        movwf   plusR, A
         goto    STORE_P           ; Set the new pointer
 ;***************************************************
         dw      L_STORE_P_TO_R
 L_R_TO_P:
         NF 3,r>p
 R_TO_P:
-        movf    Rminus, W
+        movf    Rminus, W, A
         movwf   BANKMASK(p_lo), A
-        movf    Rminus, W
+        movf    Rminus, W, A
         movwf   BANKMASK(p_hi), A
         return
 ;***************************************************
@@ -4740,9 +4742,9 @@ L_PFETCH:
         NF 2,p@ ; ( -- u ) Fetch cell from pointer
 PFETCH:
         movf    BANKMASK(p_lo), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusS
+        movwf   plusS, A
         goto    FETCH
 ;***************************************************
         dw      L_PFETCH
@@ -4751,9 +4753,9 @@ L_PSTORE:
         align   2
 PSTORE:
         movf    BANKMASK(p_lo), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusS
+        movwf   plusS, A
         goto    STORE
 ;***************************************************
         dw      L_PSTORE
@@ -4764,9 +4766,9 @@ L_PCSTORE:
         align   2
 PCSTORE:
         movf    BANKMASK(p_lo), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusS
+        movwf   plusS, A
         goto    CSTORE
 ;***************************************************
         dw      L_PCSTORE
@@ -4828,16 +4830,16 @@ UKEYQ:
 ;link   set     $
         NF 3,?0=
 ZEROSENSE:
-        movf    Sminus, W
-        iorwf   Sminus, W
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
         return
 
 ;  n -- n  Set the Zero STATUS bit if TOS is zero.
 ;;; DupZerosense that does not destroy the top of stack.
         NF 3,d0=
 DUPZEROSENSE:
-        movf    Sminus, W
-        iorwf   Splus, W
+        movf    Sminus, W, A
+        iorwf   Splus, W, A
         return
 
 
@@ -5013,15 +5015,15 @@ LESSNUM:
 L_TODIGIT:
         NF 5,digit
 TODIGIT:
-        movf    Sminus, W
-        movf    Srw, W
+        movf    Sminus, W, A
+        movf    Srw, W, A
         addlw   0xf6
         bn      TODIGIT1
         addlw   0x27
 TODIGIT1:
         addlw   0x3a
-        movwf   Srw
-        clrf    plusS
+        movwf   Srw, A
+        clrf    plusS, A
         return
 
 
@@ -5107,10 +5109,10 @@ UDOTR:
 UDOTR1:
         rcall   NUM
 UDOTR2:
-        decf    Rrw, F      ;  XNEXT
+        decf    Rrw, F, A      ;  XNEXT
         bc      UDOTR1
-        movwf   Rminus
-        movwf   Rminus      ; UNNEXT
+        movwf   Rminus, A
+        movwf   Rminus, A      ; UNNEXT
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -5319,12 +5321,12 @@ CMOVE1:
         rcall   PCSTORE
         rcall   PPLUS
 CMOVE2:
-        decf    Rminus, F      ;  XNEXT
+        decf    Rminus, F, A      ;  XNEXT
         movlw   0
-        subwfb  Rplus, F
+        subwfb  Rplus, F, A
         bc      CMOVE1
-        movwf   Rminus
-        movwf   Rminus   ; UNNEXT
+        movwf   Rminus, A
+        movwf   Rminus, A   ; UNNEXT
         rcall   R_TO_P
         goto    DROP
 
@@ -5348,10 +5350,10 @@ CFETCHPP:
         rcall   DUP
         rcall   CFETCH_A
         movlw   -3
-        incf    SWrw, F
+        incf    SWrw, F, A
         bnc     CFETCHPP1
         movlw   -2
-        incf    SWrw, F
+        incf    SWrw, F, A
 CFETCHPP1:
         return
 
@@ -5387,8 +5389,8 @@ L_CTON:
         NF 3,c>n
 CFATONFA:
         rcall   MINUS_FETCH
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         bnn     CFATONFA
         return
 
@@ -5406,17 +5408,17 @@ findi1:
         movff_   SWrw, plusS
         movff_   SWrw, plusS    ; c-addr nfa c-addr nfa
         call    NEQUAL          ; c-addr nfa flag
-        movf    Sminus, W
-        iorwf   Sminus, W       ; c-addr nfa
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A       ; c-addr nfa
         bz      findi2
-        swapf   Sminus, W
+        swapf   Sminus, W, A
         movlw   2
-        subwf   Splus, F
+        subwf   Splus, F, A
         movlw   0
-        subwfb  Srw, F          ; c-addr lfa
+        subwfb  Srw, F, A          ; c-addr lfa
         call    IFETCH          ; c-addr nfa
-        movf    Sminus, W
-        iorwf   Splus, W
+        movf    Sminus, W, A
+        iorwf   Splus, W, A
         bnz     findi1
         bra     findi3
 findi2:
@@ -5437,8 +5439,8 @@ L_IMMEDQ:
         NF 6,immed?
 IMMEDQ:
         rcall   CFETCH_A
-        movf    Sminus, W
-        movf    Splus, W
+        movf    Sminus, W, A
+        movf    Splus, W, A
         movwf   BANKMASK(wflags), A          ; COMPILE and INLINE flags for the compiler
         rcall   LIT_A
         dw      IMMED
@@ -5467,15 +5469,15 @@ FIND1:
 L_DIGITQ:
         NF 6,digit?
 DIGITQ:
-        movf    Sminus, W
-        movf    Srw, W
+        movf    Sminus, W, A
+        movf    Srw, W, A
         addlw   -0x3a
         bn      DIGITQ1
         addlw   -0x27
 DIGITQ1:
         addlw   0xa
-        movwf   Srw
-        clrf    plusS
+        movwf   Srw, A
+        clrf    plusS, A
         bnn     DIGITQ2
         bra     FALSE_
 DIGITQ2:
@@ -5498,8 +5500,8 @@ L_SIGNQ:
 SIGNQ:
         rcall   OVER              ; a n a
         rcall   CFETCH_A          ; a n c
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         addlw   -'-'
         bz      SIGNQMINUS
         addlw   2
@@ -5548,9 +5550,9 @@ ROT_A:
 L_TO_A:
         NF 2,>a
 TO_A:
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   BANKMASK(areg)+1, A
-        movf    Sminus, W
+        movf    Sminus, W, A
         movwf   BANKMASK(areg)+0, A
         return
 
@@ -5559,9 +5561,9 @@ L_A_FROM:
         NF 2,a>
 A_FROM:
         movf    BANKMASK(areg)+0, W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(areg)+1, W, A
-        movwf   plusS
+        movwf   plusS, A
         return
 
 
@@ -5581,8 +5583,8 @@ TONUM1:
         rcall   DUP
         rcall   TOR               ; ud.l ud.h adr
         rcall   CFETCH_A          ; ud.l ud.h c
-        movf    Sminus, W
-        movf    Splus, W
+        movf    Sminus, W, A
+        movf    Splus, W, A
         sublw   '.'
         bz      TONUM_SKIP
         rcall   DIGITQ          ; ud.l ud.h digit flag
@@ -5640,24 +5642,24 @@ NUMBERQ:
         rcall   OVER
         rcall   CFETCH_A
 
-        movf    Sminus, W
+        movf    Sminus, W, A
         movlw   '#'
-        subwf   Srw, F
+        subwf   Srw, F, A
         bn      BASEQ1
         movlw   3
-        subwf   Srw, W
+        subwf   Srw, W, A
         bnn     BASEQ1
-        rlncf   Srw, F
+        rlncf   Srw, F, A
         movlw   low(BASEQV)
-        addwf   Splus, F
+        addwf   Splus, F, A
         movlw   high(BASEQV)
-        addwfc  Srw, F
+        addwfc  Srw, F, A
         call    FEXECUTE
 
         rcall   SLASHONE
         bra     BASEQ2
 BASEQ1:
-        movf    Sminus, W
+        movf    Sminus, W, A
 BASEQ2:                         ; a 0 0 a' u
         rcall   TONUMBER        ; a ud.l ud.h  a' u
 
@@ -5760,8 +5762,8 @@ IPARSEWORD:
         bz      INOWORD
 
         rcall   FIND            ; sets also BANKMASK(wflags)
-        movf    Sminus, W
-        movf    Sminus, W       ; 0 = not found, -1 = normal, 1 = immediate
+        movf    Sminus, W, A
+        movf    Sminus, W, A    ; 0 = not found, -1 = normal, 1 = immediate
         bz      INUMBER
         addlw   1
         bnz     IEXEC           ; Immediate word
@@ -5820,8 +5822,8 @@ INUMBER:
         bcf     BANKMASK(FLAGS1), izeroeq, A ; Clear 0= encountered in compilation
         bcf     BANKMASK(FLAGS1), idup, A    ; Clear DUP encountered in compilation
         rcall   NUMBERQ
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         bz      IUNKNOWN
         movf    BANKMASK(state), F, A
         bz      INUMBER1
@@ -5939,15 +5941,15 @@ DP_TO_EEPROM:
         rcall   STORE_P_TO_R
         rcall   INI
         movlw   5
-        movwf   plusR
+        movwf   plusR, A
         bra     DP_TO_EEPROM_3
 DP_TO_EEPROM_0:
         rcall   FETCHPP
         call    DUP
         rcall   PFETCH
         call    XOR; NOTEQUAL
-        movf    Sminus, W
-        iorwf   Sminus, W
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
         bz      DP_TO_EEPROM_1
         rcall   PSTORE
         bra     DP_TO_EEPROM_2
@@ -5956,9 +5958,9 @@ DP_TO_EEPROM_1:
 DP_TO_EEPROM_2:
         rcall   PTWOPLUS
 DP_TO_EEPROM_3:
-        decf    Rrw, F
+        decf    Rrw, F, A
         bc      DP_TO_EEPROM_0
-        movf    Rminus, W
+        movf    Rminus, W, A
         rcall   R_TO_P
         goto    DROP
 
@@ -5967,16 +5969,16 @@ DP_TO_EEPROM_3:
 L_FALSE:
         NF INLINE|5,false
 FALSE_:                     ; TOS is 0000 (FALSE)
-        clrf    plusS         ; TOS_LO = 00
-        clrf    plusS         ; TOS_HI = 00
+        clrf    plusS, A         ; TOS_LO = 00
+        clrf    plusS, A         ; TOS_HI = 00
         return
 
         dw      L_FALSE
 L_TRUE:
         NF INLINE|4,true
 TRUE_:                      ; TOS is ffff (TRUE)
-        setf    plusS
-        setf    plusS
+        setf    plusS, A
+        setf    plusS, A
         return
 
 ; QUIT     --    R: i*x --    interpret from kbd
@@ -6034,12 +6036,12 @@ ABORT:
 L_SPSTORE:
         NF 3,sp!
 SPSTORE:
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
-        movwf   Sp
-        movf    Tp, W
-        movwf   Sbank
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
+        movwf   Sp, A
+        movf    Tp, W, A
+        movwf   Sbank, A
         return
 
 ; ?ABORT?   f --       abort & print ?
@@ -6250,10 +6252,10 @@ IDP:
 ;link   set     $
         NF 7,(does>)
 XDOES:
-        movf    TOSL, W
-        movwf   plusS
-        movf    TOSH, W
-        movwf   plusS
+        movf    TOSL, W, A
+        movwf   plusS, A
+        movf    TOSH, W, A
+        movwf   plusS, A
         decf    STKPTR, F, A
         rcall   LAST
         rcall   NFATOCFA
@@ -6330,14 +6332,14 @@ SEMICOLON:
         bra     ADD_RETURN_1
         rcall   IHERE
         rcall   MINUS_FETCH
-        movf    Sminus, W
-        movf    Sminus, F
+        movf    Sminus, W, A
+        movf    Sminus, F, A
         andlw   0xf8
         sublw   0xd8
         bz      RCALL_TO_GOTO
         rcall   MINUS_FETCH
-        movf    Sminus, W
-        movf    Sminus, F
+        movf    Sminus, W, A
+        movf    Sminus, F, A
         sublw   0xec
         bnz     ADD_RETURN
 CALL_TO_GOTO:
@@ -6348,7 +6350,7 @@ CALL_TO_GOTO:
 RCALL_TO_GOTO:
         rcall   FETCH_A
         movlw   0xf8           ; These rcalls are always negative.
-        iorwf   Srw, F
+        iorwf   Srw, F, A
         call    TWOSTAR
         rcall   IHERE
         call    PLUS
@@ -6384,11 +6386,11 @@ BRACTICK:
 L_TWOMINUS:
         NF 2,2-
 TWOMINUS:
-        swapf   Sminus, W
+        swapf   Sminus, W, A
         movlw   2
-        subwf   Splus, F
+        subwf   Splus, F, A
         movlw   0
-        subwfb  Srw, F
+        subwfb  Srw, F, A
         return
 
 
@@ -6406,8 +6408,8 @@ L_STATE:
         NF 5,state
 STATE_:
         movf    BANKMASK(state), W, A
-        movwf   plusS
-        movwf   plusS
+        movwf   plusS, A
+        movwf   plusS, A
         return
 
 ; LATEST    -- a-addr
@@ -6442,9 +6444,9 @@ L_TICKS:
 TICKS:
         bcf     GIE
         movf    BANKMASK(ms_count), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(ms_count)+1, W, A
-        movwf   plusS
+        movwf   plusS, A
         bsf     GIE
         return
 
@@ -6464,12 +6466,12 @@ MS:
         call    PLUS
 MS_1:
         call    PAUSE
-        swapf   Sminus, W    ; timeout_hi
-        movwf   Tp
-        movf    Splus, W     ; timeout_lo
+        swapf   Sminus, W, A    ; timeout_hi
+        movwf   Tp, A
+        movf    Splus, W, A     ; timeout_lo
         bcf     GIE
         subwf   BANKMASK(ms_count), W, A  ; ticks_lo - timeout_lo
-        swapf   Tp, W
+        swapf   Tp, W, A
         subwfb  BANKMASK(ms_count)+1, W, A ; ticks_hi - timeout_hi
         bsf     GIE
         bn      MS_1
@@ -6482,19 +6484,19 @@ L_DOTID:
         NF 3,.id
 DOTID:
         rcall   CFETCHPP_A
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         andlw   0xf
-        movwf   plusR
+        movwf   plusR, A
         bra     DOTID3
 DOTID1:
         rcall   CFETCHPP_A
         rcall   TO_PRINTABLE
         rcall    EMIT_A
 DOTID3:
-        decf    Rrw, F
+        decf    Rrw, F, A
         bc      DOTID1
-        movf    Rminus, W
+        movf    Rminus, W, A
         goto    DROP
 
  ; >pr   c -- c      Filter a character to printable 7-bit ASCII
@@ -6502,16 +6504,16 @@ DOTID3:
 L_TO_PRINTABLE:
         NF 3,>pr
 TO_PRINTABLE:
-        movf    Sminus, W
-        movf    Srw, W
+        movf    Sminus, W, A
+        movf    Srw, W, A
         bn      TO_PRINTABLE1
         sublw   0x1f
         bn      TO_PRINTABLE2
 TO_PRINTABLE1:
         movlw   '.'
-        movwf   Srw
+        movwf   Srw, A
 TO_PRINTABLE2:
-        clrf    plusS
+        clrf    plusS, A
         return
 ;;;;;;;;;;;;;;
 CMP:
@@ -6526,7 +6528,7 @@ CMP1:
         call    ZEROSENSE
         bnz     TWODROPZ
 CMP2:
-        decf    Rrw, F
+        decf    Rrw, F, A
         bc      CMP1
         bra     TWODROPNZ
 ;;;;;;;;;;;;;;;;;;;;
@@ -6558,13 +6560,13 @@ TWODROPNZ:
         bcf     ZERO
         bra     LIKEQ4
 LIKEQ3:
-        decf    Rrw, F
+        decf    Rrw, F, A
         bc      LIKEQ1
 TWODROPZ:
         bsf     ZERO
 LIKEQ4:
-        movwf   Rminus
-        movwf   Rminus
+        movwf   Rminus, A
+        movwf   Rminus, A
         bra     DOTS2
 
 ;;;;;;;;;;;;;;;
@@ -6638,32 +6640,32 @@ DUMP1:
         dw      0x3a
         rcall   EMIT_A
         movlw   0x10
-        movwf   plusR
+        movwf   plusR, A
 DUMP2:
         rcall   CFETCHPP_A
         rcall   LIT_A
         dw      2
         call    UDOTR
-        decf    Rrw, F
+        decf    Rrw, F, A
         bnz     DUMP2
-        movf    Rminus, W
+        movf    Rminus, W, A
 
         rcall   LIT_A
         dw      0x10
         call    MINUS
         movlw   0x10
-        movwf   plusR
+        movwf   plusR, A
 DUMP4:
         rcall   CFETCHPP_A
         rcall   TO_PRINTABLE
         rcall   EMIT_A
-        decf    Rrw, F
+        decf    Rrw, F, A
         bnz     DUMP4
-        movf    Rminus, W
+        movf    Rminus, W, A
 DUMP7:
-        decf    Rminus, F
+        decf    Rminus, F, A
         movlw   0
-        subwfb  Rplus, F
+        subwfb  Rplus, F, A
         bc      DUMP1
         rcall   RDROP
         goto    DROP
@@ -6788,7 +6790,7 @@ THENC:
         bsf     BANKMASK(FLAGS1), fTAILC, A  ; Disable tail call optimisation
         rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
-        movf    Srw, W
+        movf    Srw, W, A
         call    TOR
                               ; bra has longer range
         sublw   0xd0          ; Also DUP
@@ -6974,10 +6976,10 @@ L_INLINEC:
         align   2
 INLINE0:
         call    FETCHPP
-        movf    Srw, W
+        movf    Srw, W, A
         bnz     INLINE2
-        movf    Sminus, W
-        movf    Splus, W
+        movf    Sminus, W, A
+        movf    Splus, W, A
         sublw   0x12
         bz      INLINE1
 INLINE2:
@@ -7018,9 +7020,9 @@ NEXT:
 
 ; (next) decrement top of return stack
 XNEXT:
-        decf    Rminus, F
+        decf    Rminus, F, A
         movlw   0
-        subwfb  Rplus, F
+        subwfb  Rplus, F, A
         return
 
 ; endit clear top of return stack
@@ -7028,8 +7030,8 @@ XNEXT:
 L_ENDIT:
         NF COMPILE|5,endit
 ENDIT:
-        clrf    Rminus
-        clrf    Rplus
+        clrf    Rminus, A
+        clrf    Rplus, A
         return
 
 ; RDROP compile a pop
@@ -7037,8 +7039,8 @@ ENDIT:
 L_RDROP:
         NF INLINE|5,rdrop
 RDROP:
-        movwf    Rminus
-        movwf    Rminus ;status flags are not affected my movwf
+        movwf    Rminus, A
+        movwf    Rminus , A ;status flags are not affected my movwf
         return
 
 ; S>D  n -- d
@@ -7046,7 +7048,7 @@ RDROP:
 L_STOD:
         NF 3,s>d
 STOD:
-        btfsc   Splus, 7
+        btfsc   Splus, 7, A
         goto    test_true
         goto    test_false
 
@@ -7065,8 +7067,8 @@ DNEGATE:
 L_QDNEGATE:
         NF 8,?dnegate
 QDNEGATE:
-        movf    Sminus, W
-        movwf   Sminus
+        movf    Sminus, W, A
+        movwf   Sminus, A
         bnn     QDNEGATE1
         rcall   DNEGATE
 QDNEGATE1:
@@ -7077,7 +7079,7 @@ QDNEGATE1:
 L_DABS:
         NF 4,dabs
 DABS_:
-        btfsc   Srw, 7
+        btfsc   Srw, 7, A
         rcall   DNEGATE
         return
 
@@ -7087,25 +7089,25 @@ L_DPLUS:
         NF 2,d+
 DPLUS:
         movlw   7
-        subwf   Sp, F
+        subwf   Sp, F, A
         movlw   0
-        subwfb  Sbank, F
+        subwfb  Sbank, F, A
 
         movlw   4
-        movf    SWrw, W
-        addwf   Splus, F
+        movf    SWrw, W, A
+        addwf   Splus, F, A
 
         movlw   4
-        movf    SWrw, W
-        addwfc  Splus, F
+        movf    SWrw, W, A
+        addwfc  Splus, F, A
 
         movlw   4
-        movf    SWrw, W
-        addwfc  Splus, F
+        movf    SWrw, W, A
+        addwfc  Splus, F, A
 
         movlw   4
-        movf    SWrw, W
-        addwfc  Srw, F
+        movf    SWrw, W, A
+        addwfc  Srw, F, A
 
         return
 
@@ -7123,14 +7125,14 @@ L_DTWOSLASH:
         NF 3,d2/
 DTWOSLASH:
         bcf     CARRY
-        btfsc   Srw, 7
+        btfsc   Srw, 7, A
         bsf     CARRY
-        rrcf    Sminus, F
-        rrcf    Sminus, F
-        rrcf    Sminus, F
-        rrcf    Splus, F
-        movf    Splus, W
-        movf    Splus, W
+        rrcf    Sminus, F, A
+        rrcf    Sminus, F, A
+        rrcf    Sminus, F, A
+        rrcf    Splus, F, A
+        movf    Splus, W, A
+        movf    Splus, W, A
         return
 
 ; D2*    d1 -- d2        double multiply by 2
@@ -7138,14 +7140,14 @@ DTWOSLASH:
 L_DTWOSTAR:
         NF 3,d2*
 DTWOSTAR:
-        movf    Sminus, W
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         bcf     CARRY
-        rlcf    Splus, F
-        rlcf    Splus, F
-        rlcf    Splus, F
-        rlcf    Srw, F
+        rlcf    Splus, F, A
+        rlcf    Splus, F, A
+        rlcf    Splus, F, A
+        rlcf    Srw, F, A
         return
 
 ; DINVERT    d1 -- d2        double invert
@@ -7153,12 +7155,12 @@ DTWOSTAR:
 L_DINVERT:
         NF 7,dinvert
 DINVERT:
-        comf    Sminus, F
-        comf    Sminus, F
-        comf    Sminus, F
-        comf    Splus, F
-        movf    Splus, W
-        movf    Splus, W
+        comf    Sminus, F, A
+        comf    Sminus, F, A
+        comf    Sminus, F, A
+        comf    Splus, F, A
+        movf    Splus, W, A
+        movf    Splus, W, A
         return
 
 ; D0=    d1 -- f        double zeroequal
@@ -7166,10 +7168,10 @@ DINVERT:
 L_DZEROEQUAL:
         NF 3,d0=
 DZEROEQUAL:
-        movf    Sminus, W
-        iorwf   Sminus, W
-        iorwf   Sminus, W
-        iorwf   Sminus, W
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        iorwf   Sminus, W, A
+        iorwf   Sminus, W, A
         bnz     DZEROLESS_FALSE
 DZEROEQUAL_TRUE:
         goto    TRUE_
@@ -7180,10 +7182,10 @@ L_DZEROLESS:
         db      NFA|3,'d','0','<'
         align   2
 DZEROLESS:
-        movf    Sminus, W
-        movf    Sminus, F
-        movf    Sminus, F
-        movf    Sminus, F
+        movf    Sminus, W, A
+        movf    Sminus, F, A
+        movf    Sminus, F, A
+        movf    Sminus, F, A
         addlw   0
         bn      DZEROEQUAL_TRUE
 DZEROLESS_FALSE:
@@ -7205,8 +7207,8 @@ L_DLESS:
         align   2
 DLESS:
         rcall   DMINUS
-        swapf   Sminus, W
-        swapf   Sminus, W
+        swapf   Sminus, W, A
+        swapf   Sminus, W, A
         goto    LESS2
 
 ; D>    d1 d2 -- f        double greater than
@@ -7264,9 +7266,9 @@ L_FETCH_P:
         NF 2,@p
 FETCH_P:
         movf    BANKMASK(p_lo), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusS
+        movwf   plusS, A
         return
 ;***************************************************
         dw      L_FETCH_P
@@ -7274,20 +7276,20 @@ L_PCFETCH:
         NF 3,pc@ ; ( -- c ) Fetch char from pointer
 PCFETCH:
         movf    BANKMASK(p_lo), W, A
-        movwf   plusS
+        movwf   plusS, A
         movf    BANKMASK(p_hi), W, A
-        movwf   plusS
+        movwf   plusS, A
         goto    CFETCH
 ;***************************************************
         dw      L_PCFETCH
 L_PNPLUS:
         NF 3,p++ ; ( n -- ) Add n to p
 PNPLUS:
-        movf    Sminus, W
-        movwf   Tp
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movwf   Tp, A
+        movf    Sminus, W, A
         addwf   BANKMASK(p_lo), F, A
-        movf    Tp, W
+        movf    Tp, W, A
         addwfc  BANKMASK(p_hi), F, A
         return
 ;***************************************************
@@ -7319,8 +7321,8 @@ L_DOTBASE:
 DOTBASE:
         call    BASE
         call    FETCH_A
-        movf    Sminus, W
-        movf    Srw, W
+        movf    Sminus, W, A
+        movf    Srw, W, A
         xorlw   0x10
         bnz     DOTBASE1
         movlw   '$'
@@ -7338,8 +7340,8 @@ DOTBASE2:
 DOTBASE3:
         movlw   '?'
 DOTBASEEND:
-        movwf   Srw
-        clrf    plusS
+        movwf   Srw, A
+        clrf    plusS, A
         return
 
 ;;FF_END_CODE code

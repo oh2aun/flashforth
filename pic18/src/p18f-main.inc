@@ -1,7 +1,7 @@
 //**********************************************************************
 //                                                                     *
 //    Filename:      p18f-main.inc                                     *
-//    Date:          1.1.2022                                          *
+//    Date:          16.01.2022                                        *
 //    FF Version:    5.0                                               *
 //    Copyright:     Mikael Nordman                                    *
 //    Author:        Mikael Nordman                                    *
@@ -20,12 +20,12 @@
 
 #define ENABLE 1
 #define DISABLE 0
-#define POSITIVE 1
-#define NEGATIVE 0
+#define POSITIVE_ 1
+#define NEGATIVE_ 0
 
 //  Specify the cpu clock frequency here
 //  It must be aligned with the processor specific configuration bits
-clock   equ 48000000  // Hz
+clock   equ 64000000  // Hz
 
 // Specify the baud rate for the UARTs
 baud    equ 38400
@@ -57,17 +57,17 @@ baud3   equ 38400
 
 // Put CPU in idle when operator task calls PAUSE
 // Saves power on CPUs that support IDLE mode.
-#define IDLE_MODE DISABLE   // ENABLE or DISABLE
+#define IDLE_MODE ENABLE   // ENABLE or DISABLE
 
 // Measure CPU load, uses TIMER0. Needs IDLE_MODE ENABLE
-#define CPU_LOAD DISABLE    // ENABLE or DISABLE
+#define CPU_LOAD ENABLE    // ENABLE or DISABLE
 
 // CPU load indicator led definitions. Needs IDLE_MODE.
 #define CPU_LOAD_LED DISABLE       // ENABLE or DISABLE
 #define CPU_LOAD_TRIS TRISC
 #define CPU_LOAD_PORT LATC
 #define CPU_LOAD_BIT 0
-#define CPU_LOAD_LED_POLARITY POSITIVE   // POSITIVE or NEGATIVE
+#define CPU_LOAD_LED_POLARITY POSITIVE_   // POSITIVE_ or NEGATIVE_
 
 // Define the startup delay for turnkey words.
 // Use 8 seconds for USB_CDC to have time to start the USB

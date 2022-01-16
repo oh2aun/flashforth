@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18fxxxx.inc                                      *
-;    Date:          01.01.2022                                        *
+;    Date:          16.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -949,6 +949,171 @@
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
 #endif
+#ifdef __18F04Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F04Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x3fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xc8ff   
+    #define FBUFFER   0x0900
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F14Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F14Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x3fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xc8ff   
+    #define FBUFFER   0x0900
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F05Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F05Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x7fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xccff   
+    #define FBUFFER   0x0d00
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F15Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F15Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x7fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xccff   
+    #define FBUFFER   0x0d00
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F06Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F06Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbdff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff   
+    #define FBUFFER   0x1500
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F16Q40
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F16Q40
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbdff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff   
+    #define FBUFFER   0x1500
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F04Q41
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F04Q41
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x3fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xc8ff   
+    #define FBUFFER   0x0900
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F14Q41
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F14Q41
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x3fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xc8ff   
+    #define FBUFFER   0x0900
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F05Q41
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F05Q41
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x7fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xccff   
+    #define FBUFFER   0x0d00
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F15Q41
+    #include "p18fxxq40.inc"
+    #define PICTYPE PIC18F15Q41
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0x7fff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xccff   
+    #define FBUFFER   0x0d00
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F06Q41
+    #include "p18fxxq41.inc"
+    #define PICTYPE PIC18F06Q41
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbdff
+    #define EEPROM_LO 0xbe00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff   
+    #define FBUFFER   0x1500
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
 #ifdef __18F16Q41
     #include "p18fxxq41.inc"
     #define PICTYPE PIC18F16Q41
@@ -958,7 +1123,8 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xd4ff   
-    #define FBUFFER   0xd500   
+    #define FBUFFER   0x1500
+    #undef  _FLASH_ERASE_SIZE
     #define _FLASH_ERASE_SIZE 0x100
     #define EEPROM_ADDRU 0x38
     #define EEPROM_MASKH 0x01
@@ -972,7 +1138,8 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xccff   
-    #define FBUFFER   0xcd00   
+    #define FBUFFER   0x0d00   
+    #undef  _FLASH_ERASE_SIZE
     #define _FLASH_ERASE_SIZE 0x100
     #define EEPROM_ADDRU 0x38
     #define EEPROM_MASKH 0x01
@@ -986,7 +1153,8 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xd4ff
-    #define FBUFFER   0xd500   
+    #define FBUFFER   0x1500   
+    #undef  _FLASH_ERASE_SIZE
     #define _FLASH_ERASE_SIZE 0x100
     #define EEPROM_ADDRU 0x38
     #define EEPROM_MASKH 0x01
@@ -1000,7 +1168,8 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xe4ff
-    #define FBUFFER   0xe500
+    #define FBUFFER   0x3500
+    #undef  _FLASH_ERASE_SIZE
     #define _FLASH_ERASE_SIZE 0x100
     #define EEPROM_ADDRU 0x38
     #define EEPROM_MASKH 0x01
