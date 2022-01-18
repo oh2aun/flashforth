@@ -3,7 +3,7 @@
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
 #
-# Copyright 2021 Mikael Nordman (oh2aun@gmail.com)
+# Copyright 2022 Mikael Nordman (oh2aun@gmail.com)
 # 12.09.2019 - Updated for nonblocking I/O
 # 26.1.2021  - Change default suffix to '.fs'
 #
@@ -39,6 +39,8 @@ running = True
 waitForNL = 0
 uploadMode = 0
 waitForChar = 'idle'
+errorCount = 0
+
 cmd_dictionary = {
   "#help filter   ": "Print filtered help text",
   "#help          ": "Print help text for all words",
@@ -73,14 +75,25 @@ def serial_open(config):
 
 # receive_thr() receives chars from FlashForth
 def receive_thr(config, *args):
-  global running, waitForNL, uploadMode, waitForChar
-  while running==True:
+  global running, waitForNL, uploadMode, waitForChar, errorCount
+  count = 0
+  while running == True:
     try:
       char = config.ser.read()
       sys.stdout.write(char)
       sys.stdout.flush()
+      count = count + 1
+      if char == '\x17':
+        errorCount = errorCount + 1
+        if errorCount > 3:
+          uploadMode = 0
+          errorCount = 0
       if char == '\n':
         waitForNL = 0
+        count = 0
+      if count > 80:
+        count = 0
+        sys.stdout.flush()
       if config.charflowcontrol == True:
         if char == waitForChar:
           waitForChar = 'idle'
@@ -125,12 +138,12 @@ def parse_arg(config):
 
 #main loop for sending and receiving
 def main():
-  global running, waitForNL, uploadMode, waitForChar
+  global running, waitForNL, uploadMode, waitForChar, errorCount
   
   config = Config() 
   parse_arg(config)
   serial_open(config)
-  start_new_thread(receive_thr, (config, 1))
+  start_new_thread(receive_thr, (config,))
  
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
@@ -153,9 +166,11 @@ def main():
   running = True
   waitForNL = 0
   uploadMode = 0
+  errorCount = 0
   while running:
     try:
       if uploadMode == 0:
+        errorCount = 0
         try:
           line = raw_input()
         except KeyboardInterrupt:
@@ -254,7 +269,7 @@ def main():
         line = file.readline()
         if line.startswith("\\ "):
           continue
-        if startString == "":
+        if uploadMode == 1 and startString == "":
           uploadMode = 2
         else:
           if uploadMode == 1 and line.find(startString) >= 0:
@@ -268,6 +283,7 @@ def main():
           file.close()
           uploadMode = 0
           waitForNL = 0
+          errorCount = 0
           continue
         else:
           line = line.rstrip('\n')
@@ -289,8 +305,8 @@ def main():
             waitForChar = c
           prevChar = c
           config.ser.write(c)
-          config.ser.flush()       # Send the output buffer
-
+          if config.charflowcontrol:
+            config.ser.flush()       # Send the output buffer
         config.ser.write('\n')
         config.ser.flush()       # Send the output buffer
         sleep(float(config.newlinedelay)/1000)
