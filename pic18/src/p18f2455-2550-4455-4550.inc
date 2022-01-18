@@ -12,9 +12,6 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
-; Use PIC-AS global options:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
-
 ;;; Define USB_CDC if you want to use USB serial emulation
 ;;; If you use CDC, you must also compile usbcdc.asm
 #define USB_CDC
@@ -55,5 +52,3 @@
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1 
 #define REG_U1RXIP IPR1
-;CONFIG1L 0x22
-;CONFIG1H 0x0e

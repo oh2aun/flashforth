@@ -15,8 +15,6 @@
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-
-#if CONFIG_RESET == 0x0000
         config FOSC = IRC
         config PLLEN = OFF
         config PCLKEN = ON
@@ -36,10 +34,9 @@
         config CP0 = ON
         config CPB = ON
         config WRTC = ON
-#endif
         
 ;;; Activate 4xPLL from SW
-#define PLL DISABLE	         ; ENABLE or DISABLE
+#define PLL_ENABLE 0	         // 1=ENABLE or 0=DISABLE
 
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1 

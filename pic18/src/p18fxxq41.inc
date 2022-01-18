@@ -11,8 +11,6 @@
 ;   FlashForth is licensed according to the GNU General Public License*
 ;**********************************************************************
 ; FlashForth processor specific configuration
-; PIC-AS params 
-; -Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 

@@ -1,7 +1,7 @@
 //**********************************************************************
 //                                                                     *
 //    Filename:      p18f-main.inc                                     *
-//    Date:          16.01.2022                                        *
+//    Date:          18.01.2022                                        *
 //    FF Version:    5.0                                               *
 //    Copyright:     Mikael Nordman                                    *
 //    Author:        Mikael Nordman                                    *
@@ -13,10 +13,9 @@
 // FlashForth processor main configuration file
 
 ; Use PIC-AS global options for all variants except the pic18fxxQyy chips:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=050h -Wl,-Map=test.map
-
+;-Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 ; Use PIC-AS global options for the pic18fxxQyy chips:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=550h -Wl,-Map=test.map
+;-Wa,-a -Wl,-pudata_acs=500h,-pudatabig=550h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 
 #define ENABLE 1
 #define DISABLE 0

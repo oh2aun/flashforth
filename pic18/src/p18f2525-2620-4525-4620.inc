@@ -12,9 +12,6 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
-; Use PIC-AS global options:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=060h -Wl,-Map=test.map
-
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
@@ -39,7 +36,7 @@
         config WRTC = ON
 
 ;;; Activate 4xPLL from SW for INTOSC modes.
-#define PLL DISABLE	         ; ENABLE or DISABLE
+#define PLL_ENABLE 0	         // 1=ENABLE or 0=DISABLE
 
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1 

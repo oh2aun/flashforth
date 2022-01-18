@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f14k50.inc                                     *
-;    Date:          01.01.2022                                        *
+;    Date:          17.01.2022                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -11,9 +11,6 @@
 ;    FlashForth is licensed acording to the GNU General Public License*
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
-
-; Use PIC-AS global options:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=000h,-pudatabig=040h -Wl,-Map=test.map
 
 ;;; Define USB_CDC if you want to use USB serial emulation
 #define USB_CDC
@@ -53,7 +50,7 @@
         config WRTC = OFF
 
 ;;; Activate 4xPLL from SW
-#define PLL DISABLE	         // ENABLE or DISABLE
+#define PLL_ENABLE 0	         // 1=ENABLE or 0=DISABLE
 
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1 

@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          16.01.2022                                        *
+;;    Date:          18.01.2022                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -60,10 +60,7 @@
 #endif
 
 ; NVM register renaming
-#ifndef K42
-#define movff_ movff
-#else
-#define movff_ movffl
+#ifdef K42
 #define INTCON INTCON0
 #define EEADR NVMADRL
 #ifdef NVMADRH
@@ -689,7 +686,7 @@ irq_async_rx1:
 irq_async_rx1_2:
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXhead), W, A
-        movff_  U1RXB, TWrw
+        movff  U1RXB, TWrw
 #ifndef K42
         btfsc   OERR
         bcf     CREN ;; Restart RX on case of RX overrun
@@ -757,7 +754,7 @@ irq_async_rx2_2:
         lfsr    Tptr, RX2buf
         movf    BANKMASK(RX2head), W, A
 
-        movff_   U2RXB,  TWrw
+        movff   U2RXB,  TWrw
 #ifndef K42
         movff   BSR, ilbsr
         banksel RCSTA2
@@ -823,7 +820,7 @@ irq_async_rx3_2:
         lfsr    Tptr, RX3buf
         movf    BANKMASK(RX3head), W, A
 
-        movff_  U3RXB,  TWrw
+        movff  U3RXB,  TWrw
 #ifndef K42
         movff   BSR, ilbsr
         banksel RCSTA3
@@ -1383,7 +1380,7 @@ WARM_ZERO_1:
 #if CPU_LOAD == ENABLE
 #ifndef K42
         movlw   08                  ; TMR0 used for CPU_LOAD
-        movwf   T0CON               ; prescale = 1
+        movwf   T0CON, A            ; prescale = 1
         bsf     TMR0IE
         bcf     TMR0IP
 #else
@@ -1609,11 +1606,9 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 11
         db      ' '              ; 1
-        STRING 16.01.2022        ; 10
+        STRING 18.01.2022        ; 10
         db    0xa,0xd            ; 2
         align 2
-        nop
-        nop
         goto    TYPE
 
 ;***************************************************
@@ -1647,7 +1642,7 @@ RX1_:
         bz      RX1_
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXtail), W, A
-        movff_  TWrw, plusS    ;  Take a char from the buffer
+        movff  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
         incf    BANKMASK(RXtail), F, A
         movlw   RXbufmask
@@ -1716,7 +1711,7 @@ RX2_:
         bz      RX2_
         lfsr    Tptr, RX2buf
         movf    BANKMASK(RX2tail), W, A
-        movff_  TWrw, plusS    ;  Take a char from the buffer
+        movff  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
         incf    BANKMASK(RX2tail), F, A
         movlw   RX2bufmask
@@ -1793,7 +1788,7 @@ RX3_:
         bz      RX3_
         lfsr    Tptr, RX3buf
         movf    BANKMASK(RX3tail), W, A
-        movff_  TWrw, plusS    ;  Take a char from the buffer
+        movff  TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
         incf    BANKMASK(RX3tail), F, A
         movlw   RX3bufmask
@@ -2108,7 +2103,7 @@ UMSLASHMOD2:
         movwf   plusS , A           ; quotient
         movf    DIVIDEND_1, W, A
         movwf   plusS, A
-        return                  ; 11 cycles
+        return                      ; 11 cycles
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
 ;   if (idirty)
@@ -2266,7 +2261,7 @@ verify_imem_1:
         setf    BANKMASK(ibase_hi), A       ; Mark flash buffer empty
 #if XSTORE == ENABLE
         setf    BANKMASK(ibase_up), A       ; Mark flash buffer empty
-        clrf    TBLPTRU
+        clrf    TBLPTRU, A
 #endif
         return
 
@@ -2352,8 +2347,8 @@ asmemit:
 L_NEQUAL:
         NF 2,n=
 NEQUAL:
-        movff_  Sminus, TBLPTRH
-        movff_  Sminus, TBLPTRL       ; nfa in flash
+        movff  Sminus, TBLPTRH
+        movff  Sminus, TBLPTRL       ; nfa in flash
         movf    Sminus, W, A
         movwf   Tbank, A
         movf    Sminus, W, A
@@ -2500,7 +2495,7 @@ L_INT:
 INT:
         call    DROP
         movf    Sminus, W, A
-        movff_	Sminus, irq_v
+        movff	Sminus, irq_v
         movwf   BANKMASK(irq_v)+1, A
         return
 
@@ -2510,7 +2505,7 @@ L_LITERAL:
         NF IMMED|7,literal
 LITERAL:
         movf    Sminus, W, A
-        movff_   Srw, Tp
+        movff   Srw, Tp
         movwf   Srw, A
         movf    Tp, W, A
         movwf   plusS, A
@@ -2619,7 +2614,7 @@ L_TOTBLP:
 TOTBLP:
         movf    Sminus, W, A
         movwf   TBLPTRH, A
-        movff_  Sminus, TBLPTRL
+        movff  Sminus, TBLPTRL
         return
 ; I@       a-addr -- x  fetch cell from Code mem
 ; 25 cycles when fetching from buffer
@@ -2903,7 +2898,7 @@ TX0:
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
         movf    ep2icount, W, A
-        movff_  Sminus, TWrw
+        movff  Sminus, TWrw
         addlw   1
         movwf   ep2icount, A
         sublw   6                       ; l - w
@@ -3656,7 +3651,7 @@ SPFETCH:
         movf    Sp, W, A
         movwf   Tp, A
         movf    Sbank, W, A
-        movff_   Tp, plusS
+        movff   Tp, plusS
         iorlw   high(PRAM)
         movwf   plusS, A
         return
@@ -3669,8 +3664,8 @@ SPFETCH:
 L_XSTORE:
         db      NFA|2,'x','!'
         align   2
-        movf    Sminus, W
-        movf    Sminus, W
+        movf    Sminus, W, A
+        movf    Sminus, W, A
         movwf   BANKMASK(iaddr_up), A
         call    ISTORE
         clrf    BANKMASK(iaddr_up), A
@@ -3820,15 +3815,15 @@ ISTORERR2:
 L_XFETCH:
         NF 2,x@
 XFETCH:
-        movf    Sminus, W
-        movf    Sminus, W
-        movwf   TBLPTRU
-        movf    Sminus, W
-        movwf   TBLPTRH
-        movf    Sminus, W
-        movwf   TBLPTRL
+        movf    Sminus, W, A
+        movf    Sminus, W, A
+        movwf   TBLPTRU, A
+        movf    Sminus, W, A
+        movwf   TBLPTRH, A
+        movf    Sminus, W, A
+        movwf   TBLPTRL, A
         call    pfetch0
-        clrf    TBLPTRU
+        clrf    TBLPTRU, A
         return
 
 ; DICTIONARY POINTER FOR the current section
@@ -4070,10 +4065,10 @@ L_TWODUP:
         NF 4,2dup
 TWODUP:
         movlw   -3
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
         return
 
 
@@ -4084,10 +4079,10 @@ L_TWOOVER:
         NF 5,2over
 TWOOVER:
         movlw   -7
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
         return
 
 ; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
@@ -4336,11 +4331,11 @@ L_SWOP:
         NF 4,swap
 SWOP:
         movlw   -2
-        movff_   SWrw, Tp
-        movff_   Srw, SWrw
-        movff_   Tp, Sminus
-        movff_   SWrw, Tp
-        movff_   Srw, SWrw
+        movff   SWrw, Tp
+        movff   Srw, SWrw
+        movff   Tp, Sminus
+        movff   SWrw, Tp
+        movff   Srw, SWrw
         movf    Tp, W, A
         movwf   Splus, A
         return
@@ -4352,8 +4347,8 @@ L_OVER:
         NF 4,over
 OVER:
         movlw   -3
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
         return
 
 ;   ROT x1 x2 x3 -- x2 x3 x1        ROT
@@ -4408,8 +4403,8 @@ L_DUP:
         NF 3,dup
 DUP:
         movlw   -1
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
         return
 
 ;***********************************************************
@@ -4463,7 +4458,7 @@ L_AND:
         NF 3,and
 AND_:
         movf    Sminus, W, A
-        movff_   Sminus, Tp
+        movff   Sminus, Tp
         andwf   Sminus, F, A
         movf    Tp, W, A
         andwf   Splus, F, A
@@ -4475,7 +4470,7 @@ L_OR:
         NF 2,or
 OR:
         movf    Sminus, W, A
-        movff_   Sminus, Tp
+        movff   Sminus, Tp
         iorwf   Sminus, F, A
         movf    Tp, W, A
         iorwf   Splus, F, A
@@ -4487,7 +4482,7 @@ L_XOR:
         NF 3,xor
 XOR:
         movf    Sminus, W, A
-        movff_   Sminus, Tp
+        movff   Sminus, Tp
         xorwf   Sminus, F, A
         movf    Tp, W, A
         xorwf   Splus, F, A
@@ -4922,8 +4917,8 @@ L_NIP:
         NF 3,nip
 NIP:
         movlw   -1
-        movff_   Sminus, SWrw
-        movff_   Sminus, SWrw
+        movff   Sminus, SWrw
+        movff   Sminus, SWrw
         return
 
 ;   TUCK    x1 x2 -- x2 x1 x2
@@ -5403,10 +5398,10 @@ L_BRACFIND:
 findi:
 findi1:
         movlw   -3
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS
-        movff_   SWrw, plusS    ; c-addr nfa c-addr nfa
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS
+        movff   SWrw, plusS    ; c-addr nfa c-addr nfa
         call    NEQUAL          ; c-addr nfa flag
         movf    Sminus, W, A
         iorwf   Sminus, W, A       ; c-addr nfa

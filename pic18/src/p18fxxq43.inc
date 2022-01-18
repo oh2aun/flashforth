@@ -12,9 +12,6 @@
 ;**********************************************************************
 ;;; FlashForth processor specific configuration
 
-; Use PIC-AS global options:
-;-Wa,-a -Wl,-presetVec=0h,-phi_int=08h,-plo_int=18h,-pudata_acs=500h,-pudatabig=560h -Wl,-Map=test.map
-
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
