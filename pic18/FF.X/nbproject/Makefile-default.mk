@@ -90,7 +90,7 @@ ifneq ($(INFORMATION_MESSAGE), )
 endif
 	${MAKE}  -f nbproject/Makefile-default.mk ${DISTDIR}/FF.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
-MP_PROCESSOR_OPTION=PIC18F25K50
+MP_PROCESSOR_OPTION=PIC18F26K42
 FINAL_IMAGE_NAME_MINUS_EXTENSION=${DISTDIR}/FF.X.${IMAGE_TYPE}
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: pic-as-assembler
@@ -98,19 +98,19 @@ ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 ${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
-	${MP_AS} -mcpu=PIC18F25K50 -c \
+	${MP_AS} -mcpu=PIC18F26K42 -c \
 	-o ${OBJECTDIR}/_ext/1360937237/ff-pic18.o \
 	../src/ff-pic18.S \
-	 -D__DEBUG=1  -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -w -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
+	 -D__DEBUG=1  -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 	
 else
 ${OBJECTDIR}/_ext/1360937237/ff-pic18.o: ../src/ff-pic18.S  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}/_ext/1360937237" 
 	@${RM} ${OBJECTDIR}/_ext/1360937237/ff-pic18.o 
-	${MP_AS} -mcpu=PIC18F25K50 -c \
+	${MP_AS} -mcpu=PIC18F26K42 -c \
 	-o ${OBJECTDIR}/_ext/1360937237/ff-pic18.o \
 	../src/ff-pic18.S \
-	 -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -w -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
+	 -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -v -fmax-errors=20 -mwarn=0 -xassembler-with-cpp -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 	
 endif
 
@@ -119,15 +119,15 @@ endif
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 ${DISTDIR}/FF.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} ${DISTDIR} 
-	${MP_LD} -mcpu=PIC18F25K50 ${OBJECTFILES_QUOTED_IF_SPACED} \
+	${MP_LD} -mcpu=PIC18F26K42 ${OBJECTFILES_QUOTED_IF_SPACED} \
 	-o ${DISTDIR}/FF.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
-	 -D__DEBUG=1  -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
+	 -D__DEBUG=1  -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 else
 ${DISTDIR}/FF.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} ${DISTDIR} 
-	${MP_LD} -mcpu=PIC18F25K50 ${OBJECTFILES_QUOTED_IF_SPACED} \
+	${MP_LD} -mcpu=PIC18F26K42 ${OBJECTFILES_QUOTED_IF_SPACED} \
 	-o ${DISTDIR}/FF.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
-	 -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=060h,-presetVec=0h,-phi_int=08h,-plo_int=18h
+	 -misa=std -msummary=+mem,+psect,+class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex -Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h
 endif
 
 
