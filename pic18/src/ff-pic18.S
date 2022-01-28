@@ -5729,7 +5729,9 @@ TOIN:
 ; In RAM ?
         dw      L_TOIN
 L_TICKSOURCE:
-        NF 7,source
+        db 0x87,0x27
+        STRING source
+        align 2
 TICKSOURCE:
         rcall   DOUSER
         dw      usource&0xffff    ; two cells !!!!!!
