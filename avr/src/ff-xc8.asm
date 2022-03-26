@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          28.11.2021                                        *
+;    Date:          26.03.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2021  Mikael Nordman
+; Copyright (C) 2022  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "28.11.2021"
+#define DATE "26.03.2021"
 #define datelen 10
 
 
@@ -106,8 +106,8 @@
 .equ NFA, 0x80      ; Name field mask
 .equ IMMED, 0x40    ; Immediate mask
 .equ INLINE, 0x20   ; Inline mask for 1 and 2 cell code
-.equ INLINE4, 0x00   ; Inline mask for 4 cell code
-.equ INLINE5, 0x00   ; Inline mask for 5 cell code
+.equ INLINE4, 0x00  ; Inline mask for 4 cell code
+.equ INLINE5, 0x00  ; Inline mask for 5 cell code
 .equ COMPILE, 0x10  ; Compile only mask
 .equ NFAmask, 0xf   ; Name field length mask
 
@@ -6032,6 +6032,7 @@ CSTORE1:
         cpi     tosh, hi8(OFLASH)
         brcc    ICSTORE
 ECSTORE:
+        cli
         sbic    _SFR_IO_ADDR(EECR), EEPE
         rjmp    ECSTORE
         subi    tosh, hi8(PEEPROM)
@@ -6044,6 +6045,7 @@ ECSTORE:
 ECSTORE1:
         sbic    _SFR_IO_ADDR(EECR), EEPE
         rjmp    ECSTORE1
+        sei
 #if DEBUG_FLASH == 1
         rcall   DOLIT
         .word     'E'

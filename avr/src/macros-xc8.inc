@@ -15,16 +15,16 @@
 
   .equ ibasel, 10       ; Not in interrupt
   .equ ibaseh, 11       ; Not in interrupt
-  .equ ms_count , 14  ; Not in interrupt
-  .equ ms_count1, 15  ; Not in interrupt
+  .equ ms_count , 14    ; Not in interrupt
+  .equ ms_count1, 15    ; Not in interrupt
   .equ t0, 16
   .equ t1, 17
-  .equ t2, 0          ; Not in interrupt
-  .equ t3, 1          ; Not in interrupt
+  .equ t2, 0            ; Not in interrupt
+  .equ t3, 1            ; Not in interrupt
 
   .equ al, 18
   .equ ah, 19
-  .equ pl, 20         ; P Register and FOR##LOOP INDEX variable
+  .equ pl, 20         ; P Register and DO..LOOP INDEX variable
   .equ ph, 21
 
   .equ FLAGS1, 22     ; Not in interrupt
