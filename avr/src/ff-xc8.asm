@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          26.03.2022                                        *
+;    Date:          27.03.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "26.03.2021"
+#define DATE "27.03.2022"
 #define datelen 10
 
 
@@ -6335,6 +6335,9 @@ KERNEL_END:
 ;***********************************************************
 .section .nrww, code, address(NRWW_START)
 ;*************************************************************
+; In case of boot loader reset vector is active
+; this jmp will ensure correct warm start anyway.
+        jmp  WARM_0
 umstar0:
         push t2
         push t3
