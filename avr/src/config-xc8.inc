@@ -20,6 +20,7 @@
 
 // For getting the OPERATOR_UART from an environment variable
 // Add -DOPERATOR_UART = "{OPERATOR_UART}" to the project
+// Usage : make clean all MP_PROCESSOR_OPTION=ATmega328  OPERATOR_UART=0
 #elif (OPERATOR_UART+0) == 0
 #undef OPERATOR_UART
 #define OPERATOR_UART 0

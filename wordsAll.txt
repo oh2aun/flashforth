@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5 01.01.2022
+Dictionary of FlashForth 5 15.04.2022
 
 !          ( x addr -- )
            Store x to addr
@@ -117,7 +117,7 @@ Dictionary of FlashForth 5 01.01.2022
            Fetch two cells
 
 2!         ( x1 x2 a-addr -- )
-           Store two cells
+           Store two cells. x1 to lower address. x2 to higher address
 
 2constant  ( x x "name" -- )
            Define a double constant
@@ -1052,14 +1052,17 @@ qm+        ( q d -- q )
            Add a double number to quad number
            PIC18 PIC24 PIC30 PIC33
 
+um*/       ( ud1 u1 u2 -- ud2 )
+           Scale with triple number intermediate result
+
+unused     ( -- x )
+           Get the amount of unused memory in the current data section
+
 ut*        ( ud u -- ut )
            Multiply single number with double number
 
 ut/        ( ut u -- ud )
            Divide triple number with single number
-
-um*/       ( ud1 u1 u2 -- ud2 )
-           Scale with triple number intermediate result
 
 value      ( x "name" -- )
            Define a value
