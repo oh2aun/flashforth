@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          27.03.2022                                        *
+;    Date:          14.04.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "27.03.2022"
+#define DATE "14.04.2022"
 #define datelen 10
 
 
@@ -155,13 +155,15 @@
 
 #if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 #define KERNEL_SIZE 0x2200
-#define FLASH_HI    (0x10000 - PFLASH - SPM_SIZE)
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
 #define KERNEL_SIZE 0x2100
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0xffff)             // 32 Kwords flash
 #define KERNEL_SIZE 0x2000
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
 #define KERNEL_SIZE (0x2000 + USB_CODE)
@@ -1526,7 +1528,7 @@ STORCOLON:
 
 ; 2@    a-addr -- x1 x2            fetch 2 cells
 ;   DUP @ SWAP CELL+ @ ;
-;   the lower address will appear on top of stack
+;   the higher address will appear on top of stack
         fdw     COMMAXT_L
 TWOFETCH_L:
         .byte     NFA|2
@@ -1541,7 +1543,7 @@ TWOFETCH:
 
 ; 2!    x1 x2 a-addr --            store 2 cells
 ;   SWAP OVER ! CELL+ ! ;
-;   the top of stack is stored at the lower adrs
+;   the top of stack is stored at the higher address
         fdw     TWOFETCH_L
 TWOSTORE_L:
         .byte     NFA|2
@@ -4371,6 +4373,7 @@ DUMP_L:
         .ascii  "dump"
         .align  1
 DUMP:
+        adiw    tosl, 15
         rcall   DOLIT
         .word     16
         rcall   USLASH
@@ -4974,6 +4977,17 @@ DDOT_L:
         jmp     SPACE_
 ;****************************************************
         fdw      DDOT_L
+9:
+        .byte   NFA|6
+        .ascii  "unused"
+        .align  1
+UNUSED:
+        rcall   MEMHI
+        call    HERE
+        call    MINUS
+        jmp     ONEPLUS
+
+        fdw      9b
 9:
         .byte     NFA|2
         .ascii  "hi"

@@ -15,8 +15,23 @@
 
 ; Define the UART used for the operator
 ; 0 or 1 (0 for 32u4 ) or 3 for USB
+#ifndef OPERATOR_UART
 #define OPERATOR_UART 0
 
+// For getting the OPERATOR_UART from an environment variable
+// Add -DOPERATOR_UART = "{OPERATOR_UART}" to the project
+#elif (OPERATOR_UART+0) == 0
+#undef OPERATOR_UART
+#define OPERATOR_UART 0
+#elif (OPERATOR_UART+0) == 1
+#undef OPERATOR_UART
+#define OPERATOR_UART 1
+#elif (OPERATOR_UART+0) == 3
+#undef OPERATOR_UART
+#define OPERATOR_UART 3
+#else
+#error OPERATOR_UART not supported
+#endif
 ;;; UART0 configuration
 ;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
 ;;; disturb the XON/XOFF flow control. 
