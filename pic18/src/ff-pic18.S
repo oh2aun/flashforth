@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          18.01.2022                                        *
+;;    Date:          27.04.2022                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -172,6 +172,14 @@ STRING MACRO arg0
   ENDM
 ENDM STRING
 
+DROPM MACRO
+#ifdef K42
+        subfsr 0, 2
+#else
+        movf Sminus, W, A
+        movf Sminus, W, A
+#endif
+ENDM
 ;;   FSR0    Sp  - Parameter Stack Pointer
 ;;   FSR1    Tp  - Temporary Ram Pointer
 ;;   FSR2    Rp  - R stack pointer
@@ -496,7 +504,7 @@ PSECT   edata
 
 ;; Code **********************************************
 ;   Reset vector
-    PSECT   resetVec,global,reloc=2,class=CODE,delta=1
+PSECT   resetVec,global,reloc=2,class=CODE,delta=1
 resetVec:
         nop                     ;; 18f252/18f258 ERRATA
         goto    main
@@ -1109,9 +1117,6 @@ WARM:
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
-
-        lfsr    Sptr, appdata   ; Zero ram from 3 upwards
-
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
@@ -1125,6 +1130,7 @@ WARM_ZERO_3:
         sublw   0x0f
         bnz     WARM_ZERO_3
 #else
+        lfsr    Sptr, appdata   ; Zero ram from 3 upwards
 WARM_ZERO_1:
         clrf    Splus, A
         movf    Sbank, W, A
@@ -1606,7 +1612,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 11
         db      ' '              ; 1
-        STRING 18.01.2022        ; 10
+        STRING 27.04.2022        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1648,6 +1654,7 @@ RX1_:
         movlw   RXbufmask
         andwf   BANKMASK(RXtail), F, A
         decf    BANKMASK(RXcnt), F, A
+        andwf   BANKMASK(RXhead), F, A
         return
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -2493,7 +2500,7 @@ L_INT:
         db      '!'
         align   2
 INT:
-        call    DROP
+        DROPM
         movf    Sminus, W, A
         movff	Sminus, irq_v
         movwf   BANKMASK(irq_v)+1, A
@@ -2915,7 +2922,7 @@ TX0_SEND2:
         clrf    ep2icount, A
         bra     TX0_END
 TX0_DROP:
-        call    DROP
+        DROPM
 TX0_END:
         return
 ;***************************************************
@@ -4015,7 +4022,7 @@ STORCOLON:
 
 ; 2@    a-addr -- x1 x2            fetch 2 cells
 ;   DUP @ SWAP CELL+ @ ;
-;   the lower address will appear on top of stack
+;   the higher address will appear on top of stack
         dw      L_COMMAXT
 L_TWOFETCH:
         NF 2,2@
@@ -4028,7 +4035,7 @@ TWOFETCH:
 
 ; 2!    x1 x2 a-addr --            store 2 cells
 ;   SWAP OVER ! CELL+ ! ;
-;   the top of stack is stored at the lower adrs
+;   the top of stack is stored at the higher adrs
         dw      L_TWOFETCH
 L_TWOSTORE:
         db      NFA|2,'2','!'
@@ -4179,7 +4186,7 @@ ACC_CR:
         rcall   CSTORE
         bra     ACC_6           ; CR END OF LINE
 ACC_LF:
-        rcall   DROP
+        DROPM
         rcall   FCR
         rcall   CFETCH
         rcall   ZEROSENSE
@@ -4192,7 +4199,7 @@ ACC_BS_DEL:
         call    FALSE_
         rcall   FCR
         rcall   CSTORE
-        rcall   DROP
+        DROPM
         rcall   TWODUP
         rcall   EQUAL
         rcall   ZEROSENSE
@@ -4315,11 +4322,11 @@ ALLOT:
 L_DROP:
         NF INLINE|4,drop
 DROP:
-#ifndef K42
+#ifdef K42
+        subfsr  Sptr, 2
+#else
         movwf   Sminus, A       ; no status change
         movwf   Sminus, A
-#else
-        subfsr  Sptr, 2
 #endif
         return
 
@@ -4774,7 +4781,7 @@ PPLUS:
         incf    BANKMASK(p_hi), F, A
         return
 ;***************************************************
-        dw      L_PNPLUS
+        dw      L_PAD
 L_PTWOPLUS:
 kernellink:
         NF 3,p2+ ; ( n -- ) Add 2 to p
@@ -4994,13 +5001,13 @@ HOLD:   rcall   TRUE_
         goto    CSTORE
 
 ; <#    --              begin numeric conversion
-;   PAD HP ! ;          (initialize Hold Pointer)
+;  HB HP ! ;          (initialize Hold Pointer)
         dw      L_HOLD
 L_LESSNUM:
         db      NFA|2,'<','#'
         align   2
 LESSNUM:
-        rcall   PAD
+        rcall   HB
         rcall   HP
         goto    STORE
 
@@ -5057,7 +5064,7 @@ NUMGREATER:
         rcall   TWODROP
         rcall   HP
         rcall   FETCH
-        rcall   PAD
+        rcall   HB
         rcall   OVER
         goto    MINUS
 
@@ -5183,17 +5190,17 @@ L_HP:
 HP:     rcall   DOUSER
         dw      uhp&0xffff
 
-; PAD     -- a-addr        User Pad buffer
+; HB     -- a-addr        Number formatting buffer, grows downwards
         dw      L_HP
-L_PAD:
-        NF 3,pad
-PAD:
+L_HB:
+        NF 2,hb
+HB:
         rcall   TIB
         rcall   TIBSIZE
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        dw      L_PAD
+        dw      L_HB
 L_BASE:
         NF 4,base
 BASE:
@@ -5244,8 +5251,7 @@ SLASHSTRING:
         rcall   MINUS
         rcall   TOR
         rcall   PLUS
-        rcall   RFROM
-        return
+        goto    RFROM
 
 ;      Skip the rest of the line
         dw      L_SLASHSTRING
@@ -5296,10 +5302,9 @@ L_WORD:
         NF 4,word
 WORD:
         rcall   PARSE           ; c-addr wlen
-        rcall   SWOP
-        rcall   ONEMINUS
-        rcall   TUCK
-        goto    CSTORE          ; Write the length into the TIB !
+        call    PAD
+        rcall   PLACE
+        goto    PAD
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p for c@+ pc! p+ next drop ;
@@ -5453,7 +5458,7 @@ FIND:
         rcall   findi
         rcall   DUPZEROSENSE
         bnz     FIND1
-        rcall   DROP
+        DROPM
         rcall   LAST
         rcall   findi
 FIND1:
@@ -5518,7 +5523,7 @@ UDSTAR:
         rcall   DUP
         rcall   TOR
         rcall   UMSTAR
-        rcall   DROP
+        DROPM
         rcall   SWOP
         rcall   RFROM
         rcall   UMSTAR
@@ -5585,7 +5590,7 @@ TONUM1:
         rcall   DIGITQ          ; ud.l ud.h digit flag
         rcall   ZEROSENSE
         bnz     TONUM2
-        rcall   DROP
+        DROPM
         rcall   RFROM           ; ud.l ud.h adr
         rcall   RFROM           ; ud.l ud.h adr u
         bra     TONUM3
@@ -5599,7 +5604,7 @@ TONUM2:
         clrf    BANKMASK(areg), A
         bra     TONUM_CONT
 TONUM_SKIP:
-        rcall   DROP
+        DROPM
 TONUM_CONT:
         rcall   RFROM           ; ud.l ud.h adr
         rcall   RFROM           ; ud.l ud.h adr u
@@ -5678,7 +5683,7 @@ QNUMD:                          ; Single or double Double number
         call    QDNEGATE
 QNUMD1:
         rcall   ROT_A           ; d.l d.h a
-        call    DROP            ; d.l d.h
+        DROPM                   ; d.l d.h
         call    ONE             ; d.l d.h 1
         movlw   '.'             ; d.l d.h
         subwf   BANKMASK(areg), W, A
@@ -5951,7 +5956,7 @@ DP_TO_EEPROM_0:
         rcall   PSTORE
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
-        call    DROP
+        DROPM
 DP_TO_EEPROM_2:
         rcall   PTWOPLUS
 DP_TO_EEPROM_3:
@@ -6097,7 +6102,7 @@ L_CHAR:
 CHAR:
         rcall   BL
         rcall   PARSE
-        call    DROP
+        DROPM
         goto    CFETCH
 
 ; (    --                     skip input until )
@@ -6356,7 +6361,7 @@ RCALL_TO_GOTO:
         rcall   IALLOT
         goto    GOTO_
 ADD_RETURN:
-        call    DROP
+        DROPM
 ADD_RETURN_1:
         rcall   LIT_A   ; Compile a return
         dw      0x0012
@@ -7085,11 +7090,14 @@ DABS_:
 L_DPLUS:
         NF 2,d+
 DPLUS:
+#ifdef K42
+        subfsr  Sptr, 7
+#else
         movlw   7
         subwf   Sp, F, A
         movlw   0
         subwfb  Sbank, F, A
-
+#endif
         movlw   4
         movf    SWrw, W, A
         addwf   Splus, F, A
@@ -7128,8 +7136,12 @@ DTWOSLASH:
         rrcf    Sminus, F, A
         rrcf    Sminus, F, A
         rrcf    Splus, F, A
+#ifdef K42
+        addfsr  Sptr, 2
+#else
         movf    Splus, W, A
         movf    Splus, W, A
+#endif
         return
 
 ; D2*    d1 -- d2        double multiply by 2
@@ -7137,9 +7149,13 @@ DTWOSLASH:
 L_DTWOSTAR:
         NF 3,d2*
 DTWOSTAR:
+#ifdef K42
+        subfsr  Sptr, 3
+#else
         movf    Sminus, W, A
         movf    Sminus, W, A
         movf    Sminus, W, A
+#endif
         bcf     CARRY
         rlcf    Splus, F, A
         rlcf    Splus, F, A
@@ -7156,8 +7172,12 @@ DINVERT:
         comf    Sminus, F, A
         comf    Sminus, F, A
         comf    Splus, F, A
+#ifdef K42
+        addfsr  Sptr, 2
+#else
         movf    Splus, W, A
         movf    Splus, W, A
+#endif
         return
 
 ; D0=    d1 -- f        double zeroequal
@@ -7289,6 +7309,18 @@ PNPLUS:
         movf    Tp, W, A
         addwfc  BANKMASK(p_hi), F, A
         return
+;***************************************************
+; PAD     -- addr   Used by WORD as temporary result storage.
+;                   Starts at free RAM (ram here). 
+
+        dw      L_PNPLUS
+L_PAD:        
+        NF  3,pad
+PAD:
+        movff   dpRAM, plusS
+        movff   dpRAM+1, plusS
+        return
+
 ;***************************************************
 ; marker --- name
         dw      0
