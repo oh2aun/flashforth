@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          14.04.2022                                        *
+;    Date:          28.04.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "14.04.2022"
+#define DATE "28.04.2022"
 #define datelen 10
 
 
@@ -2518,14 +2518,14 @@ HOLD:   rcall   TRUE_
         jmp     CSTORE
 
 ; <#    --              begin numeric conversion
-;   PAD HP ! ;          (initialize Hold Pointer)
+;   HB HP ! ;          (initialize Hold Pointer)
         fdw     HOLD_L
 LESSNUM_L:
         .byte     NFA|2
         .ascii  "<#"
         .align  1
 LESSNUM: 
-        rcall   PAD
+        rcall   HB
         rcall   HP
         jmp     STORE
 
@@ -2584,7 +2584,7 @@ NUMGREATER:
         rcall   TWODROP
         rcall   HP
         rcall   FETCH_A
-        rcall   PAD
+        rcall   HB
         rcall   OVER
         jmp     MINUS
 
@@ -2736,19 +2736,19 @@ HP_L:
 HP:     rcall   DOUSER
         .word     uhp
 
-; PAD     -- a-addr        User Pad buffer
+; HB     -- a-addr        Number formatting buffer
         fdw     HP_L
-PAD_L:
-        .byte     NFA|3
-        .ascii  "pad"
+HB_L:
+        .byte     NFA|2
+        .ascii  "hb"
         .align  1
-PAD:
+HB:
         rcall   TIB
         rcall   TIBSIZE
         jmp     PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        fdw     PAD_L
+        fdw     HB_L
 BASE_L:
         .byte     NFA|4
         .ascii  "base"
@@ -2872,10 +2872,9 @@ WORD_L:
         .align  1
 WORD:
         rcall   PARSE           ; c-addr wlen
-        rcall   SWOP
-        rcall   ONEMINUS
-        rcall   TUCK
-        jmp     CSTORE          ; Write the length into the TIB ! 
+        rcall   PAD
+        rcall   PLACE
+        jmp     PAD
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p>r for c@+ pc! p+ next r>p drop ;
@@ -5058,6 +5057,17 @@ PCFETCH:
         jmp     CFETCH
 ;***************************************************
         fdw      L_PCFETCH
+L_PAD:
+        .byte   NFA|3
+        .ascii  "pad"
+        .align  1
+PAD:
+        m_dup
+        lds     tosl, dpRAM
+        lds     tosh, dpRAM+1
+        ret
+;***************************************************
+        fdw      L_PAD
 L_PTWOPLUS:
 kernellink:
         .byte     NFA|INLINE|3
