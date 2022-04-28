@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5 15.04.2022
+Dictionary of FlashForth 5 28.04.2022
 
 !          ( x addr -- )
            Store x to addr
@@ -521,6 +521,9 @@ hold       ( c -- )  COMPILE_ONLY
            Append char to formatted numeric string
 
 hp         ( -- a-addr )  USER
+           Hold buffer for formatted numeric output
+
+hp         ( -- a-addr )  USER
            Hold pointer for formatted numeric output
 
 i          ( -- n ) COMPILE_ONLY
@@ -724,10 +727,7 @@ pc@        ( -- c )
            Fetch the char pointed by the p register
 
 pad        ( -- a-addr )
-           : pad tib ti# + ;
-           Each task has its own pad with initial size of 0.
-           If needed the user must allocate space with allot.
-           FF core does not use the pad.
+           PAD is a global temporary buffer at start of free ram.
 
 parse	   ( c -- addr length )
            Parse a word in TIB
@@ -1098,7 +1098,7 @@ within     ( x xl xh -- flag )
            Leave true if  xl <= x < xh
 
 word       ( c -- c-addr )
-           Parse a word in TIB and write the length into TIB
+           Parse a word in TIB and PLACE it in PAD
            Leave the address of the length byte on the stack.
 
 wmove      ( addr1 addr2 u -- )

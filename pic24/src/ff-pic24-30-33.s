@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          16.10.2021                                        *
+;    Date:          28.04.2022                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2021  Mikael Nordman
+; Copyright (C) 2022  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1201,7 +1201,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 16.10.2021\r\n"
+        .ascii  " FlashForth 5 PIC24 28.04.2022\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -4716,14 +4716,14 @@ HOLD:
         goto    CSTORE
 
 ; <#    --              begin numeric conversion
-;   PAD HP ! ;          (initialize Hold Pointer)
+;   HB HP ! ;          (initialize Hold Pointer)
         .pword  paddr(HOLD_L)+PFLASH
 LESSNUM_L:
         .byte   NFA|2
         .ascii  "<#" 
         .align  2
 LESSNUM: 
-        rcall   PAD
+        rcall   HB
         rcall   HP
         goto    STORE
 
@@ -4784,7 +4784,7 @@ NUMGREATER:
         sub     W14, #4, W14
         rcall   HP
         rcall   FETCH
-        rcall   PAD
+        rcall   HB
         rcall   OVER
         goto    MINUS
 
@@ -4990,19 +4990,19 @@ HP:
         rcall   DOUSER
         .word   uhp
 
-; PAD     -- a-addr        User PAD buffer
+; HB     -- a-addr        Hold buffer for number formatting
         .pword  paddr(HP_L)+PFLASH
-PAD_L:
-        .byte   NFA|3
-        .ascii  "pad"
+HB_L:
+        .byte   NFA|2
+        .ascii  "hb"
         .align  2
-PAD:
+HB:
         rcall   TIB
         rcall   TIBSIZE
         goto    PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        .pword  paddr(PAD_L)+PFLASH
+        .pword  paddr(HB_L)+PFLASH
 BASE_L:
         .byte   NFA|4
         .ascii  "base"
@@ -5096,10 +5096,9 @@ WORD_L:
         .align  2
 WORD:
         rcall   PARSE
-        rcall   SWOP
-        rcall   ONEMINUS
-        rcall   TUCK
-        goto    CSTORE
+        rcall   PAD
+        rcall   PLACE
+        goto    PAD
 
         .pword  paddr(WORD_L)+PFLASH
 ERASE_L:
@@ -7087,6 +7086,14 @@ TRUE_:                      ; TOS is ffff (TRUE)
         setm    [++W14]
         return
 
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "pad"
+        .align  2
+PAD:
+        goto   RHERE
+        
 .include "registers.inc"
 
         .pword  paddr(9b)+PFLASH
