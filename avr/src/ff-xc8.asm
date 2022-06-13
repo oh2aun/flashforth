@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          28.04.2022                                        *
+;    Date:          13.06.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "28.04.2022"
+#define DATE "13.06.2022"
 #define datelen 10
 
 
@@ -5345,7 +5345,7 @@ LOAD_LED_END:
 #else
         m_in     t0, MCUCR
         cbr     t0, (1<<SE)
-        m_out    MCUCR, r_zero
+        m_out    MCUCR, t0
 #endif
 IDLE_LOAD1:
 #if CPU_LOAD_LED == 1
