@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          27.04.2022                                        *
+;;    Date:          13.06.2022                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1117,6 +1117,8 @@ WARM:
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
+
+        lfsr    Sptr, appdata   ; Zero ram from appdata and upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
@@ -1130,7 +1132,6 @@ WARM_ZERO_3:
         sublw   0x0f
         bnz     WARM_ZERO_3
 #else
-        lfsr    Sptr, appdata   ; Zero ram from 3 upwards
 WARM_ZERO_1:
         clrf    Splus, A
         movf    Sbank, W, A
@@ -1612,7 +1613,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 11
         db      ' '              ; 1
-        STRING 27.04.2022        ; 10
+        STRING 13.06.2022        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -6036,7 +6037,7 @@ ABORT:
 
         dw      L_SPFETCH
 L_SPSTORE:
-        NF 3,sp!
+        db      0x83,'s','p','!'
 SPSTORE:
         movf    Sminus, W, A
         movwf   Tp, A
@@ -7273,10 +7274,6 @@ MEMHI:
         call    CSE
         call    PLUS
         goto    FETCH
-FLASHHI:
-        dw      FLASH_HI
-        dw      EEPROM_HI
-        dw      RAM_HI
 ;***************************************************
         dw      L_MEMHI
 L_FETCH_P:
@@ -7392,6 +7389,11 @@ MEMQ:
         call    LIT
         dw      NFAmask
         goto    AND_
+
+FLASHHI:
+        dw      FLASH_HI
+        dw      EEPROM_HI
+        dw      RAM_HI
 
 #ifdef USB_CDC
 #include "ff-usbcdc.S"

@@ -20,10 +20,11 @@
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 #if USB_SPEED == 0
-        config CPUDIV = NOCLKDIV    ; 24 MHz cpu clock
+;        config CPUDIV = NOCLKDIV    ; 24 MHz cpu clock
+        config CPUDIV = CLKDIV4     ; 1.5 MHz cpu clock
         config USBDIV = OFF         ; 6 MHz USB clock
         config FOSC = HS            ; 6 MHz HS Xtal oscillator
-        config PLLEN = ON           ; 24 MHz System clock
+        config PLLEN = OFF          ; 6 MHz System clock
 #else
         config CPUDIV = NOCLKDIV;   ; 48 MHz cpu clock
         config USBDIV = ON          ; USB clock from 96 MHZ PLL divided by 2
@@ -36,14 +37,14 @@
         config PWRTEN = ON
         config BOREN = SBORDIS
         config BORV = 30
-        config WDTEN = OFF
+        config WDTEN = ON
         config WDTPS = 1024
-        config MCLRE = OFF
+        config MCLRE = ON
         config HFOFST = OFF
         config STVREN = ON
         config LVP = OFF
         config XINST = OFF
-        config BBSIZ = ON
+        config BBSIZ = OFF
         config CP0 = OFF
         config CP1 = OFF
         config CPB = OFF
