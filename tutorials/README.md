@@ -8,11 +8,13 @@ Here is the [wordlist](../wordsAll.txt) for FF5.0.
 
 Peter Jacobs (University of Queensland) has written two excellent FlashForth tutorials and a reference sheet.
 
-- [Elements of FlashForth Tutorial](ff5-elements.pdf)
+- [Latest ASCIIDOC versions](https://pajacobs-ghub.github.io/)
 
-- [FlashForth 5 Tutorial Guide](ff5-tutorial-guide.pdf)
+- [Elements of FlashForth Tutorial](elements-of-flash-forth-5-2017-02-08.pdf)
 
-- [FlashForth 5 Reference Sheet](ff5-sheet.pdf)
+- [FlashForth 5 Tutorial Guide](ff5_tutorial_guide_2016_07_11.pdf)
+
+- [FlashForth 5 Reference Sheet](flash_forth_5_quick_ref_2017_03_28.pdf)
 
 ## Link
 
@@ -36,4 +38,4 @@ Peter Jacobs (University of Queensland) has written two excellent FlashForth tut
 
 # Source
 
-[FlashForth Turotials Page](https://flashforth.com/tutorials.html)
+[FlashForth Tutorials Page](https://flashforth.com/tutorials.html)
