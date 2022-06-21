@@ -16,6 +16,9 @@ Peter Jacobs (University of Queensland) has written two excellent FlashForth tut
 
 - [FlashForth 5 Reference Sheet](flash_forth_5_quick_ref_2017_03_28.pdf)
 
+- [AVR extended ASM2](https://github.com/mike290/ffasm/)
+  [ASM2 guide](tutorials/ffasm_guide.pdf)
+
 ## Link
 
 - PIC24 boards with pre-programmed FlashForth
