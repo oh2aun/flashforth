@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
@@ -296,8 +296,8 @@ def main():
           waitForNL = 2000
         prevChar = ""
         for c in line:
-          if c == " " and prevChar == " ":
-            continue;
+          #if c == " " and prevChar == " ":
+          #  continue;
           sleep(float(config.chardelay)/1000)
           if config.charflowcontrol:
             while waitForChar <> 'idle':

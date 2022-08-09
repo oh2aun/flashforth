@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          13.06.2022                                        *
+;;    Date:          09.08.2022                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1117,7 +1117,6 @@ WARM:
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
-
         lfsr    Sptr, appdata   ; Zero ram from appdata and upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
@@ -1591,13 +1590,6 @@ WARM_2:
         bz      STARTQ2
 STARTQ1:
         rcall   TURNKEY
-#if OPERATOR_UART == 0
-#else
-        call    DUP
-        call    SPACE_
-        call    CFATONFA
-        call    DOTID
-#endif
         call    EXECUTE
 STARTQ2:
         goto    ABORT
@@ -1608,12 +1600,12 @@ L_VER:
         NF 3,ver
 VER:
         call    XSQUOTE
-        db 38,' '                ; 1
+        db 27+PICLEN,' '         ; 1
         STRING  FlashForth       ; 10
         db      ' ','5',' '      ; 3
-        STRING PICTYPE           ; 11
+        STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 13.06.2022        ; 10
+        STRING 09.08.2022        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE

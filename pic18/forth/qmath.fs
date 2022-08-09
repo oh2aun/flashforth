@@ -23,10 +23,6 @@ $ffef constant Srw
 $ffd8 constant status
 
 \ Assembler words
-: as2 ( opcode "name" -- ) ( f a -- )
-  co:
-  does> rot ic, or ic, ;
-
 $24 as3 addwf,          ( f d a -- )  
 $20 as3 addwfc,         ( f d a -- )  
 $6a as2 clrf,           ( f a -- )  
@@ -41,9 +37,7 @@ $0e00 as1 movlw,        ( k -- )
 $e2 constant cc,    \ bc
 
 
-\ These variables are overlapping the flash buffer
-\ The flash buffer is written to flash before
-\ the variables are used.
+\ These variables are in the first 16 bytes reserved for the app. 
 $f000 constant dividend
 $f008 constant divisor
 $f00c constant dcnt
@@ -52,7 +46,6 @@ $f00d constant tmp
 \ Divide a 64 bit unsigned number with a 32 bit unsigned number
 \ The result is a 32 bit remainder and 32 bit quotient
 : uq/mod ( qu du -- du-rem du-quot )
-  iflush \ empty the flash buffer before using it for temp data
   [ Sminus divisor 3 + movff,  ]
   [ Sminus divisor 2 + movff,  ]
   [ Sminus divisor 1 + movff,  ]
@@ -125,7 +118,6 @@ $f00d constant tmp
 
 \ add a double number to quad number
 : qm+ ( q d -- q )
-  iflush
   [ 0 movlw,               ]
   [ Srw 7  a, btfsc,       ]
   [ $ff movlw,             ]
@@ -159,7 +151,6 @@ $f00d constant tmp
 
 \ multiply two double numbers to a quad result.
 : uq* ( ud ud -- uq )
-  iflush
   [ Sminus $f00b movff, Sminus $f00a movff, ] 
   [ Sminus $f009 movff, Sminus $f008 movff, ] 
   [ Sminus $f00f movff, Sminus $f00e movff, ] 

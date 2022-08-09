@@ -190,8 +190,8 @@ namespace eval serialPort {
     variable dataBits 8; # 7 8
     variable stopBits 1; # 1 2
     variable parityAndBits "$parity,$dataBits,$stopBits"
-    variable handShake xonxoff; # none xonxoff rtscts
-    variable name /dev/ttyUSB0
+    variable handShake none; # none xonxoff rtscts
+    variable name /dev/ttyACM0
     if { [string equal $::tcl_platform(platform) windows] } {
 	set name {\\.\com5}
     }; # end if
@@ -365,7 +365,7 @@ namespace eval smartSend {
             resetFlags
             return -code error "sendLine failed on entry: Timeout waiting for CR."
         }
-        set retries 10
+        set retries 20
         while {$waitingForCR && ($retries > 0)} {
             # puts "sendLine waiting for CR, retries remaining: $retries"
             update
@@ -391,8 +391,8 @@ namespace eval smartSend {
 # --------------------------------------------------------------
 # GUI elements
 wm title . "FlashForth Shell"
-image create photo applicationIcon -file terminal.gif
-wm iconphoto . -default applicationIcon
+# image create photo applicationIcon -file terminal.gif
+# wm iconphoto . -default applicationIcon
 # Main menu
 menu .mb
 . configure -menu .mb

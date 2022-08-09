@@ -55,16 +55,16 @@
     <conf name="default" type="2">
       <toolsSet>
         <developmentServer>localhost</developmentServer>
-        <targetDevice>PIC18F26K42</targetDevice>
+        <targetDevice>PIC18F2520</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>pk4hybrid</platformTool>
+        <platformTool>Simulator</platformTool>
         <languageToolchain>pic-as</languageToolchain>
-        <languageToolchainVersion>2.35</languageToolchainVersion>
+        <languageToolchainVersion>2.40</languageToolchainVersion>
         <platform>2</platform>
       </toolsSet>
       <packs>
-        <pack name="PIC18F-K_DFP" vendor="Microchip" version="1.5.114"/>
+        <pack name="PIC18Fxxxx_DFP" vendor="Microchip" version="1.3.36"/>
       </packs>
       <ScriptingSettings>
       </ScriptingSettings>
@@ -1170,7 +1170,7 @@
         <property key="summary-sha256" value="false"/>
         <property key="summary-xml" value="false"/>
         <property key="summary-xmlfull" value="false"/>
-        <appendMe value="-Wa,-a -Wl,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h"/>
+        <appendMe value="-Wa,-a -Wl,--fixupoverflow=error,-pudata_acs=000h,-pudatabig=050h,-presetVec=0h,-phi_int=8h,-plo_int=18h"/>
       </pic-as-global>
       <pic-as-linker>
         <property key="linker-callgraph" value="std"/>
