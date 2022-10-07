@@ -7,6 +7,7 @@
 \ Builds upon i2c-base.
 \ Peter J. 2014-10-27
 \ Mikael N. 2017-5-12 for..next instead of do..loop
+\ Mikael N. 2022-10-5 i2c.ping
 -i2c-detect
 marker -i2c-detect
 
@@ -23,7 +24,7 @@ marker -i2c-detect
         cr dup 2 u.r [char] : emit space
       then
       dup i2c.7bitaddr? if
-        dup i2c.ping? if \ does device respond?
+        dup i2c.ping if \ does device respond?
             dup 2 u.r
           else
             ." -- " 
