@@ -265,7 +265,7 @@ PSECT   udata_acs;;,global,class=COMRAM,space=1,delta=1,lowdata,noexec
 reset0:   ds 1
 reset1:   ds 1
 reset2:   ds 1
-appdata:  ds 13      ;;
+appacs:  ds 13      ;;
 ms_count: ds 2       ;; millisecond counter 4 bytes
 upcurr:   ds 2       ;; Current USER area pointer
 p_lo:     ds 1       ;; P and DO LOOP INDEX
@@ -1117,7 +1117,7 @@ WARM:
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
-        lfsr    Sptr, appdata   ; Zero ram from appdata and upwards
+        lfsr    Sptr, appacs   ; Zero ram from appacs and upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
@@ -4539,13 +4539,16 @@ TWOPLUS:
         return
 
 ; >body xt -- a-addr transform a created words XT to it's data field address
-; : >body 2+ 2+ @ ;
+; : >body 4 + @ ;
         dw      L_TWOPLUS
 L_TOBODY:
         NF 5,>body
 TOBODY:
-        rcall   TWOPLUS
-        rcall   TWOPLUS
+        swapf   Sminus, W, A
+        movlw   4
+        addwf   Splus, F, A
+        movlw   0
+        addwfc  Srw, F, A
         goto    FETCH
 
 
