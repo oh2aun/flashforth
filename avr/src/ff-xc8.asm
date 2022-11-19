@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          13.06.2022                                        *
+;    Date:          19.11.2022                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "13.06.2022"
+#define DATE "19.11.2022"
 #define datelen 10
 
 
@@ -1591,11 +1591,25 @@ TWOSWAP:
         rcall   RFROM
         ret
 
+	fdw     TWOSWAP_L
+TWOOVER_L:
+        .byte     NFA|5
+        .ascii  "2over"
+        .align  1
+TWOOVER:
+	m_dup
+        ldd     tosl, y+6
+        ldd     tosh, y+7
+        m_dup
+        ldd     tosl, y+6
+        ldd     tosh, y+7
+	ret
+
 ; INPUT/OUTPUT ==================================
 
 ; SPACE   --                      output a space
 ;   BL EMIT ;
-        fdw     TWOSWAP_L
+        fdw     TWOOVER_L
 SPACE_L:
         .byte     NFA|5
         .ascii  "space"
@@ -6429,7 +6443,7 @@ umslashmod1:
 
         ; dividend is large enough
         ; do the subtraction for real
-        ; and set lo8est bit
+        ; and set lowest bit
         inc tosl
         sub t3, t4
         sbc t6, t5
