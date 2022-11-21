@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 #
 # Upload & interpreter shell for FlashForth.
 # Written for python 2.7
@@ -30,7 +30,7 @@ import atexit
 import logging
 import signal
 import string
-from thread import start_new_thread
+import _thread
 from time import *
 from base_dictionary import base_dictionary
 from user_dictionary import user_dictionary
@@ -40,6 +40,7 @@ waitForNL = 0
 uploadMode = 0
 waitForChar = 'idle'
 errorCount = 0
+lineLength = 0
 
 cmd_dictionary = {
   "#help filter   ": "Print filtered help text",
@@ -65,7 +66,7 @@ class Config(object):
     self.charflowcontrol = False
 
 def serial_open(config):
-  print "port:"+str(config.port)+" speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.newlinedelay)+" chardelay:"+str(config.chardelay)+" cc:"+str(config.charflowcontrol)+" nl:"+str(config.newlineflowcontrol)
+  print("port:"+str(config.port)+" speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.newlinedelay)+" chardelay:"+str(config.chardelay)+" cc:"+str(config.charflowcontrol)+" nl:"+str(config.newlineflowcontrol))
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.5, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
   except serial.SerialException as e:
@@ -75,20 +76,22 @@ def serial_open(config):
 
 # receive_thr() receives chars from FlashForth
 def receive_thr(config, *args):
-  global running, waitForNL, uploadMode, waitForChar, errorCount
+  global running, waitForNL, uploadMode, waitForChar, errorCount, lineLength
   count = 0
   while running == True:
     try:
       char = config.ser.read()
-      sys.stdout.write(char)
-      sys.stdout.flush()
+      if lineLength < 1 or uploadMode > 0:
+        sys.stdout.buffer.write(char)
+        sys.stdout.flush()
+      lineLength = max(0, lineLength - 1)
       count = count + 1
-      if char == '\x17':
+      if char == b'\x17':
         errorCount = errorCount + 1
         if errorCount > 3:
           uploadMode = 0
           errorCount = 0
-      if char == '\n':
+      if char == b'\n':
         waitForNL = 0
         count = 0
       if count > 80:
@@ -99,10 +102,10 @@ def receive_thr(config, *args):
           waitForChar = 'idle'
 
     except Exception as e:
-      print "Serial exception {0}".format(e)
+      print("Serial exception {0}".format(e))
       running = False
 
-  print "End of receive thread. Press enter to exit."
+  print("End of receive thread. Press enter to exit.")
   exit()
 
 
@@ -138,22 +141,23 @@ def parse_arg(config):
 
 #main loop for sending and receiving
 def main():
-  global running, waitForNL, uploadMode, waitForChar, errorCount
+  global running, waitForNL, uploadMode, waitForChar, errorCount, lineLength
   
   config = Config() 
   parse_arg(config)
   serial_open(config)
-  start_new_thread(receive_thr, (config,))
+  _thread.start_new_thread(receive_thr, (config,))
  
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
   try:
     readline.set_history_length(500)
     readline.read_history_file(histfn)
-  except IOError, e:
+  except(IOError, e):
+    print(e)
     pass
   atexit.register(readline.write_history_file, histfn)
-  
+
   dictionary = base_dictionary.copy()
   dictionary.update(user_dictionary.copy())
   dictionary.update(cmd_dictionary.copy())
@@ -172,15 +176,14 @@ def main():
       if uploadMode == 0:
         errorCount = 0
         try:
-          line = raw_input()
+          line = input()
         except KeyboardInterrupt:
-          print "KeyboardInterrupt"
+          print("KeyboardInterrupt")
           raise Exception
-        sys.stdout.write('\r\033\133\101')
-        sys.stdout.flush()
+        #sys.stdout.write("\r\033\133\101")
+        #sys.stdout.flush()
         args = line.split()
         if len(args) > 1 and args[0] == "#send":
-          print(line)
           pathfile = args[1]
           startString = ""
           stopString = ""
@@ -194,40 +197,33 @@ def main():
           try:
             file = open(pathfile, "r")
             uploadMode = 1
-          except IOError, e:
-            print "\nFile not found: "+pathfile
+          except(IOError, e):
+            print("\nFile not found: "+pathfile)
         if len(args) == 1 and args[0] == "#warm":
-          print(line)
           line = '\017'           # CTRL-O
         if len(args) == 1 and args[0] == "#esc":
-          print(line)
           line = '\033'           # Escape
         if len(args) == 2 and args[0] == "#help":
-          print(line)
           filter = args[1]
           try:
             for cmd in sorted(dictionary):
               if filter in cmd:
                 print(cmd + "\t" + dictionary[cmd])
           except:
-            print "\n" + args[1] + "\t" + "not found"
+            print("\n" + args[1] + "\t" + "not found")
           continue
         if len(args) == 1 and args[0] == "#help":
-          print(line)
           for name in sorted(dictionary):
             print(name + "\t" + dictionary[name])
           continue
         if len(args) == 1 and args[0] == "#pwd":
-          print(line)
           print("dir : " + os.getcwd())
           continue
         if len(args) == 2 and args[0] == "#cd":
-          print(line)
           os.chdir(args[1])
           print("dir : " + os.getcwd())
           continue
         if len(args) >= 1 and args[0] == "#ls":
-          print(line)
           print("dir : " + os.getcwd())
           lspath = '.'
           if len(args) == 2:
@@ -237,22 +233,20 @@ def main():
             print(file)
           continue
         if len(args) == 2 and args[0] == "#cat":
-          print(line)
           try:
             catfile = open(args[1], "r")
             for catline in catfile:
               catline = catline.rstrip('\n')
               catline = catline.rstrip('\r')
               print(catline)
-          except IOError, e:
-            print "\nFile not found: " + args[1]
+          except(IOError, e):
+            print("\nFile not found: " + args[1])
           continue
         if len(args) >= 1 and args[0] == "#history":
           if len(args) == 2:
             filter = args[1]
           else:
             filter = ""
-          print(line)
           for index in range (1, readline.get_current_history_length()):
             historyline = readline.get_history_item(index) 
             if filter == "":
@@ -294,20 +288,17 @@ def main():
       try:
         if config.newlineflowcontrol:
           waitForNL = 2000
-        prevChar = ""
+        lineLength = len(line)
         for c in line:
-          #if c == " " and prevChar == " ":
-          #  continue;
           sleep(float(config.chardelay)/1000)
           if config.charflowcontrol:
-            while waitForChar <> 'idle':
+            while waitForChar != 'idle':
               sleep(0.001)
             waitForChar = c
-          prevChar = c
-          config.ser.write(c)
+          config.ser.write(bytes(c, 'UTF-8'))
           if config.charflowcontrol:
             config.ser.flush()       # Send the output buffer
-        config.ser.write('\n')
+        config.ser.write(bytes('\n', 'UTF-8'))
         config.ser.flush()       # Send the output buffer
         sleep(float(config.newlinedelay)/1000)
 
@@ -316,13 +307,14 @@ def main():
         running = False
 
     except Exception as e:
-      print "Transmission thread exception {0}".format(e) 
+      print("Transmission thread exception {0}".format(e)) 
       running = False
 
   config.ser.close()
-  print "Exiting ff-shell.py, goodbye..."
+  print("Exiting ff-shell.py, goodbye...")
 
 try:
   sys.exit(main())
 except Exception as e:
-  print "sys.exit {0}".format(e)
+  print("moi")
+#  print("sys.exit {0}".format(e))
