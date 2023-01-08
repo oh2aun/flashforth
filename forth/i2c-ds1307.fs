@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      i2c-ds1307.txt                                    *
-\    Date:          07.10.2022                                        *
+\    Date:          08.01.2023                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega PIC18 PIC24 PIC30 PIC33                    *
 \    Copyright:     Mikael Nordman                                    *
@@ -64,7 +64,7 @@ $68 constant addr-ds1307
 : i2c.ds1307.n@ ( n addr -- )
   ds1307.addr!
   addr-ds1307  i2c.read
-  for i2c.c@.ack next 
+  1- 0 max for i2c.c@.ack next 
   i2c.c@.nack i2c.stop
 ;
 
