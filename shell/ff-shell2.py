@@ -81,6 +81,8 @@ def receive_thr(config, *args):
   while running == True:
     try:
       char = config.ser.read()
+      if len(char) == 0:
+        continue
       if lineLength < 1 or uploadMode > 0:
         sys.stdout.write(char)
         sys.stdout.flush()

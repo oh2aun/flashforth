@@ -81,6 +81,8 @@ def receive_thr(config, *args):
   while running == True:
     try:
       char = config.ser.read()
+      if len(char) == 0:
+        continue
       if lineLength < 1 or uploadMode > 0:
         sys.stdout.buffer.write(char)
         sys.stdout.flush()
@@ -180,8 +182,6 @@ def main():
         except KeyboardInterrupt:
           print("KeyboardInterrupt")
           raise Exception
-        #sys.stdout.write("\r\033\133\101")
-        #sys.stdout.flush()
         args = line.split()
         if len(args) > 1 and args[0] == "#send":
           pathfile = args[1]
