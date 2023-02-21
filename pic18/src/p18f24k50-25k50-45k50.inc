@@ -19,9 +19,9 @@
 ;;; Windows does not support a low speed USB CDC device.
 
 #define USB_CDC
-#define USB_SPEED 0  // 0 = low speed, 1 = high speed
+#define USB_SPEED 1  // 0 = low speed, 1 = high speed
 #define USB_BANK 4
-#define INTOSC  1    // 0 = external oscillator  1 = internal oscillator
+#define INTOSC  0    // 0 = external oscillator  1 = internal oscillator
 
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.

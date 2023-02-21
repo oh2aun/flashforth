@@ -11,8 +11,8 @@
 .equ OPERATOR_UART, 3	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400			; Serial baudrate UART1
-.equ FC1_TYPE, 1                        ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 9600			; Serial baudrate UART1
+.equ FC1_TYPE, 0                        ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                       ; 0 = to use fixed baudrate
                                         ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
@@ -24,11 +24,11 @@
 ;;; Peripheral pin mapping
 .ifdecl RPINR18
 .equ U1RXPIN, 0xf          ; 
-.equ RPINR18VAL, 0x0d03    ; (U1RXPIN)
-.equ U1TXPIN, 0x2
+.equ RPINR18VAL, 0x0d03    ; (CTS=RB13 U1RXPIN = RB3)
+.equ U1TXPIN, 0x2          ; RB2 RB2
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
-.equ U1RTSPIN, 0xc
+.equ U1RTSPIN, 0xc         ; RP12
 .endif
 
 ; Set to one to use the alternate UART pins

@@ -1,15 +1,15 @@
 ;;; FlashForth device configuration for the dsPIC24FJnnnGA705 family
 
-.equ FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ FREQ_OSC, 32000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
-.equ USB_CDC, 0
+.equ USB_CDC, 1
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 1        ; 1 or 2
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 

@@ -740,6 +740,12 @@
 
 .ifdef __24FJ64GL306
 .endif
+    
+.ifdef __24FJ64GU205
+.equ FLASH_SIZE,     0xa800
+.equ RAM_SIZE,       0x2000
+.include "p24fj_ga_config.inc"
+.endif
 
 .ifdef __24FJ96GA006
 .endif

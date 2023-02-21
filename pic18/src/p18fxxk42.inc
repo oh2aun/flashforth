@@ -14,8 +14,8 @@
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-        ;CONFIG  FEXTOSC = XT ; OFF
-        CONFIG  RSTOSC = HFINTOSC_64MHZ
+        CONFIG  FEXTOSC = HS ; OFF
+        CONFIG  RSTOSC = EXTOSC_4PLL;   HFINTOSC_64MHZ
         CONFIG  CLKOUTEN = OFF
         CONFIG  PR1WAY = OFF
         CONFIG  CSWEN = OFF
@@ -32,8 +32,8 @@
         CONFIG  STVREN = ON
         CONFIG  DEBUG = OFF
         CONFIG  XINST = OFF
-        CONFIG  WDTCPS = WDTCPS_31
-        CONFIG  WDTE = OFF
+        CONFIG  WDTCPS = WDTCPS_12
+        CONFIG  WDTE = ON
         CONFIG  WDTCWS = WDTCWS_7
         CONFIG  WDTCCS = SC
         CONFIG  BBSIZE = BBSIZE_512
@@ -44,7 +44,7 @@
         CONFIG  WRTC = OFF
         CONFIG  WRTD = OFF
         CONFIG  WRTSAF = OFF
-        CONFIG  LVP = ON
+        CONFIG  LVP = OFF
         CONFIG  CP = OFF
 
 #define K42

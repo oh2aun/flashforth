@@ -20,9 +20,9 @@
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.
 
-        config PLLDIV = 2           ; 0 for 4 MHZ; 2 for 12 MHz XT xtal
+        config PLLDIV = 3           ; 0 for 4 MHZ; 3 for 12 MHz XT xtal
         config CPUDIV = OSC1_PLL2   ; 48 MHz cpu clock
-        config USBDIV = 1           ; USB clock from 96 MHZ PLL divided by 2
+        config USBDIV = 2           ; USB clock from 96 MHZ PLL divided by 2
         config FOSC = HSPLL_HS
  ;       config FCMEN = OFF
         config IESO = OFF

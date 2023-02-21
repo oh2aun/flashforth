@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      i2c-base-b.txt                                    *
-\    Date:          20.11.2022                                        *
+\    Date:          21.02.2023                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -110,6 +110,19 @@ ram
 ;
 : i2c.c!! ( u c -- ) \ Write a char and a cell to the I2C bus
   3 i2c1cnt c! 
+  i2c1txb c!
+  i2c.start
+  i2c.txbe
+  dup 8 rshift i2c1txb c!
+  i2c.txbe
+  i2c1txb c! 
+  i2c.txbe i2c.stop
+;
+: i2c.c!c!! ( u c c -- ) \ Write two chars and a cell to the I2C bus
+  4 i2c1cnt c! 
+  i2c1txb c!
+  i2c.start
+  i2c.txbe
   i2c1txb c!
   i2c.start
   i2c.txbe
