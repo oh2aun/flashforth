@@ -790,7 +790,7 @@ irq_async_rx2_3:
 #endif
 irq_async_rx2_4:
         incf    BANKMASK(RX2head), F, A
-        movlw   RXbufmask               ;; Wrap the RXhead pointer.
+        movlw   RX2bufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX2head), F, A
         incf    BANKMASK(RX2cnt), F, A
 irq_async_rx2_5:
@@ -856,7 +856,7 @@ irq_async_rx3_3:
 #endif
 irq_async_rx3_4:
         incf    BANKMASK(RX3head), F, A
-        movlw   RXbufmask               ;; Wrap the RXhead pointer.
+        movlw   RX3bufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX3head), F, A
         incf    BANKMASK(RX3cnt),  F, A
 irq_async_rx3_end:
