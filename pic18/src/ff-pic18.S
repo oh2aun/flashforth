@@ -4114,10 +4114,9 @@ L_SPACES:
         NF 6,spaces
 SPACES:
 SPCS1:
-        rcall   DUPZEROSENSE
-        bz      SPCS2
-        rcall   SPACE_
         rcall   ONEMINUS
+        bn      SPCS2
+        rcall   SPACE_
         bra     SPCS1
 SPCS2:  goto    DROP
 
