@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      bit.txt                                          *
-\    Date:          28.03.2014                                        *
+\    Filename:      bit.fs                                            *
+\    Date:          11.03.2023                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -10,6 +10,7 @@
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
 \ Words for manipulating bits in Access Ram and in Banked ram 
+\ Works only with older PIC18 that have a 4 Kbyte ram address space.
 -bit
 marker -bit
 
@@ -52,11 +53,3 @@ $0100 as1 movlb,        ( k -- )
   ['] true goto,
   postpone [
 ;
-
-: mclr, ( c a -- ) tp lfsr, invert $ff and movlw, (tp-) f, a, andwf, ; 
-  
-: mset, ( c a -- ) tp lfsr, movlw, (tp-) f, a, iorwf, ;
-
-: mtst, ( c a -- ) tp lfsr, movlw, (tp-)  w, a, andwf z, if, true else, false then, ;
-
-: c!, ( c a -- )   tp lfsr, movlw,  (tp-) a, movwf, ; 
