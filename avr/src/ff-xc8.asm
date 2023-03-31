@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          19.11.2022                                        *
+;    Date:          31.03.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2022  Mikael Nordman
+; Copyright (C) 2023  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "19.11.2022"
+#define DATE "31.03.2023"
 #define datelen 10
 
 
@@ -983,29 +983,31 @@ SKIP_L:
         .ascii  "skip"
         .align  1
 SKIP:
-
-        ld      tosh, y+   ; count
-        ld      t0, y+
-        ld      xl, y+
-        ld      xh, y+    ; c-addr
+        ld      tosh, y+    ; count
+        ld      t0, y+      ; dummy
+        ld      xl, y+      ; c-addr
+        ld      xh, y+      ; c-addr
 SKIP0:
-        dec     tosh
+        cpi     tosh, 0
         breq    SKIP2
-        ld      t0, x+
-        cpi     t0,  TAB_
-        breq    SKIP0
-
+        ld      t0, x
+        
+        cpi     tosl, 32
+        brne    SKIP3
+        cpi     t0,  32
+        brcs    SKIP1
+SKIP3:
         cp      t0, tosl
-        brne    SKIP1
-        rjmp    SKIP0
+        brne    SKIP2
 SKIP1:
-        sbiw    xl, 1        
+        adiw    xl, 1
+        dec     tosh
+        rjmp    SKIP0
 SKIP2:
         st      -y, xh
         st      -y, xl
         mov     tosl, tosh
         clr     tosh
-        adiw    tosl, 1
         ret
 
 
@@ -1017,34 +1019,32 @@ SCAN_L:
         .ascii  "scan"
         .align  1
 SCAN:
-        
-        mov     xl, tosl
-        ld      xh, y+
-        ld      zl, y+
-        ld      zl, y+
-        ld      zh, y+
-        rjmp    SCAN3
+        ;tosl               ; delimiter
+        ld      tosh, y+    ; count
+        ld      xl, y+      ; dummy
+        ld      xl, y+      ; c-addr
+        ld      xh, y+      ; c-addr
 SCAN1:
-        ld      tosl, z+
-        cpi     tosl, TAB_
+        cpi     tosh, 0
+        breq    SCAN4
+        ld      t0, x
+        
+        cpi     tosl, 32
         brne    SCAN2
-        rjmp    SCAN25
+        cpi     t0, 32
+        brcs    SCAN4
 SCAN2:
-        cp      tosl, xl
-        brne    SCAN3
-SCAN25:
-        sbiw    zl, 1
-        movw    tosl, z
-        rjmp    SCAN4
+        cp      tosl, t0
+        breq    SCAN4
 SCAN3:
-        dec     xh
-        brpl    SCAN1
-        movw    tosl, z
+        adiw    xl, 1
+        dec     tosh
+        rjmp    SCAN1
 SCAN4:
-        m_dup
-        mov     tosl, xh
-        adiw    tosl, 1
-        mov     tosh, r_zero
+        st      -y, xh
+        st      -y, xl
+        mov     tosl, tosh
+        ldi     tosh, 0
         ret
 
 ; : mtst ( mask addr -- flag )
