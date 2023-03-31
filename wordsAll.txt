@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5 28.04.2022
+Dictionary of FlashForth 5 31.03.2023
 
 !          ( x addr -- )
            Store x to addr
@@ -730,7 +730,7 @@ pad        ( -- a-addr )
            PAD is a global temporary buffer at start of free ram.
 
 parse	   ( c -- addr length )
-           Parse a word in TIB
+           Parse a token addressed by 'SOURCE and >IN.
 
 pause      ( -- )
            Switch to the next task in the round robin task list.
@@ -835,6 +835,7 @@ s0         ( -- a-addr )
 
 scan       ( c-addr u c -- c-addr' u'
            Scan string until c is found.
+           If delimiter is space, treat control chars as delimiter.
            c-addr must point to ram. u<255
 
 sign       ( n -- )
@@ -850,6 +851,7 @@ single     ( -- )
 
 skip       ( c-addr u c -- c-addr' u' )
            Skip string until c not encountered.
+           If delimiter is space, treat control chars as delimiter.
            c-addr must point to ram. u<255
 
 sm/rem     ( d n -- rem quot )
@@ -1098,7 +1100,7 @@ within     ( x xl xh -- flag )
            Leave true if  xl <= x < xh
 
 word       ( c -- c-addr )
-           Parse a word in TIB and PLACE it in PAD
+           Parse a token addressed by 'SOURCE and >IN and PLACE it in PAD
            Leave the address of the length byte on the stack.
 
 wmove      ( addr1 addr2 u -- )
