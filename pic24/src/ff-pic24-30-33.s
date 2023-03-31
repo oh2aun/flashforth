@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          28.04.2022                                        *
+;    Date:          31.03.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2022  Mikael Nordman
+; Copyright (C) 2023  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -1201,7 +1201,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 28.04.2022\r\n"
+        .ascii  " FlashForth 5 PIC24 31.03.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -2346,12 +2346,17 @@ SKIP:
         mov     [W14--], W5     ; c-addr
         cp0     W4
         bra     z, SKIP2
+        mov     #32, W6
 SKIP0:
         mov     W5, [++W14]
         rcall   CFETCH
         mov     [w14--], w0
-        cp.b    w0, #9
-        bra     z, SKIP1
+
+        cp.b    W3, W6
+        bra     nz, SKIP3
+        cp.b    W0, W6
+        bra     nc, SKIP1
+SKIP3:
         cp.b    w3, w0
         bra     z, SKIP1
         bra     SKIP2
@@ -2375,15 +2380,19 @@ SCAN:
         mov     [W14--], W5     ; c-addr
         cp0     W4
         bra     z, SCAN3
+        mov     #32, W6
 SCAN0:
         mov     W5, [++W14]
         rcall   CFETCH
         mov     [w14--], w0
-        cp.b    w0, #9
-        bra     z, SCAN3
+        cp.b    w3, W6
+        bra     nz, SCAN2
+        cp.b    w0, W6
+        bra     nc, SCAN3
 SCAN2:
         cp.b    w0, W3
         bra     z, SCAN3
+        
         inc     w5, w5
         dec     W4, w4
         bra     nz, SCAN0
