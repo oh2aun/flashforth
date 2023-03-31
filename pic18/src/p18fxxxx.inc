@@ -932,6 +932,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F27K42
@@ -943,6 +944,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F45K42
@@ -966,6 +968,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F47K42
@@ -977,6 +980,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F55K42
@@ -1000,6 +1004,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xcfff   
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F57K42
@@ -1011,6 +1016,7 @@
     #define EEPROM_HI 0xbfff
     #define RAM_LO    0xc000
     #define RAM_HI    0xdfff
+    #define EEPROM_MASKH 0x03
     #include "p18fxxk42.inc"
 #endif
 #ifdef __18F25K83

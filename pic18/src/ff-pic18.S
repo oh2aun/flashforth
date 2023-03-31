@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          09.08.2022                                        *
+;;    Date:          31.03.2023                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -429,7 +429,6 @@ psect udata_bank2
 #else
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 #endif
-
 dpSTART:     ds 2
 dpFLASH:     ds 2
 dpEEPROM:    ds 2
@@ -497,7 +496,7 @@ prompt      equ beeprom + 10 ;; Deferred prompt action
 dpeeprom    equ beeprom + 12
 
 ;;**************************************************
-;; Ensure the EEPROM is intialized even if the
+;; Ensure the EEPROM is initialized even if the
 ;; eeprom is not erased when programming the chip
 PSECT   edata
         db  0xff, 0xff
@@ -676,15 +675,16 @@ irq_async_rx1:
         movwf   BANKMASK(ihtbank), A
 #endif
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
-        movf    BANKMASK(RXcnt), W, A
 #if OPERATOR_UART == 1
 #if FC_TYPE == XONXOFF
+        movf    BANKMASK(RXcnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx1_2
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
 #if FC_TYPE == CTS
+        movf    BANKMASK(RXcnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx1_2
         btfss   BANKMASK(FLAGS2), fFC, A
@@ -721,7 +721,9 @@ irq_async_rx1_4:
         incf    BANKMASK(RXhead), F, A
         movlw   RXbufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RXhead), F, A
+#if FC_TYPE != NONE
         incf    BANKMASK(RXcnt), F, A
+#endif
 irq_async_rx1_5:
 #ifndef K42
         movf    BANKMASK(ihtbank), W, A
@@ -745,15 +747,18 @@ irq_async_rx2:
         movwf   BANKMASK(ihtbank), A
 #endif
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
+#if OPERATOR_UART == 2
+#if FC_TYPE == XONXOFF
         movf    BANKMASK(RX2cnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx2_2
-#if OPERATOR_UART == 2
-#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
 #if FC_TYPE == CTS
+        movf    BANKMASK(RX2cnt), W, A
+        addlw   0xff - RX_OFF_FILL
+        bnc     irq_async_rx2_2
         btfss   BANKMASK(FLAGS2), fFC
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
@@ -792,7 +797,9 @@ irq_async_rx2_4:
         incf    BANKMASK(RX2head), F, A
         movlw   RX2bufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX2head), F, A
+#if FC_TYPE != NONE
         incf    BANKMASK(RX2cnt), F, A
+#endif
 irq_async_rx2_5:
 #ifndef K42
         movf    BANKMASK(ihtbank), W, A
@@ -810,16 +817,19 @@ irq_async_rx3:
         btfss   U3RXIF
         bra     irq_async_rx3_end
         bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
+#if OPERATOR_UART == 3
+#if FC_TYPE == XONXOFF
         movf    BANKMASK(RX3cnt), W, A
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx3_2
-#if OPERATOR_UART == 3
-#if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         call    XXOFF
 #endif
 irq_async_rx3_1:
 #if FC_TYPE == CTS
+        movf    BANKMASK(RX3cnt), W, A
+        addlw   0xff - RX_OFF_FILL
+        bnc     irq_async_rx3_2
         btfss   BANKMASK(FLAGS2), fFC
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
@@ -858,7 +868,9 @@ irq_async_rx3_4:
         incf    BANKMASK(RX3head), F, A
         movlw   RX3bufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX3head), F, A
+#if FC_TYPE != NONE
         incf    BANKMASK(RX3cnt),  F, A
+#endif
 irq_async_rx3_end:
 #endif
 ;; *****************************************************************
@@ -1605,7 +1617,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 09.08.2022        ; 10
+        STRING 31.03.2023        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1641,13 +1653,15 @@ RX1_:
         bz      RX1_
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXtail), W, A
-        movff  TWrw, plusS    ;  Take a char from the buffer
+        movff   TWrw, plusS    ;  Take a char from the buffer
         clrf    plusS, A
         incf    BANKMASK(RXtail), F, A
         movlw   RXbufmask
         andwf   BANKMASK(RXtail), F, A
-        decf    BANKMASK(RXcnt), F, A
         andwf   BANKMASK(RXhead), F, A
+#if FC_TYPE != NONE
+        decf    BANKMASK(RXcnt), F, A
+#endif
         return
 ;***************************************************
 ; RX1?  -- n    return the number of characters in queue
@@ -1672,11 +1686,13 @@ RX1Q:
 #if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
+        clrf    BANKMASK(RXcnt), A
 #endif
 #if FC_TYPE == CTS
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
-#endif
         clrf    BANKMASK(RXcnt), A
+#endif
+
 RX1Q2:
         clrf    plusS, A
         return
@@ -1716,7 +1732,9 @@ RX2_:
         incf    BANKMASK(RX2tail), F, A
         movlw   RX2bufmask
         andwf   BANKMASK(RX2tail), F, A
+#if FC_TYPE != NONE
         decf    BANKMASK(RX2cnt), F, A
+#endif
         return
 ;***************************************************
 ; RX2?  -- n    return the number of characters in queue
@@ -1743,11 +1761,12 @@ RX2Q:
 #if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
+        clrf    BANKMASK(RX2cnt), A
 #endif
 #if FC_TYPE == CTS
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
-#endif
         clrf    BANKMASK(RX2cnt), A
+#endif
 RX2Q2:
         clrf    plusS, A
         return
@@ -1793,7 +1812,9 @@ RX3_:
         incf    BANKMASK(RX3tail), F, A
         movlw   RX3bufmask
         andwf   BANKMASK(RX3tail), F, A
+#if FC_TYPE != NONE
         decf    BANKMASK(RX3cnt), F, A
+#endif
         return
 ;***************************************************
 ; RX3?  -- n    return the number of characters in queue
@@ -1813,11 +1834,12 @@ RX3Q:
 #if FC_TYPE == XONXOFF
         btfss   BANKMASK(FLAGS2), fFC, A
         rcall   XXON
+        clrf    BANKMASK(RX3cnt), A
 #endif
 #if FC_TYPE == CTS
         bcf     HW_FC_CTS_PORT, HW_FC_CTS_PIN, A
-#endif
         clrf    BANKMASK(RX3cnt), A
+#endif
 RX3Q2:
         clrf    plusS, A
         return
@@ -2347,8 +2369,8 @@ asmemit:
 L_NEQUAL:
         NF 2,n=
 NEQUAL:
-        movff  Sminus, TBLPTRH
-        movff  Sminus, TBLPTRL       ; nfa in flash
+        movff   Sminus, TBLPTRH
+        movff   Sminus, TBLPTRL       ; nfa in flash
         movf    Sminus, W, A
         movwf   Tbank, A
         movf    Sminus, W, A
@@ -2372,8 +2394,9 @@ NEQUAL2:
         return
 
 ; SKIP   c-addr u c -- c-addr' u'
-;                          skip matching chars
+;                          skip matching chars in ram
 ; u (count) must be smaller than 256
+; handle control chars as delimiter if delimiter is space
         dw      L_NEQUAL
 L_SKIP:
         NF 4,skip
@@ -2388,14 +2411,17 @@ SKIP:
         movf    Sminus, W, A
         movwf   Tp, A           ; c-addr
 SKIP0:
-        movlw   0x9             ; SKIP TAB
+        movlw   0x20
+        subwf   TBLPTRL, W, A
+        bnz     SKIP1
+        movlw   0x20             ; SKIP CONTROL characters if space
         subwf   Trw, W, A
-        bz      SKIP1
-
+        bnc     SKIP2
+SKIP1:
         movf    Trw, W, A
         subwf   TBLPTRL, W, A
         bnz     SKIP4
-SKIP1:                          ; check next character
+SKIP2:                          ; check next character
         movf    Tplus, W, A
 
         decfsz  PCLATH, F, A
@@ -2416,7 +2442,7 @@ SKIP5:
         return
 
 ; SCAN   c-addr u c -- c-addr' u'
-;                          find matching chars
+;                          find matching chars in ram
 ; u(count) must be smaller than 256
 ; TAB will always give a match. This works OK
 ; with tabbed source files that have space as a delimiter.
@@ -2441,9 +2467,12 @@ SCAN0:
         subwf   TBLPTRL, W, A
         bz      SCAN3               ; Found a match
 SCAN1:
-        movf    Trw, W, A
-        sublw   9                   ; Check for TAB
-        bz      SCAN3               ; TAB is handled as the delimiter c .
+        movf    TBLPTRL, W, A       ; If delimiter is space, handle 
+        sublw   0x20                ; control characters as delimiter
+        bnz     SCAN2
+        movlw   0x20
+        subwf   Trw, W, A               
+        bnc     SCAN3
 SCAN2:
         movf    Tplus, W, A         ; check next character
         decfsz  PCLATH, F, A
@@ -2614,7 +2643,7 @@ L_TOTBLP:
 TOTBLP:
         movf    Sminus, W, A
         movwf   TBLPTRH, A
-        movff  Sminus, TBLPTRL
+        movff   Sminus, TBLPTRL
         return
 ; I@       a-addr -- x  fetch cell from Code mem
 ; 25 cycles when fetching from buffer
@@ -2689,7 +2718,7 @@ ECSTORE:
         movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
-#ifdef Qxx
+#ifdef EEPROM_MASKH
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2730,7 +2759,7 @@ EFETCH:
         movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
-#ifdef Qxx
+#ifdef EEPROM_MASKH
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
@@ -2747,7 +2776,7 @@ ECFETCH:
         movf    Sminus, W, A
         banksel EEADR
 #ifdef EEADRH
-#ifdef Qxx
+#ifdef EEPROM_MASKH
         andlw   EEPROM_MASKH
 #endif
         movwf   EEADRH, B
