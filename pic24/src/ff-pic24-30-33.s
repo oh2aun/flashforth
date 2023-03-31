@@ -301,7 +301,10 @@ __AltStackError:
 __AltMathError:
         mov     INTCON1, W0
         mov     W0, intcon1dbg
-        reset
+        clr.b   INTCON1
+        mov     #handle(WARM_), W0
+        mov     W0, [W15-4]
+        retfie
 
 __T1Interrupt:
 __AltT1Interrupt:
