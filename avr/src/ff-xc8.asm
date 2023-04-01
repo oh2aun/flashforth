@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          01.04.2023                                        *
+;    Date:          02.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "01.04.2023"
+#define DATE "02.04.2023"
 #define datelen 10
 
 
@@ -940,7 +940,7 @@ NEQUALSFETCH:
         rjmp    ROT
 ;***************************************************
 ; N=    c-addr nfa -- n   string:name cmp
-;             n=0: s1==s2, n=ffff: s1!=s2
+;             n=0: s1==s2, n!=0: s1!=s2
 ; N= is specificly used for finding dictionary entries
 ; It can also be used for comparing strings shorter than 16 characters,
 ; but the first string must be in ram and the second in program memory.
@@ -950,25 +950,26 @@ NEQUAL_L:
         .ascii  "n="
         .align  1
 NEQUAL:
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
         ld      xl, y+
-        ld      xh, y+
-        m_lpm   tosh
-        andi    tosh, 0xf
-        ld      tosl, x+
-        sub     tosl, tosh
+        ld      xh, y+             ; c-addr
+        rcall   CFETCHPP           ; nfa in tos
+        andi    tosl, 0xf
+        ld      t2, x+
+        mov     t3, t2
+        sub     t2, tosl
+        m_drop
         brne    NEQUAL3
-        dec     tosh
 NEQUAL2:
-        m_lpm   tosl
-        ld      t0, x+
-        sub     tosl, t0
+        rcall   CFETCHPP
+        ld      t2, x+
+        sub     t2, tosl
+        m_drop
         brne    NEQUAL3
-        dec     tosh
-        brpl    NEQUAL2
+        dec     t3
+        brne    NEQUAL2
 NEQUAL3:
-        mov     tosh, tosl
+        mov     tosl, t2
+        clr     tosh
         ret
 
 ; SKIP   c-addr u c -- c-addr' u'
@@ -2990,64 +2991,33 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
-        sbrc    FLAGS1, idirty
-        rcall   findi_check_buffer
 findi1:
-        movw    al, tosl    ; c-addr nfa
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
-        ldd     xl, y+0
-        ldd     xh, y+1
-        m_lpm   tosh
-        andi    tosh, 0xf
-        ld      tosl, x+
-        sub     tosl, tosh
-        brne    FEQUAL3
-        dec     tosh
-FEQUAL2:
-        m_lpm   tosl
-        ld      t0, x+
-        sub     tosl, t0
-        brne    FEQUAL3
-        dec     tosh
-        brpl    FEQUAL2
-FEQUAL3:
-        cpi     tosl, 0
-        movw    tosl, al    ; c-addr nfa
-        breq    findi4      ; ( c-addr 0 )
-        sbiw    tosl, 2     ; c-addr lfa
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
-        m_lpm   tosl
-        m_lpm   tosh        ; c-addr nfa
+FIND_1: 
+        rcall   TWODUP
+        rcall   NEQUAL
+        sbiw    tosl, 0
+        breq    findi2
+        m_drop
+        sbiw    tosl, 2         ; NFATOLFA
+        rcall   FETCH_A
+        m_dup
 findi2:
-        sbiw    tosl, 0     ; c-addr nfa
+        sbiw    tosl, 0
+        m_drop
         brne    findi1
-        rjmp    findi3
-findi4:
-        std     y+0, tosl
-        std     y+1, tosh    ; nfa nfa
-        rcall   NFATOCFA     ; nfa xt
+        sbiw    tosl, 0  
+        breq    findi3
+        rcall   NIP
+        rcall   DUP
+        rcall   NFATOCFA
         rcall   SWOP
-        rcall   IMMEDQ       ; xt flag
+        rcall   IMMEDQ
         rcall   ZEROEQUAL
-        ori     tosl, 1
+        rcall   ONE
+        rcall   OR_
 findi3: 
         ret
-        
-findi_check_buffer:
-        mov     t0, tosh
-        subi    t0, hi8(PFLASH)
-        cp      t0, ibaseh
-        brne    findi_check_buffer_exit
-        mov     t0, tosl
-        andi    t0, (~(PAGESIZEB-1)&0xff)
-        cp      t0, ibasel
-        brne    findi_check_buffer_exit
-        call    IWRITE_BUFFER
-findi_check_buffer_exit:
-        ret
-        
+
 ; IMMED?    nfa -- f        fetch immediate flag
         fdw     BRACFIND_L
 IMMEDQ_L:
@@ -5943,18 +5913,24 @@ LOCKEDQ:
 IFETCH:
         movw    z, tosl
         sub_pflash_z
+        sbrs    FLAGS1, idirty
+        rjmp    IIFETCH
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zl
         andi    t0, (~(PAGESIZEB-1)&0xff)
         cp      t0, ibasel
         brne    IIFETCH
+        push    xl
+        push    xh
         ldi     xl, lo8(ibuf)
         ldi     xh, hi8(ibuf)
         andi    zl, (PAGESIZEB-1)
         add     xl, zl
         ld      tosl, x+
         ld      tosh, x+
+        pop     xh
+        pop     xl
         ret
 IIFETCH:
         m_lpm    tosl     ; Fetch from Flash directly
