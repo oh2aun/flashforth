@@ -2990,6 +2990,8 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
+        sbrc    FLAGS1, idirty
+        rcall   findi_check_buffer
 findi1:
         movw    al, tosl    ; c-addr nfa
         movw    z, tosl
@@ -3014,7 +3016,10 @@ FEQUAL3:
         movw    tosl, al    ; c-addr nfa
         breq    findi4      ; ( c-addr 0 )
         sbiw    tosl, 2     ; c-addr lfa
-        call    FETCH      ; c-addr nfa
+        movw    z, tosl
+        subi    zh, hi8(PFLASH)
+        m_lpm   tosl
+        m_lpm   tosh        ; c-addr nfa
 findi2:
         sbiw    tosl, 0     ; c-addr nfa
         brne    findi1
@@ -3029,7 +3034,20 @@ findi4:
         ori     tosl, 1
 findi3: 
         ret
-
+        
+findi_check_buffer:
+        mov     t0, tosh
+        subi    t0, hi8(PFLASH)
+        cp      t0, ibaseh
+        brne    findi_check_buffer_exit
+        mov     t0, tosl
+        andi    t0, (~(PAGESIZEB-1)&0xff)
+        cp      t0, ibasel
+        brne    findi_check_buffer_exit
+        call    IWRITE_BUFFER
+findi_check_buffer_exit:
+        ret
+        
 ; IMMED?    nfa -- f        fetch immediate flag
         fdw     BRACFIND_L
 IMMEDQ_L:
@@ -6457,8 +6475,8 @@ ISTORERR3:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
-	      sub_pflash_tos
-	      mov     t0, r_zero
+	    sub_pflash_tos
+	    mov     t0, r_zero
         rjmp    XUPDATEBUF2
 XUPDATEBUF:
 #if FLASHEND > 0xffff
