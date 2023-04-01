@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          31.03.2023                                        *
+;    Date:          01.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "31.03.2023"
+#define DATE "01.04.2023"
 #define datelen 10
 
 
@@ -112,12 +112,9 @@
 .equ NFAmask, 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fFIND,     7   ; 0 = use LPM, 1 = use IFETCH
 .equ fIDLE,     6   ; 0 = busy, 1 = idle
 .equ fLOAD,     5   ; Load measurement ready
 .equ fLOADled,  4   ; 0 = no load led, 1 = load led on
-.equ fFC_tx1,   3   ; 0=Flo8 Control, 1 = no Flo8 Control   
-.equ fFC_tx0,   2   ; 0=Flo8 Control, 1 = no Flo8 Control   
 .equ ixoff_tx1, 1                    
 .equ ixoff_tx0, 0
 
@@ -2993,7 +2990,6 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
-        sbr     FLAGS2, (1<<fFIND)
 findi1:
         movw    al, tosl    ; c-addr nfa
         movw    z, tosl
@@ -3018,17 +3014,7 @@ FEQUAL3:
         movw    tosl, al    ; c-addr nfa
         breq    findi4      ; ( c-addr 0 )
         sbiw    tosl, 2     ; c-addr lfa
-
-        sbrc    FLAGS2, fFIND
-        rjmp    F_LFA_FETCH
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
-        m_lpm   tosl
-        m_lpm   tosh
-        rjmp    findi2
-F_LFA_FETCH:
         call    FETCH      ; c-addr nfa
-        cbr     FLAGS2, (1<<fFIND)
 findi2:
         sbiw    tosl, 0     ; c-addr nfa
         brne    findi1
