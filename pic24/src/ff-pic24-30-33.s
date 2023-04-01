@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          31.03.2023                                        *
+;    Date:          01.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1204,7 +1204,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 31.03.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 01.04.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1264,12 +1264,12 @@ PAUSE:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
-        cp0     ep2icount
-        bra     z, PAUSE_USB_CDC_END
-        mov     ep2itmo, WREG
-        subr    ms_count, WREG
-        bra     nn, PAUSE_USB_CDC_END
-        rcall   TXU_SEND
+;        cp0     ep2icount
+;        bra     z, PAUSE_USB_CDC_END
+;        mov     ep2itmo, WREG
+;        subr    ms_count, WREG
+;        bra     nn, PAUSE_USB_CDC_END
+;        rcall   TXU_SEND
 PAUSE_USB_CDC_END:
 .endif
 .if WRITE_METHOD == 2
@@ -2869,24 +2869,15 @@ TXU:
         bra     TXU_DROP
         btsc.b  ep2istat, #7
         bra     TXU
-        inc2    ms_count, WREG
-        mov     WREG, ep2itmo
-        mov     ep2icount, W2
-        mov     #cdc_data_tx, W1
         mov     [W14--], W0
-        mov.b   W0, [W1+W2]
-        inc     ep2icount
-        cp      W2, #(CDC_BULK_IN_EP_SIZE-2)
-        bra     n, TXU_END
-TXU_SEND:
-        mov     ep2icount, W0
+        mov.b   WREG, cdc_data_tx
+        mov     #1, W0
 TXU_SEND2:
         mov.b   WREG, ep2icnt
         mov     #(_DAT1|_USIE|_DTSEN), W0
         btsc.b  ep2istat, #6
         mov     #(_DAT0|_USIE|_DTSEN), W0
         mov.b   WREG, ep2istat
-        clr     ep2icount
         bra     TXU_END
 TXU_DROP:
         dec2    W14, W14

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          06.01.2019                                        *
+;    Date:          01.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2019  Mikael Nordman
+; Copyright (C) 2023  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -113,6 +113,4 @@ line_coding:    .space 8
 mem:            .space 2           ; 0 = flash ; 0xff = ram
 ep2optr:        .space 2
 ep2iptr:        .space 2
-ep2icount:      .space 2
-ep2itmo:        .space 2
            
