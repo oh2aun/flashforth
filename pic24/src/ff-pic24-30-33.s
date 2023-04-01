@@ -1264,12 +1264,6 @@ PAUSE:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
-;        cp0     ep2icount
-;        bra     z, PAUSE_USB_CDC_END
-;        mov     ep2itmo, WREG
-;        subr    ms_count, WREG
-;        bra     nn, PAUSE_USB_CDC_END
-;        rcall   TXU_SEND
 PAUSE_USB_CDC_END:
 .endif
 .if WRITE_METHOD == 2
