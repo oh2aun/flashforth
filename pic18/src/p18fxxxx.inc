@@ -1282,6 +1282,55 @@
     #define EEPROM_ADDRU 0x38
     #define EEPROM_MASKH 0x01
 #endif
+#ifdef __18F26Q71
+    #include "p18fxxq71.inc"
+    #define PICTYPE PIC18F26Q71
+    #define PICLEN    11
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbbff
+    #define EEPROM_LO 0xbc00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff
+    #define FBUFFER   0x1500   
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F46Q71
+    #include "p18fxxq71.inc"
+    #define PICTYPE PIC18F56Q71
+    #define PICLEN    11
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbbff
+    #define EEPROM_LO 0xbc00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff
+    #define FBUFFER   0x1500   
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+#ifdef __18F56Q71
+    #include "p18fxxq71.inc"
+    #define PICTYPE PIC18F56Q71
+    #define PICLEN    11
+    #define FLASH_LO  0x0000
+    #define FLASH_HI  0xbbff
+    #define EEPROM_LO 0xbc00
+    #define EEPROM_HI 0xbfff
+    #define RAM_LO    0xc000
+    #define RAM_HI    0xd4ff
+    #define FBUFFER   0x1500   
+    #undef  _FLASH_ERASE_SIZE
+    #define _FLASH_ERASE_SIZE 0x100
+    #define EEPROM_ADDRU 0x38
+    #define EEPROM_MASKH 0x01
+#endif
+
 ;;; Some constants controlling how writes to program flash is made.
     flash_write_outer_loop equ _FLASH_ERASE_SIZE/_FLASH_WRITE_SIZE
     flash_write_inner_loop equ _FLASH_WRITE_SIZE
