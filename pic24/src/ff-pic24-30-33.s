@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          01.04.2023                                        *
+;    Date:          07.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -349,36 +349,36 @@ __AltU1RXInterrupt:
 __U1RXInterrupt0:
         bclr    IFS0, #U1RXIF
         bset    iflags, #istream      ; Indicate UART activity.
-        mov     rbuf_len1, WREG
-        sub     rbuf_lv1, WREG        ; level - len
-        bra     nn, U1RX_ERR1         ; Queue full ?
         bclr    U1STA, #OERR
-        mov     U1RXREG, W0
+        mov     U1RXREG, W1
 .if (CTRL_O_WARM_RESET == 1)
-        cp      W0, #15
+        cp      W1, #15
         bra     z, RESET_FF_1
 .endif
 
 .if FC1_TYPE == 1
         btsc    iflags, #fFC1
         bra     U1_SKIP_FC_1
-        cp      W0, #XOFF
-        bra     z, __U1RXInterrupt3
+        cp      W1, #XOFF
+        bra     z, __U1RXTXIRQ_END
 .endif
 U1_SKIP_FC_1:
-        mov     W0, [++W14]
+        mov     rbuf_len1, WREG
+        sub     rbuf_lv1, WREG        ; level - len
+        bra     nn, __U1RXTXIRQ_END   ; Queue full ?
+        mov     W1, [++W14]
         mlit    handle(U1RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_TO
         
         btsc    iflags, #fFC1
-        bra     U1_SKIP_FC_2
+        bra     __U1RXTXIRQ_END
         mov     #RX1_OFF_FILL, W0
         cp      rbuf_lv1            ; rbuf_lvl - #RX1_OFF_FILL
-        bra     n, __U1RXInterrupt3
+        bra     n, __U1RXTXIRQ_END
 .if FC1_TYPE == 1
 __U1RXInterrupt2:
         btsc    iflags, #ixoff1
-        bra     U1_SKIP_FC_2
+        bra     __U1RXTXIRQ_END
         btsc    U1STA, #UTXBF
         bra     __U1RXInterrupt2
         mov     #XOFF, W0
@@ -389,11 +389,6 @@ __U1RXInterrupt2:
         bset    U1RTSPORT, #U1RTSPIN
 .endif
 .endif
-U1_SKIP_FC_2:
-
-__U1RXInterrupt3:
-        btsc    U1STA, #URXDA
-        bra     __U1RXInterrupt0
 __U1RXTXIRQ_END:
         ulnk
         pop     TBLPAG
@@ -401,24 +396,20 @@ ALT_INT_EXIT:
         pop.s
         retfie
 
-U1RX_ERR1:
-        btss    U1STA, #TRMT
-        bra     U1RX_ERR1
-        mov     U1RXREG, W0
-        mov     #'|', W0
-        mov     W0, U1TXREG
-        bra     __U1RXInterrupt3
-
 .if TX1_BUF_SIZE > 0
 __U1TXInterrupt:
 __AltU1TXInterrupt:
         push.s
         push    TBLPAG
         lnk     #4                      ; 2 cell parameter stack
-        bclr    IFS0, #U1TXIF
 __U1TXInterrupt0:
+.if ERRATA_UTXBF == 0
         btsc    U1STA, #UTXBF
+.else
+        btss    U1STA, #TRMT
+.endif
         bra     __U1RXTXIRQ_END
+        bclr    IFS0, #U1TXIF
         cp0     tbuf_lv1
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U1TXQUEUE_DATA)+PFLASH
@@ -438,37 +429,37 @@ __AltU2RXInterrupt:
 __U2RXInterrupt0:
         bclr    IFS1, #U2RXIF
         bset    iflags, #istream      ; Indicate UART activity.
-        mov     rbuf_len2, WREG
-        sub     rbuf_lv2, WREG        ; level - len
-        bra     nn, U2RX_ERR1         ; Queue full ?
         bclr    U2STA, #OERR
-        mov     U2RXREG, W0
+        mov     U2RXREG, W1
 
 .if (CTRL_O_WARM_RESET == 1)
-        cp      W0, #15
+        cp      W1, #15
         bra     z, RESET_FF_1
 .endif
 
 .if FC2_TYPE == 1
         btsc    iflags, #fFC2
-        bra     U2_SKIP_FC_1
-        cp      W0, #XOFF
-        bra     z, __U2RXInterrupt3
+        bra     __U1RXTXIRQ_END
+        cp      W1, #XOFF
+        bra     z, __U1RXTXIRQ_END
 .endif
 U2_SKIP_FC_1:
-        mov     W0, [++W14]
+        mov     rbuf_len2, WREG
+        sub     rbuf_lv2, WREG        ; level - len
+        bra     nn, __U1RXTXIRQ_END   ; Queue full ?
+        mov     W1, [++W14]
         mlit    handle(U2RXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_TO
         
         btsc    iflags, #fFC2
-        bra     U2_SKIP_FC_2
+        bra     __U1RXTXIRQ_END
         mov     #RX2_OFF_FILL, W0
         cp      rbuf_lv2
-        bra     n, __U2RXInterrupt3
+        bra     n, __U1RXTXIRQ_END
 .if FC2_TYPE == 1
 __U2RXInterrupt2:
         btsc    iflags, #ixoff2
-        bra     U2_SKIP_FC_2
+        bra     __U1RXTXIRQ_END
         btsc    U2STA, #UTXBF
         bra     __U2RXInterrupt2
         mov     #XOFF, W0
@@ -479,20 +470,7 @@ __U2RXInterrupt2:
         bset    U2RTSPORT, #U2RTSPIN
 .endif
 .endif
-U2_SKIP_FC_2:
-__U2RXInterrupt3:
-        btsc    U2STA, #URXDA
-        bra     __U2RXInterrupt0
-__U2RXTXIRQ_END:
         bra     __U1RXTXIRQ_END
-
-U2RX_ERR1:
-        btss    U2STA, #TRMT
-        bra     U2RX_ERR1
-        mov     U2RXREG, W0
-        mov     #'|', W0
-        mov     W0, U2TXREG
-        bra     __U2RXInterrupt3
 
 .if TX2_BUF_SIZE > 0
 __U2TXInterrupt:
@@ -500,16 +478,20 @@ __AltU2TXInterrupt:
         push.s
         push    TBLPAG
         lnk     #4        ; 2 Cell parameter stack
-        bclr    IFS1, #U2TXIF
 __U2TXInterrupt0:
+.if ERRATA_UTXBF == 0
         btsc    U2STA, #UTXBF
+.else
+        btss    U2STA, #TRMT
+.endif
         bra     __U1RXTXIRQ_END
+        bclr    IFS1, #U2TXIF
         cp0     tbuf_lv2
         bra     z, __U1RXTXIRQ_END
         mlit    handle(U2TXQUEUE_DATA)+PFLASH
         rcall   CQUEUE_FROM
         mov     [W14--], W0
-        mov     W0, U2TXREG
+        mov.b   WREG, U2TXREG
         bra     __U1RXTXIRQ_END
 .endif
 .endif
@@ -1058,7 +1040,11 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .ifdecl UTXISEL1
+.if ERRATA_UTXBF == 0
         bset    U1STA, #UTXISEL1
+.else
+        bset    U1STA, #UTXISEL0
+.endif
 .else
         bset    U1STA, #UTXISEL
 .endif
@@ -1095,19 +1081,23 @@ WARM_ABAUD1:
         mov     #RPINR19VAL, W0
         mov     W0, RPINR19
 ; PIC2433HJFJ
-.ifdecl U1TXPIN
-        mov     #0x0003, W0         ; U1TX
-        mov.b   WREG, RPOR0+U1TXPIN
+.ifdecl U2TXPIN
+        mov     #0x0005, W0         ; U2TX
+        mov.b   WREG, RPOR0+U2TXPIN
 .endif
 .ifdecl U1_RPO_REGISTER
 ; PIC2433EP
-        mov     #U2_RPO_VALUE, W0         ; U1TX
+        mov     #U2_RPO_VALUE, W0         ; U2TX
         mov     W0, U2_RPO_REGISTER
 .endif
 .endif
        bclr    PMD1, #U2MD
 .ifdecl UTXISEL1
+.if ERRATA_UTXBF == 0
         bset    U2STA, #UTXISEL1
+.else
+        bset    U2STA, #UTXISEL0
+.endif
 .else
         bset    U2STA, #UTXISEL
 .endif
@@ -1204,7 +1194,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 01.04.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 07.04.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -2606,7 +2596,7 @@ TX1_1:
         bset    IFS0, #U1TXIF       ; check if UART TX has space
 .else
         mov     [W14--], W0
-        mov     W0, U1TXREG
+        mov.b   WREG, U1TXREG
 .endif
         return
 
@@ -2686,8 +2676,8 @@ U2TXQUEUE_DATA:
         .word   txqueue2
         .word   TX2_BUF_SIZE
 
-        .pword  paddr(9b)+PFLASH
 .endif
+        .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|5
         .ascii  "u2rxq"
@@ -2715,7 +2705,7 @@ TX2:
         bset    IFS1, #U2TXIF       ; check if UART TX has space
 .else
         mov     [W14--], W0
-        mov     W0, U2TXREG
+        mov.b   WREG, U2TXREG
 .endif
 TX2_2:
         return
@@ -2735,7 +2725,6 @@ TX2Q:
 .else
         btss    U2STA, #UTXBF
 .endif
-        btsc    U2STA, #TRMT
         bra     TRUE_
         goto    FALSE_
 .endif
@@ -2772,7 +2761,7 @@ RX2Q:
         mlit    XON
         rcall   TX2
 .else
-.if FC1_TYPE == 2
+.if FC2_TYPE == 2
         cp0     rbuf_lv2
         bra     nz, RX2Q1
         bclr    U2RTSPORT, #U2RTSPIN

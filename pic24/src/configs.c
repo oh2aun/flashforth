@@ -140,7 +140,7 @@
 #pragma config MCLRE = ON               // MCLR Pin Enable bit (RA5 input pin disabled,MCLR pin enabled)
 
 // FICD
-#pragma config ICS = PGx1               // ICD Pin Placement Select bits (EMUC/EMUD share PGC1/PGD1)
+#pragma config ICS = PGx3               // ICD Pin Placement Select bits (EMUC/EMUD share PGC1/PGD1)
 
 // FDS
 #pragma config DSWDTPS = DSWDTPSF       // Deep Sleep Watchdog Timer Postscale Select bits (1:2,147,483,648 (25.7 Days))
@@ -166,7 +166,7 @@
 
 // FOSCSEL
 #pragma config FNOSC = FRCPLL           // Oscillator Mode (Internal Fast RC (FRC) w/ PLL)
-#pragma config IESO = ON                // Internal External Switch Over Mode (Start-up device with FRC, then automatically switch to user-selected oscillator source when ready)
+#pragma config IESO = OFF               // Internal External Switch Over Mode (Start-up device with FRC, then automatically switch to user-selected oscillator source when ready)
 
 // FOSC
 #pragma config POSCMD = NONE            // Primary Oscillator Source (Primary Oscillator Disabled)
@@ -178,14 +178,14 @@
 #pragma config WDTPOST = PS32768        // Watchdog Timer Postscaler (1:32,768)
 #pragma config WDTPRE = PR128           // WDT Prescaler (1:128)
 #pragma config WINDIS = OFF             // Watchdog Timer Window (Watchdog Timer in Non-Window mode)
-#pragma config FWDTEN = ON              // Watchdog Timer Enable (Watchdog timer always enabled)
+#pragma config FWDTEN = OFF              // Watchdog Timer Enable (Watchdog timer always enabled)
 
 // FPOR
 #pragma config FPWRT = PWR128           // POR Timer Value (128ms)
 //#pragma config ALTI2C = OFF             // Alternate I2C  pins (I2C mapped to SDA1/SCL1 pins)
 
 // FICD
-#pragma config ICS = PGD1               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
+#pragma config ICS = PGD3               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
 #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
 
 #elif  defined(__dsPIC33EP256GP502__)
@@ -264,7 +264,7 @@
 #pragma config ALTI2C = OFF             // Alternate I2C  pins (I2C mapped to SDA1/SCL1 pins)
 
 // FICD
-#pragma config ICS = PGD1               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
+#pragma config ICS = PGD3               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
 #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
 
 // #pragma config statements should precede project file includes.
@@ -415,6 +415,103 @@
 #pragma config ALTI2C1 = ALTI2C1_OFF    // Alternate I2C pin Location (I2C1 Pin mapped to SDA1/SCL1 pins)
 #pragma config ALTCMP2 = DISABLE        // Alternate Comparator 2 Input Enable bit (C2INC is on RA4 and C2IND is on RB4)
 #pragma config SMB3EN = SMBUS3          // SM Bus Enable (SMBus 3.0 input levels)
+
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
+
+#include <xc.h>
+
+#elif  defined(__PIC24F16KL402__)
+
+// FBS
+#pragma config BWRP = OFF               // Boot Segment Write Protect (Disabled)
+#pragma config BSS = OFF                // Boot segment Protect (No boot flash segment)
+
+// FGS
+#pragma config GWRP = OFF               // General Segment Flash Write Protect (General segment may be written)
+#pragma config GSS0 = OFF               // General Segment Code Protect (No Protection)
+
+// FOSCSEL
+#pragma config FNOSC = FRCPLL           // Oscillator Select (Fast RC Oscillator with Postscaler and PLL (FRCDIV+PLL))
+#pragma config SOSCSRC = ANA            // SOSC Source Type (Analog Mode for use with crystal)
+#pragma config LPRCSEL = HP             // LPRC Power and Accuracy (High Power/High Accuracy)
+#pragma config IESO = OFF                // Internal External Switch Over bit (Internal External Switchover mode enabled (Two-speed Start-up enabled))
+
+// FOSC
+#pragma config POSCMD = NONE            // Primary Oscillator Mode (Primary oscillator disabled)
+#pragma config OSCIOFNC = OFF            // CLKO Pin I/O Function (Port I/O enabled (CLKO disabled))
+#pragma config POSCFREQ = HS            // Primary Oscillator Frequency Range (Primary Oscillator/External Clock frequency >8MHz)
+#pragma config SOSCSEL = SOSCHP         // SOSC Power Selection Configuration bits (Secondary Oscillator configured for high-power operation)
+#pragma config FCKSM = CSECME           // Clock Switching and Monitor Selection (Clock Switching and Fail-safe Clock Monitor Enabled)
+
+// FWDT
+#pragma config WDTPS = PS32768          // Watchdog Timer Postscale Select bits (1:32768)
+#pragma config FWPSA = PR128            // WDT Prescaler bit (WDT prescaler ratio of 1:128)
+#pragma config FWDTEN = OFF             // Watchdog Timer Enable bits (WDT controlled with SWDTEN bit setting)
+#pragma config WINDIS = OFF             // Windowed Watchdog Timer Disable bit (Standard WDT selected (windowed WDT disabled))
+
+// FPOR
+#pragma config BOREN = BOR3             // Brown-out Reset Enable bits (Enabled in hardware; SBOREN bit disabled)
+#pragma config PWRTEN = ON              // Power-up Timer Enable (PWRT enabled)
+#pragma config I2C1SEL = PRI            // Alternate I2C1 Pin Mapping bit (Default SCL1/SDA1 Pins for I2C1)
+#pragma config BORV = V18               // Brown-out Reset Voltage bits (Brown-out Reset at 1.8V)
+#pragma config MCLRE = ON               // MCLR Pin Enable bit (RA5 input disabled; MCLR enabled)
+
+// FICD
+#pragma config ICS = PGx3               // ICD Pin Placement Select (EMUC/EMUD share PGC1/PGD1)
+
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
+
+#include <xc.h>
+
+#elif  defined(__PIC24F16KA102__)
+
+// PIC24F16KA102 Configuration Bit Settings
+
+// 'C' source line config statements
+
+// FBS
+#pragma config BWRP = OFF               // Table Write Protect Boot (Boot segment may be written)
+#pragma config BSS = OFF                // Boot segment Protect (No boot program Flash segment)
+
+// FGS
+#pragma config GWRP = OFF               // General Segment Code Flash Write Protection bit (General segment may be written)
+#pragma config GCP = OFF                // General Segment Code Flash Code Protection bit (No protection)
+
+// FOSCSEL
+#pragma config FNOSC = FRCPLL           // Oscillator Select (Fast RC oscillator with divide-by-N with PLL module (FRCDIV+PLL))
+#pragma config IESO = OFF               // Internal External Switch Over bit (Internal External Switchover mode disabled (Two-Speed Start-up disabled))
+
+// FOSC
+#pragma config POSCMOD = NONE           // Primary Oscillator Configuration bits (Primary oscillator disabled)
+#pragma config OSCIOFNC = OFF           // CLKO Enable Configuration bit (CLKO output signal is active on the OSCO pin)
+#pragma config POSCFREQ = HS            // Primary Oscillator Frequency Range Configuration bits (Primary oscillator/external clock input frequency greater than 8 MHz)
+#pragma config SOSCSEL = SOSCHP         // SOSC Power Selection Configuration bits (Secondary oscillator configured for high-power operation)
+#pragma config FCKSM = CSDCMD           // Clock Switching and Monitor Selection (Both Clock Switching and Fail-safe Clock Monitor are disabled)
+
+// FWDT
+#pragma config WDTPS = PS32768          // Watchdog Timer Postscale Select bits (1:32,768)
+#pragma config FWPSA = PR128            // WDT Prescaler (WDT prescaler ratio of 1:128)
+#pragma config WINDIS = OFF             // Windowed Watchdog Timer Disable bit (Standard WDT selected; windowed WDT disabled)
+#pragma config FWDTEN = ON              // Watchdog Timer Enable bit (WDT enabled)
+
+// FPOR
+#pragma config BOREN = BOR3             // Brown-out Reset Enable bits (Brown-out Reset enabled in hardware; SBOREN bit disabled)
+#pragma config PWRTEN = ON              // Power-up Timer Enable bit (PWRT enabled)
+#pragma config I2C1SEL = PRI            // Alternate I2C1 Pin Mapping bit (Default location for SCL1/SDA1 pins)
+#pragma config BORV = V18               // Brown-out Reset Voltage bits (Brown-out Reset set to lowest voltage (1.8V))
+#pragma config MCLRE = ON               // MCLR Pin Enable bit (MCLR pin enabled; RA5 input pin disabled)
+
+// FICD
+#pragma config ICS = PGx3               // ICD Pin Placement Select bits (PGC3/PGD3 are used for programming and debugging the device)
+
+// FDS
+#pragma config DSWDTPS = DSWDTPSF       // Deep Sleep Watchdog Timer Postscale Select bits (1:2,147,483,648 (25.7 Days))
+#pragma config DSWDTOSC = LPRC          // DSWDT Reference Clock Select bit (DSWDT uses LPRC as reference clock)
+#pragma config RTCOSC = SOSC            // RTCC Reference Clock Select bit (RTCC uses SOSC as reference clock)
+#pragma config DSBOREN = ON             // Deep Sleep Zero-Power BOR Enable bit (Deep Sleep BOR enabled in Deep Sleep)
+#pragma config DSWDTEN = ON             // Deep Sleep Watchdog Timer Enable bit (DSWDT enabled)
 
 // #pragma config statements should precede project file includes.
 // Use project enums instead of #define for ON and OFF.

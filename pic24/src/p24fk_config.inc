@@ -7,7 +7,7 @@
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400		 ; Serial baudrate
-.equ FC1_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC1_TYPE, 0             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 .equ U1RTSPORT, LATB
@@ -15,13 +15,13 @@
 .equ U1RTSPIN, 0xc
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400		 ; Serial baudrate, comment if not used
-.equ FC2_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE2, 38400	     ; Serial baudrate, comment if not used
+.equ FC2_TYPE, 0             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
-.equ U2RTSPORT, LATB
-.equ U2RTSTRIS, TRISB
-.equ U2RTSPIN, 0xc
+.equ U2RTSPORT, LATA
+.equ U2RTSTRIS, TRISA
+.equ U2RTSPIN, 1
 
 ; Default number base
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
@@ -30,14 +30,14 @@
 .equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISB
-.equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 8
-.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+.equ CPU_LOAD_TRIS, TRISA
+.equ CPU_LOAD_PORT, LATA
+.equ CPU_LOAD_BIT, 0
+.equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
 .equ TURNKEY_DELAY, 2000  ; milliseconds

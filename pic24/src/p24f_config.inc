@@ -11,14 +11,14 @@
 .equ OPERATOR_UART, 3	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600			; Serial baudrate UART1
+.equ BAUDRATE1, 38400			; Serial baudrate UART1
 .equ FC1_TYPE, 0                        ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                       ; 0 = to use fixed baudrate
                                         ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 			 ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 1                        ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC2_TYPE, 0                        ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                       ; 0 = to use fixed baudrate
                                         ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 ;;; Peripheral pin mapping
@@ -89,7 +89,7 @@
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
-.equ CTRL_O_WARM_RESET, 1
+.equ CTRL_O_WARM_RESET, 0
 
 ; Method 1 updates flash and eeprom after each ok prompt.
 ; Method 2 updates flash and eeprom after no flash or eeprom

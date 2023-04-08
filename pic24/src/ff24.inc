@@ -117,7 +117,22 @@
 .ifdef __24EP64MC206
 .endif
 
-.ifdef __24F32KA301
+.ifdef __24F16KL402
+.equ FLASH_SIZE,     0x2C00
+.equ EEPROM_SIZE,    0x0200
+.equ RAM_SIZE,       0x0400
+.include "p24fk_config.inc"
+.endif
+
+.ifdef __24F16KA102
+.equ FLASH_SIZE,     0x2C00
+.equ EEPROM_SIZE,    0x0200
+.equ RAM_SIZE,       0x0400
+.include "p24fk_config.inc"
+.endif
+
+
+    .ifdef __24F32KA301
 .equ FLASH_SIZE,     0x5800
 .equ EEPROM_SIZE,    0x0200
 .equ RAM_SIZE,       0x0800
