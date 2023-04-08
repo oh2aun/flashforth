@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test2.txt                                  *
-\    Date:          25.11.2016                                      *
+\    Filename:      task-test5.txt                                  *
+\    Date:          07.04.2023                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           PIC 24 33                                       *
 \    Copyright:     Mikael Nordman                                  *
@@ -13,37 +13,27 @@ single
 -t1
 marker -t1
 ram hex
-\ Registers for dsPIC33FJ128GP802. Change if needed.
-$032c constant adpcfg
-$02cc constant latb
-$02ca constant portb
-$02c8 constant trisb
-ram variable delay
-: led9off  %0000.0010.0000.0000 portb mclr ;
-: led9on   %0000.0010.0000.0000 portb mset ;
-: led10off %0000.0100.0000.0000 portb mclr ;
-: led10on  %0000.0100.0000.0000 portb mset ;
+\ Registers for PIC24F16KL402 on Microstick for 3V PIC24 K series.
+$02c4 constant lata
+$02c2 constant porta
+$02c0 constant trisa
+: ledoff  1 lata mclr ;
+: ledon   1 lata mset ;
+: ledon? 1 lata mtst ;
 
 40 30 30 0 task: t1
 : tloop 
-  $3f adpcfg c!
-  #250 delay !
-  %0000.0110.0000.0000 trisb mclr 
+  1 trisa mclr 
   begin 
-    delay @ ms 
-    %0000.0010.0000.0000 portb mtst
-    if
-      led9off
-      led10on
-    else 
-      led9on
-      led10off
+    ticks 7 rshift ms 
+    ledon?
+    if   ledoff
+    else ledon
     then
   again
 ;
 
 : t1go ['] tloop t1 tinit t1 run ;
-
 ' t1go is turnkey
 warm
 
