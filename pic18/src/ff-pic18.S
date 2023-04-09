@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          31.03.2023                                        *
+;;    Date:          08.04.2023                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ;; FlashForth is a standalone Forth system for microcontrollers that
 ;; can flash their own flash memory.
 ;;
-;; Copyright (C) 2022  Mikael Nordman
+;; Copyright (C) 2023  Mikael Nordman
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License version 3 as
@@ -238,6 +238,7 @@ NFA     equ 0x80
 NFAmask equ 0x0f
 
 ;; BANKMASK(FLAGS2)
+fCREATE equ 2           ;; 1=Create has been performed
 fFC     equ 1           ;; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ;; 1=XOFF has been sent
 
@@ -1243,14 +1244,14 @@ WARM_ZERO_1:
 #endif
 #else  // K42 K83 Qxx
 ;; UART == 1
+; Unlock the PPS
+        call    PPS_UNLOCK
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
         bcf     TX_ANSEL, TX_BIT, B    ; disable analogue on PORTx so TX can function
         bcf     TX_TRIS, TX_BIT, A
         bsf     TX_LAT, TX_BIT, A
-; Unlock the PPS
-        call    PPS_UNLOCK
 ; Set the pins
         banksel U1RXPPS
         movlw   RX_PPS
@@ -1260,9 +1261,6 @@ WARM_ZERO_1:
 
         movlw   TX_CODE
         movwf   TX_PPS, B
-
-; Re-lock the PPS
-        call    PPS_LOCK
 
 ; Set the Baud Rate
         movlw   low(spbrgvalx4)        ; ((clock/baud)/d'4') - 1
@@ -1292,8 +1290,6 @@ WARM_ZERO_1:
         bcf     RX2_ANSEL, RX2_BIT, B    ; disable analogue on PORTx so RX can function
         banksel TX2_ANSEL
         bcf     TX2_ANSEL, TX2_BIT, B    ; disable analogue on PORTx so TX can function
-; Unlock the PPS
-        call    PPS_UNLOCK
 ; Set the pins
         banksel U2RXPPS
         movlw   RX2_PPS
@@ -1305,9 +1301,6 @@ WARM_ZERO_1:
         banksel TX2_PPS          ; configure TX pin to XY
         movlw   TX2_CODE
         movwf   TX2_PPS, B
-
-; Re-lock the PPS
-        call    PPS_LOCK
 
 ; Set the Baud Rate
         movlw   low(spbrg2valx4)        ; ((clock/baud)/d'4') - 1
@@ -1339,8 +1332,6 @@ WARM_ZERO_1:
         bcf     RX3_ANSEL, RX3_BIT, B    ; disable analogue on PORTx so RX can function
         banksel TX3_ANSEL
         bcf     TX3_ANSEL, TX3_BIT, B    ; disable analogue on PORTx so TX can function
-; Unlock the PPS
-        call    PPS_UNLOCK
 ; Set the pins
         banksel U3RXPPS
         movlw   RX3_PPS
@@ -1352,9 +1343,6 @@ WARM_ZERO_1:
         banksel TX3_PPS          ; configure TX pin to XY
         movlw   TX3_CODE
         movwf   TX3_PPS, B
-
-; Re-lock the PPS
-        call    PPS_LOCK
 
 ; Set the Baud Rate
         movlw   low(spbrg3valx4)        ; ((clock/baud)/d'4') - 1
@@ -1378,6 +1366,8 @@ WARM_ZERO_1:
         banksel RX3_TRIS
         bsf     RX3_TRIS, RX3_BIT, B ; configure RX pin as an input
 #endif
+; Re-lock the PPS
+        call    PPS_LOCK
 #endif
 
 #ifdef IDLEN
@@ -1617,7 +1607,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 31.03.2023        ; 10
+        STRING 08.04.2023        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2444,11 +2434,7 @@ SKIP5:
 ; SCAN   c-addr u c -- c-addr' u'
 ;                          find matching chars in ram
 ; u(count) must be smaller than 256
-; TAB will always give a match. This works OK
-; with tabbed source files that have space as a delimiter.
-; When using scan with other delimiters there may be
-; problems, because TAB will always terminate the scan.
-
+; handle control chars as delimiter if delimiter is space
         dw      L_SKIP
 L_SCAN:
         NF 4,scan
@@ -2927,7 +2913,7 @@ TX0:
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
         movf    ep2icount, W, A
-        movff  Sminus, TWrw
+        movff   Sminus, TWrw
         addlw   1
         movwf   ep2icount, A
         sublw   6                       ; l - w
@@ -6019,6 +6005,7 @@ QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1:
+        bcf     BANKMASK(FLAGS2), fCREATE, A
         call    check_sp
         rcall   CR
         rcall   TIB
@@ -6191,6 +6178,9 @@ CR:
 L_CREATE:
         NF 6,create
 CREATE:
+        btfsc   BANKMASK(FLAGS2), fCREATE, A
+        call    IFLUSH
+
         rcall   BL
         rcall   WORD            ; Parse a word
 
@@ -6211,6 +6201,7 @@ CREATE:
         call    WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
+        bsf     BANKMASK(FLAGS2), fCREATE, A
         rcall   IHERE
         call    ALIGNED
         rcall   IDP             ; Align the flash DP.
@@ -7407,7 +7398,7 @@ MEMQ:
         call    LIT
         dw      MEMQADDR_N
         call    PLUS
-        call    FETCH_A
+        call    FETCH
         call    CFETCHPP
         call    LIT
         dw      NFAmask
