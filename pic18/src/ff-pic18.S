@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          08.04.2023                                        *
+;;    Date:          10.05.2023                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1185,7 +1185,6 @@ WARM_ZERO_1:
 #ifdef PIE10
         clrf    PIE10, B
 #endif
-        banksel TOSU   ; SFR bank
 
 #ifndef K42
 ;; UART == 1  ----------------------------------------------
@@ -1246,6 +1245,8 @@ WARM_ZERO_1:
 ;; UART == 1
 ; Unlock the PPS
         call    PPS_UNLOCK
+        bcf     GIE
+
 ; PPS configure pins for RX and TX
         banksel RX_ANSEL
         bcf     RX_ANSEL, RX_BIT, B    ; disable analogue on PORTx so RX can function
@@ -1368,6 +1369,7 @@ WARM_ZERO_1:
 #endif
 ; Re-lock the PPS
         call    PPS_LOCK
+        bcf     GIE
 #endif
 
 #ifdef IDLEN
@@ -1607,7 +1609,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 08.04.2023        ; 10
+        STRING 10.05.2023        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -3377,22 +3379,28 @@ LOCKED:
 L_PPS_UNLOCK:
         NF 4,pps+
 PPS_UNLOCK:
+        bcf     GIE
         banksel PPSLOCK         ; required sequence
         movlw   0x55
         movwf   PPSLOCK, B
         movlw   0xAA
         movwf   PPSLOCK, B
         bcf     PPSLOCKED       ; disable the pps lock
+        bsf     GIE
         return
+        
         dw      L_PPS_UNLOCK
 L_PPS_LOCK:
         NF 4,pps-
 PPS_LOCK:
+        bcf     GIE
+        banksel PPSLOCK         ; required sequence
         movlw   0x55
         movwf   PPSLOCK, B
         movlw   0xAA
         movwf   PPSLOCK, B
         bsf     PPSLOCKED         ; enable the pps lock
+        bsf     GIE
         return
 
         dw      L_PPS_LOCK
