@@ -1,6 +1,6 @@
 \ pic18f26K42 and si5351a, NCO used  as BFO
-\ needs case.fs 2value.fs
-\ needs qmath.fs ncok42.fs si5351-d.fs
+\ needs case.fs 2value.fs 
+\ needs qmath.fs  i2c-base-b ncok42.fs si5351-d.fs
 \ needs knobi.fs
 \ needs dogs164e.fs
 
@@ -26,9 +26,11 @@ $70 as3 btg,            ( f b a -- )
 $ffba constant lata
 $ffbb constant latb
 $ffbc constant latc
+
 $ffc2 constant trisa
 $ffc3 constant trisb
 $ffc4 constant trisc
+
 $fe9e constant dac1con0
 $fe9c constant dac1con1
 $fef8 constant adcon0
@@ -53,7 +55,7 @@ variable amFilter
 variable s-old
 2variable rxOffset
 eeprom 
-#45.000.080. 2value if1Offset
+#45.000.038. 2value if1Offset
 #10.730.000. 2value fmOffset
 #455.000.   2value if2Offset
 #1500. 2value usbOffset
@@ -73,6 +75,9 @@ variable newVol
 
 : modeAm? mode @ modeAm = ;
 : modeFm? mode @ modeFm = ;
+: fmOn  %1.0000 lata mset ;
+: amOn  %1.0000 lata mclr ;
+
 : change? ( a a -- f ) @ swap  @ <> ;
 
 : rxf@ ( -- d ) mode @ rxf 2@ ;  \ 10 Hz resolution
@@ -81,8 +86,9 @@ variable newVol
 \ Initialize ports
 : io.init ( -- )
   %0110 lata mclr
+  %1.0000 lata mode0 modeFm? if mset else mclr then 
   %1111 latb mclr
-  %0110 trisa mclr
+  %1.0110 trisa mclr
   %1111 trisb mclr
   $d4 adcon0 c!
   $d5 adcon0 c!
@@ -188,24 +194,20 @@ ram
 : am  amFilter @ filter ! modeAm  newMode ! ;
 : usb filter3K filter ! modeUsb newMode ! usbOffset rxOffset 2! ;
 : lsb filter3K filter ! modeLsb newMode ! lsbOffset rxOffset 2! ;
-: fm  b.init modeFm newMode ! fmOffset rxOffset 2! filterFM filter ! ;
+: fm  modeFm newMode ! fmOffset rxOffset 2! filterFM filter ! ;
 
 : det-set
   modeAm? modeFm? or
   if   bfo-off
   else if2Offset rxOffset 2@ d+ bfo-freq
-  then 
+  then
   mode @ case
-    modeAm  of det-am  endof
-    modeUsb of det-ssb endof
-    modeLsb of det-ssb endof
-    modeFm  of det-fm  endof
+    modeAm  of amOn det-am  endof
+    modeUsb of amOn det-ssb endof
+    modeLsb of amOn det-ssb endof
+    modeFm  of fmOn b.init det-fm  endof
   endcase
 ;
-
-: mute #0 vol! det-mute ;
-: unmute vol @ vol! det-set ;
-
 : filter-set
   filter @ case
     filter3K of filter3k endof
@@ -213,11 +215,30 @@ ram
     filter8K of filter8k endof
   endcase amOffset
 ;
+ram variable muted
+: mute det-mute true muted ! ;
+: unmute 
+  muted @ if 
+    mode @ case
+      modeAm  of det-am  endof
+      modeUsb of det-ssb endof
+      modeLsb of det-ssb endof
+      modeFm  of det-fm  endof
+    endcase
+  then
+  false muted !
+;
 
 : vol-set
   newVol vol change?
-  if newVol @ dup vol ! vol! then ;
-
+  if 
+    newVol @ 0= 
+    if   mute
+    else unmute newVol @ dup vol ! 1- vol!
+    then
+  then
+ ;
+  
 : limit-freq
   modeFm? 
   if   newrxf 2@  #87.500.00. d< if #87.500.00. newrxf 2! then 
@@ -228,8 +249,9 @@ ram
 
 : rx-set
   newMode mode change?
-  if newMode @ mode ! det-set filter-set 
-     rxf@ 2dup newrxf 2! 1+ rxf!
+  if 0 vol ! 0 vol!
+     newMode @ mode ! det-set filter-set 
+     rxf@ 2dup newrxf 2! 1+ rxf! #100 ms
   then
   newrxf 2@ rxf@ d- d0= 0=
   if limit-freq newrxf 2@ rxf! rx-freq
@@ -238,7 +260,7 @@ ram
   modeFm? if fm.presel! then
 ;
 
-#00.198.00.  modeAm  RX0 2!
+#09.400.00.  modeAm  RX0 2!
 #03.699.00.  modeLsb RX0 2!
 #14.200.00.  modeUsb RX0 2!
 #103.700.00. modeFm  RX0 2!
@@ -258,7 +280,7 @@ ram
   true mode ! mode0
   filter8K amFilter !
   rx-set
-  #63 dup  vol! newVol ! 
+  #8 dup  vol! newVol ! 
   knob-init
   dogs.init
 ;
@@ -327,10 +349,11 @@ ram
   then d+ newrxf 2! 
  ;
 
-: vo+ vol @ #14 * #10 / 3 max #127 min newVol ! ;
-: vo- vol @ #10 * #14 / 0 max newVol ! ;
+: vo+ vol @ #15 * #10 / 2 max #128 min newVol ! ;
+: vo- vol @ #10 * #15 / 0 max newVol ! ;
 
-: lw.mw? rxf@ #100 um/mod nip  dup #150 #300 within  swap #530 #1700 within or ;
+: lw.mw? 
+  rxf@ #100 um/mod nip  dup #150 #300 within  swap #530 #1700 within or ;
 
 : am9khz 
   modeAm? if 
@@ -436,18 +459,19 @@ ram
 : rx
   fl- >uart true
   begin
-    if   rx-set vol-set .rx-freq .mode .bw $d emit dogs.display
-    then pause key? 
-         if   true
-              key [char] a - dup 0 #26 within
-              if cells exec + @ex else drop then
-         else false
-         then
+    if   rx-set vol-set .rx-freq .mode .bw $d emit  dogs.display
+    then
+    idle pause busy key? 
+    if   true
+         key [char] a - dup 0 #26 within
+         if cells exec + @ex else drop then
+    else false
+    then
     s.display
     knob-lores or knob-vol or knob-hires or
     knob-1 or knob-2 or
   again ;
 
 : rx-init rx-reset rx ;
-' rx-init is turnkey
+\ ' rx-init is turnkey
 

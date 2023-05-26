@@ -27,18 +27,27 @@ $f990 constant pie0
 $ffc4 constant trisc
 $ffcc constant portc
 
+$fa85 constant iocep
+$fa86 constant iocen
+$fa87 constant iocef
+$ffce constant porte
+$ffb6 constant trise
+$fa81 constant wpue
+
 \ access ram variables 18F26K42
-$c047 constant timestamp
-$c049 constant switch1
-$c04a constant switch2
-$c04b constant ioca
-$c04c constant iocc
+$c046 constant timestamp
+$c048 constant switch1
+$c049 constant switch2
+$c04a constant ioca
+$c04b constant iocc
+$c04c constant ioce
 $c04d constant knob1
 $c04e constant knob2
 $c04f constant knob3
 
 $04 as3 decf,           ( f d a -- )  
 $28 as3 incf,           ( f d a -- )
+1 constant b,
 
 : banksel 8 rshift  $3f and movlb, ;
 
@@ -51,6 +60,8 @@ $28 as3 incf,           ( f d a -- )
   [ ioccf b, clrf, ]
   [ iocaf w, b, movf,  ioca a, movwf, ]
   [ iocaf b, clrf, ]
+  [ iocef w, b, movf,  ioce a, movwf, ]
+  [ iocef b, clrf, ]
   [ iocbf w, b, movf, ]
   [ iocbf b, clrf, ]
   [ $20 andlw,  nz, if, ]
@@ -62,8 +73,8 @@ $28 as3 incf,           ( f d a -- )
   [     then, ]
       then
       \ ticks timestamp !
-  [   $10 w, a, movf,  $47 a, movwf, ]
-  [   $11 w, a, movf,  $48 a, movwf, ]
+  [   $10 w, a, movf,  $46 a, movwf, ]
+  [   $11 w, a, movf,  $47 a, movwf, ]
   [ then, ]   
   
   [ iocc w, a, movf, 8 andlw, nz, if, ]
@@ -85,7 +96,7 @@ $28 as3 incf,           ( f d a -- )
   [ ioca w, a, movf, $20 andlw, nz, if, ]
   [   switch2 f, a, incf, ]
   [ then, ]
-  [ ioca w, a, movf, $10 andlw, nz, if, ]
+  [ ioce w, a, movf, $08 andlw, nz, if, ]
   [   switch1 f, a, incf, ]
   [ then, ]
   i]
@@ -106,10 +117,14 @@ $28 as3 incf,           ( f d a -- )
   %00.0000 iocbf c!
   %10.0000 iocbp c! \ Interrupt on rising edge
 
-  %11.0000 ansela mclr
-  %11.0000 wpua c!
+  %0000 iocef c!
+  %1000 iocep c! \ Interrupt on rising edge
+  %1000 wpue c!
+  
+  %10.0000 ansela mclr
+  %10.0000 wpua c!
   %00.0000 iocaf c!
-  %11.0000 iocap c! \ Interrupt on rising edge
+  %10.0000 iocap c! \ Interrupt on rising edge
   %00.0000 iocan c!
 
   ['] knobi 0 int!

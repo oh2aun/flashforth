@@ -59,7 +59,7 @@ $20 constant SI_CLK_SRC_PLLB
 $10 constant SI_CLK_INVERT
 
 eeprom 2variable clock
-#25.002.420. clock 2!
+#25.002.388. clock 2!
 ram
 #14 value divider
 
