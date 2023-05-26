@@ -1,13 +1,12 @@
--compare
-marker -compare
+\ n=0 match; otherwise sign(n) = lexical order
 : compare ( c-addr1 u1 caddr2 u2 -- n )
-  rot over -
-  if nip
+  rot over - dup
+  if nip nip
   else
-    swap !p>r 0 swap
+    rot !p>r swap
     for
-      swap
-      c@+ pc@ p+ xor rot xor
+      drop
+      c@+ pc@ p+ -
       dup if endit then
     next
     r>p
