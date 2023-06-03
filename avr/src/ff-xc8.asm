@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          02.04.2023                                        *
+;    Date:          03.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "02.04.2023"
+#define DATE "03.06.2023"
 #define datelen 10
 
 
@@ -4474,15 +4474,6 @@ PFL:
          call   DOCREATE
         .word     OFLASH
 ;***************************************************************
-        fdw    PFL_L
-ZFL_L:
-        .byte     NFA|3
-        .ascii   "zfl"
-        .align  1
-ZFL:
-         call   DOCREATE
-        .word   0
-;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .byte     NFA|4
         .ascii   ",?0="    ; Just for see to work !
@@ -4534,7 +4525,7 @@ BRNEC:
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-        fdw     ZFL_L
+        fdw     PFL_L
 IF_L:
         .byte     NFA|IMMED|COMPILE|2
         .ascii  "if"
