@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task.txt                                        *
-\    Date:          07.06.2015                                      *
+\    Filename:      task.fs                                         *
+\    Date:          03.06.2023                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -10,16 +10,16 @@
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
 \ TASK leaves the userarea address on the stack.
-\ The basic size of a task is decimal 32 bytes.
+\ The basic size of a task is decimal 30 bytes.
 \ The return stack, the parameter stack and the tib buffer areas 
 \ are in addition to that. 
 \ These are allocated at the end (high address) of the user area.
 \ Own user varibles can be allocated from offset 2 upwards,
 \ below the return stack. Addsize must reflect any additonal
 \ user variables that are used.
-\ uareasize = 32 + rsize + tibsize + ssize + addsize
+\ uareasize = 30 + rsize + tibsize + ssize + addsize
 \
-\ The operator task is predefined.
+\ The operator task is predefined (see config file)
 \ flash decimal 72 72 72 0 task: operator
 \ 
 \ A background task with a 12 cell return stack and a 
@@ -51,16 +51,14 @@ hex ram
 ;
 
 \ Define a new task
-\ A new task must be defined in the flash memory space
 : task: ( tibsize stacksize rsize addsize -- )
   flash create 
-  up@ s0 - dup          \ Basic size     ts ss rs as bs bs
-  ram here + flash ,    \ User pointer   ts ss rs as bs
+  up@ s0 - ram allot \ Basic size     ts ss rs as
+  here flash ,       \ User pointer   ts ss rs as
   4 for
-    over , +
+    dup flash , ram allot
   next
-  cell+                 \ Task size
-  ram allot
+  1 ram allot        \ Adjust for hold pointer
 ;
 
 \ Initialise a user area and link it to the task loop
@@ -73,20 +71,20 @@ hex ram
   else
     \ Pointer to task area
     dup 2- task ! 
-    \ r0 = uarea+addsize+rsize
-    @+ swap @+ rot + up@ +         \  a ssize-addr r0
+    \ r0 = uarea + addsize + rsize + 1
+    @+ swap @+ rot + up@ + 1+      \  a ssize-addr r0
     \ Save r0
     r0 !                           \  a ssize-addr
-    \ s0 = r0 + ssize
-    @ r0 @ + s0 !                  \  a
+    \ s0 = r0 + ssize + 1
+    @ r0 @ + 1+ s0 !               \  a
     \ Store task-loop address to the return stack
     r0 @ x>r                       \  rsp
     \ Store SP to return stack
     1- dup s0 @ swap !             \ rsp
-    \ Store current rsp and space for saving TOS and P PAUSE
+    \ Store current rsp and space for saving TOS and P
     5 - rsave !                    \ 
-    \ tiu = s0 + 2
-    s0 @ 2+ tiu !
+    \ tiu = s0
+    s0 @ tiu !
     0 ul!
     0 task 2+ !        \ clear status and cr flag
     decimal            \ Set the base to decimal
