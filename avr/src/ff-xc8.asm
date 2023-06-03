@@ -57,8 +57,8 @@
 #endif
 #endif
 
-#define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
-#define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
+#define ubrr0val (FREQ_OSC/8/BAUDRATE0) - 1
+#define ubrr1val (FREQ_OSC/8/BAUDRATE1) - 1
 
 #if FREQ_OSC < 16384000
 .equ ms_value_tmr0, ((FREQ_OSC/1000/64) - 1)
@@ -112,6 +112,7 @@
 .equ NFAmask, 0xf   ; Name field length mask
 
 ; FLAGS2
+.equ fCREATE,   7   ; 1 = Create has been performed
 .equ fIDLE,     6   ; 0 = busy, 1 = idle
 .equ fLOAD,     5   ; Load measurement ready
 .equ fLOADled,  4   ; 0 = no load led, 1 = load led on
@@ -952,18 +953,18 @@ NEQUAL_L:
 NEQUAL:
         ld      xl, y+
         ld      xh, y+             ; c-addr
-        rcall   CFETCHPP           ; nfa in tos
+        movw    z, tosl
+        subi    zh, hi8(PFLASH)    ; nfa in Z
+        m_lpm   tosl
         andi    tosl, 0xf
         ld      t2, x+
         mov     t3, t2
         sub     t2, tosl
-        m_drop
         brne    NEQUAL3
 NEQUAL2:
-        rcall   CFETCHPP
+        m_lpm   tosl
         ld      t2, x+
         sub     t2, tosl
-        m_drop
         brne    NEQUAL3
         dec     t3
         brne    NEQUAL2
@@ -2993,21 +2994,25 @@ BRACFIND_L:
 findi:
 findi1:
 FIND_1: 
-        rcall   TWODUP
-        rcall   NEQUAL
-        sbiw    tosl, 0
-        breq    findi2
-        m_drop
-        sbiw    tosl, 2         ; NFATOLFA
-        rcall   FETCH_A
         m_dup
+        ldd     tosl, y+2
+        ldd     tosh, y+3
+        m_dup
+        ldd     tosl, y+2
+        ldd     tosh, y+3
+        rcall   NEQUAL          ; c-addr nfa flag
+        sbiw    tosl, 0         ; c-addr nfa flag
+        breq    findi3          ; word found
+        m_drop                  ; c-addr nfa
+        sbiw    tosl, 2         ; c-addr lfa
+        call    IFETCH          ; c-addr nfa
 findi2:
-        sbiw    tosl, 0
-        m_drop
-        brne    findi1
-        sbiw    tosl, 0  
-        breq    findi3
-        rcall   NIP
+        sbiw    tosl, 0         ; c-addr nfa
+        brne    findi1  
+        rjmp    findi4
+findi3:
+        m_drop                  ; c-adde nfa
+        rcall   NIP             ; nfa
         rcall   DUP
         rcall   NFATOCFA
         rcall   SWOP
@@ -3015,7 +3020,7 @@ findi2:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR_
-findi3: 
+findi4: 
         ret
 
 ; IMMED?    nfa -- f        fetch immediate flag
@@ -3634,6 +3639,7 @@ QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1: 
+        cbr     FLAGS2, (1<<fCREATE)
         rcall   check_sp
         rcall   CR
         rcall   TIB
@@ -3858,6 +3864,8 @@ CREATE_L:
         .ascii  "create"
         .align  1
 CREATE:
+        sbrc    FLAGS2, fCREATE
+        rcall   IFLUSH
         rcall   BL
         rcall   WORD            ; Parse a word
 
@@ -3878,6 +3886,7 @@ CREATE:
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
+        sbr     FLAGS2, (1<<fCREATE)
         rcall   IHERE
         rcall   ALIGNED
         rcall   IDP             ; Align the flash DP.
@@ -5656,6 +5665,9 @@ WARM_3:
 ;        m_out    UBRR0H, r_zero
         ldi     t0, ubrr0val
         m_out   UBRR0L, t0
+        ; Enable double speed
+        ldi     t0, (1<<U2X0)
+        m_out   UCSR0A,t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
         m_out   UCSR0B,t0
@@ -5680,6 +5692,9 @@ WARM_3:
 ;        m_out    UBRR1H, r_zero
         ldi     t0, ubrr1val
         m_out    UBRR1L, t0
+       ; Enable double speed
+        ldi     t0, (1<<U2X1)
+        m_out   UCSR1A,t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)
         m_out    UCSR1B,t0
