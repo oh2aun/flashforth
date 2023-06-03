@@ -55,10 +55,10 @@ hex ram
   flash create 
   up@ s0 - ram allot \ Basic size     ts ss rs as
   here flash ,       \ User pointer   ts ss rs as
+  1+                 \ Adjust for hold pointer
   4 for
     dup flash , ram allot
   next
-  1 ram allot        \ Adjust for hold pointer
 ;
 
 \ Initialise a user area and link it to the task loop
@@ -71,8 +71,8 @@ hex ram
   else
     \ Pointer to task area
     dup 2- task ! 
-    \ r0 = uarea + addsize + rsize + 1
-    @+ swap @+ rot + up@ + 1+      \  a ssize-addr r0
+    \ r0 = uarea + addsize + rsize
+    @+ swap @+ rot + up@ +         \  a ssize-addr r0
     \ Save r0
     r0 !                           \  a ssize-addr
     \ s0 = r0 + ssize + 1
