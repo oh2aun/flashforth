@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          10.05.2023                                        *
+;;    Date:          04.06.2023                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1609,7 +1609,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 10.05.2023        ; 10
+        STRING 04.06.2023        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2367,6 +2367,7 @@ NEQUAL:
         movwf   Tbank, A
         movf    Sminus, W, A
         movwf   Tp, A               ; String in ram
+NEQUAL_FIND:
         tblrd*+
         movf    TABLAT, W, A
         andlw   NFAmask             ; MASK NFA, IMMED, INLINE, COMPILE BITS
@@ -5419,25 +5420,32 @@ CFATONFA:
 L_BRACFIND:
         NF 3,(f)
 findi:
-findi1:
-        movlw   -3
-        movff   SWrw, plusS
-        movff   SWrw, plusS
-        movff   SWrw, plusS
-        movff   SWrw, plusS    ; c-addr nfa c-addr nfa
-        call    NEQUAL          ; c-addr nfa flag
         movf    Sminus, W, A
-        iorwf   Sminus, W, A       ; c-addr nfa
+        movwf   TBLPTRH, A
+        movf    Sminus, W, A
+        movwf   TBLPTRL, A      ; TBLPTR = nfa
+        movf    Sminus, W, A
+        movwf   Tbank, A
+        movf    Splus, W, A
+        movwf   Tp, A           ; Tptr = c-addr
+        movf    Splus, W, A
+        movf    Splus, W, A     ;  c-addr nfa
+        call    NEQUAL_FIND     ; c-addr nfa flag
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A    ; c-addr nfa
         bz      findi2
-        swapf   Sminus, W, A
+        movf    Sminus, W, A
+        movwf   TBLPTRH, A
+        movf    Sminus, W, A
+        movwf   TBLPTRL, A
         movlw   2
-        subwf   Splus, F, A
+        subwf   TBLPTRL, F, A
         movlw   0
-        subwfb  Srw, F, A          ; c-addr lfa
-        call    IFETCH          ; c-addr nfa
+        subwfb  TBLPTRH, F, A   ; c-addr lfa
+        call    pfetch0         ; c-addr nfa
         movf    Sminus, W, A
         iorwf   Splus, W, A
-        bnz     findi1
+        bnz     findi
         bra     findi3
 findi2:
         rcall   NIP
@@ -5477,7 +5485,9 @@ FIND:
         rcall   DUPZEROSENSE
         bnz     FIND1
         DROPM
-        rcall   LAST
+        rcall   LIT_A
+        dw      latest
+        rcall   FETCH_A
         rcall   findi
 FIND1:
         return
@@ -6188,6 +6198,8 @@ L_CREATE:
 CREATE:
         btfsc   BANKMASK(FLAGS2), fCREATE, A
         call    IFLUSH
+        btfsc   BANKMASK(FLAGS2), fCREATE, A
+        call    DP_TO_EEPROM
 
         rcall   BL
         rcall   WORD            ; Parse a word
