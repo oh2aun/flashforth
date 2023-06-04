@@ -198,6 +198,7 @@
 .equ UBRR0H,UBRR1H
 .equ UBRR0L,UBRR1L
 .equ URSEL_,0x00
+.equ U2X0, U2X1
 #else
 ; UART0 symbols for Atmega32
 #ifndef UCSR0A

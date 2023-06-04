@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          03.06.2023                                        *
+;    Date:          04.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "03.06.2023"
+#define DATE "04.06.2023"
 #define datelen 10
 
 
@@ -953,6 +953,7 @@ NEQUAL_L:
 NEQUAL:
         ld      xl, y+
         ld      xh, y+             ; c-addr
+NEQUAL_FETCH:
         movw    z, tosl
         subi    zh, hi8(PFLASH)    ; nfa in Z
         m_lpm   tosl
@@ -2994,24 +2995,23 @@ BRACFIND_L:
 findi:
 findi1:
 FIND_1: 
-        m_dup
-        ldd     tosl, y+2
-        ldd     tosh, y+3
-        m_dup
-        ldd     tosl, y+2
-        ldd     tosh, y+3
-        rcall   NEQUAL          ; c-addr nfa flag
+        ld      xl, y
+        ldd     xh, y+1         ; X = c-addr
+        m_dup                   ; c-addr nfa nfa
+        rcall   NEQUAL_FETCH    ; c-addr nfa flag
         sbiw    tosl, 0         ; c-addr nfa flag
-        breq    findi3          ; word found
+        breq    findi2          ; word found
         m_drop                  ; c-addr nfa
         sbiw    tosl, 2         ; c-addr lfa
-        call    IFETCH          ; c-addr nfa
-findi2:
+        movw    z, tosl
+        sub_pflash_z
+        m_lpm    tosl
+        m_lpm    tosh           ; c-addr nfa
         sbiw    tosl, 0         ; c-addr nfa
         brne    findi1  
-        rjmp    findi4
-findi3:
-        m_drop                  ; c-adde nfa
+        rjmp    findi3
+findi2:
+        rcall   DROP            ; c-adde nfa
         rcall   NIP             ; nfa
         rcall   DUP
         rcall   NFATOCFA
@@ -3020,7 +3020,7 @@ findi3:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR_
-findi4: 
+findi3: 
         ret
 
 ; IMMED?    nfa -- f        fetch immediate flag
@@ -3050,7 +3050,8 @@ FIND:
         sbiw    tosl, 0
         brne    FIND1
         rcall   DROP
-        rcall   LATEST_
+        rcall   DOLIT
+        .word   latest
         rcall   FETCH_A
         rcall   findi
 FIND1:
@@ -3866,6 +3867,8 @@ CREATE_L:
 CREATE:
         sbrc    FLAGS2, fCREATE
         rcall   IFLUSH
+        sbrc    FLAGS2, fCREATE
+        rcall   DP_TO_EEPROM
         rcall   BL
         rcall   WORD            ; Parse a word
 
@@ -4158,7 +4161,7 @@ LATEST_L:
 LATEST_:
         call    DOCREATE
         .word     dpLATEST
-
+        
 ; S0       -- a-addr      start of parameter stack
         fdw     LATEST_L
 S0_L:
