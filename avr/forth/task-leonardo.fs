@@ -1,35 +1,35 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test-arduino-uno.txt                       *
-\    Date:          01.10.2013                                      *
+\    Filename:      task-leonardo.txt                               *
+\    Date:          05.09.2020                                      *
 \    FF Version:    5.0                                             *
-\    MCU:           ArduinoUnoR3 ATmega328P                         *
+\    MCU:           Arduino Leonardo ATmega32u4                     *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
 \ FlashForth is licensed according to the GNU General Public License*
 \ *******************************************************************
-\ Demo for the ArduinoUnoR3. Blinks yellow led in background task.
+\ Demo for the Arduino Leonardo. Blinks yellow led in background task.
 single
 -task1
 marker -task1
 ram hex
-\ Registers for Atmega 328p.
-$0025 constant portb
-$0024 constant ddrb
-$0023 constant pinb
-$20 constant pin5
+\ Registers for Atmega 32u4.
+$0028 constant portc
+$0027 constant ddrc
+$0026 constant pinc
+$80 constant pin7
 ram variable delay
-: ledoff  pin5 portb mclr ;
-: ledon   pin5 portb mset ;
+: ledoff  pin7 portc mclr ;
+: ledon   pin7 portc mset ;
 
-0 20 20 0 task: task1
+0 $20 $20 0 task: task1
 : taskloop 
   $100 delay !
-  pin5 ddrb mset  \  Output 
+  pin7 ddrc mset  \  Output 
   begin 
     delay @ ms 
-    pin5 portb mtst
+    pin7 portc mtst
     if
        ledoff
     else
@@ -40,6 +40,6 @@ ram variable delay
 
 : t1go ['] taskloop task1 tinit task1 run ;
 
-' t1go is turnkey
+ ' t1go is turnkey
 warm
 

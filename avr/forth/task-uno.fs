@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test-arduino-uno.txt                       *
+\    Filename:      task-uno.fs                                     *
 \    Date:          01.10.2013                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           ArduinoUnoR3 ATmega328P                         *

@@ -1,6 +1,6 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-test-arduino-uno.txt                       *
+\    Filename:      task-mega.fs                                    *
 \    Date:          02.10.2013                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           ArduinoMega2560R3                               *
