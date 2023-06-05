@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          04.06.2023                                        *
+;;    Date:          05.06.2023                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -229,6 +229,7 @@ XOFF_   equ 0x13
 CR_     equ 0x0d
 LF_     equ 0x0a
 BS_     equ 0x08
+BEL_    equ 0x07
 
 ;; Flags for the Name Field
 COMPILE equ 0x10
@@ -1609,7 +1610,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 04.06.2023        ; 10
+        STRING 05.06.2023        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -3828,7 +3829,7 @@ ISTORERR2:
         rcall   XSQUOTE
         db      4
         STRING  AD?
-        db      0x17
+        db      BEL_
         align   2
         rcall   TYPE
         goto    STARTQ2        ; goto    ABORT
@@ -5807,7 +5808,7 @@ IEXEC:                          ; Execute a word
         call    XSQUOTE
         db      13
         STRING  COMPILE ONLY
-        db      0x17
+        db      BEL_
         align   2
         rcall   QABORT
 IEXECUTE:
@@ -6081,7 +6082,7 @@ L_QABORTQ:
         NF 7,?abort?
 QABORTQ:
         call    XSQUOTE
-        db      2,'?',0x17
+        db      2,'?',BEL_
         align   2
         goto    QABORT
 

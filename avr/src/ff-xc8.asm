@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          04.06.2023                                        *
+;    Date:          05.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "04.06.2023"
+#define DATE "05.06.2023"
 #define datelen 10
 
 
@@ -137,6 +137,7 @@
 .equ LF_,0x0a
 .equ BS_,0x08
 .equ TAB_,0x09
+.equ BEL_,0x07
 
 #ifdef USBCON
 #define USB_CODE 0x300
@@ -3378,8 +3379,9 @@ IPARSEWORD2:
         rjmp    IEXECUTE        ; Not a compile only word
         rcall   STATE_          ; Compile only word check
         rcall   XSQUOTE
-        .byte     12
+        .byte   13
         .ascii  "COMPILE ONLY"
+        .byte   BEL_
         .align  1
         rcall   QABORT
 IEXECUTE:
@@ -3694,8 +3696,9 @@ QABORTQ_L:
         .align  1
 QABORTQ:
         rcall   XSQUOTE
-        .byte     1
+        .byte   2
         .ascii  "?"
+        .byte   BEL_
         .align  1
         jmp     QABORT
 
@@ -6298,8 +6301,9 @@ ISTORERR0:
 ISTORERR:
         call   DOTS
         call    XSQUOTE
-        .byte     3
+        .byte   4
         .ascii  "AD?"
+        .byte   BEL_
         .align  1
         call    TYPE
         jmp    ABORT

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          07.04.2023                                        *
+;    Date:          05.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -93,6 +93,7 @@
 ;;; For Flow Control
 .equ XON,   0x11
 .equ XOFF,  0x13
+.equ BEL_,  0x7
 
 ;;; USER AREA sizes for the OPERATOR task
 
@@ -1194,7 +1195,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 07.04.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 05.06.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -5606,8 +5607,9 @@ INTER1:
         bra     z, INTER11  ; Interpretable word
         rcall   STATE       ; Compile only word
         rcall   XSQUOTE
-        .byte   12
+        .byte   13
         .ascii  "COMPILE ONLY"
+        .byte   BEL_
         .align  2
         rcall   QABORT
 INTER11:
@@ -6057,8 +6059,8 @@ QABORTQ_L:
         .align  2
 QABORTQ:
         rcall   XSQUOTE
-        .byte   3
-        .byte   '\?',7,7
+        .byte   2
+        .byte   '\?',BEL_
         .align  2
         bra     QABORT
 
@@ -6140,8 +6142,6 @@ IHERE:
         mov     dpFLASH, W0
         mov     W0, [++W14]     ; IHERE must not trash W12=hibyte
         return
-;        rcall   IDP
-;        goto    FETCH
 
 ; [CHAR]   --          compile character literal
         .pword  paddr(PAREN_L)+PFLASH
