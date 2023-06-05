@@ -137,7 +137,7 @@
 .equ LF_,0x0a
 .equ BS_,0x08
 .equ TAB_,0x09
-.equ BEL_,0x07
+.equ NAK_,0x15
 
 #ifdef USBCON
 #define USB_CODE 0x300
@@ -3381,7 +3381,7 @@ IPARSEWORD2:
         rcall   XSQUOTE
         .byte   13
         .ascii  "COMPILE ONLY"
-        .byte   BEL_
+        .byte   NAK_
         .align  1
         rcall   QABORT
 IEXECUTE:
@@ -3698,7 +3698,7 @@ QABORTQ:
         rcall   XSQUOTE
         .byte   2
         .ascii  "?"
-        .byte   BEL_
+        .byte   NAK_
         .align  1
         jmp     QABORT
 
@@ -6303,7 +6303,7 @@ ISTORERR:
         call    XSQUOTE
         .byte   4
         .ascii  "AD?"
-        .byte   BEL_
+        .byte   NAK_
         .align  1
         call    TYPE
         jmp    ABORT

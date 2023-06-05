@@ -88,7 +88,7 @@ def receive_thr(config, *args):
         sys.stdout.flush()
       lineLength = max(0, lineLength - 1)
       count = count + 1
-      if char == b'\x07' and uploadMode > 0:
+      if char == b'\x15' and uploadMode > 0:
         errorCount = errorCount + 1
         if errorCount > 3:
           uploadMode = 0
@@ -194,6 +194,7 @@ def main():
             uploadMode = 1
           except Exception as e:
             print(format(e))
+            continue
         if len(args) == 1 and args[0] == "#warm":
           line = '\017'           # CTRL-O
         if len(args) == 1 and args[0] == "#esc":

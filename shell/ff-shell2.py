@@ -88,7 +88,7 @@ def receive_thr(config, *args):
         sys.stdout.flush()
       lineLength = max(0, lineLength - 1)
       count = count + 1
-      if char == '\x17':
+      if char == '\x15' and uploadMode > 0:
         errorCount = errorCount + 1
         if errorCount > 3:
           uploadMode = 0
@@ -102,14 +102,9 @@ def receive_thr(config, *args):
       if config.charflowcontrol == True:
         if char == waitForChar:
           waitForChar = 'idle'
-
     except Exception as e:
-      print "Serial exception {0}".format(e)
       running = False
-
-  print "End of receive thread. Press enter to exit."
-  exit()
-
+  os.kill(os.getpid(), signal.SIGINT)
 
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth.")
@@ -196,8 +191,9 @@ def main():
           try:
             file = open(pathfile, "r")
             uploadMode = 1
-          except IOError, e:
-            print "\nFile not found: "+pathfile
+          except Exception as e:
+            print(format(e))
+            continue
         if len(args) == 1 and args[0] == "#warm":
           line = '\017'           # CTRL-O
         if len(args) == 1 and args[0] == "#esc":
@@ -238,8 +234,8 @@ def main():
               catline = catline.rstrip('\n')
               catline = catline.rstrip('\r')
               print(catline)
-          except IOError, e:
-            print "\nFile not found: " + args[1]
+          except Exception as e:
+            print(format(e))
           continue
         if len(args) >= 1 and args[0] == "#history":
           if len(args) == 2:
@@ -302,11 +298,11 @@ def main():
         sleep(float(config.newlinedelay)/1000)
 
       except Exception as e:
-        print("Write error on serial port {0}, {1}".format(config.serial_port, e))
+        print(format(config.serial_port, e))
         running = False
 
     except Exception as e:
-      print "Transmission thread exception {0}".format(e) 
+      print(format(e)) 
       running = False
 
   config.ser.close()
@@ -315,4 +311,4 @@ def main():
 try:
   sys.exit(main())
 except Exception as e:
-  print "sys.exit {0}".format(e)
+  print(format(e))

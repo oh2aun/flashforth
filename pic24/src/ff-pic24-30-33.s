@@ -93,7 +93,7 @@
 ;;; For Flow Control
 .equ XON,   0x11
 .equ XOFF,  0x13
-.equ BEL_,  0x7
+.equ NAK_,  0x15
 
 ;;; USER AREA sizes for the OPERATOR task
 
@@ -5609,7 +5609,7 @@ INTER1:
         rcall   XSQUOTE
         .byte   13
         .ascii  "COMPILE ONLY"
-        .byte   BEL_
+        .byte   NAK_
         .align  2
         rcall   QABORT
 INTER11:
@@ -6060,7 +6060,7 @@ QABORTQ_L:
 QABORTQ:
         rcall   XSQUOTE
         .byte   2
-        .byte   '\?',BEL_
+        .byte   '\?',NAK_
         .align  2
         bra     QABORT
 

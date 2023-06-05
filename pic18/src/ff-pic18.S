@@ -229,7 +229,7 @@ XOFF_   equ 0x13
 CR_     equ 0x0d
 LF_     equ 0x0a
 BS_     equ 0x08
-BEL_    equ 0x07
+NAK_    equ 0x15
 
 ;; Flags for the Name Field
 COMPILE equ 0x10
@@ -3829,7 +3829,7 @@ ISTORERR2:
         rcall   XSQUOTE
         db      4
         STRING  AD?
-        db      BEL_
+        db      NAK_
         align   2
         rcall   TYPE
         goto    STARTQ2        ; goto    ABORT
@@ -5808,7 +5808,7 @@ IEXEC:                          ; Execute a word
         call    XSQUOTE
         db      13
         STRING  COMPILE ONLY
-        db      BEL_
+        db      NAK_
         align   2
         rcall   QABORT
 IEXECUTE:
@@ -6082,7 +6082,7 @@ L_QABORTQ:
         NF 7,?abort?
 QABORTQ:
         call    XSQUOTE
-        db      2,'?',BEL_
+        db      2,'?',NAK_
         align   2
         goto    QABORT
 
