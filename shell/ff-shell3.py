@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 #
 # Upload & interpreter shell for FlashForth.
-# Written for python 2.7
+# Written for python 3
 #
 # Copyright 2022 Mikael Nordman (oh2aun@gmail.com)
 # 12.09.2019 - Updated for nonblocking I/O
 # 26.1.2021  - Change default suffix to '.fs'
+# 5.6.2023   - Better error handling
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -69,8 +70,7 @@ def serial_open(config):
   print("port:"+str(config.port)+" speed:"+str(config.rate)+" hw:"+str(config.hw)+" sw:"+str(config.sw)+" newlinedelay:"+str(config.newlinedelay)+" chardelay:"+str(config.chardelay)+" cc:"+str(config.charflowcontrol)+" nl:"+str(config.newlineflowcontrol))
   try:
     config.ser = serial.Serial(config.port, config.rate, timeout=0.5, writeTimeout=1.0, rtscts=config.hw, xonxoff=config.sw)
-  except serial.SerialException as e:
-    print("Could not open serial port '{}': {}".format(config.serial_port, e))
+  except Exception as e:
     raise e
   
 
@@ -88,11 +88,12 @@ def receive_thr(config, *args):
         sys.stdout.flush()
       lineLength = max(0, lineLength - 1)
       count = count + 1
-      if char == b'\x17':
+      if char == b'\x07' and uploadMode > 0:
         errorCount = errorCount + 1
         if errorCount > 3:
           uploadMode = 0
           errorCount = 0
+          print("\nCODE UPLOAD INTERRUPTED\n")
       if char == b'\n':
         waitForNL = 0
         count = 0
@@ -102,14 +103,9 @@ def receive_thr(config, *args):
       if config.charflowcontrol == True:
         if char == waitForChar:
           waitForChar = 'idle'
-
     except Exception as e:
-      print("Serial exception {0}".format(e))
       running = False
-
-  print("End of receive thread. Press enter to exit.")
-  exit()
-
+  os.kill(os.getpid(), signal.SIGINT)
 
 def parse_arg(config):
   parser = argparse.ArgumentParser(description="Small shell for FlashForth.")
@@ -180,7 +176,6 @@ def main():
         try:
           line = input()
         except KeyboardInterrupt:
-          print("KeyboardInterrupt")
           raise Exception
         args = line.split()
         if len(args) > 1 and args[0] == "#send":
@@ -197,8 +192,8 @@ def main():
           try:
             file = open(pathfile, "r")
             uploadMode = 1
-          except(IOError, e):
-            print("\nFile not found: "+pathfile)
+          except Exception as e:
+            print(format(e))
         if len(args) == 1 and args[0] == "#warm":
           line = '\017'           # CTRL-O
         if len(args) == 1 and args[0] == "#esc":
@@ -239,8 +234,8 @@ def main():
               catline = catline.rstrip('\n')
               catline = catline.rstrip('\r')
               print(catline)
-          except(IOError, e):
-            print("\nFile not found: " + args[1])
+          except Exception as e:
+            print(format(e))
           continue
         if len(args) >= 1 and args[0] == "#history":
           if len(args) == 2:
@@ -303,18 +298,18 @@ def main():
         sleep(float(config.newlinedelay)/1000)
 
       except Exception as e:
-        print("Write error on serial port {0}, {1}".format(config.serial_port, e))
+        print(format(config.serial_port, e))
         running = False
 
     except Exception as e:
-      print("Transmission thread exception {0}".format(e)) 
+      print(format(e)) 
       running = False
 
   config.ser.close()
-  print("Exiting ff-shell.py, goodbye...")
+  print("Exiting ff-shell, goodbye...")
 
 try:
   sys.exit(main())
 except Exception as e:
-  print("moi")
-#  print("sys.exit {0}".format(e))
+  print(format(e))
+  
