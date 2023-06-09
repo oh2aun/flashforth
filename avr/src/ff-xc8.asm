@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          05.06.2023                                        *
+;    Date:          09.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "05.06.2023"
+#define DATE "09.06.2023"
 #define datelen 10
 
 
@@ -1075,10 +1075,7 @@ FCY_L:
         .word     FREQ_OSC / 1000
 
 ;;; Check parameter stack pointer
-        .byte     NFA|3
-        .ascii  "sp?"
-        .align  1
-check_sp:
+SP_Q:
         rcall   SPFETCH
         call    R0_
         rcall   FETCH_A
@@ -1092,6 +1089,29 @@ check_sp:
         .align  1
         rcall   QABORT
         ret
+        
+; check sanity if RAM DP
+DP_Q:
+        rcall   DOLIT
+        .word   dp_ram
+        call    FETCH
+        rcall   DOLIT
+        .word   dpdata
+        rcall   DOLIT
+        .word   (RAM_HI-32)
+        call    WITHIN
+        call    ZEROSENSE
+        brne    DP_Q_RET
+        call    EMPTY
+        rcall   XSQUOTE
+        .byte   10
+        .ascii  "\nDP? EMPTY"
+        .align  1
+        rcall   TYPE
+        jmp     WARM_0
+DP_Q_RET:
+        ret
+        
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         fdw     FCY_L
@@ -3643,7 +3663,8 @@ QUIT0:
         rcall   DP_TO_RAM
 QUIT1: 
         cbr     FLAGS2, (1<<fCREATE)
-        rcall   check_sp
+        rcall   DP_Q
+        rcall   SP_Q
         rcall   CR
         rcall   TIB
         rcall   DUP
@@ -5587,6 +5608,7 @@ WARM_2:
         rcall   DOLIT
         .word   warmlitsize
         call    CMOVE
+        
 ; init cold data to eeprom
         rcall   DOLIT
         .word   dp_start
@@ -5594,7 +5616,7 @@ WARM_2:
         rcall   TRUE_
         call    EQUAL
         call    ZEROSENSE
-        breq    WARM_3  
+        breq    WARM_3
         rcall   EMPTY
 WARM_3:
 ; Start watchdog timer
@@ -5737,19 +5759,19 @@ WARM_3:
         call    ZEROSENSE
         breq    STARTQ2
         call    XSQUOTE
-        .byte     3
+        .byte   3
         .ascii  "ESC"
         .align  1
         call    TYPE
         rcall   DOLIT
-        .word     TURNKEY_DELAY
-        call   MS
+        .word   TURNKEY_DELAY
+        call    MS
         call    KEYQ
         call    ZEROSENSE
         breq    STARTQ1
         call    KEY
         rcall   DOLIT
-        .word     0x1b
+        .word   0x1b
         call    EQUAL
         call    ZEROSENSE
         brne    STARTQ2
