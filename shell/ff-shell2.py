@@ -46,7 +46,7 @@ cmd_dictionary = {
   "#help filter   ": "Print filtered help text",
   "#help          ": "Print help text for all words",
   "#warm          ": "Send ctrl-o to FF",
-  "#esc           ": "Make a warm start and disable the turnkey",
+  "##             ": "Send ESC(0x27) to disable the turnkey",
   "#send filename {startstring {stopstring}}" : "Send a file optonally starting at line with startstring and optionally stop at line with stopstring", 
   "#pwd           ": "Print working directory",
   "#ls {path}     ": "List files in working directory or in path",
@@ -196,7 +196,7 @@ def main():
             continue
         if len(args) == 1 and args[0] == "#warm":
           line = '\017'           # CTRL-O
-        if len(args) == 1 and args[0] == "#esc":
+        if len(args) == 1 and args[0] == "##":
           line = '\033'           # Escape
         if len(args) == 2 and args[0] == "#help":
           filter = args[1]
