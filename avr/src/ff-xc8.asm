@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          09.06.2023                                        *
+;    Date:          10.06.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "09.06.2023"
+#define DATE "10.06.2023"
 #define datelen 10
 
 
@@ -5882,13 +5882,14 @@ ISTORE:
         call    IUPDATEBUF
 ISTORE1:
         m_drop
-        ldi     xl, lo8(ibuf)
+        lds     xl, iaddrl
+        sbrc    xl, 0
+        rjmp    ISTORERR0
+        andi    xl, (PAGESIZEB-1)
+#ifdef USBCON
+        subi    xl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
         ldi     xh, hi8(ibuf)
-        lds     t0, iaddrl
-        sbrc    t0, 0
-        jmp     ISTORERR0
-        andi    t0, (PAGESIZEB-1)
-        add     xl, t0
         st      x+, tosl
         st      x+, tosh
         rjmp    ICSTORE_POP
@@ -5955,16 +5956,13 @@ IFETCH:
         andi    t0, (~(PAGESIZEB-1)&0xff)
         cp      t0, ibasel
         brne    IIFETCH
-        push    xl
-        push    xh
-        ldi     xl, lo8(ibuf)
-        ldi     xh, hi8(ibuf)
         andi    zl, (PAGESIZEB-1)
-        add     xl, zl
-        ld      tosl, x+
-        ld      tosh, x+
-        pop     xh
-        pop     xl
+#ifdef USBCON
+        subi    zl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
+        ldi     zh, hi8(ibuf)
+        ld      tosl, z+
+        ld      tosh, z+
         ret
 IIFETCH:
         m_lpm    tosl     ; Fetch from Flash directly
@@ -6054,11 +6052,12 @@ ECFETCH:
 ICSTORE:
         call    IUPDATEBUF
         m_drop
-        ldi     xl, lo8(ibuf)
+        lds     xl, iaddrl
+        andi    xl, (PAGESIZEB-1)
+#ifdef USBCON
+        subi    xl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
         ldi     xh, hi8(ibuf)
-        lds     t0, iaddrl
-        andi    t0, (PAGESIZEB-1)
-        add     xl, t0
         st      x+, tosl
 ICSTORE_POP:
         sbr     FLAGS1, (1<<idirty)
