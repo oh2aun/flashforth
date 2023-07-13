@@ -309,6 +309,13 @@ ram variable muted
 : .mode mode @ [char] A + emit ;
 
 : .bw  \ A = 3 KHz B=10 KHz C=WFM D=5KHz
+  filter @ case
+    filter3K of [char] A endof
+    filter4K of [char] D endof
+    filter8K of [char] B endof
+    filterFM of [char] C endof
+  endcase emit
+;
   filter @ [char] @ + emit ;
 
 : s.get ( -- c ) $fff adres @ - 8 rshift 2- 0 max ;
@@ -459,15 +466,17 @@ ram
 : rx
   fl- >uart true
   begin
-    if   rx-set vol-set .rx-freq .mode .bw $d emit  dogs.display
-    then
+    case
+      1     of rx-set vol-set .rx-freq .mode .bw $d emit endof
+      true  of rx-set vol-set dogs.display endof
+      false of s.display endof
+    endcase
     idle pause busy key? 
-    if   true
+    if   1
          key [char] a - dup 0 #26 within
          if cells exec + @ex else drop then
     else false
     then
-    s.display
     knob-lores or knob-vol or knob-hires or
     knob-1 or knob-2 or
   again ;

@@ -6,7 +6,7 @@ marker -knobi
 $fa45 constant iocap
 $fa46 constant iocan
 $fa47 constant iocaf
-$fa50 constant ansela
+$fa40 constant ansela
 $ffc2 constant trisa
 $ffca constant porta
 $fa41 constant wpua
@@ -21,6 +21,7 @@ $ffcb constant portb
 $fa65 constant ioccp
 $fa66 constant ioccn
 $fa67 constant ioccf
+$fa60 constant anselc
 $f9a0 constant pir0
 $f990 constant pie0
     7 constant iocif

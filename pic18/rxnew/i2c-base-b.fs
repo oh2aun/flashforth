@@ -10,7 +10,7 @@
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
 \ For PIC18F26K42 and other Kxx and Qxx chips with new I2C peripheral
-
+fl+
 -i2c-base
 marker -i2c-base
 hex ram
@@ -41,6 +41,9 @@ fd6e constant i2c1adb1
 
 fd79 constant i2c1pir
 
+f9dd constant oscen
+f9df constant oscfrq
+
 \ i2c1con1 bits
 6 constant ackdt
 7 constant ackcnt
@@ -59,15 +62,18 @@ ram
   %010.100 i2c1sdapps c!  \ RC4 SDA
   %010.101 i2c1sclpps c!  \ RC5 SCL
   pps-
-  $30 anselc mclr     \ digital PC5 PC4
+  $30 anselc mclr    \ digital PC5 PC4
   $30 odconc mset    \ open drain PC5 PC4
   $30 latc mclr
   $30 trisc mclr     \ output PC5 PC4
   $30 slrconc mset
   $04 i2c1con0 c!
   $80 i2c1con1 c!
-  $00 i2c1con2 c!    \ fast mode, adb 
-  $03 i2c1clk  c!    \ MFINTOSC 500 KHz
+  $20 i2c1con2 c!    \ fast mode, adb 
+\  $03 i2c1clk  c!    \ MFINTOSC 500 KHz
+  $00 oscfrq c!      \ 1 MHz HFINTOSC
+  $40 oscen c!
+  $02 i2c1clk  c!    \ HFINTOSC
   $80 i2c1con0 mset  \ Master mode, 7-bit address 
 ;
 
