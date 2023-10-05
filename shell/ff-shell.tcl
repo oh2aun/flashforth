@@ -91,7 +91,8 @@
 #   Put configuration variables (and their default values) into namespaces.
 # 2019-04-25
 #   Introduce combobox entries to give hints for speed and handshake.
-#   
+# 2023-10-05  
+#   Mikael N. High speed for sending files.
 #
 # Licence
 # -------
@@ -337,7 +338,7 @@ namespace eval smartSend {
     variable waitingForCR false
     variable timerForCR {}
     variable timeOutForCR false
-    variable pauseBetweenChar 1; # milliseconds
+    variable pauseBetweenChar 0; # milliseconds
 
     proc resetFlags {} {
         variable waitingForCR
@@ -365,11 +366,11 @@ namespace eval smartSend {
             resetFlags
             return -code error "sendLine failed on entry: Timeout waiting for CR."
         }
-        set retries 20
+        set retries 2000
         while {$waitingForCR && ($retries > 0)} {
             # puts "sendLine waiting for CR, retries remaining: $retries"
             update
-            after 100
+            after 1
             incr retries -1
         }
         if {$waitingForCR} {
