@@ -316,14 +316,16 @@ ram variable muted
     filterFM of [char] C endof
   endcase emit
 ;
-  filter @ [char] @ + emit ;
 
 : s.get ( -- c ) $fff adres @ - 8 rshift 2- 0 max ;
-
+: s.line  s" ---------------" ;
+: s.space s"                " ;
 : s.meter ( n -- ) \ 0-15
   15 over - swap
-  for $2d emit next
-  spaces
+  s.line drop swap dogs.type
+  s.space drop swap dogs.type
+\  for $2d emit next
+\  spaces
 ;
 : >dogs ['] dogs.data 'emit ! ;
 : >uart ['] tx1 'emit ! ;
@@ -345,8 +347,8 @@ ram variable muted
 ;
 : dogs.display 
   >dogs 
-  3 0 dogs.cursor dogs.mode .rx-freq 3 spaces
-  3 1 dogs.cursor dogs.bw 8 spaces
+  3 0 dogs.cursor dogs.mode .rx-freq ."    "
+  3 1 dogs.cursor dogs.bw ."         "
   >uart ;
 
 : rd ( n -- ) s>d 

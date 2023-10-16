@@ -35,6 +35,14 @@ $60 constant si5351
   si5351 i2c.write i2c.c!
   si5351 i2c.read i2c.c@.nack ;
 
+: si5351.pll! ( n c n c reg -- )
+  si5351 i2c.write
+  7 i2c1cnt c! i2c1txb c! i2c.start 
+  i2c.txbe i2c1txb c! i2c.txbe dup 8 rshift i2c1txb c! i2c.txbe i2c1txb c!
+  i2c.txbe i2c1txb c! i2c.txbe dup 8 rshift i2c1txb c! i2c.txbe i2c1txb c!
+  i2c.stop 
+;
+  
 : si5351.dump ( n -- )
   0 swap
   for
@@ -66,21 +74,17 @@ ram
 variable mult
 2variable num
 #1048575. 2constant denom
-2variable P1
-2variable P2
 
 :  pll! ( reg_base -- )
    >r
-   num 2@ #128 ud* d>q denom uq/mod
-   #128 mult @ um* d+ #512. d- P1 2! 2drop 
+   num 2@ #128 ud* 2dup 2dup >r >r
+   d>q denom uq/mod rot drop rot drop
+   denom uq* 2drop d- \ P2
+   $f0 or             \ P3.19:16
+   r> r> d>q denom uq/mod rot drop rot drop
+   #128 mult @ um* d+ #512. d- \ P1
 
-   num 2@ #128 ud*
-   num 2@ #128 ud* d>q denom uq/mod denom uq* 2drop d- P2 2! 2drop
-
-   $ffff r@ si5351.!
-   P1 2@ r@ 2 + si5351.c!!
-   P2 2@ $f0 or r@ 5 + si5351.c!!
-   rdrop
+   r> 2+ si5351.pll!
 ;
 
 : msynt! ( reg_base -- ) \ b = 1, c = $ffffff, a = divider
@@ -88,8 +92,7 @@ variable mult
   1 r@ si5351.!  \ P3(15:0)
   0 r@ 2 + si5351.c!  \ P1(17:16)
   #128 divider * #512 - r@ 3 + si5351.! \ P1(15:0)
-  0. r@ 5 + si5351.c!! \ P3(19:16)P2(19:0)
-  rdrop
+  0. r> 5 + si5351.c!! \ P3(19:16)P2(19:0)
 ;
 
 \ Use CLK2 and CLK1 with 180 deg phase shift as push pull
@@ -102,6 +105,7 @@ variable mult
   $5d SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Inverted output
   $4d SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Normal output
   $cc SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c! \ Power down
+  $ffff SI_SYNTH_PLL_A si5351.!
   $a0 SI_PLL_RESET si5351.c!
 ;
 
@@ -120,6 +124,7 @@ variable mult
   $dd SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Power down
   $cd SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Power down
   $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c!
+  $ffff SI_SYNTH_PLL_B si5351.!
   $a0 SI_PLL_RESET si5351.c!
 ;
 : b.f ( ud -- )
