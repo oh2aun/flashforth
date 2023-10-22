@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      si5351-c.fs                                         *
-\    Date:          06.10.2022                                        *
+\    Filename:      si5351-d.fs                                       *
+\    Date:          22.10.2023                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -32,8 +32,7 @@ $60 constant si5351
   si5351 i2c.write i2c.c!c!!  ; 
 
 : si5351.c@ ( reg -- c )
-  si5351 i2c.write i2c.c!
-  si5351 i2c.read i2c.c@.nack ;
+  si5351 i2c.rc@ ;
 
 : si5351.pll! ( n c n c reg -- )
   si5351 i2c.write
@@ -90,7 +89,7 @@ variable mult
 : msynt! ( reg_base -- ) \ b = 1, c = $ffffff, a = divider
   >r
   1 r@ si5351.!  \ P3(15:0)
-  0 r@ 2 + si5351.c!  \ P1(17:16)
+  0 r@ 2+ si5351.c!  \ P1(17:16)
   #128 divider * #512 - r@ 3 + si5351.! \ P1(15:0)
   0. r> 5 + si5351.c!! \ P3(19:16)P2(19:0)
 ;
