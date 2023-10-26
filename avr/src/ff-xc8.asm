@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          10.06.2023                                        *
+;    Date:          27.10.2023                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "10.06.2023"
+#define DATE "27.10.2023"
 #define datelen 10
 
 
@@ -6427,6 +6427,7 @@ umslashmod0:
         set  ; Set T flag
         jmp  WARM_0
 umslashmodstart:
+        push t3
         movw t4, tosl
 
         ld t3, Y+
@@ -6471,6 +6472,7 @@ umslashmod3:
         st -Y,t6
         st -Y,t3
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
+        pop t3
         ret
 
 ISTORERR3:
