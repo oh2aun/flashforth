@@ -7,6 +7,7 @@
 # 12.09.2019 - Updated for nonblocking I/O
 # 26.1.2021  - Change default suffix to '.fs'
 # 5.6.2023   - Better error handling
+# 27.10.2023 - #sendm Send many files
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -42,6 +43,9 @@ uploadMode = 0
 waitForChar = 'idle'
 errorCount = 0
 lineLength = 0
+openfiles = []
+sendfileCount = 0
+sendfileIndex = 0
 
 cmd_dictionary = {
   "#help filter   ": "Print filtered help text",
@@ -49,6 +53,7 @@ cmd_dictionary = {
   "#warm          ": "Send ctrl-o to FF",
   "##             ": "Send ESC(0x27) to disable the turnkey",
   "#send filename {startstring {stopstring}}" : "Send a file optonally starting at line with startstring and optionally stop at line with stopstring", 
+  "#sendm file1..fileN" : "Send multiple files",
   "#pwd           ": "Print working directory",
   "#ls {path}     ": "List files in working directory or in path",
   "#cd path       ": "Change working directory",
@@ -169,9 +174,13 @@ def main():
   waitForNL = 0
   uploadMode = 0
   errorCount = 0
+  openfiles = []
   while running:
     try:
       if uploadMode == 0:
+        for openfile in openfiles:
+          openfile.close()
+        openfiles = []
         errorCount = 0
         try:
           line = input()
@@ -195,6 +204,21 @@ def main():
           except Exception as e:
             print(format(e))
             continue
+        if len(args) > 1 and args[0] == "#sendm":
+           uploadMode = 3
+           sendfiles = args[-(len(args)-1):]
+           for openfile in sendfiles:
+             try:
+               if openfile.endswith(".fs") == False:
+                 openfile = openfile + ".fs"
+               openfiles.append(open(openfile, "r"))
+             except Exception as e:
+               print(format(e))
+               uploadMode = 0
+               continue
+           sendfileCount = len(openfiles)
+           sendfileIndex = 0;
+           continue
         if len(args) == 1 and args[0] == "#warm":
           line = '\017'           # CTRL-O
         if len(args) == 1 and args[0] == "##":
@@ -251,7 +275,7 @@ def main():
               if filter in historyline:
                 print(historyline)
           continue
-      else:                       # Send file
+      elif uploadMode < 3:                       # Send file
         while waitForNL > 0:
           sleep(0.001)
           waitForNL = waitForNL - 1
@@ -281,6 +305,26 @@ def main():
 
         if uploadMode < 2:
           continue
+      elif uploadMode == 3:                     # send multiple files
+        while waitForNL > 0:
+          sleep(0.001)
+          waitForNL = waitForNL - 1
+          continue
+        line = openfiles[sendfileIndex].readline()
+        if line.startswith("\\ "):
+          continue
+        if line == "":
+          waitForNL = 0
+          errorCount = 0
+          sendfileIndex += 1
+          if sendfileIndex == sendfileCount:
+            uploadMode = 0
+          continue
+        else:
+          line = line.rstrip('\n')
+          line = line.rstrip('\r')
+      else:
+        continue
       try:
         if config.newlineflowcontrol:
           waitForNL = 2000
