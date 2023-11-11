@@ -1,14 +1,15 @@
-;;; FlashForth device configuration for the dsPIC24FJnnnGA705 family
+;;; FlashForth device configuration for the PIC24FJnnnGA705
+;;; and for the PIC24FJ64GU205
 
 .equ FREQ_OSC, 32000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 .equ USB_CDC, 1
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1        ; 1 or 2
+.equ OPERATOR_UART, 3        ; 1 or 2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ BAUDRATE1, 38400			  ; Serial baudrate UART1. OPERATOR UART -> mandatory
 .equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -101,7 +102,7 @@
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
-.equ CTRL_O_WARM_RESET, 1
+.equ CTRL_O_WARM_RESET, 0
 
 ; Method 1 updates flash and eeprom after each ok prompt.
 ; Method 2 updates flash and eeprom after no flash or eeprom
@@ -159,6 +160,7 @@
 
 
 ;;; Different flash write logic for E devices than HJ or FJ devices
+;;; Double word instead of single word write.
 .equ PIC2433E, 1
 
 ; Amount of interrupt vectors
