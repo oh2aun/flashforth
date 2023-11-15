@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          05.06.2023                                        *
+;    Date:          15.11.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1195,7 +1195,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 05.06.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 15.11.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1649,7 +1649,7 @@ AS_COMMA:
         cp      W2, W12
         bra     nz, AS_COMMA1  ; mov W0, [++W14]  ???
         sub     W14, #2, W14
-        rcall   IDPMINUS
+        dec2    dpFLASH    ; Forget the latest compiled one cell instruction
         mov     #0, W12
         mov     #0, W10
         bra     AS_COMMA2        
@@ -6400,14 +6400,12 @@ COMMAZEROSENSE_L:
         .ascii  ",?0="
         .align  2
 COMMAZEROSENSE:
-        btst    iflags, #idup
-        bra     nz, COMMAZEROSENSE1
-        mlit    handle(ZEROSENSE)+PFLASH
-        bra     COMMAZEROSENSE2
-COMMAZEROSENSE1:
-        rcall   IDPMINUS
-        mlit    handle(DUPZEROSENSE)+PFLASH
-COMMAZEROSENSE2:
+        btsc    iflags, #idup
+        dec2    dpFLASH    ; Forget the latest compiled one cell instruction
+        mov     #handle(ZEROSENSE)+PFLASH, W0
+        btsc    iflags, #idup
+        mov     #handle(DUPZEROSENSE)+PFLASH, W0
+        mov     W0, [++W14]
         bclr    iflags, #idup
         bra     INLINE_0
 ZEROSENSE:
@@ -6571,14 +6569,6 @@ UNTILC:
         dec2    [W14], [W14]
         goto    BRA_
 
-;;; Forget the latest compiled one cell instruction
-        .byte   NFA|1
-        .ascii  " "
-        .align  2
-IDPMINUS:
-        mlit    -2
-        goto     IALLOT
-
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
         .pword  paddr(UNTILC_L)+PFLASH
@@ -6588,7 +6578,7 @@ IF_L:
         .align  2
 IF_:
         btsc    iflags, #izeroeq
-        rcall   IDPMINUS
+        dec2    dpFLASH    ; Forget the latest compiled one cell instruction
         rcall   COMMAZEROSENSE
         rcall   ZC
         btss    iflags, #izeroeq
@@ -6633,7 +6623,7 @@ UNTIL_L:
         .align  2
 UNTIL:
         btsc    iflags, #izeroeq
-        rcall   IDPMINUS
+        dec2    dpFLASH    ; Forget the latest compiled one cell instruction
         rcall   COMMAZEROSENSE
         rcall   ZC
         btss    iflags, #izeroeq
