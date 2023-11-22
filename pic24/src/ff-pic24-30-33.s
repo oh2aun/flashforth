@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          15.11.2023                                        *
+;    Date:          22.11.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -203,7 +203,7 @@ ms_count:   .space 2
 itmo:          .space 2
 .endif
         
-dpSTART:    .space 2
+dpTURNKEY:   .space 2
 .ifdef PEEPROM
 dpRAM:      .space 2
 dpEEPROM:   .space 2
@@ -215,6 +215,7 @@ dpSAVE:     .space 10
 dpRAM:      .space 2
 dpLATEST:   .space 2
 dpFLASH:    .space 2 ; DP's and LATEST in RAM
+    
 dpSAVE:     .space 8
 .equ MARKER_LENGTH, 4
 .endif
@@ -252,11 +253,11 @@ STARTV: .word      0
 DPD:    .word      dpdata
 DPE:    .word      dpeeprom
 DPC:    .word      handle(KERNEL_END)+PFLASH
-LW:     .word      handle(lastword)+PFLASH
+DLW:     .word      handle(lastword)+PFLASH
 .equ coldlitsize, 5
 .else
 DPD:    .word      dpdata
-LW:     .word      handle(lastword)+PFLASH
+DLW:     .word      handle(lastword)+PFLASH
 DPC:    .word      handle(KERNEL_END)+PFLASH
 .equ coldlitsize, 4
 .endif
@@ -618,7 +619,9 @@ wbti_init:
 .endif
         mov.w   ibasel, W2
         mov.w   #FLASH_ROWS, W4
+.ifndecl PIC2433E
         tblwtl  W2, [W2]          ; Set page address
+.endif
         return
 
 write_buffer_to_imem:
@@ -650,13 +653,9 @@ write_buffer_to_imem_again:
 .ifdecl PIC2433E
         mov     #0xfa, W5
         mov     W5, TBLPAG
-        bra     wbtil31
 .endif
 wbtil3:
 .ifdecl PIC2433E
-        inc2    NVMADR
-        inc2    NVMADR
-wbtil31:
         clr     W2
 .endif
         mov.w   #FLASH_ROWSIZE, W3
@@ -666,6 +665,12 @@ wbtil4:
         dec     W3, W3
         bra     nz, wbtil4
         rcall   EWENABLE0   ; Now the flash row has been written.
+.ifdecl PIC2433E
+        mov     W0, W2
+        mov     #FLASH_ROWSIZE*2, W0
+        add     NVMADR
+        mov     W2, W0
+.endif        
         dec     W4, W4
         bra     nz, wbtil3  ; write more rows for big flashblocks
 
@@ -999,9 +1004,6 @@ PLL_NOT_IN_USE:
 .endif
 .endif
 .endif
-.if USB_CDC == 1
-        rcall   USB_ON
-.endif
 ; Enable T1 interrupt
         bset    IEC0, #T1IE
 
@@ -1133,10 +1135,6 @@ WARM_ABAUD2:
         mlit    warmlitsize
         rcall   WMOVE
 
-                ; Wait 10 ms for UARTs to reset
-        mlit    10
-        rcall   MS
-
 ; Check if EEPROM INIT is needed
 .ifdef PEEPROM
         mlit    dp_start
@@ -1146,9 +1144,14 @@ WARM_ABAUD2:
 .endif
         inc     [W14--], W0
         bra     nz, WARM_WARM
+        mlit    100
+        rcall   MS
         rcall   EMPTY
 WARM_WARM:
         rcall   DP_TO_RAM
+.if USB_CDC == 1
+        rcall   USB_ON
+.endif
 
 .if WRITE_METHOD == 2
         rcall   DP_PUSH
@@ -1195,7 +1198,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 15.11.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 22.11.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1243,7 +1246,7 @@ STARTQ2:
         .align 2
 TURNKEY:
         rcall   VALUE_DOES
-        .word   dpSTART
+        .word   dpTURNKEY
 
 ; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
         .pword   paddr(9b)+PFLASH
@@ -1920,10 +1923,11 @@ ECFETCH:
         return
 .else
 ;;; Only for TURNKEY, DP_FLASH, DP_RAM, LATEST !
-;;;
+;;; TURNKEY(lo) and DP_RAM(hi) stored in the same block as a pair
+;;; DP_FLASH(lo) and LATEST(hi) stored in the same block as a pair
 ;;; Read the last non-FFFF word from one flash block
 ;;; No size check, just finds the last non-FF entry.
-; ( blockaddr -- data )
+; ( blockaddr -- ud )
 ;        dw      link
 ;link    set     $
 ;        db      NFA|3,"ee@"
@@ -1934,14 +1938,13 @@ EEREAD:
         mov     #DPS_PAGE, W1
         mov     W1, TBLPAG
 EEREAD1:
+        tblrdl  [--W0], W2
         tblrdl  [--W0], W1
-.ifdef FLASH_WRITE_DOUBLE
-        tblrdl  [--W0], W1  ; The first double word is used
-.endif
         inc     W1, W1
         bra     z, EEREAD1
         dec     W1, W1
-        mov     W1, [W14]
+        mov     W1, [W14++]
+        mov     W2, [W14]
         clr     TBLPAG
         return
 EECHECK:
@@ -1957,8 +1960,8 @@ EEINIT:
         rcall   EEERASE
         bra     EEWRITE
 
-;;; Write of word to first free (lowword=FFFF) location in a flash block
-;;; ( data blockaddr -- )
+;;; Write of word to first free (lowword=FFFF) double word in a flash block
+;;; ( ud blockaddr -- )
 ;        dw      link
 ;link    set     $
 ;        db      NFA|3,"ee!"
@@ -1970,38 +1973,41 @@ EEWRITE:
         mov     W1, NVMADRU
 .endif
         mov     [W14], W0
-.ifdef FLASH_WRITE_DOUBLE
-        mov     #FBUFSIZE/2/2, W2
-.else
-        mov     #FBUFSIZE/2, W2
-.endif
+        mov     #FBUFSIZE/4, W2
 EEWRITE1:
         tblrdl  [W0++], W1
         inc     W1, W1
-        bra     nz, EEWRITE2
+        bra     nz, EEWRITE2 ; Try next double word
         dec2    W0, W0
         dec2    W14, W14
-        bra     EEWRITE3
+        bra     EEWRITE3     ; Found free entry
 EEWRITE2:
-.ifdef FLASH_WRITE_DOUBLE
         tblrdl  [W0++], W1   ; discard second word
-.endif
         dec     W2, W2
         bra     nz, EEWRITE1
         rcall   EEERASE        ; ( blockstart -- blockstart)
         mov     [W14--], W0
 EEWRITE3:
-        mov     #FLASH_WRITE_SINGLE, W1
+        mov     #FLASH_WRITE_SINGLE, W1  ; Write new entry
         mov     W1, NVMCON
 .ifdecl PIC2433E
         mov     W0, NVMADR
         mov     #0xfa, W1
         mov     W1, TBLPAG
         clr     W0
-.endif
         mov     [W14--], W3
+        mov     [W14--], W2
+        tblwtl  W2, [W0++]
         tblwtl  W3, [W0]
         rcall   EWENABLE0
+.else
+        mov     [W14--], W1
+        mov     [W14--], W2
+        tblwtl  W2, [W0++]
+        rcall   EWENABLE0
+        tblwtl  W1, [W0]
+        rcall   EWENABLE0
+.endif
         clr     TBLPAG
 EEVERIFY:
         ; TODO
@@ -5800,44 +5806,30 @@ DOTSTATUS:
 FTURNKEY_A:
         mov     #handle(DPS_BASE), W0
         bra     DPS_ALIGN
-FRAM_A:
-        mov     #handle(DPS_BASE) + FBUFSIZE, W0
-        bra     DPS_ALIGN
-FLATEST_A:
-        mov     #handle(DPS_BASE) + FBUFSIZE*2, W0
-        bra     DPS_ALIGN
 FFLASH_A:
-        mov     #handle(DPS_BASE) + FBUFSIZE*3, W0
+        mov     #handle(DPS_BASE) + FBUFSIZE, W0
 DPS_ALIGN:
         mov     W0, [++W14]
         return
 
 ; dp0 ( -- ) Initialize turnkey, DPs and latest in flash
-;        dw      link
-;link    set     $
-;        db      NFA|3,"dp0"
 DP_COLD:
         mlit    handle(STARTV)+PFLASH
-        rcall   FETCHPP
+        rcall   FETCH
+        mlit    handle(DPD)+PFLASH
+        rcall   FETCH
         rcall   FTURNKEY_A
         rcall   EEINIT
 
-        rcall   FETCHPP
-        rcall   FRAM_A
-        rcall   EEINIT
-        
-        rcall   FETCHPP
-        rcall   FLATEST_A
-        rcall   EEINIT
-
+        mlit    handle(DPC)+PFLASH
+        rcall   FETCH
+        mlit    handle(DLW)+PFLASH
         rcall   FETCH
         rcall   FFLASH_A
         bra     EEINIT
 .endif
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
-;        dw      link
-; link    set     $
         .pword  paddr(DOTSTATUS_L)+PFLASH
 DP_TO_RAM_L:
         .byte   NFA|3
@@ -5846,34 +5838,28 @@ DP_TO_RAM_L:
 DP_TO_RAM:
 .ifdef PEEPROM
         mlit    dp_start
-        mlit    dpSTART
+        mlit    dpTURNKEY
         mlit    5
         goto    WMOVE
 .else
-        push    W13             ; P to return stack
-        mov     #dpSTART, W13   ; dst to P
         rcall   FTURNKEY_A
-        mov     #4, W0
-        push    W0
-DP_TO_RAM1:
-        rcall   DUP
         rcall   EEREAD
-        rcall   PSTORE
-        rcall   PPLUS2
-        rcall   PLUSPAGE
-        dec     [--W15], [W15++] ; XNEXT
-        bra     nz, DP_TO_RAM1
-DP_TO_RAM2:
-        pop     W0               ; UNNEXT
-        pop     W13
-        goto    DROP
-
-PLUSPAGE:
-        mlit    FBUFSIZE
-        bra     PLUS
+        mov     [W14--], W0
+        mov     W0, dpRAM
+        mov     [W14--], W0
+        mov     W0, dpTURNKEY
+        rcall   FFLASH_A
+        rcall   EEREAD
+        mov     [W14--], W0
+        mov     W0, dpLATEST
+        mov     [W14--], W0
+        mov     W0, dpFLASH
+        return
 .endif
 
-; >dp ( -- ) Copy only changed ini, dp's and latest from ram to eeprom
+; >dp ( -- ) Copy only changed turnkey, dp's and latest from ram to eeprom
+; TURNKEY(lo) and DP_RAM(hi) stored in the same block as a pair
+; DP_FLASH(lo) and LATEST(hi) stored in the same block as a pair
         .pword  paddr(DP_TO_RAM_L)+PFLASH
 DP_TO_EEPROM_L:
         .byte   NFA|3
@@ -5886,7 +5872,7 @@ DP_TO_EEPROM:
 .ifdef  PEEPROM
         push    W13
         mov     #dp_start, W13
-        mlit    dpSTART
+        mlit    dpTURNKEY
         mov     #5, W0
         push    W0
         bra     DP_TO_EEPROM_3
@@ -5917,35 +5903,47 @@ DP_TO_EEPROM_3:
         sub     W14, #2, W14
         return
 .else
-        push    W13             ; P to return stack
-        mov     #dpSTART, W13   ; src in ram
-        rcall   FTURNKEY_A      ; dst in flash
-        mov     #4, W0
-        push    W0
-DP_TO_EEPROM_0:
-        rcall   DUP
+DP_TO_FLASH_CHECK_1:
+        rcall   FTURNKEY_A
         rcall   EEREAD
-        rcall   PFETCH
-        rcall   EQUAL
-        cp0     [W14--]
-        bra     nz, DP_TO_EEPROM_1
-        rcall   PFETCH
-        rcall   OVER
+        mov     [W14--], W0
+        cp      dpRAM
+        bra     z, DP_TO_FLASH_CHECK_2
+        dec2    W14, W14
+        bra     DP_TO_FLASH_1
+DP_TO_FLASH_CHECK_2:
+        mov     [W14--], W0
+        cp      dpTURNKEY
+        bra     nz, DP_TO_FLASH_1
+DP_TO_FLASH_CHECK_3:
+        rcall   FFLASH_A
+        rcall   EEREAD
+        mov     [W14--], W0
+        cp      dpLATEST
+        bra     z, DP_TO_FLASH_CHECK_4
+        dec2    W14, W14
+        bra     DP_TO_FLASH_2
+DP_TO_FLASH_CHECK_4:        
+        mov     [W14--], W0
+        cp      dpFLASH
+        bra     nz, DP_TO_FLASH_2
+        bra     DP_TO_FLASH_RETURN
+DP_TO_FLASH_1:
+        mov     dpTURNKEY, W0
+        mov     W0, [++W14]
+        mov     dpRAM, W0
+        mov     W0, [++W14]
+        rcall   FTURNKEY_A
         rcall   EEWRITE
-.if DEBUG_FLASH == 1
-        btss    U1STA, #TRMT
-        bra     $-2
-        mov     #'E', W2
-        mov     W2, U1TXREG
-.endif
-DP_TO_EEPROM_1:
-        rcall   PLUSPAGE
-        rcall   PPLUS2
-        dec     [--W15], [W15++] ; XNEXT
-        bra     nz, DP_TO_EEPROM_0
-        pop     W0
-        pop     W13
-        sub     W14, #2, W14
+        bra     DP_TO_FLASH_CHECK_3
+DP_TO_FLASH_2:
+        mov     dpFLASH, W0
+        mov     W0, [++W14]
+        mov     dpLATEST, W0
+        mov     W0, [++W14]
+        rcall   FFLASH_A
+        rcall   EEWRITE
+DP_TO_FLASH_RETURN:
         return
 .endif
 
@@ -5967,11 +5965,11 @@ check_sp:
         return
 .if WRITE_METHOD == 2
 DP_PUSH:
-        mov     #dpSTART, W0
+        mov     #dpTURNKEY, W0
         mov     #dpSAVE, W1
         bra     DP_POP_LOOP
 DP_POP:
-        mov     #dpSTART, W1
+        mov     #dpTURNKEY, W1
         mov     #dpSAVE, W0
 DP_POP_LOOP:
         repeat  #MARKER_LENGTH-1
@@ -6182,7 +6180,7 @@ CREATE:
         .ascii  "ALREADY DEFINED"
         .align  2
         rcall   QABORT           ; ABORT if word has already been defined
-        mov     [W14++], [W14]      ; Remember word
+        mov     [W14++], [W14]   ; Remember word
         rcall   CFETCH
         rcall   ONE
         mlit    #16
@@ -7144,7 +7142,7 @@ lastword:
         .ascii  "marker"
         .align  2
 MARKER:
-        mlit    dpSTART
+        mlit    dpTURNKEY
         mlit    dpSAVE
         mlit    MARKER_LENGTH
         rcall   WMOVE
@@ -7160,14 +7158,14 @@ MARKER:
         rcall   XDOES
 MARKER_DOES:
         rcall   DODOES
-        mlit    dpSTART
+        mlit    dpTURNKEY
         mlit    MARKER_LENGTH
         goto    WMOVE
 
 .palign FBUFSIZE, 0xff
 .ifndef PEEPROM
 .if DPS_LOW == 1
-.pspace FBUFSIZE*6, 0xff
+.pspace FBUFSIZE*3, 0xff
 .endif
 .endif
 KERNEL_END:

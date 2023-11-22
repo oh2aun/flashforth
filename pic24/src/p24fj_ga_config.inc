@@ -15,7 +15,7 @@
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+;.equ BAUDRATE2, 38400			    ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -144,7 +144,7 @@
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*2))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -154,7 +154,7 @@
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*2))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 

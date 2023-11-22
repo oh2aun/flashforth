@@ -107,14 +107,14 @@ USBSuspend:
         btss    U1OTGIE, #ACTVIE
         return
         mov	#__IDLEIF, W0
-	mov	W0, U1IR         ; clear IDLEIF
+	    mov	W0, U1IR         ; clear IDLEIF
         bset    U1OTGIE, #ACTVIE
         return
 USBWake:
         btss    U1OTGIR, #ACTVIF
         return
-	mov	#__ACTVIF, W0
-	mov	W0, U1OTGIR        ; clear ACTVIF interrupt flag
+        mov	#__ACTVIF, W0
+        mov	W0, U1OTGIR        ; clear ACTVIF interrupt flag
         bclr    U1PWRC, #USUSPND
         bclr    U1OTGIE, #ACTVIE
         return
