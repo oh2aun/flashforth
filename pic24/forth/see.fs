@@ -48,7 +48,7 @@ decimal ram
 
 : lookup:
   create does> swap cells + @ex ;
-
+iflush
 \ Register offset
 :noname ." [W" u.. ." +Wb]" ;
 
