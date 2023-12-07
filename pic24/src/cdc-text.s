@@ -228,7 +228,7 @@ SUB:
 romcp:
         mov     #ep0buf, W2        ; DST ptr
         mov     dPtr, W3
-        btss    usb_status, #MEM
+        btss.b  usb_status, #MEM
         bra     romcp2
         mov     dPtr, W3   
         bra     ramcp
@@ -247,7 +247,7 @@ USBCtrlEPServiceComplete:
         mov.b   WREG, ep0ocnt
         mov     #ep0buf, W0
         mov     WREG, ep0oadr
-        btsc    usb_status, #MUID_USB9
+        btsc.b  usb_status, #MUID_USB9
         bra     DATADIR_DEV_TO_HOST
         mov     #(_USIE|_BSTALL), W0       ;0x84
         mov.b   WREG, ep0ostat
@@ -292,7 +292,7 @@ USBCheckStdRequest:
         mov     #0x60, W0
         and.b   ep0buf, WREG
         bra     nz, RETURN__
-        bset    usb_status, #MUID_USB9
+        bset.b  usb_status, #MUID_USB9
         mov.b   ep0buf+1, WREG
         cp.b    W0, #0x9
         bra     z, SET_CFG   ; 9(J) == SET_CFG
@@ -378,6 +378,7 @@ GetDsc_4:
         mov     W2, dPtr
         mov.b   WREG, count
 GetDsc_6:
+        bclr.b  usb_status, #MEM
         return
 
 USBCheckCdcRequest:
@@ -389,25 +390,25 @@ USBCheckCdcRequest:
         subr.b  ep0buf+4, WREG            ; IF COMM_INTF || DATA_INTF
         bra     n, return6
         mov     #0x20, W0
-        sub.b   ep0buf+1, WREG ; W0 = F - W0
-        cp.b    W0, #0x0                    ; SET_LINE_CODING 0x20
+        sub.b   ep0buf+1, WREG            ; W0 = F - W0
+        cp.b    W0, #0x0                  ; SET_LINE_CODING 0x20
         bra     z,SET_LINE_CODING
-        cp.b    W0, #1                      ; GET_LINE_CODING 0x21
+        cp.b    W0, #1                    ; GET_LINE_CODING 0x21
         bra     z,GET_LINE_CODING
-        cp.b    W0, #2                      ; SET_CONTROL_LINE_STATE 0x22
+        cp.b    W0, #2                    ; SET_CONTROL_LINE_STATE 0x22
         bra     nz, return6
 SET_CONTROL_LINE_STATE:
 SET_MUID_CDC:
 SET_LINE_CODING:
         mov     #line_coding, W0
         mov     W0, dPtr
-        bset    usb_status, #MUID_USB9
+        bset.b  usb_status, #MUID_USB9
+        bset.b  usb_status, #MEM
 return6:
         return
-       bra     SET_MUID_CDC
+
 GET_LINE_CODING:
         mov     #7, w0
         mov.b   WREG, count
-        bset.b  usb_status, #MEM
         bra     SET_MUID_CDC
 

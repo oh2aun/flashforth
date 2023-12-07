@@ -1346,6 +1346,9 @@
 .endif
 
 .ifdef __33CK64MC105
+.equ FLASH_SIZE,     0xa800
+.equ RAM_SIZE,       0x2000
+.include "p33ck_config.inc"   
 .endif
 
 .ifdef __33CK64MP102

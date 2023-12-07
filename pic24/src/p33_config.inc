@@ -5,30 +5,30 @@
 .equ PLL_POST, 2              ; Do not change
 .equ PLL_PRE, 2               ; Do not change
 .equ FREQ_FIN, 7372800        ; PLL input frequency.
-;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
 
-;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
+;.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 1        ; 1 or 2
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC2_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ; Map UART1 pins
 .ifdecl RPINR18
-.equ RPINR18VAL, 6     ; RP6 (U1RXPIN)
-.equ U1TXPIN, 5        ; RP5
+.equ RPINR18VAL, 15     ; RP15 RB15 PIN26(U1RXPIN)  ZZ board
+.equ U1TXPIN, 14        ; RP14 RB14 PIN25           ZZ board
 ;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstickplus
 ;.equ U1TXPIN, 10        ; PB10 pin21 microstickplus
 .equ U1RTSPORT, LATB
@@ -68,7 +68,7 @@
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 31  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 63
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 

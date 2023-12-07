@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          22.11.2023                                        *
+;    Date:          03.12.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -406,7 +406,11 @@ __AltU1TXInterrupt:
         lnk     #4                      ; 2 cell parameter stack
 __U1TXInterrupt0:
 .if ERRATA_UTXBF == 0
+.ifdecl U1STAH
+        btsc    U1STAH, #UTXBF
+.else
         btsc    U1STA, #UTXBF
+.endif
 .else
         btss    U1STA, #TRMT
 .endif
@@ -482,7 +486,11 @@ __AltU2TXInterrupt:
         lnk     #4        ; 2 Cell parameter stack
 __U2TXInterrupt0:
 .if ERRATA_UTXBF == 0
+.ifdecl U2STAH
+        btsc    U2STAH, #UTXBF
+.else
         btsc    U2STA, #UTXBF
+.endif
 .else
         btss    U2STA, #TRMT
 .endif
@@ -864,8 +872,10 @@ __main:
 __reset:
 WARM:
 .ifdecl CLKDIV
+.ifndecl HIGH_SPEED_PLL
         clr     CLKDIV   ; Use full FRC frequency
                          ; PLL PRE/POST scalers are 2.
+.endif
 .endif
         MOV     #urbuf, W15    ;Initalize RP
         setm    SPLIM
@@ -900,17 +910,8 @@ WARM_FILL_IVEC:
         bra     nz, WARM_FILL_IVEC
 .endif
 .endif
-;        setm    PMD1
-;        setm    PMD2
-.ifdecl PMD3
-;        setm    PMD3
-.endif
-.ifdecl PMD4
-;        clr    PMD4      ; Don't set PMD4, it may disable the eeprom
-.endif
-.ifdecl PMD5
-;        setm    PMD5
-.endif
+        
+; Set inputs to digital
 .ifdecl AD1PCFGL
         setm    AD1PCFGL
 .endif
@@ -980,24 +981,27 @@ PLL_IN_USE:
         mov     W0, PLLFBD
 .endif
 WAITFORLOCK:
-        btss    OSCCON, #LOCK
+        btss    OSCCON, #5;LOCK
         bra     WAITFORLOCK
 PLL_NOT_IN_USE:
 .endif
 
 ; Configure MS timer1
-        bclr    PMD1, #T1MD
+.if MS_PR_VAL > 0xffff
+        mov     #MS_PR_VAL/8, W0
+        mov     #0x8010, W1
+.else
         mov     #MS_PR_VAL, W0
+        mov     #0x8000, W1
+.endif
         mov     W0, PR1
-        mov     #0x8000, W0
-        mov     W0, T1CON
+        mov     W1, T1CON
 
+; Configure CPU load counter timer3
 .if IDLE_MODE == 1
 .if CPU_LOAD == 1
 .ifdecl TMR3
 .ifdecl TSIDL
-; Configure CPU load counter timer3
-        bclr    PMD1, #T3MD
         mov     #0xA010, W0    ; Stop timer3 in idle mode, prescaler = 8
         mov     W0, T3CON
 .endif
@@ -1008,18 +1012,26 @@ PLL_NOT_IN_USE:
         bset    IEC0, #T1IE
 
 ;;;; Initialise the UART 1
+;;;; Setup the I/O pins for UART 1
 .if FC1_TYPE == 2
         bclr    U1RTSTRIS, #U1RTSPIN
         bclr    U1RTSPORT, #U1RTSPIN
 .endif
 .ifdecl RPINR18
+.ifdecl RPCON
+        mov     #0x55, W0
+        mov     W0, NVMKEY
+        mov     #0xAA, W0
+        mov     W0, NVMKEY
+        bclr    RPCON, #IOLOCK  ; pps+
+.else
         mov     #OSCCONL, W0
         mov.b   #0x46, W1
         mov.b   #0x57, W2
         mov.b   W1, [W0]
         mov.b   W2, [W0]
-        bclr.b  OSCCONL, #IOLOCK
-        
+        bclr.b  OSCCONL, #IOLOCK ; pps+
+.endif
         mov     #RPINR18VAL, W0
         mov     W0, RPINR18
 
@@ -1029,19 +1041,27 @@ PLL_NOT_IN_USE:
         mov.b   WREG, RPOR0+U1TXPIN
 .endif
 .ifdecl U1_RPO_REGISTER
-; PIC2433EP
+; PIC2433EP CK
         mov     #U1_RPO_VALUE, W0         ; U1TX
         mov     W0, U1_RPO_REGISTER
 .endif
-
 .endif
-        bclr    PMD1, #U1MD
 
 .ifdecl USE_ALTERNATE_UART_PINS
 .if  (USE_ALTERNATE_UART_PINS == 1)
         bset    U1MODE, #ALTIO
 .endif
 .endif
+;;;;; UART 1 configuration
+.ifdecl U1INT                  ; dsPIC33CK64MC105 and similar
+        mov     #BAUD_DIV1, W0
+        mov     W0, U1BRG
+        clr     U1MODEH
+        clr     U1STA
+        clr     U1STAH
+        mov     #0x80B0, W0
+        mov     W0, U1MODE
+.else                          ; Other UARTS
 .ifdecl UTXISEL1
 .if ERRATA_UTXBF == 0
         bset    U1STA, #UTXISEL1
@@ -1059,21 +1079,14 @@ PLL_NOT_IN_USE:
         mov     #BAUD_DIV1, W0
         mov     W0, U1BRG
         bset    U1STA, #UTXEN
-
-.ifdecl AUTOBAUD1
-.if (AUTOBAUD1 == 1)
-        bset    U1MODE, #ABAUD
-WARM_ABAUD1:
-        btsc    U1MODE, #ABAUD
-        bra     WARM_ABAUD1
-        bclr    IFS0, #U1RXIF
-.endif
 .endif
         bset    IEC0, #U1RXIE
 .if TX1_BUF_SIZE > 0
         bset    IEC0, #U1TXIE
 .endif
-;;; Initialise UART2
+
+;;;; Initialise the UART 2
+;;;; Setup the I/O pins for UART 2
 .ifdecl BAUDRATE2
 .ifdecl _U2RXREG
 .if FC2_TYPE == 2
@@ -1094,7 +1107,16 @@ WARM_ABAUD1:
         mov     W0, U2_RPO_REGISTER
 .endif
 .endif
-       bclr    PMD1, #U2MD
+;;;;; UART 2 configuration
+.ifdecl U2INT                  ; dsPIC33CK64MC105 and similar
+        mov     #BAUD_DIV2, W0
+        mov     W0, U2BRG
+        clr     U2MODEH
+        clr     U2STA
+        clr     U2STAH
+        mov     #0x80B0, W0
+        mov     W0, U2MODE
+.else                          ; Other UARTS
 .ifdecl UTXISEL1
 .if ERRATA_UTXBF == 0
         bset    U2STA, #UTXISEL1
@@ -1113,13 +1135,6 @@ WARM_ABAUD1:
         mov     W0, U2BRG
         bset    U2STA, #UTXEN
 
-.ifdecl AUTOBAUD2
-.if (AUTOBAUD2 == 1)
-        bset    U2MODE, #ABAUD
-WARM_ABAUD2:
-        btsc    U2MODE, #ABAUD
-        bra     WARM_ABAUD2
-        bclr    IFS1, #U2RXIF
 .endif
 .endif
         bset    IEC1, #U2RXIE
@@ -1127,8 +1142,6 @@ WARM_ABAUD2:
         bset    IEC1, #U2TXIE
 .endif
 .endif
-.endif
-
 ; Init the warm literals
         mlit    handle(WARMLIT)+PFLASH
         mlit    cse
@@ -1198,7 +1211,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 22.11.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 03.12.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1254,7 +1267,7 @@ TURNKEY:
         .byte   NFA|5
         .ascii  "pause"
         .align 2
-PAUSE:
+PAUSE_:
         clrwdt
 .if USB_CDC == 1
         rcall   USBDriverService
@@ -1320,6 +1333,7 @@ PAUSE_BUSY:
 CWD:
         clrwdt
         return
+
 .ifdef PAIVT
 ; INT/  ( intnumber -- )
 ; Reset the AIVT interrupt vector to the defaul IVT value
@@ -1337,6 +1351,7 @@ CWD:
         mov     W2, [++W14]
         goto    INTERRUPT_STORE
 .endif
+        
 ; INT!  ( xt intnumber -- ) intnumber 8..
 ; Store interrupt vector in alternate interrupt vector table
 ; Stored directly in Flash on the 30F series     intnumber 0..61
@@ -2592,7 +2607,7 @@ U1RXQUEUE_DATA:
         .ascii  "tx1"
         .align  2
 TX1:
-        rcall   PAUSE
+        rcall   PAUSE_
         rcall   TX1Q
         cp0     [W14--]
         bra     z, TX1
@@ -2620,7 +2635,11 @@ TX1Q:
 .if ERRATA_UTXBF == 1
         btsc    U1STA, #TRMT
 .else
+.ifdecl U1STAH
+        btss    U1STAH, #UTXBF
+.else
         btss    U1STA, #UTXBF
+.endif
 .endif
         bra     TRUE_
         goto    FALSE_
@@ -2632,7 +2651,7 @@ TX1Q:
         .ascii  "rx1"
         .align  2
 RX1:
-        rcall   PAUSE
+        rcall   PAUSE_
         rcall   RX1Q
         cp0     [W14--]
         bra     z, RX1
@@ -2702,7 +2721,7 @@ U2RXQUEUE_DATA:
         .ascii  "tx2"
         .align  2
 TX2:    
-        rcall   PAUSE
+        rcall   PAUSE_
         rcall   TX2Q
         cp0     [W14--]
         bra     z, TX2
@@ -2730,7 +2749,11 @@ TX2Q:
 .if ERRATA_UTXBF == 1
         btsc    U2STA, #TRMT
 .else
+.ifdecl U2STAH
+        btss    U2STAH, #UTXBF
+.else
         btss    U2STA, #UTXBF
+.endif
 .endif
         bra     TRUE_
         goto    FALSE_
@@ -2741,7 +2764,7 @@ TX2Q:
         .ascii  "rx2"
         .align  2
 RX2:
-        rcall   PAUSE
+        rcall   PAUSE_
         rcall   RX2Q
         cp0     [W14--]
         bra     z, RX2
@@ -2786,17 +2809,17 @@ RX2Q1:
         .ascii  "usb+"
         .align  2
 USB_ON:
-	bset    U1PWRC, #0	    ; Power up the USB module
-	mov	#bdt_base, W0
-	lsr	W0, #8, W0
-	mov	W0, U1BDTP1	    ; Set the BDT base address
+        bset    U1PWRC, #0	    ; Power up the USB module
+        mov	#ep0oadr, W0
+        lsr	W0, #8, W0
+        mov	W0, U1BDTP1	    ; Set the BDT base address
         bset    U1CON, #0
-	mov	#0xD, W0
-	mov	W0, U1EP0	    ; Ep0 is control endpoint
+        mov	#0xD, W0
+        mov	W0, U1EP0	    ; Ep0 is control endpoint
         rcall   USBPrepareForNextSetupTrf
         mov     #0x9000, W0
         mov     W0, OSCTUN
-	return
+        return
 
         .pword  paddr(9b)+PFLASH
 9:
@@ -2826,7 +2849,7 @@ RXUQ:
         .ascii  "rxu"
         .align  2
 RXU:
-        rcall   PAUSE
+        rcall   PAUSE_
         btsc.b  usb_device_state, #3
         btsc.b  ep2ostat, #7
         bra     RXU
@@ -2854,7 +2877,7 @@ RXU_END:
         .ascii  "txu"
         .align  2
 TXU:
-        rcall   PAUSE
+        rcall   PAUSE_
         btss.b  usb_device_state, #3
         bra     TXU_DROP
         btsc.b  ep2istat, #7
@@ -4790,10 +4813,10 @@ SIGN_L:
         .align  2
 SIGN:   
         cp0     [W14--]    ; ZEROLESS
-        bra     nn, SIGN1
+        bra     nn, SIGN_1
         mlit    #0x2D
         rcall   HOLD
-SIGN1:
+SIGN_1:
         return
 
 ; U.    u --                  display u unsigned
@@ -6823,7 +6846,7 @@ MS:
         rcall   TICKS
         rcall   PLUS
 MS_1:
-        rcall   PAUSE
+        rcall   PAUSE_
         mov     [W14], W1
         mov     ms_count, W0
         sub     W1, W0, W0         ; time - ticks
@@ -7019,7 +7042,7 @@ DUMP7:
         .ascii  "Fcy"
         .align  2
 FCY_:
-        mov     #(FCY/1000), W0
+        mov     #((FCY/1000)&0xffff), W0
         mov     W0, [++W14]
         return
 

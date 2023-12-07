@@ -92,13 +92,10 @@
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 1
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
-.equ DEBUG_FLASH, 1
+.equ DEBUG_FLASH, 0
 
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0

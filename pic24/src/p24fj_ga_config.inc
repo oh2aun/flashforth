@@ -87,9 +87,6 @@
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
@@ -98,11 +95,14 @@
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
 
-; Include the 32-bit float number support
+; Include the 32-bit floating number support
+; In xc16-ld you have to link with -lm and 
+; include the standard libraries by clearing 
+; the Exclude standard libraries tickbox.
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
-.equ CTRL_O_WARM_RESET, 0
+.equ CTRL_O_WARM_RESET, 1
 
 ; Method 1 updates flash and eeprom after each ok prompt.
 ; Method 2 updates flash and eeprom after no flash or eeprom
@@ -112,7 +112,7 @@
 
 ;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4003     ; Memory page erase
-.equ FLASH_WRITE,    0x4002     ; Memory row write = double word
+.equ FLASH_WRITE,    0x4002     ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4001 ; Memory double word write
 .equ FLASH_WRITE_DOUBLE, 0x4001 ; Memory double word write
 .equ FLASH_ROWSIZE,  0x0080	; Row size, words

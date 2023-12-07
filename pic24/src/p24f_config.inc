@@ -1,34 +1,47 @@
 ;;; FlashForth device configuration for the PIC24F(J)
 
-.equ FREQ_OSC, (8000000*4)				  ;Clock (Crystal)frequency (Hz)
+.equ FREQ_OSC, (8000000*4)      ;Clock (Crystal)frequency (Hz)
 
 .equ FCY, (FREQ_OSC/2)
 
 ; USB CDC support
-.equ USB_CDC, 1		    ; 1 includes the USB CDC support into FlashForth
+.equ USB_CDC, 1		            ; 1 includes the USB CDC support into FlashForth
 			      
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 3	        ; 1=UART1 or 2=UART2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400			; Serial baudrate UART1
+.equ BAUDRATE1, 9600			; Serial baudrate UART1
 .equ FC1_TYPE, 0                        ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                       ; 0 = to use fixed baudrate
                                         ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 			 ; Serial baudrate UART2, comment if not used
+.equ BAUDRATE2, 9600 			 ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 0                        ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                       ; 0 = to use fixed baudrate
                                         ; 1 = Autobaud, First char after reset must be 'U' (0x55)
-;;; Peripheral pin mapping
+;;; Peripheral pin mapping UART 1
 .ifdecl RPINR18
-.equ U1RXPIN, 0xf          ; 
-.equ RPINR18VAL, 0x0d03    ; (CTS=RB13 U1RXPIN = RB3)
-.equ U1TXPIN, 0x2          ; RB2 RB2
+;.equ U1RXPIN, 0xf          ; 
+.equ RPINR18VAL, 0x0003    ; (CTS=RB13 U1RXPIN = RB2)
+.equ U1TXPIN, 0x2          ; RB2
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 0xc         ; RP12
+.endif
+
+; Map UART2 pins
+; See device data sheet for pin mapping explanation
+.ifdecl BAUDRATE2
+.ifdecl RPINR19
+.equ RPINR19VAL, 0x0001       ; (U2RXPIN)
+.equ U2_RPO_REGISTER, RPOR0   ; RP35
+.equ U2_RPO_VALUE, 0x0200     ; UART2 TX on RP35 pin
+.equ U2RTSPORT, LATB
+.equ U2RTSTRIS, TRISB
+.equ U2RTSPIN, 3
+.endif
 .endif
 
 ; Set to one to use the alternate UART pins
@@ -38,10 +51,10 @@
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
 
 ; Set to 1 for power save when CPU is idle
-.equ IDLE_MODE, 1
+.equ IDLE_MODE, 0
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
@@ -86,6 +99,9 @@
 .equ C_EXAMPLE, 0
 
 ; Include the 32-bit float number support
+; In xc16-ld you have to link with -lm and 
+; include the standard libraries by clearing 
+; the Exclude standard libraries tickbox.			
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth

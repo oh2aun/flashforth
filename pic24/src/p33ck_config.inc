@@ -1,50 +1,40 @@
-;;; FlashForth device configuration for the PIC24HJ
+;;; FlashForth device configuration for the dsPIC33CK64MC105
 
-.equ PLL_DIV, 30                          ; Fcy is 27637 KHz
-.equ PLL_FBD, PLL_DIV-2
-.equ PLL_POST, 2                          ; Do not change
-.equ PLL_PRE, 2                           ; Do not change
-.equ FREQ_FIN, 7372800                    ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL ouput frequency. Used with FRCPLL
-
-;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ FREQ_OSC, 150000000       ; 75 MIPS Used with FNOSC=FRCPLL 
+;.equ FREQ_OSC,   8000000       ; 4 MIPS Used with FNOSC=FRC
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1        ; 1 or 2
+.equ OPERATOR_UART, 1        ; 1 or 2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
-.equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
-                                          ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+.equ BAUDRATE1, 38400       ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 0            ; 1 = XON/XOFF, 2=CTS/RTS
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 1                          ; ; 1 = XON/XOFF, 2=CTS/RTS
-.equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
-                                          ; 1 = Autobaud, First char after reset must be 'U' (0x55)
+;.equ BAUDRATE2, 38400       ; Serial baudrate UART2, comment if not used
+.equ FC2_TYPE, 0            ; 1 = XON/XOFF, 2=CTS/RTS
 
 ; Map UART1 pins
+; See device data sheet for pin mapping explanation
 .ifdecl RPINR18
-.equ RPINR18VAL, 0x000f    ; (U1RXPIN)
-.equ U1TXPIN, 0xe
-;.equ RPINR18VAL, 0x000b    ; U1RXPIN RP11 pin22 microstickplus
-;.equ U1TXPIN, 0xa          ; RP10         pin21 microstickplus
+.equ RPINR18VAL, 59          ; U1RXPIN RP59 RC11 pin41 curiosity nano
+.equ U1_RPO_REGISTER, RPOR13 ; RP58         RC10 pin40 curiosity nano
+.equ U1_RPO_VALUE, 0x0001    ; UART1 TX on RP58 pin RC10
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12
 .endif
 
 ; Map UART2 pins
+; See device data sheet for pin mapping explanation
 .ifdecl BAUDRATE2
 .ifdecl RPINR19
-.equ U2RXPIN, 0x2          ; 
-.equ RPINR19VAL, 0x0002    ; (U2RXPIN)
-.equ U2TXPIN, 0x3
+.equ RPINR19VAL, 59           ; (U2RXPIN)
+.equ U2_RPO_REGISTER, RPOR13   ; RP58
+.equ U2_RPO_VALUE, 0x0003     ; UART2 TX on RP58 pin
 .equ U2RTSPORT, LATB
 .equ U2RTSTRIS, TRISB
-.equ U2RTSPIN, 0x3
+.equ U2RTSPIN, 3
 .endif
 .endif
 
@@ -55,13 +45,13 @@
 .equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0  ; Not available due to missing timer.
 
 ; CPU load indicator led definitions
-.equ CPU_LOAD_LED, 1       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISB
-.equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 7
+.equ CPU_LOAD_LED, 0       ; set to 0 to disable
+.equ CPU_LOAD_TRIS, TRISD
+.equ CPU_LOAD_PORT, PORTD
+.equ CPU_LOAD_BIT, 10
 .equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led
 
 ; Define the startup delay for turnkey words. Milliseconds
@@ -69,11 +59,11 @@
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
-.equ TX2_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX2_BUF_SIZE, 15   ; Use 0 for unbuffered TX.
 .equ RX2_BUF_SIZE, 31
 .equ RX2_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -99,11 +89,14 @@
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
 
-; Include the 32-bit float number support
+; Include the 32-bit floating number support
+; In xc16-ld you have to link with -lm and 
+; include the standard libraries by clearing 
+; the Exclude standard libraries tickbox.
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
-.equ CTRL_O_WARM_RESET, 1
+.equ CTRL_O_WARM_RESET, 0
 
 ; Method 1 updates flash and eeprom after each ok prompt.
 ; Method 2 updates flash and eeprom after no flash or eeprom
@@ -111,8 +104,18 @@
 .equ WRITE_METHOD, 2
 .equ WRITE_TIMEOUT, 300         ; milliseconds
 
+;;; Flash memory commands. Do not modify.
+.equ FLASH_ERASE,    0x4003     ; Memory page erase
+.equ FLASH_WRITE,    0x4001     ; Memory row write (Use double word write)
+.equ FLASH_WRITE_SINGLE, 0x4001 ; Not used
+.equ FLASH_WRITE_DOUBLE, 0x4001 ; Memory double word write
+.equ FLASH_ROWSIZE,  0x0002	; Row size, words
+.equ FLASH_ROWS,     0x0200	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
+
 ;;; Memory mapping prefixes
-.equ SFR_SIZE,       0x800
+.equ SFR_SIZE,       0x1000
 .equ PFLASH,         SFR_SIZE+RAM_SIZE
 .equ HI_TEMP,        PFLASH+FLASH_SIZE
 .if HI_TEMP > 0xffff
@@ -121,15 +124,6 @@
 .equ FLASH_HI,       (HI_TEMP-1)
 .endif
 
-;;; Memory control defines
-.equ FLASH_ERASE,    0x4042  ; Memory page erase
-.equ FLASH_WRITE,    0x4001  ; Memory row write
-.equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ FLASH_ROWSIZE,  0x0040	; Row size, words
-.equ FLASH_ROWS,     0x0008	; Rows
-.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
-.equ FBUFMASK,       ~(FBUFSIZE-1)
-
 .if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
 .equ WANT_X, 1
 .else
@@ -137,12 +131,12 @@
 .endif
 
 .equ FCY, (FREQ_OSC/2)
-.equ MS_PR_VAL, ((FCY/1000)-1)		; Timer value for 1 ms ticks
-.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1	; UART1 divisor
+.equ MS_PR_VAL, ((FCY/1000)-1)			  ; Timer value for 1 ms ticks
+.equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART1 divisor
 .ifdecl BAUDRATE2
-.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1	; UART2 divisor
+.equ BAUD_DIV2, (FCY/4/BAUDRATE2)-1		  ; UART2 divisor
 .endif
-.equ write_delay, 20                    ; Flash write delay
+.equ write_delay, 20                      ; Flash write delay
 
 .if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*2))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
@@ -154,13 +148,18 @@
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*2))  ; AND FBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*2))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
-; Amount of interrupt vectors
-.equ IVECSIZE, 118
 
-; USB CDC support
-.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
-			      
+;;; Different flash write logic for E devices than HJ or FJ devices
+;;; Double word instead of single word write.
+.equ PIC2433E, 1
+
+; Amount of interrupt vectors
+.equ IVECSIZE, 126
+
+.equ USB_CDC, 0
+    
+.equ HIGH_SPEED_PLL, 1

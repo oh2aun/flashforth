@@ -62,7 +62,6 @@
 
 .bss
 .align 512
-bdt_base:
 ep0ocnt:  	.space 1
 ep0ostat:	.space 1
 ep0oadr:	.space 2
@@ -87,8 +86,8 @@ cdc_data_rx:    .space CDC_BULK_OUT_EP_SIZE
 cdc_data_tx:    .space CDC_BULK_IN_EP_SIZE
 
 ; Control transfer session owner
-usb_status:     .space 1
-.equ MEM,           0
+usb_status:         .space 1
+.equ MEM,           0           ; 0=flash 1=ram
 .equ MUID_USB9,     1
 
 ; Control Transfer States
@@ -110,7 +109,6 @@ usb_device_state:   .space 1
 count:          .space 1
 dPtr:           .space 2
 line_coding:    .space 8
-mem:            .space 2           ; 0 = flash ; 0xff = ram
 ep2optr:        .space 2
 ep2iptr:        .space 2
            
