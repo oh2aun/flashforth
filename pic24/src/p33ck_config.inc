@@ -1,7 +1,7 @@
 ;;; FlashForth device configuration for the dsPIC33CK64MC105
 
-.equ FREQ_OSC, 150000000       ; 75 MIPS Used with FNOSC=FRCPLL 
-;.equ FREQ_OSC,   8000000       ; 4 MIPS Used with FNOSC=FRC
+.equ FREQ_OSC, 150000000       ; 75 MIPS FNOSC=FRCPLL and default PLL values
+;.equ FREQ_OSC,   8000000       ; 4 MIPS FNOSC=FRC and default PLL values
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 1        ; 1 or 2 or 3=USB interface(USB_CDC=1)
@@ -18,8 +18,8 @@
 ; See device data sheet for pin mapping explanation
 .ifdecl RPINR18
 .equ RPINR18VAL, 59          ; U1RXPIN RP59 RC11 pin41 curiosity nano
-.equ U1_RPO_REGISTER, RPOR13 ; RP58         RC10 pin40 curiosity nano
-.equ U1_RPO_VALUE, 0x0001    ; UART1 TX on RP58 pin RC10
+.equ U1_RPO_REGISTER, RPOR13 ; UART TX RP58 RC10 pin40 curiosity nano
+.equ U1_RPO_VALUE, 0x0001    ; UART1 TX
 .equ U1RTSPORT, LATB
 .equ U1RTSTRIS, TRISB
 .equ U1RTSPIN, 12
@@ -163,3 +163,4 @@
 .equ USB_CDC, 0
     
 .equ HIGH_SPEED_PLL, 1
+.equ HAS_DIV2, 1

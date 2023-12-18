@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          03.12.2023                                        *
+;    Date:          18.12.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -976,7 +976,7 @@ WARM_0:
         bra     PLL_NOT_IN_USE
 
 PLL_IN_USE:
-.ifdecl PLLFBD
+.ifdef PLL_FBD
         mov     #PLL_FBD, W0
         mov     W0, PLLFBD
 .endif
@@ -1157,7 +1157,7 @@ PLL_NOT_IN_USE:
 .endif
         inc     [W14--], W0
         bra     nz, WARM_WARM
-        mlit    100
+        mlit    100 ; avoid partial EMPTY due to pickit resets.
         rcall   MS
         rcall   EMPTY
 WARM_WARM:
@@ -1211,7 +1211,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 03.12.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 18.12.2023\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -3511,8 +3511,13 @@ UMSLASHMOD:
         mov     [W14--], W2
         mov     [W14--], W1
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.ud  W0, W2
+.else
         repeat  #17
         div.ud  W0, W2
+.endif
         mov     W1, [++W14]
         mov     W0, [++W14]
         return
@@ -3526,8 +3531,13 @@ SMSLASHREM:
         mov     [W14--], W2
         mov     [W14--], W1
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.sd  W0, W2
+.else
         repeat  #17
         div.sd  W0, W2
+.endif
         mov     W1, [++W14]
         mov     W0, [++W14]
         return
@@ -3540,8 +3550,13 @@ SMSLASHREM:
 USLASHMOD:
         mov     [W14--], W2
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.u  W0, W2
+.else
         repeat  #17
         div.u   W0, W2
+.endif
         mov     W1, [++W14]
         mov     W0, [++W14]
         return
@@ -3554,8 +3569,13 @@ USLASHMOD:
 SLASHMOD:
         mov     [W14--], W2
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.s  W0, W2
+.else
         repeat  #17
         div.s   W0, W2
+.endif
         mov     W1, [++W14]
         mov     W0, [++W14]
         return
@@ -3568,8 +3588,13 @@ SLASHMOD:
 MOD:
         mov     [W14--], W2
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.s  W0, W2
+.else
         repeat  #17
         div.s   W0, W2
+.endif
         mov     W1, [++W14]
         return
 
@@ -4531,8 +4556,13 @@ USLASH_L:
 USLASH:
         mov     [W14--], W2
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.u  W0, W2
+.else
         repeat  #17
         div.u   W0, W2
+.endif
         mov     W0, [++W14]
         return
 
@@ -4546,8 +4576,13 @@ USSMOD:
         mov     [W14--], W3
         mov     [W14--], W2
         mul.uu  W2, [W14], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.ud W0, W2
+.else
         repeat  #17
-        div.ud  W0, W3
+        div.ud  W0, W2
+.endif
         mov     W1, [W14]
         mov     W0, [++W14]
         return
@@ -4563,8 +4598,13 @@ SSMOD:
         mov     [W14--], W3
         mov     [W14--], W2
         mul.ss  W2, [W14], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.sd W0, W2
+.else
         repeat  #17
-        div.sd  W0, W3
+        div.sd  W0, W2
+.endif
         mov     W1, [W14]
         mov     W0, [++W14]
         return
@@ -4579,8 +4619,13 @@ SS:
         mov     [W14--], W3
         mov     [W14--], W2
         mul.ss  W2, [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.sd W0, W2
+.else
         repeat  #17
-        div.sd  W0, W3
+        div.sd  W0, W2
+.endif
         mov     W0, [++W14]
         return
 
@@ -4593,8 +4638,13 @@ SLASH_L:
 SLASH: 
         mov     [W14--], W2
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.s  W0, W2
+.else
         repeat  #17
         div.s   W0, W2
+.endif
         mov     W0, [++W14]
         return
 
@@ -4626,12 +4676,22 @@ UDSLASHMOD:
         mov     [W14--], W2
         clr     W1
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.ud W0, W2
+.else
         repeat  #17
         div.ud  W0, W2
+.endif
         mov     W0, W3         ; save quot.h
         mov     [W14--], W0
+.ifdecl HAS_DIV2
+        repeat  #5
+        div2.ud W0, W2
+.else
         repeat  #17
         div.ud  W0, W2
+.endif
         mov     W1, [++W14]
         mov     W0, [++W14]
         mov     W3, [++W14]
@@ -7090,7 +7150,32 @@ TRUE_:                      ; TOS is ffff (TRUE)
         .align  2
 PAD:
         goto   RHERE
+.if 0
+; fir ( insample context -- outsample ) 
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|3
+        .ascii  "fir"
+        .align  2
+FIR:
+        .extern FIR
+        goto    _FIR
         
+; sum[n] ( addr n -- x ) Sum the word array    
+        .pword  paddr(9b)+PFLASH
+9:
+        .byte   NFA|INLINE|6
+        .ascii  "sum[n]"
+        .align  2
+        dec     [W14--], W2
+        mov     [W14--], W1
+        clr     W0
+        repeat  W2
+        add     W0, [W1++], W0
+        mov     W0, [++W14]
+        return
+.include "fir.s"
+.endif   
 .include "registers.inc"
 
         .pword  paddr(9b)+PFLASH
