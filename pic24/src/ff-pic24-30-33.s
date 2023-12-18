@@ -7150,7 +7150,9 @@ TRUE_:                      ; TOS is ffff (TRUE)
         .align  2
 PAD:
         goto   RHERE
-.if 0
+
+
+.ifdecl YMODSRT
 ; fir ( insample context -- outsample ) 
         .pword  paddr(9b)+PFLASH
 9:
@@ -7158,10 +7160,79 @@ PAD:
         .ascii  "fir"
         .align  2
 FIR:
-        .extern FIR
-        goto    _FIR
+; offsets into FIR contect structure (entries are word wide -- hence +=2)
+
+        .equ oNumTaps,   0    ; number of filter coefficients 
+		.equ oTapsBase,  2    ; base address of filter coefficients (XMEMORY)
+		.equ oTapsEnd,   4    ; end address of filter coefficients  (XMEMORY)
+		.equ oTapsPage,  6    ; 0xFF00 if coefficients are in data space
+		.equ oDelayBase, 8    ; base address of delay buffer  (YMEMORY)
+		.equ oDelayEnd, 10    ; end address of delay buffer   (YMEMORY)
+		.equ oDelayPtr, 12    ; starting value of delay pointer
+
+        mov [w14--], W3           ; firContext
+; ..............................................................................
+; Entry context save of selected registers
+
+         PUSH  w8                ; save context of w8
+         PUSH  w10               ; save context of w10
+; ..............................................................................; 
+         MOV   #0x00B0,w8        ; Enable Accumulator A Saturation and 
+                                 ; Data Space write Saturation 
+                                 ;    as bits 5 and 7 are set in CORCON
+; ..............................................................................;
+; Setup pointers and modulo addressing
+SetupPointers:
+         MOV   W8, CORCON               ; set PSV and saturation options
+
+         MOV  [w3+oTapsEnd],w8	
+         MOV  w8, XMODEND	        ; XMODEND = end address of filter coefficients		
+         MOV  [w3+oTapsBase],w8    ; w8 = base address of taps/filter coefficients
+         MOV  w8, XMODSRT		; XMODSRT = base address of filter coefficients
+
+         MOV  [w3+oDelayEnd],w10	
+         MOV  w10, YMODEND		; YMODEND = end address of delay line
+         MOV  [w3+oDelayBase],w10	
+         MOV  w10, YMODSRT		; YMODSRT = base address of delay line
+
+         MOV  [w3+oNumTaps],w4
+
+         SUB  w4,#3, w4                 ; w4 = numTaps-3 (for repeat control)
+		 
+		 MOV   #0xC0A8, w10             ; set XMD = W8 and YMD = W10
+         MOV   w10, MODCON	        ; enable X & Y Modulus   	
+         
+         MOV  [w3+oDelayPtr],w10	   ; w10 = pointer to current delay sample		
+;..............................................................................		 
+; Perform FIR filtering for one sample
+         MOV  [w14--],[w10]              ; store new sample into delay line
+
+; clear a, prefetch tap and sample pair, update ptrs
+         CLR   A, [w8]+=2, w5, [w10]+=2, w6
+
+         REPEAT w4                      ; perform macs (except for last two)
+         MAC  w5*w6, A, [w8]+=2, w5, [w10]+=2, w6
+
+         MAC  w5*w6, A, [w8]+=2, w5, [w10], w6	; perform second-to-last MAC
+         MAC  w5*w6, A				; perform last MAC
+
+		; round and store result in AccA to data stack
+         SAC.R  a,[++W14]           ; outsample
+
+         MOV  w10,[w3+oDelayPtr]    ; update delay line pointer
+                                    ; note: that the delay line pointer can have multiple 
+                                    ; wraps depending on the number of input samples
+;---------------------------------------------------------------------------------
+
+; ..............................................................................		 
+; Cleanup(Context restore of selected registers)
+         CLR MODCON                 ; disable modulo addressing
+         POP  w10                   ; restore context of w10
+         POP  w8                    ; restore context of w8
+         RETURN                     ; exit from  _BlockFir
+.endif   
         
-; sum[n] ( addr n -- x ) Sum the word array    
+; sum[n] ( addr n -- x ) Sum a word array of size n
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|INLINE|6
@@ -7174,8 +7245,7 @@ FIR:
         add     W0, [W1++], W0
         mov     W0, [++W14]
         return
-.include "fir.s"
-.endif   
+
 .include "registers.inc"
 
         .pword  paddr(9b)+PFLASH
