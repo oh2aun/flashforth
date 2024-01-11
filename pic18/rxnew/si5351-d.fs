@@ -65,8 +65,6 @@ $60 constant si5351
 $20 constant SI_CLK_SRC_PLLB
 $10 constant SI_CLK_INVERT
 
-eeprom 2variable clock
-#25.002.388. clock 2!
 ram
 #14 value divider
 
@@ -105,13 +103,14 @@ variable mult
   $4d SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Normal output
   $cc SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c! \ Power down
   $ffff SI_SYNTH_PLL_A si5351.!
+  $40 #183 si5351.c!
   $a0 SI_PLL_RESET si5351.c!
 ;
 
 \ AM VFO 45-67 MHz output, multisynth divider is 16-24. vco 1100 MHz
 : a.f ( ud -- )
-  divider ud* d>q clock 2@ uq/mod drop mult !
-  denom uq* clock 2@ uq/mod num 2! 2drop
+  divider ud* d>q xtal uq/mod drop mult !
+  denom uq* xtal uq/mod num 2! 2drop
   SI_SYNTH_PLL_A  pll!
 ;
 
@@ -124,11 +123,12 @@ variable mult
   $cd SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Power down
   $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c!
   $ffff SI_SYNTH_PLL_B si5351.!
+  $40 #183 si5351.c!
   $a0 SI_PLL_RESET si5351.c!
 ;
 : b.f ( ud -- )
-  divider ud* d>q clock 2@ uq/mod drop mult !
-  denom uq* clock 2@ uq/mod num 2! 2drop
+  divider ud* d>q xtal uq/mod drop mult !
+  denom uq* xtal uq/mod num 2! 2drop
   SI_SYNTH_PLL_B  pll!
 ;
 

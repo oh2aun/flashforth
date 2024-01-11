@@ -1,9 +1,7 @@
 \ pic18f26K42 and si5351a, NCO used  as BFO
-\ needs case.fs 2value.fs 
-\ needs qmath.fs  i2c-base-b ncok42.fs si5351-d.fs
-\ needs knobi.fs
-\ needs dogs164e.fs
-
+\ needs case.fs 2value.fs task.fs strcat.fs qmath.fs
+\ needs i2c-base-b knobi.fs ncok42.fs si5351-d.fs dogs164e.fs
+single
 fl+ busy
 -rx
 marker -rx
@@ -33,9 +31,14 @@ $ffc4 constant trisc
 
 $fe9e constant dac1con0
 $fe9c constant dac1con1
+$fec1 constant fvrcon
 $fef8 constant adcon0
+$feff constant adclk
 $fef1 constant adpch
 $feef constant adres
+$fefd constant adref
+$fef5 constant adcap
+$fef3 constant adacql
 
 ram
 variable mode
@@ -49,18 +52,34 @@ variable newMode
 1 constant filter4K
 2 constant filter3K
 3 constant filterFM
+
 variable filter
 variable newFilter
 variable amFilter
 variable s-old
 2variable rxOffset
-eeprom 
-#45.000.038. 2value if1Offset
+2variable if1Offset
+create $buf 20 allot
+create $rx-freq 10 allot
+
+: 2, swap , , ;
+eeprom create fm-list
+#87.900.00. 2,
+#91.900.00. 2,
+#94.000.00. 2,
+#97.500.00. 2,
+#98.100.00. 2,
+#98.900.00. 2,
+#99.400.00. 2,
+#101.100.00. 2,
+#106.200.00. 2,
+ram
+
+eeprom
 #10.730.000. 2value fmOffset
 #455.000.   2value if2Offset
-#1500. 2value usbOffset
--#1300. 2value lsbOffset
-
+#1493. 2value usbOffset
+-#1289. 2value lsbOffset
 ram
 2variable newrxf
 4 2array: rxf          \ Use mode as index
@@ -69,19 +88,39 @@ eeprom
 4 2array: RX0
 defer mode0
 defer bw0
+1 value term?
 ram
 variable vol
 variable newVol
 
 : modeAm? mode @ modeAm = ;
 : modeFm? mode @ modeFm = ;
-: fmOn  %1.0000 lata mset ;
-: amOn  %1.0000 lata mclr ;
+: fmOn   %1.0000 lata mset ;
+: amOn   %1.0000 lata mclr ;
 
 : change? ( a a -- f ) @ swap  @ <> ;
 
 : rxf@ ( -- d ) mode @ rxf 2@ ;  \ 10 Hz resolution
 : rxf! ( d -- ) mode @ rxf 2! ;  \ 10 Hz resolution
+
+: offsetsInit xtal d2* if2Offset d+ if1Offset 2! ;
+
+: s.ad
+  %0000.0100 adcon0 c!
+  %0011.1111 adclk c!
+  0 adref c!
+  3 adpch c!
+  %1000.0100 adcon0 c!  \ Fosc
+;
+: fcor.ad
+  %0000.0100 adcon0 c!  \ Internal osc
+  %0011.1100 adpch c!   \ Tempsensor
+  %0011.1111 adclk c!
+  %0000.0011 adref c!
+  %1111.0010 fvrcon c!  \ 2.048 V to ADref, high range temp sense
+  #10 adacql c!
+  %1000.0100 adcon0 c!  \ Fosc
+;
 
 \ Initialize ports
 : io.init ( -- )
@@ -90,16 +129,13 @@ variable newVol
   %1111 latb mclr
   %1.0110 trisa mclr
   %1111 trisb mclr
-  $d4 adcon0 c!
-  $d5 adcon0 c!
-  3 adpch c!
 ;
 
 : dac.init ( -- ) $90 dac1con0 c! ;
 
 \ Turn off not used peripherals
 : pmd.init ( -- ) \ pic18f26k42
-  %0111.1010 $f9c0 c!
+  %0011.1010 $f9c0 c!
   %0111.1100 $f9c1 c!
   %0000.0111 $f9c2 c!
   %1111.1111 $f9c3 c!
@@ -108,6 +144,12 @@ variable newVol
   %0011.1111 $f9c6 c!
   %0000.0011 $f9c7 c!
 ;
+: ad@ ( -- u )
+  %1000.0101 adcon0 c!
+  begin adcon0 c@ 1 and 0= until
+  adres @
+;
+: ad.fcor 0 #16 for 1000 ms fcor.ad ad@ s.ad + next #16 u/ ;
 
 : filter3k [ lata 2 a, bcf, lata 1 a, bcf, ] ;
 : filter4k [ lata 2 a, bcf, lata 1 a, bsf, ] ;
@@ -174,7 +216,7 @@ ram
   if   fmOffset d- b.f
   else 
        divider!
-       rxOffset 2@ d+ if1Offset d+ a.f
+       rxOffset 2@ d+ if1Offset 2@ d+ a.f
   then
 ;
 
@@ -200,6 +242,7 @@ ram
   modeAm? modeFm? or
   if   bfo-off
   else if2Offset rxOffset 2@ d+ bfo-freq
+       nco.real if2Offset d- rxOffset 2!
   then
   mode @ case
     modeAm  of amOn det-am  endof
@@ -263,9 +306,9 @@ ram variable muted
 #09.400.00.  modeAm  RX0 2!
 #03.699.00.  modeLsb RX0 2!
 #14.200.00.  modeUsb RX0 2!
-#103.700.00. modeFm  RX0 2!
+#101.100.00. modeFm  RX0 2!
 
-' fm is mode0
+' usb is mode0
 
 : rx-reset ( -- )
   cr
@@ -274,6 +317,10 @@ ram variable muted
   io.init
   dac.init
   i2c.init
+  s.ad
+  0 s-old !
+  0 xtalOffset !
+  offsetsInit
   nco/
   100 to divider
   0 RX0 0 rxf #4 cells cells cmove
@@ -298,13 +345,13 @@ ram variable muted
   is mode0
   fl- ;
 
-: .rx-freq 
+: rx-freq>$ 
   decimal rxf@
   modeFm?
   if   #1000 ud/mod rot drop
        <# # # [char] . hold #s #>
   else <# # # [char] . hold # # # # #s #> 
-  then type ;
+  then $rx-freq place ;
 
 : .mode mode @ [char] A + emit ;
 
@@ -316,16 +363,32 @@ ram variable muted
     filterFM of [char] C endof
   endcase emit
 ;
+: s.add < if 1+ then ;
+: s.get ( -- n ) \ 0-15
+  0
+  ad@ >r
+  r@ 2750 s.add \ s1
+  r@ 2550 s.add \ s2
+  r@ 2350 s.add \ s3
+  r@ 2150 s.add \ s4
+  r@ 1950 s.add \ s5
+  r@ 1750 s.add  \ s6
+  r@ 1550 s.add  \ s7
+  r@ 1350 s.add  \ s8
+  r@ 1150 s.add  \ s9
+  r@ 960 s.add  \ +10
+  r@ 800 s.add  \ +20
+  r@ 650 s.add  \ +30
+  r@ 475 s.add  \ +40
+  r@ 270 s.add  \ +50
+  r> 100 s.add  \ +60
+;
 
-: s.get ( -- c ) $fff adres @ - 8 rshift 2- 0 max ;
-: s.line  s" ---------------" ;
-: s.space s"                " ;
-: s.meter ( n -- ) \ 0-15
-  15 over - swap
-  s.line drop swap dogs.type
-  s.space drop swap dogs.type
-\  for $2d emit next
-\  spaces
+: s.line  s" 1-3-5-7-9-2-4-6" drop ;
+: s.space s"                " drop ;
+: s.meter ( n -- a u ) \ 0-15
+  >r s.line r@ $buf place
+  $buf c@+ s.space 15 r> - $cat 
 ;
 : >dogs ['] dogs.data 'emit ! ;
 : >uart ['] tx1 'emit ! ;
@@ -335,21 +398,16 @@ ram variable muted
     filter4K of s" BW 4 KHz"   endof
     filter8K of s" BW 9 KHz"   endof
     filterFM of s" BW 200 KHz" endof
-  endcase type
+  endcase dogs.type
 ;
 : dogs.mode
   mode @ case
-    modeAm  of s" AM " endof
-    modeUsb of s" USB" endof
-    modeLsb of s" LSB" endof
-    modeFm  of s" FM " endof
-  endcase type space
+    modeAm  of s" AM  " endof
+    modeUsb of s" USB " endof
+    modeLsb of s" LSB " endof
+    modeFm  of s" FM  " endof
+  endcase
 ;
-: dogs.display 
-  >dogs 
-  3 0 dogs.cursor dogs.mode .rx-freq ."    "
-  3 1 dogs.cursor dogs.bw ."         "
-  >uart ;
 
 : rd ( n -- ) s>d 
   rxf@ newrxf 2@ d- or
@@ -459,30 +517,60 @@ ram
   then
 ;
 : s.display
-  s-old @ s.get <> if
-    >dogs 
-    s.get dup s-old ! 3 2 dogs.cursor s.meter 
-    >uart
-  then 
+  s-old @ s.get = if exit then
+  s.get dup s-old ! 1 2 dogs.cursor s.meter dogs.type
 ;
+: ad.display 1 2 dogs.cursor ad@ >dogs 4 u.r >uart ;
+: uart.display $rx-freq c@+ type .mode .bw $d emit ;
+: term.display space $rx-freq c@+ type space s-old @ s.meter type $d emit ;
+: dogs.display 
+  dogs.mode $buf place
+  $buf c@+ $rx-freq c@+ $cat
+  s"    " $cat
+  1 0 dogs.cursor dogs.type
+;
+
+: fm-channels ( n -- )
+  modeFm? 0= if drop exit then
+  [char] 1 -  dup 0 #10 within
+  if 2* 2* fm-list + 2@ newrxf 2! else drop then
+;
+
 : rx
   fl- >uart true
+  offsetsInit
   begin
-    case
-      1     of rx-set vol-set .rx-freq .mode .bw $d emit endof
-      true  of rx-set vol-set dogs.display endof
-      false of s.display endof
-    endcase
-    idle pause busy key? 
-    if   1
-         key [char] a - dup 0 #26 within
+    if   rx-set vol-set rx-freq>$ dogs.display 
+         term? if term.display else uart.display then
+    else s.display 
+         term? ticks $ff and 0= and if term.display then
+    then
+    pause key? 
+    if   true
+         key dup [char] a - dup 0 #26 within
          if cells exec + @ex else drop then
+         fm-channels
     else false
     then
     knob-lores or knob-vol or knob-hires or
     knob-1 or knob-2 or
   again ;
 
-: rx-init rx-reset rx ;
+eeprom #20 value fcor.mult
+eeprom #2440 value fcor.21c
+ram variable adr
+\ Correct for crystal temperature frequency drift
+: fcor.loop
+  begin
+     ad.fcor dup adr ! fcor.21c - fcor.mult * #30 / 
+     #100 min -#100 max xtalOffset !
+     offsetsInit rx-freq 
+  again
+;
+0 40 40 0 task: fcor.task
+: fcor.init  ['] fcor.loop fcor.task tinit fcor.task run ;
+
+: rx-init fcor.init rx-reset rx ;
+rx-init
 \ ' rx-init is turnkey
 

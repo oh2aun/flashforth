@@ -9,12 +9,25 @@ $fa00 constant ra0pps
 $fa40 constant ansela
 $ffc2 constant trisa
 
+eeprom
+#22.272.410. 2value xtal_ee
+ram
+variable xtalOffset
+
+: xtal xtal_ee xtalOffset @ m+ ;
+
 : nco! ( d -- )
   nco1incu c!
   nco1incl !
 ;
 
+: nco@ ( -- d )
+  nco1incl @
+  nco1incu c@
+;
+
 : nco/
+  0 xtalOffset !
   pps+
   $26 ra0pps c!
   pps-
@@ -23,12 +36,11 @@ $ffc2 constant trisa
   $80 nco1con c!
 ;
 
-eeprom
-#15.999.300. 2value xtal
-ram
-: nco.f ( d -- )
-  $20.0000. uq* xtal uq/mod nco! 2drop 
-;
+: uq/ uq/mod rot drop rot drop ;
 
+: nco.value ( d -- d ) $20.0000. uq* xtal uq/ ;
 
+: nco.f ( d -- ) nco.value nco! ;
+
+: nco.real ( -- d )  nco@ xtal uq* $20.0000. uq/ ;
 

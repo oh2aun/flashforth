@@ -78,8 +78,8 @@ ram
   $04 i2c1con0 c!
   $80 i2c1con1 c!
   $20 i2c1con2 c!    \ fast mode, adb 
-\  $03 i2c1clk  c!    \ MFINTOSC 500 KHz
-  $00 oscfrq c!      \ 1 MHz HFINTOSC
+\  $03 i2c1clk  c!    \ MFINTOSC 500 KHz, 125 KHz 12c clock
+  $00 oscfrq c!      \ 1 MHz HFINTOSC 250 KHz i2c clock
   $40 oscen c!
   $02 i2c1clk  c!    \ HFINTOSC
   $80 i2c1con0 mset  \ Master mode, 7-bit address 
@@ -208,10 +208,10 @@ ram
 \ i2c.init must be called before any other i2c words.
  
 \ Read one byte from i2c bus address $60
-\ i2c.idle $60 i2c.read i2c.c@.nack
+\ $60 i2c.read i2c.c@.nack
 
 \ Read 2 bytes from i2c bus address $60
-\ i2c.idle $60 i2c.read i2c.c@.ack i2c.c@.nack
+\ $60 i2c.read i2c.c@.ack i2c.c@.nack
 
 \ Write 8 bits to i2c bus address $60
 \ $12 $60 i2c.write i2c.c!
@@ -220,5 +220,5 @@ ram
 \ $12 $60 i2c.write dup 8 rshift i2c.c! i2c.c!
 
 \ Read a value from register 3 at address $60
-\ $60 i2c.write 3 i2c.c! i2c.repstart $60 i2c.read i2c.c@.nack
+\ 3 $60 i2c.rc@
 
