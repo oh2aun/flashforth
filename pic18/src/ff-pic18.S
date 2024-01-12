@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          05.06.2023                                        *
+;;    Date:          12.01.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1610,7 +1610,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 05.06.2023        ; 10
+        STRING 12.01.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -3377,7 +3377,6 @@ LOCKED:
 ;******************************************************
 #ifdef  PPSLOCK
         dw      L_BTFSS
-
 L_PPS_UNLOCK:
         NF 4,pps+
 PPS_UNLOCK:
@@ -4284,17 +4283,27 @@ XSQUOTE:
         movwf   TOSL, A
         return
 
+PARSEQ:
+        rcall   LIT
+        dw      0x22
+        goto    PARSE
 
 ; S"      --            compile in-line string to flash
         dw      L_XSQUOTE
 L_SQUOTE:
-        NF IMMED|COMPILE|2,s"
+        NF IMMED|2,s"
 SQUOTE:
+        rcall   PARSEQ
+        movf    BANKMASK(state), W, A
+        bz      SLIT1
+SLIT:
         rcall   DOCOMMAXT
         dw      XSQUOTE
         rcall   ROM
-        rcall   CQUOTE
-        goto    FRAM
+        rcall   SCOMMA
+        rcall   FRAM
+SLIT1:
+        return
 
 ; ,"      --           store a string to current data space
         dw      L_SQUOTE
@@ -4302,9 +4311,8 @@ L_CQUOTE:
         db      NFA|2,',','"'
         align   2
 CQUOTE:
-        rcall   LIT
-        dw      0x22
-        rcall   PARSE
+        rcall   PARSEQ
+SCOMMA:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
@@ -4907,7 +4915,6 @@ L_USLASH:
 USLASH:
         rcall   USLASHMOD
         goto    NIP
-
 
 ; U*/MOD  u1 u2 u3 -- u4 u5    u1*u2/u3, rem&quot
 ;   >R UM* R> UM/MOD ;
