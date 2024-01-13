@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          27.10.2023                                        *
+;    Date:          13.01.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2023  Mikael Nordman
+; Copyright (C) 2024  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "27.10.2023"
+#define DATE "13.01.2024"
 #define datelen 10
 
 
@@ -977,38 +977,36 @@ NEQUAL3:
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
-; u (count) must be smaller than 256
         fdw     NEQUAL_L
 SKIP_L:
         .byte     NFA|4
         .ascii  "skip"
         .align  1
 SKIP:
-        ld      tosh, y+    ; count
-        ld      t0, y+      ; dummy
+        mov     t1, tosl
+        ld      tosl, y+    ; countl
+        ld      tosh, y+    ; counth
         ld      xl, y+      ; c-addr
         ld      xh, y+      ; c-addr
 SKIP0:
-        cpi     tosh, 0
+        sbiw    tosl, 0
         breq    SKIP2
         ld      t0, x
         
-        cpi     tosl, 32
+        cpi     t1, 32
         brne    SKIP3
         cpi     t0,  32
         brcs    SKIP1
 SKIP3:
-        cp      t0, tosl
+        cp      t0, t1
         brne    SKIP2
 SKIP1:
         adiw    xl, 1
-        dec     tosh
+        sbiw    tosl, 1
         rjmp    SKIP0
 SKIP2:
         st      -y, xh
         st      -y, xl
-        mov     tosl, tosh
-        clr     tosh
         ret
 
 
@@ -1020,32 +1018,30 @@ SCAN_L:
         .ascii  "scan"
         .align  1
 SCAN:
-        ;tosl               ; delimiter
-        ld      tosh, y+    ; count
-        ld      xl, y+      ; dummy
+        mov     t1, tosl    ; delimiter
+        ld      tosl, y+    ; count
+        ld      tosh, y+    ; dummy
         ld      xl, y+      ; c-addr
         ld      xh, y+      ; c-addr
 SCAN1:
-        cpi     tosh, 0
+        sbiw    tosl, 0
         breq    SCAN4
         ld      t0, x
         
-        cpi     tosl, 32
+        cpi     t1, 32
         brne    SCAN2
         cpi     t0, 32
         brcs    SCAN4
 SCAN2:
-        cp      tosl, t0
+        cp      t1, t0
         breq    SCAN4
 SCAN3:
         adiw    xl, 1
-        dec     tosh
+        sbiw    tosl, 1
         rjmp    SCAN1
 SCAN4:
         st      -y, xh
         st      -y, xl
-        mov     tosl, tosh
-        ldi     tosh, 0
         ret
 
 ; : mtst ( mask addr -- flag )
@@ -1821,18 +1817,37 @@ XSQUOTE:
         ror     zl
         m_ijmp
 
+PARSEQ:
+        rcall   DOLIT
+        .word     0x22
+        rjmp    PARSE
+
+;---------------------------------------------------
+; s"  "parse state if postpone sliteral then
+
         fdw     XSQUOTE_L
 SQUOTE_L:
-        .byte      NFA|IMMED|COMPILE|2
+        .byte     NFA|IMMED|2
         .ascii  "s"
         .byte   0x22
         .align  1
 SQUOTE:
+        rcall   PARSEQ
+        rcall   STATE_
+        rcall   ZEROSENSE
+        breq    SLIT1
+SLIT:
         rcall   DOCOMMAXT
         fdw     XSQUOTE
         rcall   ROM_
-        rcall   CQUOTE
-        jmp     FRAM
+        rcall   SCOMMA
+        rcall   ALIGN
+        rcall   FRAM
+SLIT1:
+        ret
+
+;---------------------------------------------------
+; ,"  "parse s,
 
         fdw     SQUOTE_L
 CQUOTE_L:
@@ -1840,17 +1855,18 @@ CQUOTE_L:
         .ascii  ","
         .byte   0x22
         .align  1
-CQUOTE: 
-        rcall   DOLIT
-        .word     0x22
-        rcall   PARSE
+CQUOTE:
+        rcall   PARSEQ
+SCOMMA:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
         rcall   ALIGNED
         rcall   ALLOT
-        jmp     PLACE
+        rjmp    PLACE
 
+;---------------------------------------------------
+; ."
 
         fdw     CQUOTE_L
 DOTQUOTE_L:
@@ -3335,7 +3351,7 @@ TOIN_L:
 TOIN:
         rcall   DOUSER
         .word   utoin
-
+        
 ; 'SOURCE  -- a-addr        two cells: len, adrs
 ; In RAM ?
         fdw     TOIN_L
@@ -3579,8 +3595,8 @@ TEN:
         .word     10
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
-;        .word     link
-; link    set     $
+        fdw DOTSTATUS_L
+DP_TO_RAM_L:
         .byte     NFA|3
         .ascii  "dp>"
         .align  1
@@ -3592,8 +3608,8 @@ DP_TO_RAM:
         jmp     CMOVE
 
 ; >dp ( -- ) Copy only changed turnkey, dp's and latest from ram to eeprom
-;        .word     link
-; link    set     $
+        fdw     DP_TO_RAM_L
+DP_TO_EEPROM_L:
         .byte     NFA|3
         .ascii  ">dp"
         .align  1
@@ -3626,7 +3642,7 @@ DP_TO_EEPROM_3:
         rcall   R_TO_P
         jmp     DROP
 
-        fdw     DOTSTATUS_L
+        fdw     DP_TO_EEPROM_L
 FALSE_L:
         .byte     NFA|5
         .ascii  "false"
@@ -4378,7 +4394,7 @@ DOTS:
         rcall   FETCH_A
         rcall   TWOMINUS
 DOTS1:
-        call   TWODUP
+        call    TWODUP
         rcall   LESS
         rcall   ZEROSENSE
         breq    DOTS2
@@ -5017,10 +5033,9 @@ FLASHHI:
         .word      EEPROM_HI
         .word      RAM_HI
 
-#if FLASHEND > 0xffff
 ;;; x@ ( addrl addru -- x )
-        fdw     A_FROM_L
-XFETCH_L:
+        fdw     9b
+9:
         .byte     NFA|2
         .ascii  "x@"
         .align  1
@@ -5037,8 +5052,8 @@ XFETCH_L:
 	ret
 	
 ;;; x! ( x addrl addru -- )
-        fdw     XFETCH_L
-XSTORE_L:
+        fdw     9b
+9:
         .byte     NFA|2
         .ascii  "x!"
         .align  1
@@ -5046,7 +5061,6 @@ XSTORE_L:
         m_drop
         call   XUPDATEBUF
         jmp    ISTORE1
-#endif
 
 ;***************************************************
 #include <registers.inc>
@@ -5970,7 +5984,7 @@ IIFETCH:
         ret
                 
         fdw     STORE_L
-A_FROM_L:
+9:
         .byte     NFA|2
         .ascii  "a>"
         .align  1
@@ -5980,11 +5994,7 @@ A_FROM:
         mov     tosh, ah
         ret
 
-#if FLASHEND > 0xffff
-        fdw     XSTORE_L
-#else
-        fdw     A_FROM_L
-#endif
+        fdw     9b
 FETCH_L:
         .byte     NFA|1
         .ascii  "@"
