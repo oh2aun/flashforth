@@ -289,7 +289,7 @@
 #pragma config GSS = OFF                // General Segment Code Protection (User program memory is not code-protected)
 
 // FOSCSEL
-#pragma config FNOSC = PRIPLL           // Oscillator Mode (Internal Fast RC (FRC) w/ PLL)
+#pragma config FNOSC = PRI           // Oscillator Mode (Internal Fast RC (FRC) w/ PLL)
 #pragma config IESO = ON                // Internal External Switch Over Mode (Start-up device with FRC, then automatically switch to user-selected oscillator source when ready)
 
 // FOSC

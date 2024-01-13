@@ -1,20 +1,20 @@
 ;;; FlashForth device configuration for the dsPIC33
 
-.equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
+.equ PLL_DIV, 64              ; Fcy is 32768/2 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
-.equ PLL_POST, 2              ; Do not change
-.equ PLL_PRE, 2               ; Do not change
-.equ FREQ_FIN, 7372800        ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+.equ PLL_POST, 4              ; Do not change ( default value )
+.equ PLL_PRE, 7               ; PLL-input=2048 (divide with PLL_PRE+2)
+.equ FREQ_FIN, 18432000       ; PLL input frequency.
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/(PLL_PRE+2)/PLL_POST )  ; 32768 PLL output frequency.
 
 ;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ  FREQ_OSC, 18432000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 1        ; 1 or 2
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
+.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1
 .equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -27,8 +27,10 @@
 
 ; Map UART1 pins
 .ifdecl RPINR18
-.equ RPINR18VAL, 15     ; RP15 RB15 PIN26(U1RXPIN)  ZZ board
-.equ U1TXPIN, 14        ; RP14 RB14 PIN25           ZZ board
+.equ RPINR18VAL, 9       ; RP9 RB9 PIN15(U1RXPIN)  analog board
+.equ U1TXPIN, 8          ; RP8 RB8 PIN14           analog board
+;.equ RPINR18VAL, 15     ; RP15 RB15 PIN26(U1RXPIN)  ZZ board
+;.equ U1TXPIN, 14        ; RP14 RB14 PIN25           ZZ board
 ;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstickplus
 ;.equ U1TXPIN, 10        ; PB10 pin21 microstickplus
 .equ U1RTSPORT, LATB
@@ -80,7 +82,7 @@
 .equ ERRATA_UTXBF, 0
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE, 160          ; 80 cells return stack
+.equ RETURN_STACK_SIZE, 512          ; 80 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
 .equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt parameter stack frame on return stack
 .equ TIB_SIZE, 84                    ; 84 chars tib size
@@ -160,7 +162,7 @@
 .endif
 
 ; Amount of interrupt vectors
-.equ IVECSIZE, 126
+.equ IVECSIZE, 128
 
 ; USB CDC support
 .equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth

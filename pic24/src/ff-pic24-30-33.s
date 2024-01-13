@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          18.12.2023                                        *
+;    Date:          12.01.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2023  Mikael Nordman
+; Copyright (C) 2024  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -871,25 +871,50 @@ RESET_FF_1:
 __main:
 __reset:
 WARM:
-.ifdecl CLKDIV
-.ifndecl HIGH_SPEED_PLL
-        clr     CLKDIV   ; Use full FRC frequency
-                         ; PLL PRE/POST scalers are 2.
-.endif
-.endif
-        MOV     #urbuf, W15    ;Initalize RP
+        mov     #urbuf, W15    ;Initalize RP
         setm    SPLIM
         
-        CLR     W0
-        MOV     W0, W14
-        REPEAT  #12
-        MOV     W0, [++W14]
+        clr     W14            ; clear working registers
+        repeat  #13
+        clr     [W14++]
 
-        clr     W0              ; Fill operator return and parameter stacks with 0x00
+.ifdecl CLKDIV
+.ifndecl HIGH_SPEED_PLL
+.ifdecl PLL_PRE
+        mov     #PLL_POST<<4|PLL_PRE, W0
+        mov     W0, CLKDIV
+.else
+        clr     CLKDIV   ; Use full FRC frequency
+.endif
+.else    ; High Speed PLL
+.ifdecl POSTDIV2
+        mov     #POSTDIV2|POSTDIV1<<4|VCODIV<<8, W0
+        mov     W0, PLLDIV
+.endif
+.endif
+.endif
+.ifndecl __dsPIC30F
+        mov.b   OSCCONH, WREG
+        and     #7, W0
+        cp      W0, #1
+        bra     z, PLL_IN_USE
+        cp      W0, #3
+        bra     nz, PLL_NOT_IN_USE
+PLL_IN_USE:
+.ifdef PLL_FBD
+        mov     #PLL_FBD, W0
+        mov     W0, PLLFBD
+.endif
+WAITFORLOCK:
+        btss    OSCCON, #5;LOCK
+        bra     WAITFORLOCK
+PLL_NOT_IN_USE:
+.endif
+
         mov     #intcon1dbg+2, W14  ; Dont overwrite INTCONDBG
         mov     #PFLASH, W1
 FILL_RAM:
-        mov.w   W0, [W14++]
+        clr     [W14++]             ; clear ram
         cp      W14, W1
         bra     nz, FILL_RAM
 
@@ -965,26 +990,6 @@ WARM_0:
 .endif
 .endif
 
-.ifndecl __dsPIC30F
-        mov     OSCCON, W0
-        asr     W0, #8, W1
-        and     #7, W1
-        sub     W1, #1, W0
-        bra     z, PLL_IN_USE
-        sub     W1, #3, W0
-        bra     z, PLL_IN_USE
-        bra     PLL_NOT_IN_USE
-
-PLL_IN_USE:
-.ifdef PLL_FBD
-        mov     #PLL_FBD, W0
-        mov     W0, PLLFBD
-.endif
-WAITFORLOCK:
-        btss    OSCCON, #5;LOCK
-        bra     WAITFORLOCK
-PLL_NOT_IN_USE:
-.endif
 
 ; Configure MS timer1
 .if MS_PR_VAL > 0xffff
@@ -1018,20 +1023,7 @@ PLL_NOT_IN_USE:
         bclr    U1RTSPORT, #U1RTSPIN
 .endif
 .ifdecl RPINR18
-.ifdecl RPCON
-        mov     #0x55, W0
-        mov     W0, NVMKEY
-        mov     #0xAA, W0
-        mov     W0, NVMKEY
-        bclr    RPCON, #IOLOCK  ; pps+
-.else
-        mov     #OSCCONL, W0
-        mov.b   #0x46, W1
-        mov.b   #0x57, W2
-        mov.b   W1, [W0]
-        mov.b   W2, [W0]
-        bclr.b  OSCCONL, #IOLOCK ; pps+
-.endif
+        rcall   PPS_PLUS
         mov     #RPINR18VAL, W0
         mov     W0, RPINR18
 
@@ -1045,6 +1037,7 @@ PLL_NOT_IN_USE:
         mov     #U1_RPO_VALUE, W0         ; U1TX
         mov     W0, U1_RPO_REGISTER
 .endif
+        rcall   PPS_MINUS
 .endif
 
 .ifdecl USE_ALTERNATE_UART_PINS
@@ -1094,6 +1087,7 @@ PLL_NOT_IN_USE:
         bclr    U2RTSPORT, #U2RTSPIN
 .endif
 .ifdecl RPINR19
+        rcall   PPS_PLUS
         mov     #RPINR19VAL, W0
         mov     W0, RPINR19
 ; PIC2433HJFJ
@@ -1106,6 +1100,7 @@ PLL_NOT_IN_USE:
         mov     #U2_RPO_VALUE, W0         ; U2TX
         mov     W0, U2_RPO_REGISTER
 .endif
+        rcall   PPS_MINUS
 .endif
 ;;;;; UART 2 configuration
 .ifdecl U2INT                  ; dsPIC33CK64MC105 and similar
@@ -1211,7 +1206,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 18.12.2023\r\n"
+        .ascii  " FlashForth 5 PIC24 12.01.2024\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1260,6 +1255,50 @@ STARTQ2:
 TURNKEY:
         rcall   VALUE_DOES
         .word   dpTURNKEY
+
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "pps+"
+        .align 2
+PPS_PLUS:
+.ifdecl RPCON
+        mov     #0x55, W0
+        mov     W0, NVMKEY
+        mov     #0xAA, W0
+        mov     W0, NVMKEY
+        bclr    RPCON, #IOLOCK  ; pps+
+.else
+        mov     #OSCCONL, W0
+        mov.b   #0x46, W1
+        mov.b   #0x57, W2
+        mov.b   W1, [W0]
+        mov.b   W2, [W0]
+        bclr.b  OSCCONL, #IOLOCK ; pps+
+.endif
+        return
+
+        .pword   paddr(9b)+PFLASH
+9:
+        .byte   NFA|4
+        .ascii  "pps-"
+        .align 2
+PPS_MINUS:
+.ifdecl RPCON
+        mov     #0x55, W0
+        mov     W0, NVMKEY
+        mov     #0xAA, W0
+        mov     W0, NVMKEY
+        bset    RPCON, #IOLOCK  ; pps-
+.else
+        mov     #OSCCONL, W0
+        mov.b   #0x46, W1
+        mov.b   #0x57, W2
+        mov.b   W1, [W0]
+        mov.b   W2, [W0]
+        bset.b  OSCCONL, #IOLOCK ; pps-
+.endif
+        return
 
 ; PAUSE  20 cycles, 5us@16MHz dsPIC30F 2.5 us for 33F and 24F
         .pword   paddr(9b)+PFLASH
@@ -4362,16 +4401,23 @@ XSQUOTE:
 ; S"      --            compile in-line string to flash
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|IMMED|COMPILE|2
+        .byte   NFA|IMMED|2
         .ascii  "s" 
         .byte 0x22
         .align  2
 SQUOTE:
+        mlit    0x22
+        rcall   PARSE
+        mov     state, WREG
+        bra     Z, SLIT1
+SLIT:
         rcall   DOCOMMAXT
         .word   handle(XSQUOTE)+PFLASH
         rcall   FLASH
-        rcall   CQUOTE
-        goto    RAM
+        rcall   SCOMMA
+        rcall   RAM
+SLIT1:
+        return
 
 ; ,"      --           store a string to current data space
         .pword paddr(9b)+PFLASH
@@ -4383,6 +4429,7 @@ SQUOTE:
 CQUOTE:
         mlit    0x22
         rcall   PARSE
+SCOMMA:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
@@ -7160,15 +7207,14 @@ PAD:
         .ascii  "fir"
         .align  2
 FIR:
-; offsets into FIR contect structure (entries are word wide -- hence +=2)
+; offsets into FIR contect structure
 
         .equ oNumTaps,   0    ; number of filter coefficients 
 		.equ oTapsBase,  2    ; base address of filter coefficients (XMEMORY)
 		.equ oTapsEnd,   4    ; end address of filter coefficients  (XMEMORY)
-		.equ oTapsPage,  6    ; 0xFF00 if coefficients are in data space
-		.equ oDelayBase, 8    ; base address of delay buffer  (YMEMORY)
-		.equ oDelayEnd, 10    ; end address of delay buffer   (YMEMORY)
-		.equ oDelayPtr, 12    ; starting value of delay pointer
+		.equ oDelayBase, 6    ; base address of delay buffer  (YMEMORY)
+		.equ oDelayEnd,  8    ; end address of delay buffer   (YMEMORY)
+		.equ oDelayPtr, 10    ; starting value of delay pointer
 
         mov [w14--], W3           ; firContext
 ; ..............................................................................
@@ -7216,8 +7262,8 @@ SetupPointers:
          MAC  w5*w6, A, [w8]+=2, w5, [w10], w6	; perform second-to-last MAC
          MAC  w5*w6, A				; perform last MAC
 
-		; round and store result in AccA to data stack
-         SAC.R  a,[++W14]           ; outsample
+		; round, multiply by 2 and store result in AccA to data stack
+         SAC.R  A, #-1, [++W14]
 
          MOV  w10,[w3+oDelayPtr]    ; update delay line pointer
                                     ; note: that the delay line pointer can have multiple 
@@ -7229,21 +7275,20 @@ SetupPointers:
          CLR MODCON                 ; disable modulo addressing
          POP  w10                   ; restore context of w10
          POP  w8                    ; restore context of w8
-         RETURN                     ; exit from  _BlockFir
+         RETURN                     ; exit 
 .endif   
         
-; sum[n] ( addr n -- x ) Sum a word array of size n
+; sum[16] ( addr -- x ) Sum a word array of size 16
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|INLINE|6
-        .ascii  "sum[n]"
+        .byte   NFA|INLINE|7
+        .ascii  "sum[16]"
         .align  2
-        dec     [W14--], W2
-        mov     [W14--], W1
-        clr     W0
-        repeat  W2
-        add     W0, [W1++], W0
-        mov     W0, [++W14]
+        mov     [W14--], W0
+        clr     W1
+        repeat  #15
+        add     W1, [W0++], W1
+        mov     W1, [++W14]
         return
 
 .include "registers.inc"

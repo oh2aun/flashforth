@@ -107,35 +107,35 @@ USBSuspend:
         btss    U1OTGIE, #ACTVIE
         return
         mov	#__IDLEIF, W0
-	    mov	W0, U1IR         ; clear IDLEIF
+	      mov     W0, U1IR         ; clear IDLEIF
         bset    U1OTGIE, #ACTVIE
         return
 USBWake:
         btss    U1OTGIR, #ACTVIF
         return
-        mov	#__ACTVIF, W0
-        mov	W0, U1OTGIR        ; clear ACTVIF interrupt flag
+        mov     #__ACTVIF, W0
+        mov     W0, U1OTGIR        ; clear ACTVIF interrupt flag
         bclr    U1PWRC, #USUSPND
         bclr    U1OTGIE, #ACTVIE
         return
 USBReset:
         setm    U1IR
-        clr 	U1ADDR
-	clr	U1EP1
-	clr	U1EP2
+        clr     U1ADDR
+        clr     U1EP1
+        clr     U1EP2
 USBReset_1:
-	btst	U1IR, #TRNIF
-	bra	z, USBReset_2
-	mov	__TRNIF, W0
-	mov	W0, U1IR            ; clear TRNIF
-	; clr some variables maybe
-	bra	USBReset_1
+        btst    U1IR, #TRNIF
+        bra     z, USBReset_2
+        mov     __TRNIF, W0
+        mov     W0, U1IR    ; clear TRNIF
+                            ; clr some variables maybe
+        bra     USBReset_1
 USBReset_2:
-	mov	#0xD, W0
-	mov	W0, U1EP0	    ; Ep0 is control endpoint
+        mov     #0xD, W0
+        mov     W0, U1EP0	    ; Ep0 is control endpoint
         rcall   USBPrepareForNextSetupTrf
         mov     #DEFAULT_STATE, W0
-	mov.b   WREG, usb_device_state
+        mov.b   WREG, usb_device_state
         bclr    U1CON, #PKTDIS
 return1:
         return
@@ -382,20 +382,20 @@ GetDsc_6:
         return
 
 USBCheckCdcRequest:
-        mov.b   ep0buf, WREG     ; IF INTF & CLASS &  TO_DEVICE
+        mov.b   ep0buf, WREG           ; IF INTF & CLASS &  TO_DEVICE
         and.b   #0x7f, W0              ;
         xor.b   #0x21, W0
         bra     nz, return6
         mov     #1, W0
-        subr.b  ep0buf+4, WREG            ; IF COMM_INTF || DATA_INTF
+        subr.b  ep0buf+4, WREG         ; IF COMM_INTF || DATA_INTF
         bra     n, return6
         mov     #0x20, W0
-        sub.b   ep0buf+1, WREG            ; W0 = F - W0
-        cp.b    W0, #0x0                  ; SET_LINE_CODING 0x20
+        sub.b   ep0buf+1, WREG         ; W0 = F - W0
+        cp.b    W0, #0x0               ; SET_LINE_CODING 0x20
         bra     z,SET_LINE_CODING
-        cp.b    W0, #1                    ; GET_LINE_CODING 0x21
+        cp.b    W0, #1                 ; GET_LINE_CODING 0x21
         bra     z,GET_LINE_CODING
-        cp.b    W0, #2                    ; SET_CONTROL_LINE_STATE 0x22
+        cp.b    W0, #2                 ; SET_CONTROL_LINE_STATE 0x22
         bra     nz, return6
 SET_CONTROL_LINE_STATE:
 SET_MUID_CDC:
