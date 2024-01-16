@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          12.01.2024                                        *
+;    Date:          16.01.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -33,8 +33,8 @@
 
 ; Macro for inline literals 
 .macro mlit lval
-        mov     #\lval, w0
-        mov     w0, [++w14]
+        mov     #\lval, W2
+        mov     W2, [++w14]
 .endm
 
 ;..............................................................................
@@ -188,10 +188,8 @@ rbuf2:       .space RX2_BUF_SIZE+1
 index:      .space 2
 ibasel:     .space 2
 iaddrl:     .space 2
-.if WANT_X == 1
 ibaseh:     .space 2
 iaddrh:     .space 2
-.endif
 iflags:     .space 2
 status:     .space 2        ; 0 = allow CPU idle 
 load_acc:   .space 4
@@ -538,11 +536,9 @@ iupdatebuf:
 ;   fillbuffer_from_imem
 ;   ibase = iaddr&ibufmask
 ;endif
-.if WANT_X == 1
         mov     iaddrh, W0
         cp      ibaseh
         bra     nz, iupdatebuf0
-.endif
         mov     iaddrl, W0
         mov     #FBUFMASK, W1
         and     W0, W1, W0
@@ -556,11 +552,9 @@ iupdatebuf0:
         mov     #FBUFMASK, W1
         and     W0, W1, W0
         mov     W0, ibasel
-.if WANT_X == 1
         mov     iaddrh, W0
         mov     W0, ibaseh
         mov     W0, TBLPAG
-.endif
 fill_buffer_from_imem:
         clr     W0
         rcall   wbti_init
@@ -621,10 +615,8 @@ wbti_init:
         mov.w   W0, NVMCON
         mov.w   #ibufl, W0 ; Low word flash buffer in ram
         mov.w   #ibufh, W1 ; High byte buffer
-.if WANT_X == 1
         mov.w   ibaseh, W2
         mov.w   W2, TBLPAG
-.endif
         mov.w   ibasel, W2
         mov.w   #FLASH_ROWS, W4
 .ifndecl PIC2433E
@@ -705,9 +697,7 @@ wbtil6:
         bra       nz, wbtil5
         bclr      iflags, #idirty
         setm      ibasel       ; Now the flash row has been verified
-.if WANT_X == 1
         setm      ibaseh       ; Now the flash row has been verified
-.endif
         clr       TBLPAG
         return
 
@@ -724,16 +714,16 @@ LITERAL:
         mov     [W14--], W0
         mov     W0, W1
         sl      W0, #4, W0
+        ior     #2, W0
         lsr     W1, #12, W1
-        ior     #0x20, W1             ; mov  #literal , W0
+        ior     #0x20, W1             ; mov  #literal , W2
         mov     W0, [++W14]           ; Lower 16 bit of the instruction
         mov     W1, [++W14]           ; High 8 bit of the instruction
-        rcall   AS_COMMA              ; Special instruction to append
-                                      ; assembly code
-; wBhh hddd dggg ssss 0010 1111 0000 0000
-        mov     #0x2f00, W0
+        rcall   AS_COMMA              ; Word to append assembly code
+; wBhh hddd dggg ssss 0010 1111 0000 0010
+        mov     #0x2f02, W0
 ; 0111 1www     0111 1000
-        mov     #0x0078, W1       ; mov W0, [++W14]
+        mov     #0x0078, W1       ; mov W2, [++W14]
         mov     W0, [++W14]
         mov     W1, [++W14]
         rcall   AS_COMMA
@@ -794,8 +784,8 @@ BUSY_:
         
         .pword   paddr(9b)+PFLASH
 9:
-        .byte   NFA|4
-        .ascii  "load"
+        .byte   NFA|7
+        .ascii  "cpuload"
         .align 2
 LOAD_:
         mov     #FCY/3126, W2
@@ -920,9 +910,7 @@ FILL_RAM:
 
         mov     #usbuf0, W14
         setm    ibasel
-.if WANT_X == 1
         setm    ibaseh
-.endif
         clr     iflags
 .ifndef PAIVT
 .ifdecl INTTREG
@@ -1206,7 +1194,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 12.01.2024\r\n"
+        .ascii  " FlashForth 5 PIC24 16.01.2024\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1693,33 +1681,137 @@ CF_FETCH:
         .ascii  "as,"
         .align  2
 AS_COMMA:
-        mov     [W14--], W0
-        cp      W0, W10
-        bra     nz, AS_COMMA1
-        sub     #0x78, W10
-        bra     nz, AS_COMMA1  ; hibytecheck
-        mov     [W14], W1
-        mov     #0x002e, W2
-        cp      W1, W2
-        bra     nz, AS_COMMA1  ; mov [W14--], W0  ???
-        mov     #0x2f00, W2
-        cp      W2, W12
-        bra     nz, AS_COMMA1  ; mov W0, [++W14]  ???
-        sub     W14, #2, W14
-        dec2    dpFLASH    ; Forget the latest compiled one cell instruction
-        mov     #0, W12
-        mov     #0, W10
-        bra     AS_COMMA2        
+        mov     [W14], W3
+        push    [W14--]
+        push    [W14]
+        rcall   IS_78012E            ; MOV [W14--], W2
+        bra     z, AS_REMOVE1
+        rcall   IS_7800AE            ; MOV [W14--], W1
+        bra     z, AS_REMOVE2
+        rcall   IS_781FAE            ; mov.w [W14--], [W15++]
+        bra     z, AS_REMOVE3
+        bra     AS_COMMA0
+AS_REMOVE1:
+        dec2    dpFLASH, WREG
+        mov     W0, [W14]
+        rcall   FETCH
+        rcall   IS_782F02            ; C-2 MOV W2, [++W14]
+        bra     nz, AS_COMMA0
+        dec2    dpFLASH
+        pop.d   W0
+        dec2    W14, W14
+        bra     AS_COMMA2
+AS_REMOVE2:
+        dec2    dpFLASH, WREG
+        mov     W0, [W14]
+        rcall   FETCH
+        rcall   IS_2NNNN2            ; C-2 MOV #NNNN, W2
+        bra     nz, AS_COMMA0
+        push    W3
+        push    [W14]
+        dec2    dpFLASH, WREG
+        dec2    W0, [W14]
+        rcall   FETCH
+        rcall   IS_782F02            ; C-4 MOV W2, [++W14]
+        bra     nz, AS_DROP
+        dec2    dpFLASH, WREG
+        sub     W0, #4, [W14]
+        rcall   FETCH
+        rcall   IS_2NNNN2            ; C-2 MOV #NNNN, W2
+        bra     nz, AS_DROP
+        dec2    dpFLASH, WREG
+        sub     W0, #4, W0
+        mov     W0, dpFLASH
+        dec     [W14], [W14]         ; mov #lit, W1
+        mov     [W14], W4
+        rcall   AS_COMMA1
+        pop     [++W14]
+        pop     W3
+        pop.d   W0
+        bra     AS_COMMA1
+AS_REMOVE3:
+        dec2    dpFLASH, WREG
+        mov     W0, [W14]
+        rcall   FETCH
+        rcall   IS_780F3E            ; C-2 mov [W14++], [W14]
+        bra     z, AS_REMOVE4
+        rcall   IS_782F02            ; mov W2, [++W14]
+        bra     nz, AS_COMMA0
+        dec2    dpFLASH
+        pop     W2                   ; 781FAE
+        pop     W3
+        mov.b   #0x82, W2            ; 781F82 MOV W2, [W15++]
+        mov     W2,[W14]
+        bra     AS_COMMA1
+AS_REMOVE4:
+        dec2    dpFLASH              ; mov [W14], [W15++]
+        pop     [W14]                ; 781F9E
+        pop     W3
+        bclr    [W14], #5
+        bset    [W14], #4
+        bra     AS_COMMA1
+AS_DROP:
+        pop.d   W0
+AS_COMMA0:
+        pop     [W14]
+        pop     W3                   ; hibyte
 AS_COMMA1:
-        mov     W0, W3          ; hibyte
-        mov     W0, W10
-        mov     [W14], W12
         rcall   IHERE
         rcall   CFISTORE
         rcall   CELL
         rcall   IALLOT
 AS_COMMA2:
         return
+; W3   = HI byte
+; [W14]= low word
+; W1   = temp
+; W0   = 0 if match
+IS_78012E:
+        mov #0x78, W1
+        xor W3, W1, W0
+        mov #0x012e, W1
+        xor W1, [W14], W1
+        xor W1, W0, W0
+        return
+IS_7800AE:
+        mov #0x78, W1
+        xor W3, W1, W0
+        mov #0x00ae, W1
+        xor W1, [W14], W1
+        xor W1, W0, W0
+        return
+IS_782F02:
+        mov #0x78, W1
+        xor W3, W1, W0
+        mov #0x2f02, W1
+        xor W1, [W14], W1
+        xor W1, W0, W0
+        return
+IS_781FAE:
+        mov #0x78, W1
+        xor W3, W1, W0
+        mov #0x1FAE, W1
+        xor W1, [W14], W1
+        xor W1, W0, W0
+        return
+IS_780F3E:
+        mov #0x78, W1
+        xor W3, W1, W0
+        mov #0x0F3E, W1
+        xor W1, [W14], W1
+        xor W1, W0, W0
+        return
+IS_2NNNN2:
+        mov #0x20, W1
+        mov W3, W4
+        and #0xf0, W4
+        xor W4, W1, W0
+        mov #0x000f, W4
+        and W4, [W14], W1
+        xor #2, W1
+        xor W1, W0, W0
+        return
+
 
 ; i, ( data  -- )  upper byte is in 'hibyte'
 ;        .pword   paddr(AS_COMMA_L)+PFLASH
@@ -1779,9 +1871,7 @@ ICSTORE:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
-.if WANT_X == 1
         clr     iaddrh
-.endif
         rcall   ISTORE_SUB
         mov.b   W1, [W0]
         return
@@ -1798,9 +1888,7 @@ ISTORE_RAW:
         mov     #PFLASH, W1
         sub     W0, W1, W0
         mov     W0, iaddrl       ; W0 = addr, iaddrl = addr
-.if WANT_X == 1
         clr     iaddrh
-.endif
         rcall   ISTORE_SUB
         mov     W1, [W0]
 ISTORE1:
@@ -2250,9 +2338,8 @@ CFETCH1:
         bra     GEU, ECFETCH
         bra     ICFETCH
 .endif
-.if WANT_X == 1
 ;;; Xtended Fetch from Flash Memory
-;;; xu@ ( addrl addrh -- x c )
+;;; x@ ( addrl addrh -- x c )
         .pword  paddr(9b)+PFLASH
 9:
         .byte   NFA|2
@@ -2292,39 +2379,39 @@ XUSTORE1:
         rcall   ISTORE_SUB
         mov     W1, [W0]
         return
-.endif
+
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|4
+        .byte   NFA|INLINE|4
         .ascii  "mset"
         .align  2
 MSET:
-        mov     [W14--], W0
-        mov.w   [W14--], W1
-        ior.w   W1, [W0],[W0] 
+        mov     [W14--], W2
+        mov     [W14--], W1
+        ior     W1, [W2],[W2] 
         return
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|4
+        .byte   NFA|INLINE|4
         .ascii  "mclr"
         .align  2
 MCLR:
-        mov     [W14--], W0
-        com.w   [W14--], W1
-        and.w   W1, [W0],[W0] 
+        mov     [W14--], W2
+        com     [W14--], W1
+        and     W1, [W2],[W2] 
         return
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|4
+        .byte   NFA|INLINE|4
         .ascii  "mtst"
         .align  2
 MTST:
-        mov     [W14--], W0
+        mov     [W14--], W2
         mov     [W14--], W1
-        and.w   W1, [W0], W0
-        mov     W0, [++W14] 
+        and.w   W1, [W2], W2
+        mov     W2, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -2333,10 +2420,10 @@ MTST:
         .ascii  "lshift"
         .align  2
 LSHIFT:
-        mov.w   [W14--], W0
+        mov.w   [W14--], W2
         mov     [W14--], W1
-        sl      W1, W0, W0
-        mov     W0, [++W14]
+        sl      W1, W2, W2
+        mov     W2, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -2345,10 +2432,10 @@ LSHIFT:
         .ascii  "rshift"
         .align  2
 RSHIFT:
-        mov.w   [W14--], W0
+        mov.w   [W14--], W2
         mov     [W14--], W1
-        lsr     W1, W0, W0
-        mov     W0, [++W14]
+        lsr     W1, W2, W2
+        mov     W2, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3067,7 +3154,7 @@ RPEMPTY:
         .ascii  "drop"
         .align  2
 DROP:
-        sub     W14, #2, W14
+        mov     [W14--], W0
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3076,9 +3163,9 @@ DROP:
         .ascii  "swap"
         .align  2
 SWOP:
-        mov     [W14--], W0
-        mov     [W14++], [W14]
-        mov     W0, [W14-2]
+        mov     [W14--], W2
+        mov     [W14++], [W14--]
+        mov     W2, [W14++]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3087,8 +3174,8 @@ SWOP:
         .ascii  "over"
         .align  2
 OVER:
-        mov     [W14-0x2], W0
-        mov     W0, [++W14]
+        mov     [W14-0x2], W2
+        mov     W2, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3131,8 +3218,21 @@ RFROM:
         .ascii  "r@"
         .align  2
 RFETCH:
-        mov     [W15-2], W0
-        mov     W0, [++W14]
+        mov     [W15-2], W2
+        mov     W2, [++W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
+        .align  2
+9:
+        .byte   NFA|INLINE|COMPILE|3
+        .ascii  "2r@"
+        .align  2
+R2FETCH:
+        mov     [W15-2], W2
+        mov     W2, [++W14]
+        mov     [W15-4], W2
+        mov     W2, [++W14]
         return
 
 ;   ABS     n   --- n1      absolute value of n
@@ -3162,8 +3262,8 @@ DABS:
         .ascii  "+"
         .align  2
 PLUS:
-        mov     [W14--], W0
-        add     W0, [W14], [W14]
+        mov     [W14--], W2
+        add     W2, [W14], [W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3172,11 +3272,11 @@ PLUS:
         .ascii  "m+"
         .align  2
 MPLUS:
-        mov     [W14--], W0
+        mov     [W14--], W2
         setm    W1
-        btss    W0, #15
+        btss    W2, #15
         clr     W1
-        add     W0, [--W14], [W14++]
+        add     W2, [--W14], [W14++]
         addc    W1, [W14], [W14]
         return
 
@@ -3186,9 +3286,9 @@ MPLUS:
         .ascii  "d+"
         .align  2
 DPLUS:
-        mov     [W14--], W0
-        mov     [W14--], W1
         mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14--], W0
         add     W1, [W14], [W14++]
         addc    W0, W2, [W14]
         return
@@ -3209,12 +3309,12 @@ MINUS:
         .ascii  "d-"
         .align  2
 DMINUS:
-        mov     [W14--], W0
-        mov     [W14--], W1
         mov     [W14--], W2
+        mov     [W14--], W1
+        mov     [W14--], W0
         mov     [W14], W3
         sub     W3, W1, [W14++]
-        subb    W2, W0, [W14]
+        subb    W0, W2, [W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3223,8 +3323,8 @@ DMINUS:
         .ascii  "and"
         .align  2
 AND:
-        mov     [W14--], W0
-        and     W0, [W14], [W14]
+        mov     [W14--], W2
+        and     W2, [W14], [W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3233,8 +3333,8 @@ AND:
         .ascii  "or"
         .align  2
 OR:
-        mov     [W14--], W0
-        ior     W0, [W14], [W14]
+        mov     [W14--], W2
+        ior     W2, [W14], [W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3243,8 +3343,8 @@ OR:
         .ascii  "xor"
         .align  2
 XOR:
-        mov     [W14--], W0
-        xor     W0, [W14], [W14]
+        mov     [W14--], W2
+        xor     W2, [W14], [W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -3281,10 +3381,10 @@ NEGATE:
         .ascii  "dnegate"
         .align  2
 DNEGATE:
-        com     [W14--], W1
+        com     [W14--], W2
         com     [W14], W0
         add     W0, #1, [W14++]
-        addc    W1, #0, [W14]
+        addc    W2, #0, [W14]
         return
         
         .pword  paddr(9b)+PFLASH
@@ -3389,8 +3489,8 @@ test_true:
         .ascii  "d0="
         .align  2
 DZEROEQUAL:
-        mov     [W14--], W0
-        ior     W0, [W14], [W14]
+        mov     [W14--], W2
+        ior     W2, [W14], [W14]
         bra     nz, test_false
         goto    test_true
 
@@ -3519,31 +3619,31 @@ STOD:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "um*"
         .align  2
 UMSTAR:
-        mov     [W14--], W0
-        mul.uu  W0, [W14], W2
+        mov     [W14--], W2
+        mul.uu  W2, [W14], W2
         mov     W2, [W14++]
         mov     W3, [W14]
         return
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "m*"
         .align  2
 MSTAR:
-        mov     [W14--], W0
-        mul.ss  W0, [W14], W2
+        mov     [W14--], W2
+        mul.ss  W2, [W14], W2
         mov     W2, [W14++]
         mov     W3, [W14]
         return
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|6
+        .byte   NFA|INLINE|6
         .ascii  "um/mod"
         .align  2
 UMSLASHMOD:
@@ -3563,7 +3663,7 @@ UMSLASHMOD:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|6
+        .byte   NFA|INLINE|6
         .ascii  "sm/rem"
         .align  2
 SMSLASHREM:
@@ -3583,7 +3683,7 @@ SMSLASHREM:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|5
+        .byte   NFA|INLINE|5
         .ascii  "u/mod"
         .align  2
 USLASHMOD:
@@ -3602,7 +3702,7 @@ USLASHMOD:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|4
+        .byte   NFA|INLINE|4
         .ascii  "/mod"
         .align  2
 SLASHMOD:
@@ -3621,7 +3721,7 @@ SLASHMOD:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|3
+        .byte   NFA|INLINE|3
         .ascii  "mod"
         .align  2
 MOD:
@@ -4181,10 +4281,10 @@ SPCS2:
         .ascii  "umin"
         .align  2
 UMIN:
-        mov     [W14--], W0
-        cp      W0, [W14]
+        mov     [W14--], W2
+        cp      W2, [W14]
         bra     GTU, UMIN1
-        mov     W0, [W14]
+        mov     W2, [W14]
 UMIN1:
         return
 
@@ -4194,10 +4294,10 @@ UMIN1:
         .ascii  "umax"
         .align  2
 UMAX:
-        mov     [W14--], W0
-        cp      W0, [W14]
+        mov     [W14--], W2
+        cp      W2, [W14]
         bra     LEU, UMAX1
-        mov     W0, [W14]
+        mov     W2, [W14]
 UMAX1:
         return
 
@@ -4585,19 +4685,19 @@ UGREATER:
 ; : *  um* drop ;
         .pword  paddr(UGREATER_L)+PFLASH
 STAR_L:
-        .byte   NFA|1
+        .byte   NFA|INLINE|1
         .ascii  "*" 
         .align  2
 STAR:
         mov     [W14--], W2
-        mul.ss  W2, [W14--], W0
-        mov     W0, [++W14]
+        mul.ss  W2, [W14--], W2
+        mov     W2, [++W14]
         return
 
 ; U/      u1 u2 -- u3      16/16-> divide
         .pword  paddr(STAR_L)+PFLASH
 USLASH_L:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "u/" 
         .align  2
 USLASH:
@@ -4616,13 +4716,13 @@ USLASH:
 ; U*/MOD  u1 u2 u3 -- u4 u5    u1*u2/u3, rem&quot
         .pword  paddr(USLASH_L)+PFLASH
 USSMOD_L:
-        .byte   NFA|6
+        .byte   NFA|INLINE|6
         .ascii  "u*/mod" 
         .align  2
 USSMOD:
-        mov     [W14--], W3
         mov     [W14--], W2
-        mul.uu  W2, [W14], W0
+        mov     [W14--], W1
+        mul.uu  W1, [W14], W0
 .ifdecl HAS_DIV2
         repeat  #5
         div2.ud W0, W2
@@ -4638,13 +4738,13 @@ USSMOD:
 ; */MOD  n1 n2 n3 -- n4 n5    n1*n2/n3, rem&quot
         .pword  paddr(USSMOD_L)+PFLASH
 SSMOD_L:
-        .byte   NFA|5
+        .byte   NFA|INLINE|5
         .ascii  "*/mod" 
         .align  2
 SSMOD:
-        mov     [W14--], W3
         mov     [W14--], W2
-        mul.ss  W2, [W14], W0
+        mov     [W14--], W1
+        mul.ss  W1, [W14], W0
 .ifdecl HAS_DIV2
         repeat  #5
         div2.sd W0, W2
@@ -4659,13 +4759,13 @@ SSMOD:
 ; */  n1 n2 n3 -- n4    n1*n2/n3, quot
         .pword  paddr(SSMOD_L)+PFLASH
 SS_L:
-        .byte   NFA|2
+        .byte   NFA|INLINE|2
         .ascii  "*/" 
         .align  2
 SS:
-        mov     [W14--], W3
         mov     [W14--], W2
-        mul.ss  W2, [W14--], W0
+        mov     [W14--], W1
+        mul.ss  W1, [W14--], W0
 .ifdecl HAS_DIV2
         repeat  #5
         div2.sd W0, W2
@@ -4679,7 +4779,7 @@ SS:
 ; / n1 n2 -- n3  signed 16/16->16 divide
         .pword  paddr(SS_L)+PFLASH
 SLASH_L:
-        .byte   NFA|1
+        .byte   NFA|INLINE|1
         .ascii  "/" 
         .align  2
 SLASH: 
@@ -4702,8 +4802,8 @@ L_UDSTAR:
         .ascii  "ud*"
         .align  2
 UDSTAR:
-        push    [W14]
         mov     [W14--], W0
+        push    W0
         mul.uu  W0, [W14--], W2
         mov     W2, W1
         pop     W0
@@ -4761,11 +4861,11 @@ TUCK_L:
         .ascii  "tuck" 
         .align  2
 TUCK:
-        mov     [W14--], W0
+        mov     [W14--], W2
         mov     [W14--], W1
-        mov     W0, [++W14]
+        mov     W2, [++W14]
         mov     W1, [++W14]
-        mov     W0, [++W14]
+        mov     W2, [++W14]
         return
 
 ; ?NEGATE  n1 n2 -- n3  negate n1 if n2 negative
@@ -4790,10 +4890,10 @@ MAX_L:
         .ascii  "max" 
         .align  2
 MAX:
-        mov     [W14--], W0
-        cp      W0, [W14]
+        mov     [W14--], W2
+        cp      W2, [W14]
         bra     LT, MAX1
-        mov     W0, [W14]
+        mov     W2, [W14]
 MAX1:
         return
 
@@ -4805,10 +4905,10 @@ MIN_L:
         .ascii  "min" 
         .align  2
 MIN:    
-        mov     [W14--], W0
-        cp      W0, [W14]
+        mov     [W14--], W2
+        cp      W2, [W14]
         bra     GT, MIN1
-        mov     W0, [W14]
+        mov     W2, [W14]
 MIN1:
         return
 
@@ -4851,7 +4951,7 @@ LESSNUM:
         goto    STORE
 
 ; digit   n -- c            convert to 0..9a..z
-;   [ HEX ] DUP 9 > IF 27 + THEN 30 + ;
+;   DUP $9 > IF $27 + THEN $30 + ;
         .pword  paddr(LESSNUM_L)+PFLASH
 TODIGIT_L:
         .byte   NFA|5
@@ -5015,6 +5115,18 @@ DDOT:
         goto    SPACE_
 
         .pword  paddr(DDOT_L)+PFLASH
+9:
+        .byte   NFA|5
+        .ascii  "fsize"
+        .align  2
+FLASHSIZE:
+        mov     #FLASH_SIZE&0xffff, W1
+        mov     W1, [++W14]
+        mov     #FLASH_SIZE>>16, W0
+        mov     W0, [++W14]
+        return
+
+        .pword  paddr(9b)+PFLASH
 MEMHI_L:
         .byte   NFA|2
         .ascii  "hi"
@@ -5135,8 +5247,6 @@ BASE:
         mov     #ubase, W0
         add     W1, W0, [++W14]
         return
-;        rcall   DOUSER
-;        .word   ubase
 
 ; SOURCE   -- adr n         current input buffer
 ;   'SOURCE 2@ ;        length is at higher adrs
@@ -5157,10 +5267,10 @@ SLASHSTRING_L:
         .ascii  "/string"
         .align  2
 SLASHSTRING:
-        mov     [W14--], W0
+        mov     [W14--], W2
         mov     [W14], W1
-        sub     W1, W0, [W14--]
-        add     W0, [W14], [W14++]
+        sub     W1, W2, [W14--]
+        add     W2, [W14], [W14++]
         return
 
 ; \     Skip the rest of the line
@@ -6268,7 +6378,7 @@ IHERE_L:
         .align  2
 IHERE:
         mov     dpFLASH, W0
-        mov     W0, [++W14]     ; IHERE must not trash W12=hibyte
+        mov     W0, [++W14]
         return
 
 ; [CHAR]   --          compile character literal
@@ -6880,8 +6990,8 @@ STATE_L:
         .ascii  "state"
         .align  2
 STATE:
-        mov     state, W0
-        mov     W0, [++W14]
+        mov     state, W2
+        mov     W2, [++W14]
         return
 
 ; RHERE      -- a-addr          For variables in ram
@@ -7284,10 +7394,10 @@ SetupPointers:
         .byte   NFA|INLINE|7
         .ascii  "sum[16]"
         .align  2
-        mov     [W14--], W0
+        mov     [W14--], W2
         clr     W1
         repeat  #15
-        add     W1, [W0++], W1
+        add     W1, [W2++], W1
         mov     W1, [++W14]
         return
 
