@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          16.01.2024                                        *
+;    Date:          05.03.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1194,7 +1194,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 16.01.2024\r\n"
+        .ascii  " FlashForth 5 PIC24 05.03.2024\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1717,7 +1717,7 @@ AS_REMOVE2:
         dec2    dpFLASH, WREG
         sub     W0, #4, [W14]
         rcall   FETCH
-        rcall   IS_2NNNN2            ; C-2 MOV #NNNN, W2
+        rcall   IS_2NNNN2            ; C-6 MOV #NNNN, W2
         bra     nz, AS_DROP
         dec2    dpFLASH, WREG
         sub     W0, #4, W0
@@ -2416,7 +2416,7 @@ MTST:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|6
+        .byte   NFA|INLINE|6
         .ascii  "lshift"
         .align  2
 LSHIFT:
@@ -2428,7 +2428,7 @@ LSHIFT:
 
         .pword  paddr(9b)+PFLASH
 9:
-        .byte   NFA|6
+        .byte   NFA|INLINE|6
         .ascii  "rshift"
         .align  2
 RSHIFT:
@@ -3974,6 +3974,7 @@ CONSTANT:
         .align  2
 CON_:
         rcall   COLON
+        rcall   INLINED
         rcall   LITERAL
         goto    SEMICOLON
 
@@ -3985,6 +3986,7 @@ CON_:
 TWOCON_:
         rcall   SWOP
         rcall   COLON
+        rcall   INLINED
         rcall   LITERAL
         rcall   LITERAL
         goto    SEMICOLON
@@ -4121,8 +4123,8 @@ CCOMMA:
         .ascii  "cell"
         .align  2
 CELL:
-        mov     #2, W0
-        mov     W0, [++W14]
+        mov     #2, W2
+        mov     W2, [++W14]
         return
 
         .pword  paddr(9b)+PFLASH
@@ -5329,9 +5331,10 @@ WORD_L:
         .align  2
 WORD:
         rcall   PARSE
-        rcall   PAD
-        rcall   PLACE
-        goto    PAD
+        rcall   SWOP
+        rcall   ONEMINUS
+        rcall   TUCK
+        goto    CSTORE
 
         .pword  paddr(WORD_L)+PFLASH
 ERASE_L:
