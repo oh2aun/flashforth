@@ -432,19 +432,19 @@
 .ifdef __24FJ256GA702
 .equ FLASH_SIZE,     0x2a800
 .equ RAM_SIZE,       0x4000
-.include "p24fj_ga_705.inc"
+.include "p24fj_ga_config.inc"
 .endif
 
 .ifdef __24FJ256GA704
 .equ FLASH_SIZE,     0x2a800
 .equ RAM_SIZE,       0x4000
-.include "p24fj_ga_705.inc"
+.include "p24fj_ga_config.inc"
 .endif
 
 .ifdef __24FJ256GA705
 .equ FLASH_SIZE,     0x2a800
 .equ RAM_SIZE,       0x4000
-.include "p24fj_ga_705.inc"
+.include "p24fj_ga_config.inc"
 .endif
 
 .ifdef __24FJ256GB106
