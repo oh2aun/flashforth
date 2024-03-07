@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          13.01.2024                                        *
+;    Date:          07.03.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "13.01.2024"
+#define DATE "07.03.2024"
 #define datelen 10
 
 
@@ -1069,44 +1069,6 @@ FCY_L:
         .align  1
         rcall   DOCREATE
         .word     FREQ_OSC / 1000
-
-;;; Check parameter stack pointer
-SP_Q:
-        rcall   SPFETCH
-        call    R0_
-        rcall   FETCH_A
-        call    S0
-        rcall   FETCH_A
-        rcall   ONEPLUS
-        rcall   WITHIN
-        rcall   XSQUOTE
-        .byte     3
-        .ascii  "SP?"
-        .align  1
-        rcall   QABORT
-        ret
-        
-; check sanity if RAM DP
-DP_Q:
-        rcall   DOLIT
-        .word   dp_ram
-        call    FETCH
-        rcall   DOLIT
-        .word   dpdata
-        rcall   DOLIT
-        .word   (RAM_HI-32)
-        call    WITHIN
-        call    ZEROSENSE
-        brne    DP_Q_RET
-        call    EMPTY
-        rcall   XSQUOTE
-        .byte   10
-        .ascii  "\nDP? EMPTY"
-        .align  1
-        rcall   TYPE
-        jmp     WARM_0
-DP_Q_RET:
-        ret
         
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
@@ -2923,9 +2885,10 @@ WORD_L:
         .align  1
 WORD:
         rcall   PARSE           ; c-addr wlen
-        rcall   PAD
-        rcall   PLACE
-        jmp     PAD
+        rcall   SWOP
+        rcall   ONEMINUS
+        rcall   TUCK
+        jmp     CSTORE
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p>r for c@+ pc! p+ next r>p drop ;
@@ -3679,8 +3642,6 @@ QUIT0:
         rcall   DP_TO_RAM
 QUIT1: 
         cbr     FLAGS2, (1<<fCREATE)
-        rcall   DP_Q
-        rcall   SP_Q
         rcall   CR
         rcall   TIB
         rcall   DUP
