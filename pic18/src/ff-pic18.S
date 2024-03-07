@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          12.01.2024                                        *
+;;    Date:          07.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ;; FlashForth is a standalone Forth system for microcontrollers that
 ;; can flash their own flash memory.
 ;;
-;; Copyright (C) 2023  Mikael Nordman
+;; Copyright (C) 2024  Mikael Nordman
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License version 3 as
@@ -28,8 +28,9 @@
 ;; in the header of this file, and in the identification
 ;; displayed by the word VER.
 ;;**********************************************************************
-#include "p18fxxxx.inc"
+
 #include <xc.inc>
+#include "p18fxxxx.inc"
 #include "p18f-main.inc"
 
 ; Select the operator UART
@@ -505,13 +506,13 @@ PSECT   edata
 
 ;; Code **********************************************
 ;   Reset vector
-PSECT   resetVec,global,reloc=2,class=CODE,delta=1
+PSECT resetVec,class=CODE
 resetVec:
         nop                     ;; 18f252/18f258 ERRATA
         goto    main
 ;;;;***************************************************
 ;   High priority interrupt vector
-    PSECT   hi_int,global,reloc=2,class=CODE,delta=1
+PSECT   hi_int,class=CODE
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
@@ -537,7 +538,7 @@ irq_user:
 ;; ****** LOW PRIORITY INTERRUPT
 ;; Timer 0 interrupt must be marked low priority
 ;   Low priority interrupt vector and handler
-    PSECT   lo_int,global,reloc=2,class=CODE,delta=1
+PSECT   lo_int,class=CODE
 #ifndef K42
         movwf   BANKMASK(ilw), A
         movff   STATUS, ilstatus
@@ -913,7 +914,7 @@ DPD:    dw      dpdata+PRAM
 LW:     dw      lastword
 STAT:   dw      DOTSTATUS
 ;; *******************************************************************
-    PSECT   code
+PSECT   code, class=CODE
 ;; EXIT --   Compile a return
 ;;        variable link
         dw      0
@@ -1610,7 +1611,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 12.01.2024        ; 10
+        STRING 07.03.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -5329,9 +5330,10 @@ L_WORD:
         NF 4,word
 WORD:
         rcall   PARSE           ; c-addr wlen
-        call    PAD
-        rcall   PLACE
-        goto    PAD
+        rcall   SWOP
+        rcall   ONEMINUS
+        rcall   TUCK
+        goto    CSTORE
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p for c@+ pc! p+ next drop ;
@@ -7349,10 +7351,24 @@ PNPLUS:
         addwfc  BANKMASK(p_hi), F, A
         return
 ;***************************************************
+; ?\  ( flag -- ) Skip rest of line if flag is false
+;***************************************************
+        dw      L_PNPLUS
+L_QBSLASH:
+        db      NFA|2,'?'
+        db      0x5c
+        align   2
+QBSLASH:
+        movf    Sminus, W, A
+        iorwf   Sminus, W, A
+        bnz     QBSLASH1
+        call    BSLASH
+QBSLASH1:
+        return
 ; PAD     -- addr   Used by WORD as temporary result storage.
 ;                   Starts at free RAM (ram here). 
 
-        dw      L_PNPLUS
+        dw      L_QBSLASH
 L_PAD:        
         NF  3,pad
 PAD:
