@@ -154,9 +154,11 @@
 #define ZERO BANKMASK(STATUS), 2, a
 #endif
 
-LIT MACRO value
-        pushl   high(value)
-        pushl   low(value)
+LIT MACRO literal
+        movlw   high(literal)
+	movwf	Sminus, A
+        movlw   low(literal)
+	movwf	Sminus, A
     ENDM
 NF MACRO arg0,arg1
   db arg0|0x80
@@ -476,7 +478,8 @@ usbuf:       ds ussize
 wordlenchar: ds 1
 utibbuf:     ds utibsize
 #endif
-
+S0top       equ usbuf+PRAM
+S0bot       equ usbuf+ussize+(PRAM-3)
 ;; Start of free ram
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 dpdata:      ds 2
@@ -655,7 +658,7 @@ irq_ms:
 #endif
 #endif
 irq_load_end:
-        movlb   0
+        banksel upcurr
 #ifndef K42
         bra     irq_end
 #else // K42 K83
@@ -670,14 +673,14 @@ irq_async_rx1:
         banksel REG_U1RXIF
         btfss   U1RXIF
         bra     irq_async_rx1_end
-        banksel FLAGS1
+        banksel upcurr
 #ifndef K42
         movf    Tp, W, A
         movwf   BANKMASK(ihtp), A
         movf    Tbank, W, A
         movwf   BANKMASK(ihtbank), A
 #endif
-        bsf     BANKMASK(FLAGS1), istream, A      ;; Indicate input stream activity to FLASH write routine
+        bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 irq_async_rx1_2:
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXhead), W, B
@@ -708,8 +711,10 @@ irq_async_rx1_3:
         movf    BANKMASK(ihtp), W, B
         movwf   Tp, A
 #endif
+        banksel upcurr
         bra     irq_end
 irq_async_rx1_end:
+        banksel upcurr
 
 ;; UART 2
 #if WANT_UART2 == ENABLE
@@ -835,10 +840,11 @@ irq_end:
 #endif
 ;; *******************************************************************
 ;; WARM user area data
+
 warmlitsize equ 28
 WARMLIT:
         dw      u0+PRAM        ;; UP
-        dw      usbuf+ussize+(PRAM-1) ;; S0
+        dw      S0bot          ;; S0
         dw      OPERATOR_TX    ;; EMIT vector
         dw      OPERATOR_RX    ;; KEY vector
         dw      OPERATOR_RXQ   ;; KEY? vector
@@ -933,8 +939,8 @@ PAUSE_IDLE1:
 #endif
 #endif
 PAUSE000:
-        ; Set user pointer in Tp, Tbank (FSR1)
         banksel upcurr
+        ; Set user pointer in Tp, Tbank (FSR1)
         movf    BANKMASK(upcurr), W, B
         movwf   Tp, A
         movf    (BANKMASK(upcurr)+1), W, B
@@ -1079,7 +1085,6 @@ WARM:
         movf    BANKMASK(fstatus), W, B
         movwf   BANKMASK(reset2), B
         movlw   0x3f            ; Clearing the flags in PCON0
-        banksel PCON0
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
@@ -1340,7 +1345,6 @@ WARM_ZERO_1:
 #endif
 #endif
 #endif
-
 #if CPU_LOAD == ENABLE
 #ifndef K42
         movlw   08                  ; TMR0 used for CPU_LOAD
@@ -1547,7 +1551,7 @@ VER:
         call    XSQUOTE
         db 28+PICLEN,' '         ; 1
         STRING  FlashForth       ; 10
-        db      ' ','5X',' '     ; 4
+        db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
         STRING 18.03.2024        ; 10
@@ -1564,6 +1568,7 @@ TX1_:
         banksel REG_U1RXIF
         btfsc   U1TXIF
         bra     TX1_SEND
+        banksel upcurr
         rcall   PAUSE
         bra     TX1_
 TX1_SEND:
@@ -1571,6 +1576,7 @@ TX1_SEND:
         movf    plusS, F, A
         banksel U1TXB
         movwf   U1TXB, B
+        banksel upcurr
         return
 
 ;***************************************************
@@ -1915,13 +1921,14 @@ L_IR:
 ;;; 42 clock cycles
 ;;; UM* ( u u -- ud )
 umstar0:
-        rcall   TOTBLP
-        movf    plusS, W, A
+        movf    1, W, A
+        movwf   TBLPTRL, A
+        movf    2, W, A
+        movwf   TBLPTRH, A
+        movf    3, W, A
         movwf   TABLAT, A
-        movf    plusS, W, A
+        movf    4, W, A
         movwf   PCLATH, A
-        subfsr  Sptr, 4
-        push
         ; L1 * L2
         movf    TBLPTRL, W, A
         mulwf   TABLAT, A
@@ -1958,69 +1965,47 @@ umstar0:
 
 ;***********************************************************
 ;;; 320 - 384 cycles for 16 or 32 bit division
-;;; TBLPTRH TBLPTRL PCLATH TABLAT Tp Tbank PRODL PRODH
+;;; TBLPTRL TBLPTRH Tbank Tp
 
-#define DIVIDEND_0      PRODL
-#define DIVIDEND_1      PRODH
-#define DIVIDEND_2      TABLAT
-#define DIVIDEND_3      PCLATH
 #define DIVISOR_0       TBLPTRL
 #define DIVISOR_1       TBLPTRH
 #define DCNT            Tbank
 
 umslashmod0:
         rcall   TOTBLP     ; DIVISOR_1, DIVISOR_0
+        bnz     umslashmod3
         tstfsz  DIVISOR_0, A
-        bra     umslashmod3
-        tstfsz  DIVISOR_1, A
         bra     umslashmod3
         bsf     BANKMASK(fstatus), 0, A  ; Signal divide by zero error
         bra     WARM
 umslashmod3:
-        movf    plusS, W, A
-        movwf   DIVIDEND_0, A
-        movf    plusS, W, A
-        movwf   DIVIDEND_1, A
-        movf    plusS, W, A
-        movwf   DIVIDEND_2, A
-        movf    plusS, W, A
-        movwf   DIVIDEND_3, A
         movlw   16
         movwf   DCNT, A             ; count to 16; 19
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     CARRY
-        rlcf    DIVIDEND_0, F, A
-        rlcf    DIVIDEND_1, F, A
-        rlcf    DIVIDEND_2, F, A
-        rlcf    DIVIDEND_3, F, A
+        rlcf    1, F, A             ; DIVIDEND_0
+        rlcf    2, F, A             ; DIVIDEND_1
+        rlcf    3, F, A             ; DIVIDEND_2
+        rlcf    4, F, A             ; DIVIDEND_3
         rlcf    Tp, F, A
 
         movf    DIVISOR_0, W, A
-        subwf   DIVIDEND_2, W , A
+        subwf   3, W , A
         movf    DIVISOR_1, W, A
-        subwfb  DIVIDEND_3, W, A
+        subwfb  4, W, A
         movlw   0
         subwfb  Tp, W, A
         bnc     UMSLASHMOD2
 
         movf    DIVISOR_0, W, A
-        subwf   DIVIDEND_2, F, A
+        subwf   3, F, A
         movf    DIVISOR_1, W, A
-        subwfb  DIVIDEND_3, F, A
-        bsf     DIVIDEND_0, 0, A
+        subwfb  4, F, A
+        bsf     1, 0, A
 UMSLASHMOD2:
         decfsz  DCNT, F, A
         bra     UMSLASHMOD1         ; 16*(18-22) = ~320
-
-        movf    DIVIDEND_3, W, A
-        movwf   Sminus , A           ; quotient
-        movf    DIVIDEND_2, W, A
-        movwf   Sminus, A
-        movf    DIVIDEND_1, W, A
-        movwf   Sminus, A            ; remainder
-        movf    DIVIDEND_0, W, A
-        movwf   Sminus, A
         return                      ; 11 cycles
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
@@ -2052,12 +2037,12 @@ iupdatebuf0:
         banksel iaddr_lo
         movlw   flash_pointer_mask
         andwf   BANKMASK(iaddr_lo), W, B
-        movwf   BANKMASK(ibase_lo), A
+        movwf   BANKMASK(ibase_lo), B
         movf    BANKMASK(iaddr_hi), W, B
-        movwf   BANKMASK(ibase_hi), A
+        movwf   BANKMASK(ibase_hi), B
 #if XSTORE == ENABLE
         movf    BANKMASK(iaddr_up), W, B
-        movwf   BANKMASK(ibase_up), A
+        movwf   BANKMASK(ibase_up), B
 #endif
 fill_buffer_from_imem:
 #ifndef Qxx
@@ -2075,11 +2060,13 @@ fill_buffer_from_imem_1:
 #endif
 #else   // Qxx
         rcall   init_ptrs
+        banksel EECON1
         movlw   2
         movwf   NVMCON1, B
         bsf     NVMGO
         btfsc   NVMGO
         bra     $-2
+        banksel upcurr
 #endif
         return
 ;***********************************************************
@@ -2090,15 +2077,16 @@ write_buffer_to_imem:
 #ifdef OPERATOR_RX_IS_UART
 wbtil:
         banksel FLAGS1
-        bcf     BANKMASK(FLAGS1), istream, A
+        bcf     BANKMASK(FLAGS1), istream, B
         LIT     (19200/baud)+2
         call    MS
         banksel FLAGS1
-        btfsc   BANKMASK(FLAGS1), istream, A
+        btfsc   BANKMASK(FLAGS1), istream, B
         bra     wbtil
 #endif
         bcf     GIE             ; Disable Interrupts
 
+        banksel EECON1
 #ifndef Qxx
         rcall   init_ptrs             ; Init TBLPTR, ram pointer, banksel
                                       ; Erase the flash block
@@ -2155,10 +2143,10 @@ verify_imem_1:
         bra     verify_imem_1
 
         banksel FLAGS1
-        bcf     BANKMASK(FLAGS1), idirty, A ; Mark flash buffer clean
-        setf    BANKMASK(ibase_hi), A       ; Mark flash buffer empty
+        bcf     BANKMASK(FLAGS1), idirty, B ; Mark flash buffer clean
+        setf    BANKMASK(ibase_hi), B       ; Mark flash buffer empty
 #if XSTORE == ENABLE
-        setf    BANKMASK(ibase_up), A       ; Mark flash buffer empty
+        setf    BANKMASK(ibase_up), B       ; Mark flash buffer empty
         clrf    TBLPTRU, A
 #endif
         return
@@ -2177,7 +2165,6 @@ init_ptrs:
         movff   ibase_up, NVMADRU
 #endif
 #endif
-        banksel EECON1
         return
 
 magic:
@@ -2202,6 +2189,7 @@ asmemit:
         bra     asmemit
         banksel U1TXB
         movwf   U1TXB, B
+        banksel upcurr
         return
 #endif
 ;***************************************************
@@ -2425,7 +2413,7 @@ ISTOREOK:
         rcall   iupdatebuf
 ; set write address
         banksel iaddr_lo
-        movf    BANKMASK(iaddr_lo), W, A
+        movf    BANKMASK(iaddr_lo), W, B
 #ifndef Qxx
         andlw   flash_block_mask
 #endif
@@ -2447,7 +2435,7 @@ ICSTORE:
         movf    plusS, W, A
 ICSTORE1:
         banksel FLAGS1
-        bsf     BANKMASK(FLAGS1), idirty, A
+        bsf     BANKMASK(FLAGS1), idirty, B
         return
 
 ; >TBLP  x --
@@ -2522,6 +2510,7 @@ ESTORE:
         movf    plusS, W, A
         movwf   EEDATA, B
         rcall   ECSTORE1
+        banksel EEADR
         incf    EEADR, F, B
         movf    plusS, W, A
         movwf   EEDATA, B
@@ -2566,6 +2555,7 @@ ECSTORE2:
         clrf    NVMCON1, B
         clrf    NVMADRU, B
 #endif
+        banksel upcurr
         return
 
 
@@ -2585,6 +2575,7 @@ EFETCH:
         rcall   asmecfetch
         decf    EEADR, F, B
         rcall   asmecfetch
+        banksel upcurr
         return
 
 ; EC@      addr -- c  fetch char from data EEPROM
@@ -2602,6 +2593,7 @@ ECFETCH:
 #endif
         clrf    Sminus, A
         rcall   asmecfetch
+        banksel upcurr
         return
 
 asmecfetch:
@@ -2732,7 +2724,8 @@ TX0:
         bra     TX0_DROP
         btfsc   BANKMASK(ep2istat), UOWN, B
         bra     TX0
-        movf    BANKMASK(ms_count), W, A
+        banksel upcurr
+        movf    BANKMASK(ms_count), W, B
         addlw   2+TICK_TIME
         movwf   ep2itmo, A
         lfsr    Tptr, cdc_data_tx
@@ -2746,6 +2739,7 @@ TX0:
 TX0_SEND:
         movf    ep2icount, W, A
 TX0_SEND2:
+        banksel ep2istat
         movwf   BANKMASK(ep2icnt), B
         movlw   0x48
         btfsc   BANKMASK(ep2istat), DTS, B
@@ -2757,6 +2751,7 @@ TX0_SEND2:
 TX0_DROP:
         DROPM
 TX0_END:
+        banksel upcurr
         return
 ;***************************************************
 ; KEY   -- c    get character from the USB line
@@ -2772,7 +2767,7 @@ RX0:
         lfsr    Tptr, cdc_data_rx
         movf    ep2optr, W, A
         movff   TWrw, plusS
-        incf    ep2optr, F, A
+        incf    ep2optr, F, A ; FIXME
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
         movlw   8
@@ -2782,9 +2777,10 @@ RX0:
         movlw   8
         movwf   BANKMASK(ep2ostat), B
         bsf     BANKMASK(ep2ostat), UOWN, B
-        clrf    ep2optr, A
+        clrf    ep2optr, B
 RX0_END:
         clrf    plusS, A
+        banksel upcurr
         return
 ;***************************************************
 ; KEY?  -- f    return true if a char is waiting
@@ -2961,19 +2957,17 @@ ICCOMMA:
 L_LSHIFT:
         NF 6,lshift
 LSHIFT:
-        swapf   Sminus, W, A
-        movf    Sminus, W, A
+        movf    plusS, W, A
+        swapf   plusS, F, A
         bz      LSHIFT2
         movwf   Tp, A
-        swapf   Sminus, W, A
 LSHIFT1:
         bcf     CARRY
-        rlcf    Splus, F, A
-        rlcf    Sminus, F, A
+        rlcf    1, F, A
+        rlcf    2, F, A
 
         decfsz  Tp, F, A
         bra     LSHIFT1
-        swapf   plusS, W, A
 LSHIFT2:
         return
 
@@ -2982,14 +2976,14 @@ LSHIFT2:
 L_RSHIFT:
         NF 6,rshift
 RSHIFT:
-        swapf   Sminus, W, A
-        movf    Sminus, W, A
+        movf    plusS, W, A
+        swapf   plusS, F, A
         bz      RSHIFT2
         movwf   Tp, A
 RSHIFT1:
         bcf     CARRY
-        rrcf    Sminus, F, A
-        rrcf    Splus, F, A
+        rrcf    2, F, A
+        rrcf    1, F, A
 
         decfsz  Tp, F, A
         bra     RSHIFT1
@@ -3172,7 +3166,7 @@ BTFSS_:
 
 ;;;
 LOCKED:
-        btfss   BANKMASK(FLAGS1), fLOCK, A
+        btfss   BANKMASK(FLAGS1), fLOCK, B
         return
         bra     ISTORERR
 ;******************************************************
@@ -3189,6 +3183,7 @@ PPS_UNLOCK:
         movwf   PPSLOCK, B
         bcf     PPSLOCKED       ; disable the pps lock
         bsf     GIE
+        banksel upcurr
         return
         
         dw      L_PPS_UNLOCK
@@ -3203,6 +3198,7 @@ PPS_LOCK:
         movwf   PPSLOCK, B
         bsf     PPSLOCKED         ; enable the pps lock
         bsf     GIE
+        banksel upcurr
         return
 
         dw      L_PPS_LOCK
@@ -3276,9 +3272,8 @@ OR_A:
         NF 3,sp?
 check_sp:
         rcall   SPFETCH
-        call    S0
-        rcall   FETCH
-        call    TIB
+        LIT     S0top
+        LIT     S0bot+1
         rcall   WITHIN
         rcall   XSQUOTE
         db      3
@@ -3473,9 +3468,10 @@ SPFETCH:
         movf    Sp, W, A
         movwf   Tp, A
         movf    Sbank, W, A
-        movff   Tp, plusS
         iorlw   high(PRAM)
-        movwf   plusS, A
+        movwf   Sminus, A
+        movf    Tp, W, A
+        movwf   Sminus, A
         return
 
 
@@ -3488,9 +3484,9 @@ L_XSTORE:
         align   2
         movf    Sminus, W, A
         movf    Sminus, W, A
-        movwf   BANKMASK(iaddr_up), A
+        movwf   BANKMASK(iaddr_up), B
         call    ISTORE
-        clrf    BANKMASK(iaddr_up), A
+        clrf    BANKMASK(iaddr_up), B
         return
 
 ; MEMORY OPERATIONS =============================
@@ -4675,8 +4671,9 @@ UMSLASHMOD:
 L_USLASHMOD:
         NF 5,u/mod
 USLASHMOD:
-        rcall   FALSE_
-        rcall   SWOP
+        rcall   TOR
+        call    UTOD
+        rcall   RFROM
         goto    umslashmod0
 
 ; *      n1|u1 n2|u2 -- n3|u3      16*16->16 multiply
@@ -4792,7 +4789,7 @@ CFETCH_A:
 L_UPTR:
         NF 2,up
 UPTR:
-        rcall   DOCREATE_A
+        call    DOCREATE
         dw      BANKMASK(upcurr)+PRAM
 
 ; NUMERIC OUTPUT ================================
@@ -4897,7 +4894,7 @@ L_UDOT:
         NF 2,u.
 UDOT:
         rcall   LESSNUM
-        rcall   FALSE_
+        call    UTOD
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -4912,7 +4909,7 @@ UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
         rcall   TOR
-        rcall   FALSE_
+        call    UTOD
         bra     UDOTR2
 UDOTR1:
         rcall   NUM
@@ -5268,7 +5265,10 @@ IMMEDQ:
 L_FIND:
         NF 4,find
 FIND:
-        LIT     kernellink
+        movlw   high(kernellink)
+	movwf	Sminus, A
+	movlw	low(kernellink)
+	movwf	Sminus, A
         rcall   findi
         rcall   DUPZEROSENSE
         bnz     FIND1
@@ -5463,7 +5463,7 @@ NUMBERQ:
         rcall   FETCH_A
         rcall   TOR             ; a 0 0 a' u
 
-        rcall   OVER
+        call    OVER
         rcall   CFETCH_A
 
         movlw   '#'
@@ -5493,7 +5493,7 @@ BASEQ2:                         ; a 0 0 a' u
         rcall   ZEROSENSE       ; a ud.h ud.l  a'
         bz      QNUMD           ; u = 0 -> single or double number
 QNUM_ERR:                       ; Not a number
-        rcall   RFROM           ; a ud.h ud.l a' sign
+        call   RFROM            ; a ud.h ud.l a' sign
         call    TWODROP
         call    TWODROP
         bra     FALSE_          ; a 0           Not a number
@@ -5502,7 +5502,7 @@ QNUMD:                          ; Single or double Double number
         rcall   ONEMINUS
         call    CFETCH          ; a ud.h ud.l c
         rcall   TO_A            ; a ud.h ud.l
-        rcall   RFROM           ; a ud.h ud.l sign
+        call    RFROM           ; a ud.h ud.l sign
         call    QDNEGATE
 QNUMD1:
         rcall   ROT_A           ; d.h d.l a
@@ -5527,7 +5527,7 @@ TIBSIZE:
         rcall   TASK
         rcall   FETCH_A
         LIT     8
-        rcall   PLUS
+        call    PLUS
         goto    FETCH
 
 ; TIB     -- a-addr        Terminal Input Buffer
@@ -5587,7 +5587,6 @@ IPARSEWORD:
         rcall   CFETCH_A
         rcall   ZEROSENSE
         bz      INOWORD
-
         rcall   FIND            ; sets also BANKMASK(wflags)
         movf    plusS, W, A     ; 0 = not found, -1 = normal, 1 = immediate
         swapf   plusS, F, A
@@ -5608,8 +5607,11 @@ IEXEC:                          ; Execute a word
         align   2
         rcall   QABORT
 IEXECUTE:
+        banksel FLAGS1
         bcf     BANKMASK(FLAGS1), noclear, B
         call    EXECUTE
+        banksel FLAGS1
+
         btfsc   BANKMASK(FLAGS1), noclear, B ;  set by \ and by (
         bra     IPARSEWORD
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
@@ -5641,7 +5643,7 @@ ICOMMAXT:
 ICOMPILE:
         btfss   BANKMASK(wflags), 5, B       ; Inline check
         bra     ICOMMAXT
-        rcall   INLINE0
+        call    INLINE0
         bra     IPARSEWORD
 INUMBER:
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
@@ -5752,7 +5754,7 @@ DP_TO_RAM:
         NF 3,>dp
 DP_TO_EEPROM:
         LIT     dp_start
-        rcall   STORE_P_TO_R
+        call    STORE_P_TO_R
         rcall   INI
         movlw   5
         movwf   plusR, A
@@ -5760,21 +5762,21 @@ DP_TO_EEPROM:
 DP_TO_EEPROM_0:
         rcall   FETCHPP
         call    DUP
-        rcall   PFETCH
+        call    PFETCH
         call    XOR; NOTEQUAL
         rcall   ZEROSENSE
         bz      DP_TO_EEPROM_1
-        rcall   PSTORE
+        call    PSTORE
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         DROPM
 DP_TO_EEPROM_2:
-        rcall   PTWOPLUS
+        call    PTWOPLUS
 DP_TO_EEPROM_3:
         decf    Rrw, F, A
         bc      DP_TO_EEPROM_0
         movf    Rminus, W, A
-        rcall   R_TO_P
+        call    R_TO_P
         goto    DROP
 
 ;***************************************************************
@@ -5808,7 +5810,7 @@ QUIT0:
 QUIT1:
         banksel FLAGS2
         bcf     BANKMASK(FLAGS2), fCREATE, B
-        ;call    check_sp
+        call    check_sp
         rcall   CR
         rcall   TIB
         rcall   DUP_A
@@ -5821,13 +5823,13 @@ QUIT1:
         banksel state
         movf    BANKMASK(state), W, B
         bnz     QUIT1
-        ;call    IFLUSH
-        ;rcall   DP_TO_EEPROM
+        call    IFLUSH
+        rcall   DP_TO_EEPROM
         call    XSQUOTE
         db      3,' '
         STRING  ok
         call    TYPE
-        ;rcall   PROMPT
+        rcall   PROMPT
         bra     QUIT0
         return
 
@@ -5845,7 +5847,7 @@ L_ABORT:
 ABORT:
         rcall   S0
         rcall   FETCH_A
-        rcall   SPSTORE
+	rcall   SPSTORE
         goto    QUIT
 
         dw      L_SPFETCH
@@ -5980,9 +5982,9 @@ CR:
 L_CREATE:
         NF 6,create
 CREATE:
-        btfsc   BANKMASK(FLAGS2), fCREATE, A
+        btfsc   BANKMASK(FLAGS2), fCREATE, B
         call    IFLUSH
-        btfsc   BANKMASK(FLAGS2), fCREATE, A
+        btfsc   BANKMASK(FLAGS2), fCREATE, B
         call    DP_TO_EEPROM
 
         rcall   BL
@@ -6004,7 +6006,7 @@ CREATE:
         call    WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
-        bsf     BANKMASK(FLAGS2), fCREATE, A
+        bsf     BANKMASK(FLAGS2), fCREATE, B
         rcall   IHERE
         call    ALIGNED
         rcall   IDP             ; Align the flash DP.
@@ -6029,7 +6031,7 @@ CREATE:
         dw      DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
         call    ALIGN_
         call    HERE            ; compiles the current dataspace dp into the dictionary
-        movf    BANKMASK(cse), W, A
+        movf    BANKMASK(cse), W, B
         bnz     CREATE2
         call    TWOPLUS
 CREATE2:
@@ -6112,7 +6114,7 @@ LAST:
 L_LEFTBRACKET:
         NF IMMED|1,[
 LEFTBRACKET:
-        clrf    BANKMASK(state), A
+        clrf    BANKMASK(state), B
         return
 
 
@@ -6121,7 +6123,7 @@ LEFTBRACKET:
 L_RIGHTBRACKET:
         NF 1,]
 RIGHTBRACKET:
-        setf    BANKMASK(state), A
+        setf    BANKMASK(state), B
         return
 
 ; :        --           begin a colon definition
@@ -6147,7 +6149,7 @@ L_SEMICOLON:
         db      IMMED|COMPILE|1,';'
 SEMICOLON:
         rcall   LEFTBRACKET
-        btfsc   BANKMASK(FLAGS1), fTAILC, A
+        btfsc   BANKMASK(FLAGS1), fTAILC, B
         bra     ADD_RETURN_1
         rcall   IHERE
         rcall   MINUS_FETCH
@@ -6296,7 +6298,7 @@ MS_1:
         bn      MS_1
         goto    DROP
 
-CFETCHPP_A: bra CFETCHPP
+CFETCHPP_A: goto CFETCHPP
 ;  .id ( nfa -- )
         dw      L_MS
 L_DOTID:
@@ -6417,17 +6419,19 @@ WORDS1:
 
 ; .S      --           print stack contents
 ; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
+; : .s s0 @ sp@ begin dup s0 @ u< while  @+ u. repeat 2drop ;
         dw      L_WORDS
 L_DOTS:
         NF 2,.s
 DOTS:
-        call    SPFETCH
         rcall   S0
         rcall   FETCH_A
-        call    ONEPLUS
+        call    SPFETCH
+	call	ONEPLUS
+	call	TWOPLUS
 DOTS1:
-        call    TWODUP
-        call    LESS
+        call    TWODUP      ; s0 sp s0 sp
+        call    ULESS
         call    ZEROSENSE
         bnz     DOTS2
         call    FETCHPP
@@ -6517,7 +6521,7 @@ BRQ1:
         db      NFA|4,',','?','0','='
         align   2
 COMMAZEROSENSE:
-        btfsc   BANKMASK(FLAGS1), idup, A
+        btfsc   BANKMASK(FLAGS1), idup, B
         bra     COMMAZEROSENSE1
         LIT     ZEROSENSE
         bra     COMMAZEROSENSE2
@@ -6525,7 +6529,7 @@ COMMAZEROSENSE1:
         rcall   IDPMINUS
         LIT     DUPZEROSENSE
 COMMAZEROSENSE2:
-        bcf     BANKMASK(FLAGS1), idup, A
+        bcf     BANKMASK(FLAGS1), idup, B
         bra     INLINE0
 
 ; z, ( -- cc)   Zero
@@ -6599,7 +6603,7 @@ THENC:
         bsf     BANKMASK(FLAGS1), fTAILC, A  ; Disable tail call optimisation
         rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
-        movf    Srw, W, A
+        movf    2, W, A
         call    TOR
                               ; bra has longer range
         sublw   0xd0          ; Also DUP
@@ -6668,7 +6672,7 @@ L_UNTILC:
         db      ','
         align   2
 UNTILC:
-        bsf     BANKMASK(FLAGS1), fTAILC, A  ; Disable tail call optimisation
+        bsf     BANKMASK(FLAGS1), fTAILC, B  ; Disable tail call optimisation
         rcall   SWOP_A
         rcall   IHERE
         call    MINUS
@@ -6686,13 +6690,13 @@ UNTILC:
 L_IF:
         NF IMMED|COMPILE|2,if
 IF_:
-        btfsc   BANKMASK(FLAGS1), izeroeq, A
+        btfsc   BANKMASK(FLAGS1), izeroeq, B
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
         rcall   NZC
-        btfsc   BANKMASK(FLAGS1), izeroeq, A
+        btfsc   BANKMASK(FLAGS1), izeroeq, B
         rcall   NOTC
-        bcf     BANKMASK(FLAGS1), izeroeq, A
+        bcf     BANKMASK(FLAGS1), izeroeq, B
         goto    IFC
 
 
@@ -6730,13 +6734,13 @@ IDPMINUS:
 L_UNTIL:
         NF IMMED|COMPILE|5,until
 UNTIL:
-        btfsc   BANKMASK(FLAGS1), izeroeq, A
+        btfsc   BANKMASK(FLAGS1), izeroeq, B
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
         rcall   ZC
-        btfss   BANKMASK(FLAGS1), izeroeq, A
+        btfss   BANKMASK(FLAGS1), izeroeq, B
         rcall   NOTC
-        bcf     BANKMASK(FLAGS1), izeroeq, A
+        bcf     BANKMASK(FLAGS1), izeroeq, B
         goto    UNTILC
 
 ; AGAIN    adrs --      uncond'l backward branch
@@ -6769,8 +6773,8 @@ REPEAT_:
         dw      L_REPEAT
 L_INLINE:
         NF IMMED|COMPILE|6,inline
-        bcf     BANKMASK(FLAGS1), izeroeq, A
-        bcf     BANKMASK(FLAGS1), idup, A
+        bcf     BANKMASK(FLAGS1), izeroeq, B
+        bcf     BANKMASK(FLAGS1), idup, B
         rcall   TICK
         goto    INLINE0
 
@@ -6781,10 +6785,9 @@ L_INLINEC:
         align   2
 INLINE0:
         call    FETCHPP
-        movf    Srw, W, A
+        movf    2, W, A
         bnz     INLINE2
-        movf    Sminus, W, A
-        movf    Splus, W, A
+        movf    1, W, A
         sublw   0x12
         bz      INLINE1
 INLINE2:
@@ -6861,10 +6864,19 @@ STOD:
 STOD2:
         return
         
+; S>D  n -- d
+        dw      L_STOD
+L_UTOD:
+        NF 3,u>d
+UTOD:
+        call    DUP
+        clrf    3, A
+        clrf    4, A
+        return
 
 
 ; DNEGATE  +d -- -d
-        dw      L_STOD
+        dw      L_UTOD
 L_DNEGATE:
         NF 7,dnegate
 DNEGATE:
@@ -6889,7 +6901,7 @@ QDNEGATE1:
 L_DABS:
         NF 4,dabs
 DABS_:
-        btfsc   Srw, 7, A
+        btfsc   4, 7, A
         rcall   DNEGATE
         return
 
@@ -6900,13 +6912,10 @@ L_DPLUS:
 DPLUS:
         movf    plusS, W, A
         addwf   4, F, A
-
         movf    plusS, W, A
         addwfc  4, F, A
-
         movf    plusS, W, A
         addwfc  4, F, A
-
         movf    plusS, W, A
         addwfc  4, F, A
 
@@ -6928,11 +6937,10 @@ DTWOSLASH:
         bcf     CARRY
         btfsc   Srw, 7, A
         bsf     CARRY
-        rrcf    Sminus, F, A
-        rrcf    Sminus, F, A
-        rrcf    Sminus, F, A
-        rrcf    Splus, F, A
-        addfsr  Sptr, 2
+        rrcf    4, F, A
+        rrcf    3, F, A
+        rrcf    2, F, A
+        rrcf    1, F, A
         return
 
 ; D2*    d1 -- d2        double multiply by 2
@@ -6940,18 +6948,11 @@ DTWOSLASH:
 L_DTWOSTAR:
         NF 3,d2*
 DTWOSTAR:
-#ifdef K42
-        subfsr  Sptr, 3
-#else
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-        movf    Sminus, W, A
-#endif
         bcf     CARRY
-        rlcf    Splus, F, A
-        rlcf    Splus, F, A
-        rlcf    Splus, F, A
-        rlcf    Srw, F, A
+        rlcf    4, F, A
+        rlcf    3, F, A
+        rlcf    2, F, A
+        rlcf    1, F, A
         return
 
 ; DINVERT    d1 -- d2        double invert
@@ -6970,10 +6971,10 @@ DINVERT:
 L_DZEROEQUAL:
         NF 3,d0=
 DZEROEQUAL:
-        movf    Sminus, W, A
-        iorwf   Sminus, W, A
-        iorwf   Sminus, W, A
-        iorwf   Sminus, W, A
+        movf    plusS, W, A
+        iorwf   plusS, W, A
+        iorwf   plusS, W, A
+        iorwf   plusS, W, A
         bnz     DZEROLESS_FALSE
 DZEROEQUAL_TRUE:
         goto    TRUE_
@@ -6984,11 +6985,8 @@ L_DZEROLESS:
         db      NFA|3,'d','0','<'
         align   2
 DZEROLESS:
-        movf    Sminus, W, A
-        movf    Sminus, F, A
-        movf    Sminus, F, A
-        movf    Sminus, F, A
-        addlw   0
+        addfsr  Sptr, 3
+        movf    plusS, F, A
         bn      DZEROEQUAL_TRUE
 DZEROLESS_FALSE:
         goto    FALSE_
@@ -7008,7 +7006,7 @@ L_DLESS:
         db      NFA|2,'d','<'
         align   2
 DLESS:
-        rcall   DMINUS
+        rcall   DMINUS ;    FIXME
         swapf   Sminus, W, A
         swapf   Sminus, W, A
         goto    LESS2
@@ -7018,7 +7016,7 @@ DLESS:
 L_DGREATER:
         NF 2,d>
 DGREATER:
-        call    TWOSWAP
+        call    TWOSWAP; FIXME
         goto    DLESS
 
 
@@ -7053,7 +7051,7 @@ DDOT:
 L_MEMHI:
         NF 2,hi
 MEMHI:
-        LIT      FLASHHI
+        LIT     FLASHHI
         call    CSE
         call    PLUS
         goto    FETCH
@@ -7063,10 +7061,10 @@ L_FETCH_P:
         NF 2,@p
 FETCH_P:
         banksel p_lo
-        movf    BANKMASK(p_lo), W, B
-        movwf   plusS, A
         movf    BANKMASK(p_hi), W, B
-        movwf   plusS, A
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
         return
 ;***************************************************
         dw      L_FETCH_P
@@ -7124,7 +7122,7 @@ lastword:
         NF 6,marker
 MARKER:
         call    ROM
-        rcall   CREATE
+        call    CREATE
         LIT     dp_start
         call    HERE
         call    TEN
