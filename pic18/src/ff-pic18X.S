@@ -154,12 +154,17 @@
 #define ZERO BANKMASK(STATUS), 2, a
 #endif
 
-LIT MACRO literal
+LIT2 MACRO literal
         movlw   high(literal)
 	movwf	Sminus, A
         movlw   low(literal)
 	movwf	Sminus, A
     ENDM
+LIT MACRO literal
+        pushl   high(literal)
+        pushl   low(literal)
+    ENDM
+
 NF MACRO arg0,arg1
   db arg0|0x80
   IRPC char, arg1
@@ -676,9 +681,9 @@ irq_async_rx1:
         banksel upcurr
 #ifndef K42
         movf    Tp, W, A
-        movwf   BANKMASK(ihtp), A
+        movwf   BANKMASK(ihtp), B
         movf    Tbank, W, A
-        movwf   BANKMASK(ihtbank), A
+        movwf   BANKMASK(ihtbank), B
 #endif
         bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 irq_async_rx1_2:
@@ -1921,46 +1926,46 @@ L_IR:
 ;;; 42 clock cycles
 ;;; UM* ( u u -- ud )
 umstar0:
-        movf    1, W, A
+        movf    [1], W
         movwf   TBLPTRL, A
-        movf    2, W, A
+        movf    [2], W
         movwf   TBLPTRH, A
-        movf    3, W, A
+        movf    [3], W
         movwf   TABLAT, A
-        movf    4, W, A
+        movf    [4], W
         movwf   PCLATH, A
         ; L1 * L2
         movf    TBLPTRL, W, A
         mulwf   TABLAT, A
         movf    PRODL, W, A
-        movwf   1, A
+        movwf   [1]
         movf    PRODH, W, A
-        movwf   2, A
+        movwf   [2]
         ; H2 * H2
         movf    TBLPTRH, W, A
         mulwf   PCLATH, A
         movf    PRODL, W, A
-        movwf   3, A
+        movwf   [3]
         movf    PRODH, W, A
-        movwf   4, A
+        movwf   [4]
         ; L1 * H2
         movf    TBLPTRL, W, A
         mulwf   PCLATH, A
         movf    PRODL, W, A
-        addwf   2, F, A
+        addwf   [2], F
         movf    PRODH, W, A
-        addwfc  3, F, A
+        addwfc  [3], F
         clrf    WREG, A
-        addwfc  4, F, A
+        addwfc  [4], F
         ; H1 * L2
         movf    TBLPTRH, W, A
         mulwf   TABLAT, A       ; ARG1H * ARG2L -> PRODH:PRODL
         movf    PRODL, W, A     ;
-        addwf   2, F, A         ; Add cross
+        addwf   [2], F          ; Add cross
         movf    PRODH, W, A     ; products
-        addwfc  3, F, A
+        addwfc  [3], F
         clrf    WREG, A
-        addwfc  4, F, A
+        addwfc  [4], F
         return
 
 ;***********************************************************
@@ -1984,25 +1989,25 @@ umslashmod3:
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     CARRY
-        rlcf    1, F, A             ; DIVIDEND_0
-        rlcf    2, F, A             ; DIVIDEND_1
-        rlcf    3, F, A             ; DIVIDEND_2
-        rlcf    4, F, A             ; DIVIDEND_3
+        rlcf    [1], F             ; DIVIDEND_0
+        rlcf    [2], F             ; DIVIDEND_1
+        rlcf    [3], F             ; DIVIDEND_2
+        rlcf    [4], F             ; DIVIDEND_3
         rlcf    Tp, F, A
 
         movf    DIVISOR_0, W, A
-        subwf   3, W , A
+        subwf   [3], W
         movf    DIVISOR_1, W, A
-        subwfb  4, W, A
+        subwfb  [4], W
         movlw   0
         subwfb  Tp, W, A
         bnc     UMSLASHMOD2
 
         movf    DIVISOR_0, W, A
-        subwf   3, F, A
+        subwf   [3], F
         movf    DIVISOR_1, W, A
-        subwfb  4, F, A
-        bsf     1, 0, A
+        subwfb  [4], F
+        bsf     [1], 0
 UMSLASHMOD2:
         decfsz  DCNT, F, A
         bra     UMSLASHMOD1         ; 16*(18-22) = ~320
@@ -2356,6 +2361,9 @@ INT:
         return
 
 ; LITERAL  x --           compile literal x as native code
+; Use PUSHL for all values except  those beginning with mask 0xD8.
+; Those use MOVLW/MOVWF.
+; PUSHL has a bug for values masked with 0xD8
         dw      L_INT
 L_LITERAL:
         NF IMMED|7,literal
@@ -2399,11 +2407,11 @@ ISTORECHK:
         bra     ISTOREOK
 #else
         movlw   HIGH FLASH_HI+1
-        cpfslt  2, A
+        cpfslt  [2]
         bra     ISTORERR
 #endif
         movlw   HIGH((dpcode+0x100)&0xff00)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     ISTOREOK
         bra     ISTORERR
 ISTOREOK:
@@ -2822,12 +2830,12 @@ IFLUSH:
 L_MSET:
         NF 4,mset
 MSET:
-        movf    Sminus, W, A
-        movwf   Tbank, A
-        movf    Sminus, W, A
+        movf    plusS, W, A
         movwf   Tp, A
-        movf    Sminus, W, A
-        movf    Sminus, W, A
+        movf    plusS, W, A
+        movwf   Tbank, A
+        movf    plusS, W, A
+        movf    plusS, F, A
         iorwf   Trw, F, A
         return
 
@@ -2838,12 +2846,12 @@ MSET:
 L_MCLR:
         NF 4,mclr
 MCLR_:
-        movf    Sminus, W, A
-        movwf   Tbank, A
-        movf    Sminus, W, A
+        movf    plusS, W, A
         movwf   Tp, A
-        movf    Sminus, W, A
-        comf    Sminus, W, A
+        movf    plusS, W, A
+        movwf   Tbank, A
+        comf    plusS, W, A
+        movf    plusS, F, A
         andwf   Trw, F, A
         return
 
@@ -3312,23 +3320,6 @@ KEYQ:
         call    UKEYQ
         goto    FEXECUTE
 
-;***************************************************
-; LIT   -- x    fetch inline 16 bit literal to the stack
-; 17 clock cycles
-;       dw      link
-;link    set     $
-        NF 3,lit
-LIT1:
-        movf    TOSL, W, A
-        movwf   TBLPTRL, A
-        movf    TOSH, W, A
-        rcall	  FETCHLIT
-        movf    TBLPTRH, W, A
-        movwf   TOSH, A
-        movf    TBLPTRL, W, A
-        movwf   TOSL, A
-        return
-
 ;****************************************************
 ; EXECUTE  xt -- execute word at xt
 ; 6 clock cycles
@@ -3336,7 +3327,7 @@ LIT1:
 L_EXECUTE:
         NF 7,execute
 EXECUTE:
-        movf    2, W, A
+        movf    [2], W
         movwf   PCLATH, A
         movf    plusS, W, A
         addfsr  Sptr, 1
@@ -3499,10 +3490,10 @@ L_STORE:
         align   2
 STORE:
         movlw   high(PRAM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     STORE1
         movlw   high(PEEPROM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     ESTORE
         bra     ISTORE_
 STORE1:
@@ -3527,10 +3518,10 @@ L_CSTORE:
         align   2
 CSTORE:
         movlw   high(PRAM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     CSTORE1
         movlw   high(PEEPROM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     ECSTORE
         bra     ICSTORE_
 CSTORE1:
@@ -3553,10 +3544,10 @@ L_FETCH:
         NF 1,@
 FETCH:
         movlw   high(PRAM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     FETCH1
         movlw   high(PEEPROM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     EFETCH
         bra     IFETCH_
 FETCH1:
@@ -3582,10 +3573,10 @@ L_CFETCH:
         NF 2,c@
 CFETCH:
         movlw   high(PRAM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     CFETCH1
         movlw   high(PEEPROM)
-        cpfslt  2, A
+        cpfslt  [2]
         bra     ECFETCH_
         bra     ICFETCH_
 CFETCH1:
@@ -3759,10 +3750,10 @@ ALIGN_:
 L_ALIGNED:
         NF 7,aligned
 ALIGNED:
-        incf    1, F, A
-        bcf     1, 0, A
+        incf    [1], F
+        bcf     [1], 0
         bnc     ALIGNED1
-        incf    2, F, A
+        incf    [2], F
 ALIGNED1:
         return
 
@@ -4139,14 +4130,14 @@ DROP:
 L_SWOP:
         NF 4,swap
 SWOP:
-        movf    3, W, A
+        movf    [3], W
         movwf   PRODL, A
-        movf    4, W, A
+        movf    [4], W
         movss   [1], [3]
         movss   [2], [4]
-        movwf   2, A
+        movwf   [2]
         movf    PRODL, W, A
-        movwf   1, A
+        movwf   [1]
         return
 
 ; OVER  x1 x2 -- x1 x2 x1           OVER
@@ -4155,9 +4146,9 @@ SWOP:
 L_OVER:
         NF 4,over
 OVER:
-        movf    4, W, A
+        movf    [4], W
         movwf   Sminus, A
-        movf    4, W, A
+        movf    [4], W
         movwf   Sminus, A
         return
 
@@ -4177,9 +4168,9 @@ ROT:
 L_TOR:
         NF 2,>r
 TOR:
-        movf    2, W, A
+        movf    [2], W
         movwf   plusR, A
-        movf    1, W, A   
+        movf    [1], W   
         movwf   plusR, A
         DROPM
         return
@@ -4192,9 +4183,9 @@ L_RFROM:
 RFROM:
         subfsr  Sptr, 2
         movf    Rminus, W, A
-        movwf   1, A
+        movwf   [1]
         movf    Rminus, W, A
-        movwf   2, A
+        movwf   [2]
         return
 ;  R@  -- x  R: x -- x         fetch from R stack
 ;  4 cycles
@@ -4204,9 +4195,9 @@ L_RFETCH:
 RFETCH:
         subfsr  Sptr, 2
         movf    Rminus, W, A
-        movwf   1, A
+        movwf   [1]
         movf    Rplus,  W, A
-        movwf   2, A
+        movwf   [2]
         return
 
 ;   DUP x -- x x    duplicate top of stack cell
@@ -4215,9 +4206,9 @@ RFETCH:
 L_DUP:
         NF 3,dup
 DUP:
-        movf    2, W, A
+        movf    [2], W
         movwf   Sminus, A
-        movf    2, W, A
+        movf    [2], W
         movwf   Sminus, A
         return
 
@@ -4236,9 +4227,9 @@ L_PLUS:
         NF 1,+
 PLUS:
         movf   plusS, W, A
-        addwf  2, f, a
+        addwf  [2], F
         movf   plusS, W, A
-        addwfc 2, f, A
+        addwfc [2], F
         return
 
 ; M+       d n -- d         add single to double
@@ -4255,9 +4246,9 @@ L_MINUS:
         NF 1,-
 MINUS:
         movf   plusS, W, A
-        subwf  2, F, A
+        subwf  [2], F
         movf   plusS, W, A
-        subwfb 2, F, A
+        subwfb [2], F
         return
 
 ;   AND
@@ -4266,9 +4257,9 @@ L_AND:
         NF 3,and
 AND_:
         movf   plusS, W, A
-        andwf  2, f, A
+        andwf  [2], F
         movf   plusS, W, A
-        andwf  2, f, A
+        andwf  [2], F
         return
 
 ;   OR ( n n -- )
@@ -4277,9 +4268,9 @@ L_OR:
         NF 2,or
 OR:
         movf   plusS, W, A
-        iorwf  2, f, A
+        iorwf  [2], F
         movf   plusS, W, A
-        iorwf  2, f, A
+        iorwf  [2], F
         return
 
 ;   XOR   ( n n -- )
@@ -4288,9 +4279,9 @@ L_XOR:
         NF 3,xor
 XOR:
         movf   plusS, W, A
-        xorwf  2, f, A
+        xorwf  [2], F
         movf   plusS, W, A
-        xorwf  2, f, A
+        xorwf  [2], F
         return
 
 ;   INVERT
@@ -4298,8 +4289,8 @@ XOR:
 L_INVERT:
         NF 6,invert
 INVERT:
-        comf   1, F, A
-        comf   2, F, A
+        comf   [1], F
+        comf   [2], F
         return
 
 ;   NEGATE
@@ -4315,8 +4306,8 @@ NEGATE:
 L_ONEPLUS:
         NF 2,1+
 ONEPLUS:
-        infsnz  1, F, A
-        incf    2, F, A
+        infsnz  [1], F
+        incf    [2], F
         return
 
 ;   1-
@@ -4324,9 +4315,9 @@ ONEPLUS:
 L_ONEMINUS:
         NF 2,1-
 ONEMINUS:
-        decf    1, F, A
+        decf    [1], F
         movlw   0
-        subwfb  2, F, A
+        subwfb  [2], F
         return
 
 ; 2+    n -- n-2      2 + CELL+
@@ -4335,9 +4326,9 @@ L_TWOPLUS:
         NF 2,2+
 TWOPLUS:
         movlw   2
-        addwf  1, F, A
+        addwf  [1], F
         movlw  0
-        addwfc 2, F, A
+        addwfc [2], F
         return
 
 ; >body xt -- a-addr transform a created words XT to it's data field address
@@ -4357,8 +4348,8 @@ L_TWOSTAR:
         NF 2,2*
 TWOSTAR:
         bcf     CARRY
-        rlcf    1, F, A
-        rlcf    2, F, A
+        rlcf    [1], F
+        rlcf    [2], F
         return
 
 ;   2/
@@ -4367,10 +4358,10 @@ L_TWOSLASH:
         NF 2,2/
 TWOSLASH:
         bcf     CARRY
-        btfsc   Srw, 7, A
+        btfsc   [2], 7
         bsf     CARRY
-        rrcf    2, F, A
-        rrcf    1, F, A
+        rrcf    [2], F
+        rrcf    [1], F
         return
 
 ;   +!      n/u addr --     add cell to data memory
@@ -4644,8 +4635,8 @@ ZEROSENSE:
 ;;; DupZerosense that does not destroy the top of stack.
         NF 3,d0=
 DUPZEROSENSE:
-        movf    1, W, A
-        iorwf   2, W, A
+        movf    [1], W
+        iorwf   [2], W
         return
 
 
@@ -4683,7 +4674,7 @@ L_STAR:
         NF 1,*
 STAR:
         rcall   UMSTAR
-        goto    DROP
+        goto    NIP
 
 ; U/      u1 u2 -- u3      16/16-> divide
         dw      L_STAR
@@ -4728,9 +4719,9 @@ L_NIP:
         NF 3,nip
 NIP:
         movf    plusS, W, A
-        movwf   2, A
+        movwf   [2]
         movf    plusS, W, A
-        movwf   2, A
+        movwf   [2]
         return
 
 ;   TUCK    x1 x2 -- x2 x1 x2
@@ -5159,8 +5150,8 @@ L_CFETCHPP:
 CFETCHPP:
         rcall   DUP
         rcall   CFETCH_A
-        infsnz  3, F, A
-        incf    4, F, A
+        infsnz  [3], F
+        incf    [4], F
         return
 
 ; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
@@ -5206,21 +5197,19 @@ CFATONFA:
 L_BRACFIND:
         NF 3,(f)
 findi:
-        clrf    TBLPTRU, A
-        movf    1, W, A
+        movf    [1], W
         movwf   TBLPTRL, A      ; TBLPTR = nfa
-        movf    2, W, A
+        movf    [2], W
         movwf   TBLPTRH, A
-        movf    3, W, A
+        movf    [3], W
         movwf   Tp, A           ; Tptr = c-addr
-        movf    4, W, A
+        movf    [4], W
         movwf   Tbank, A
                                 ; c-addr nfa
         call    NEQUAL_FIND     ; c-addr nfa flag
         movf    plusS, W, A
         iorwf   plusS, W, A     ; c-addr nfa
         bz      findi2
-        clrf    TBLPTRU, A
         movf    plusS, W, A
         movwf   TBLPTRL, A
         movf    plusS, W, A
@@ -5230,8 +5219,8 @@ findi:
         movlw   0
         subwfb  TBLPTRH, F, A   ; c-addr lfa
         call    pfetch0         ; c-addr nfa
-        movf    1, W, A
-        iorwf   2, W, A
+        movf    [1], W
+        iorwf   [2], W
         bnz     findi
         bra     findi3
 findi2:
@@ -5252,7 +5241,7 @@ L_IMMEDQ:
         NF 6,immed?
 IMMEDQ:
         rcall   CFETCH_A
-        movf    1, W, A
+        movf    [1], W
         banksel wflags
         movwf   BANKMASK(wflags), B ; COMPILE and INLINE flags for the compiler
         LIT     IMMED
@@ -5265,10 +5254,7 @@ IMMEDQ:
 L_FIND:
         NF 4,find
 FIND:
-        movlw   high(kernellink)
-	movwf	Sminus, A
-	movlw	low(kernellink)
-	movwf	Sminus, A
+        LIT2	kernellink
         rcall   findi
         rcall   DUPZEROSENSE
         bnz     FIND1
@@ -5284,14 +5270,14 @@ FIND1:
 L_DIGITQ:
         NF 6,digit?
 DIGITQ:
-        movf    1, W, A
+        movf    [1], W
         addlw   -0x3a
         bn      DIGITQ1
         addlw   -0x27
 DIGITQ1:
         addlw   0xa
-        movwf   1, A
-        clrf    2, A
+        movwf   [1]
+        clrf    [2]
         bnn     DIGITQ2
         bra     FALSE_
 DIGITQ2:
@@ -5467,16 +5453,16 @@ NUMBERQ:
         rcall   CFETCH_A
 
         movlw   '#'
-        subwf   1, F, A
+        subwf   [1], F
         bn      BASEQ1
         movlw   3
-        subwf   1, W, A
+        subwf   [1], W
         bnn     BASEQ1
-        rlncf   1, F, A
+        rlncf   [1], F
         movlw   low(BASEQV)
-        addwf   1, F, A
+        addwf   [1], F
         movlw   high(BASEQV)
-        addwfc  2, F, A
+        addwfc  [2], F
         call    FEXECUTE
 
         rcall   SLASHONE
@@ -5493,7 +5479,7 @@ BASEQ2:                         ; a 0 0 a' u
         rcall   ZEROSENSE       ; a ud.h ud.l  a'
         bz      QNUMD           ; u = 0 -> single or double number
 QNUM_ERR:                       ; Not a number
-        call   RFROM            ; a ud.h ud.l a' sign
+        call    RFROM            ; a ud.h ud.l a' sign
         call    TWODROP
         call    TWODROP
         bra     FALSE_          ; a 0           Not a number
@@ -6170,7 +6156,7 @@ CALL_TO_GOTO:
 RCALL_TO_GOTO:
         rcall   FETCH_A
         movlw   0xf8           ; These rcalls are always negative.
-        iorwf   2, F, A
+        iorwf   [2], F
         call    TWOSTAR
         rcall   IHERE
         call    PLUS
@@ -6205,9 +6191,9 @@ L_TWOMINUS:
         NF 2,2-
 TWOMINUS:
         movlw   2
-        subwf   1, F, A
+        subwf   [1], F
         movlw   0
-        subwfb  2, F, A
+        subwfb  [2], F
         return
 
 
@@ -6285,9 +6271,9 @@ MS:
         call    PLUS
 MS_1:
         call    PAUSE
-        swapf   2, W, A    ; timeout_hi
+        swapf   [2], W    ; timeout_hi
         movwf   Tp, A
-        movf    1, W, A     ; timeout_lo
+        movf    [1], W     ; timeout_lo
         banksel ms_count
         bcf     GIE
         banksel ms_count
@@ -6325,15 +6311,15 @@ DOTID3:
 L_TO_PRINTABLE:
         NF 3,>pr
 TO_PRINTABLE:
-        movf    1, W, A
+        movf    [1], W
         bn      TO_PRINTABLE1
         sublw   0x1f
         bn      TO_PRINTABLE2
 TO_PRINTABLE1:
         movlw   '.'
-        movwf   1, A
+        movwf   [1]
 TO_PRINTABLE2:
-        clrf    2, A
+        clrf    [2]
         return
 ;;;;;;;;;;;;;;
 CMP:
@@ -6410,7 +6396,7 @@ L_WORDS:
         rcall   BL
         call    WORD
         rcall   DUP_A
-        LIT     kernellink
+        LIT2    kernellink
         rcall   WORDS1
         rcall   LAST
 WORDS1:
@@ -6603,7 +6589,7 @@ THENC:
         bsf     BANKMASK(FLAGS1), fTAILC, A  ; Disable tail call optimisation
         rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
-        movf    2, W, A
+        movf    [2], W
         call    TOR
                               ; bra has longer range
         sublw   0xd0          ; Also DUP
@@ -6785,9 +6771,9 @@ L_INLINEC:
         align   2
 INLINE0:
         call    FETCHPP
-        movf    2, W, A
+        movf    [2], W
         bnz     INLINE2
-        movf    1, W, A
+        movf    [1], W
         sublw   0x12
         bz      INLINE1
 INLINE2:
@@ -6855,12 +6841,12 @@ L_STOD:
         NF 3,s>d
 STOD:
         call    DUP
-        clrf    3, A
-        clrf    4, A
-        btfss   2, 7, A
+        clrf    [3]
+        clrf    [4]
+        btfss   [2], 7
         bra     STOD2
-        comf    3, A
-        comf    4, A
+        comf    [3]
+        comf    [4]
 STOD2:
         return
         
@@ -6870,8 +6856,8 @@ L_UTOD:
         NF 3,u>d
 UTOD:
         call    DUP
-        clrf    3, A
-        clrf    4, A
+        clrf    [3]
+        clrf    [4]
         return
 
 
@@ -6901,7 +6887,7 @@ QDNEGATE1:
 L_DABS:
         NF 4,dabs
 DABS_:
-        btfsc   4, 7, A
+        btfsc   [4], 7
         rcall   DNEGATE
         return
 
@@ -6911,13 +6897,13 @@ L_DPLUS:
         NF 2,d+
 DPLUS:
         movf    plusS, W, A
-        addwf   4, F, A
+        addwf   [4], F
         movf    plusS, W, A
-        addwfc  4, F, A
+        addwfc  [4], F
         movf    plusS, W, A
-        addwfc  4, F, A
+        addwfc  [4], F
         movf    plusS, W, A
-        addwfc  4, F, A
+        addwfc  [4], F
 
         return
 
@@ -6935,12 +6921,12 @@ L_DTWOSLASH:
         NF 3,d2/
 DTWOSLASH:
         bcf     CARRY
-        btfsc   Srw, 7, A
+        btfsc   [4], 7
         bsf     CARRY
-        rrcf    4, F, A
-        rrcf    3, F, A
-        rrcf    2, F, A
-        rrcf    1, F, A
+        rrcf    [4], F
+        rrcf    [3], F
+        rrcf    [2], F
+        rrcf    [1], F
         return
 
 ; D2*    d1 -- d2        double multiply by 2
@@ -6949,10 +6935,10 @@ L_DTWOSTAR:
         NF 3,d2*
 DTWOSTAR:
         bcf     CARRY
-        rlcf    4, F, A
-        rlcf    3, F, A
-        rlcf    2, F, A
-        rlcf    1, F, A
+        rlcf    [4], F
+        rlcf    [3], F
+        rlcf    [2], F
+        rlcf    [1], F
         return
 
 ; DINVERT    d1 -- d2        double invert
@@ -6960,10 +6946,10 @@ DTWOSTAR:
 L_DINVERT:
         NF 7,dinvert
 DINVERT:
-        comf    1, F, A
-        comf    2, F, A
-        comf    3, F, A
-        comf    4, F, A
+        comf    [1], F
+        comf    [2], F
+        comf    [3], F
+        comf    [4], F
         return
 
 ; D0=    d1 -- f        double zeroequal
