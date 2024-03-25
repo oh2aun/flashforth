@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                        *
-;;    Date:          18.03.2024                                        *
+;;    Date:          25.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -154,16 +154,21 @@
 #define ZERO BANKMASK(STATUS), 2, a
 #endif
 
-LIT2 MACRO literal
-        movlw   high(literal)
-	movwf	Sminus, A
-        movlw   low(literal)
-	movwf	Sminus, A
-    ENDM
 LIT MACRO literal
         pushl   high(literal)
         pushl   low(literal)
-    ENDM
+ENDM
+
+#ifdef K42
+LIT2 MACRO literal
+        movlw   high(literal)
+        movwf   Sminus, A
+        movlw   low(literal)
+        movwf   Sminus, A
+ENDM
+#else
+#define LIT2 LIT
+#endif
 
 NF MACRO arg0,arg1
   db arg0|0x80
@@ -365,17 +370,6 @@ ep2istat:	ds 1
 ep2icnt: 	ds 1
 ep2iadr:	ds 2
 
-; USB Device States - To be used with usb_device_state
-usb_device_state: ds 1
-#define DETACHED_STATE          0
-#define ATTACHED_STATE          0
-#define POWERED_STATE           0
-#define DEFAULT_STATE           1
-#define ADR_PENDING_STATE       3
-#define ADDRESS_STATE           0x07
-#define ADDRESS_STATE2          0x83  ; Shifted to h'07'
-#define CONFIGURED_STATE        0x0f
-
 ; BUFFERS
 line_coding: ds 7
 ep0buf:      ds 8
@@ -477,14 +471,14 @@ uvars:       ds -us0 + 2
 u0:          ds 2 + UADDSIZE
 urbuf:       ds RETURN_STACK_SAVE_SIZE
 #ifndef USBUF_DEFINED
-usbuf:       ds ussize
+usbuf:       ds ussize+2 ; extra to protect TIB
 #endif
 #ifndef TIB_DEFINED
 wordlenchar: ds 1
 utibbuf:     ds utibsize
 #endif
 S0top       equ usbuf+PRAM
-S0bot       equ usbuf+ussize+(PRAM-3)
+S0bot       equ usbuf+ussize+(PRAM-1)
 ;; Start of free ram
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 dpdata:      ds 2
@@ -542,10 +536,10 @@ irq_user:
 ;   Low priority interrupt vector and handler
 PSECT   lo_int,class=CODE
 #ifndef K42
-        banksel ilw
-        movwf   BANKMASK(ilw), B
         movff   STATUS, ilstatus
         movff   BSR, ilbsr
+        banksel ilw
+        movwf   BANKMASK(ilw), B
 #endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
@@ -663,7 +657,6 @@ irq_ms:
 #endif
 #endif
 irq_load_end:
-        banksel upcurr
 #ifndef K42
         bra     irq_end
 #else // K42 K83
@@ -795,7 +788,7 @@ irq_async_rx3_1:
         movf    BANKMASK(RX3cnt), W, B
         addlw   0xff - RX_OFF_FILL
         bnc     irq_async_rx3_2
-        btfss   BANKMASK(FLAGS2), fFC
+        btfss   BANKMASK(FLAGS2), fFC, B
         bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
 #endif
 #endif
@@ -891,14 +884,12 @@ L_PAUSE:
 PAUSE:
         clrwdt
 #ifdef USB_CDC
-        banksel upcurr
         movf    BANKMASK(upcurr), W, B
         sublw   low(u0)           ; check usb only in operator task
         bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
         btfss   USBEN
         bra     PAUSE_USB_CDC_END
         call    USBDriverService
-        banksel ep2icount
         movf    ep2icount, W, B
         bz      PAUSE_USB_CDC_END
         movf    ep2itmo, W, B
@@ -1116,7 +1107,7 @@ WARM_ZERO_1:
         banksel ibase_hi
         setf    BANKMASK(ibase_hi), B   ; Mark flash buffer empty
 
-        lfsr    Sptr, (usbuf+ussize+1)  ; Initalise Parameter stack FIXME
+        lfsr    Sptr, S0bot    ; Initalise Parameter stack FIXME
         lfsr    Rptr, urbuf
 
         banksel PIE1
@@ -1559,7 +1550,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 18.03.2024        ; 10
+        STRING 25.03.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1644,6 +1635,7 @@ TX2_SEND:
         movf    plusS, F, A
         banksel U2TXB
         movwf   U2TXB, B
+        banksel upcurr
         return
 ;***************************************************
 ; RX2    -- c    get character from the serial line
@@ -1711,6 +1703,7 @@ TX3_SEND:
         movf    plusS, F, A
         banksel U3TXB
         movwf   U3TXB, B
+        banksel upcurr
         return
 ;***************************************************
 ; RX3    -- c    get character from the serial line
@@ -1764,7 +1757,6 @@ RX3Q:
 L_IDLE:
         NF 4,idle
 IDLE:
-        banksel fstatus
         bsf    BANKMASK(fstatus), 7, B
         return
 
@@ -1773,7 +1765,6 @@ IDLE:
 L_BUSY:
         NF 4,busy
 BUSY:
-        banksel fstatus
         clrf    BANKMASK(fstatus), B
         return
 
@@ -1783,7 +1774,6 @@ BUSY:
 L_LOAD:
         NF 4,load
 LOAD:
-        banksel load_res
         clrf    Sminus, A
         movf    BANKMASK(load_res)+2, W, B
         movwf   Sminus, A
@@ -1867,7 +1857,6 @@ L_ANDLW_:
         dw      L_ANDLW_
 L_LI:
         NF INLINE|COMPILE|2,[i
-        banksel ihtablat
 #ifndef K42
         movf    PRODL, W, A
         movwf   BANKMASK(ihprodl), B
@@ -1896,7 +1885,6 @@ L_LI:
         dw      L_LI
 L_IR:
         NF INLINE|COMPILE|2,i]
-        banksel ihtablat
 #ifndef K42
         movf    BANKMASK(ihtbank), W, B
         movwf   Tbank, A
@@ -1959,10 +1947,10 @@ umstar0:
         addwfc  [4], F
         ; H1 * L2
         movf    TBLPTRH, W, A
-        mulwf   TABLAT, A       ; ARG1H * ARG2L -> PRODH:PRODL
-        movf    PRODL, W, A     ;
-        addwf   [2], F          ; Add cross
-        movf    PRODH, W, A     ; products
+        mulwf   TABLAT, A
+        movf    PRODL, W, A
+        addwf   [2], F
+        movf    PRODH, W, A
         addwfc  [3], F
         clrf    WREG, A
         addwfc  [4], F
@@ -1981,7 +1969,7 @@ umslashmod0:
         bnz     umslashmod3
         tstfsz  DIVISOR_0, A
         bra     umslashmod3
-        bsf     BANKMASK(fstatus), 0, A  ; Signal divide by zero error
+        bsf     BANKMASK(fstatus), 0, B  ; Signal divide by zero error
         bra     WARM
 umslashmod3:
         movlw   16
@@ -2022,7 +2010,6 @@ UMSLASHMOD2:
 ;   ibasehi = iaddrhi
 ;endif
 iupdatebuf:
-        banksel iaddr_hi
 #if XSTORE == ENABLE
         movf    BANKMASK(iaddr_up), W, B
         cpfseq  BANKMASK(ibase_up), B
@@ -2039,7 +2026,6 @@ iupdatebuf:
 
 iupdatebuf0:
         rcall   IFLUSH
-        banksel iaddr_lo
         movlw   flash_pointer_mask
         andwf   BANKMASK(iaddr_lo), W, B
         movwf   BANKMASK(ibase_lo), B
@@ -2081,11 +2067,9 @@ write_buffer_to_imem:
 ;; The assumption is that the serial line is silent then.
 #ifdef OPERATOR_RX_IS_UART
 wbtil:
-        banksel FLAGS1
         bcf     BANKMASK(FLAGS1), istream, B
-        LIT     (19200/baud)+2
+        LIT2    (19200/baud)+2
         call    MS
-        banksel FLAGS1
         btfsc   BANKMASK(FLAGS1), istream, B
         bra     wbtil
 #endif
@@ -2368,28 +2352,53 @@ INT:
 L_LITERAL:
         NF IMMED|7,literal
 LITERAL:
-        movff   plusS, Tp
         movf    plusS, W, A
-        pushl   0xea              ; pushl
+        movwf   plusR, A
+        rcall   LIT_COMMA
+        movf    Rminus, W, A
+        movwf   [1]
+        rcall   LIT_COMMA
+        addfsr  Sptr, 1
+        return
+LIT_COMMA:
+#ifdef K42
+        movlw   0xd8               ; BUG in PUSHL instruction
+        andwf   [1], W
+        xorlw   0xd8
+        bz      LIT_MOVLW
+        movlw   0xe0
+        andwf   [1], W
+        xorlw   0xe0
+        bz      LIT_MOVLW
+#endif
+        pushl   0xea
+        movf    [2], W
         movwf   Sminus, A
-        rcall   ICOMMA
-
-        pushl   0xea              ; pushl
-        movff   Tp, Sminus
+#ifdef K42
+        bra     LIT_RET
+LIT_MOVLW:
+        pushl   0x0e
+        movf    [2], W
+        movwf   Sminus, A
+        rcall   LIT_RET
+        pushl   0x6e
+        movlw   0xdd
+        movwf   Sminus, A
+#endif
+LIT_RET:
         goto    ICOMMA
-
 ;**************************************************
 ;   INSTRUCTION MEMORY INSTRUCTIONS
 FETCHLIT:
         movwf   TBLPTRH, A
 pfetch0:
-        tblrd+*
+        subfsr  Sptr, 2
+        tblrd*+
         movf    TABLAT, W, A
-        movwf   Sminus, A
-        tblrd*-
-        tblrd*-
+        movwf   [1]
+        tblrd*+
         movf    TABLAT, W, A
-        movwf   Sminus, A
+        movwf   [2]
         return
 pcfetch0:
         clrf    Sminus, A
@@ -2403,7 +2412,7 @@ ISTORE_SETUP:
 ; check that writes are not to the kernel code
 ISTORECHK:
 #if XSTORE == ENABLE
-        tstfsz  BANKMASK(iaddr_up), A
+        tstfsz  BANKMASK(iaddr_up), B
         bra     ISTOREOK
 #else
         movlw   HIGH FLASH_HI+1
@@ -2420,7 +2429,6 @@ ISTOREOK:
         movff   plusS, iaddr_hi
         rcall   iupdatebuf
 ; set write address
-        banksel iaddr_lo
         movf    BANKMASK(iaddr_lo), W, B
 #ifndef Qxx
         andlw   flash_block_mask
@@ -2442,7 +2450,6 @@ ICSTORE:
         movff   plusS, Trw
         movf    plusS, W, A
 ICSTORE1:
-        banksel FLAGS1
         bsf     BANKMASK(FLAGS1), idirty, B
         return
 
@@ -2461,7 +2468,6 @@ TOTBLP:
 ; 18-22 cycles when pfetching directly from flash
 IFETCH:
         rcall   TOTBLP
-        banksel ibase_hi
         cpfseq  BANKMASK(ibase_hi), B
         bra     pfetch0
 #ifndef Qxx
@@ -2483,7 +2489,6 @@ IFETCH:
 ICFETCH:
         rcall   TOTBLP
 ICFETCH1:
-        banksel ibase_hi
         cpfseq  BANKMASK(ibase_hi), B
         bra     pcfetch0
 #ifndef Qxx
@@ -2628,28 +2633,28 @@ asmecfetch:
         dw      L_TOTBLP
 L_FLOCK:
         NF 3,fl-
-        bsf     BANKMASK(FLAGS1), fLOCK, A
+        bsf     BANKMASK(FLAGS1), fLOCK, B
         return
 
 ;;; Enable writes to flash and eeprom
         dw      L_FLOCK
 L_FUNLOCK:
         NF 3,fl+
-        bcf     BANKMASK(FLAGS1), fLOCK, A
+        bcf     BANKMASK(FLAGS1), fLOCK, B
         return
 
 ;;; Enable flow control
         dw      L_FUNLOCK
 L_FCON:
         NF 3,u1+
-        bcf     BANKMASK(FLAGS2), fFC, A
+        bcf     BANKMASK(FLAGS2), fFC, B
         return
 
 ;;; Disable flow control
         dw      L_FCON
 L_FCOFF:
         NF 3,u1-
-        bsf     BANKMASK(FLAGS2), fFC, A
+        bsf     BANKMASK(FLAGS2), fFC, B
         return
 
 ;;; Clear watchdog timer
@@ -2677,7 +2682,7 @@ L_DEFER:
         NF 5,defer
 ;DEFER:
         call    CREATE
-        LIT     ABORT
+        LIT2    ABORT
         rcall   COMMA
         call    XDOES
 DEFER_DOES:
@@ -2698,7 +2703,7 @@ L_IS:
 IS:
         call    TICK
         call    TOBODY
-        movf    BANKMASK(state), W, A
+        movf    BANKMASK(state), W, B
         bz      IS1
         rcall   LITERAL
         rcall   DOCOMMAXT
@@ -2735,13 +2740,13 @@ TX0:
         banksel upcurr
         movf    BANKMASK(ms_count), W, B
         addlw   2+TICK_TIME
-        movwf   ep2itmo, A
+        movwf   ep2itmo, B
         lfsr    Tptr, cdc_data_tx
         movf    Sminus, W, A
-        movf    ep2icount, W, A
+        movf    ep2icount, W, B
         movff   Sminus, TWrw
         addlw   1
-        movwf   ep2icount, A
+        movwf   ep2icount, B
         sublw   6                       ; l - w
         bnn     TX0_END
 TX0_SEND:
@@ -2754,7 +2759,8 @@ TX0_SEND2:
         movlw   0x8
         movwf   BANKMASK(ep2istat), B
         bsf     BANKMASK(ep2istat), UOWN, B
-        clrf    ep2icount, A
+        banksel upcurr
+        clrf    ep2icount, B
         bra     TX0_END
 TX0_DROP:
         DROPM
@@ -2773,9 +2779,11 @@ RX0:
         btfsc   BANKMASK(ep2ostat), UOWN, B
         bra     RX0
         lfsr    Tptr, cdc_data_rx
-        movf    ep2optr, W, A
+        banksel upcurr
+        movf    ep2optr, W, B
         movff   TWrw, plusS
-        incf    ep2optr, F, A ; FIXME
+        incf    ep2optr, F, B
+        banksel ep2ocnt
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
         movlw   8
@@ -2798,7 +2806,7 @@ L_RX0Q:
 RX0Q:
         banksel ep2ostat
         btfsc   BANKMASK(usb_device_state), 3, B
-        btfsc   BANKMASK(ep2ostat), 7, B
+        btfsc   BANKMASK(ep2ostat), 7, B ;FIXME 
 RX0Q1:
         goto    FALSE_
         goto    TRUE_
@@ -2816,7 +2824,6 @@ RX0Q1:
 L_IFLUSH:
         NF 6,iflush
 IFLUSH:
-        banksel FLAGS1
         btfsc   BANKMASK(FLAGS1), idirty, B
         bra     write_buffer_to_imem
         return
@@ -2971,8 +2978,8 @@ LSHIFT:
         movwf   Tp, A
 LSHIFT1:
         bcf     CARRY
-        rlcf    1, F, A
-        rlcf    2, F, A
+        rlcf    [1], F
+        rlcf    [2], F
 
         decfsz  Tp, F, A
         bra     LSHIFT1
@@ -2990,8 +2997,8 @@ RSHIFT:
         movwf   Tp, A
 RSHIFT1:
         bcf     CARRY
-        rrcf    2, F, A
-        rrcf    1, F, A
+        rrcf    [2], F
+        rrcf    [1], F
 
         decfsz  Tp, F, A
         bra     RSHIFT1
@@ -3240,9 +3247,8 @@ USB_ON:
         clrf    UCON, A
         bsf     USBEN
         clrf    UIR, A
-        banksel usb_device_state
         clrf    BANKMASK(usb_device_state), B
-        clrf    ep2icount, A
+        clrf    ep2icount, B
 #ifdef USB_CDC
 #if USB_SPEED == 1
 #ifdef ACTCON
@@ -3260,7 +3266,6 @@ L_USB_OFF:
 USB_OFF:
         bsf     SUSPND
         clrf    UCON, A
-        banksel usb_device_state
         clrf    BANKMASK(usb_device_state), B
 #ifdef ACTCON
         bcf     ACTEN
@@ -3280,8 +3285,8 @@ OR_A:
         NF 3,sp?
 check_sp:
         rcall   SPFETCH
-        LIT     S0top
-        LIT     S0bot+1
+        LIT2    S0top
+        LIT2    S0bot+1
         rcall   WITHIN
         rcall   XSQUOTE
         db      3
@@ -3643,7 +3648,6 @@ L_FLASH:
 ROM_N:
         NF 5,flash
 ROM:
-        banksel cse
         clrf    BANKMASK(cse), B
         return
 
@@ -3653,7 +3657,6 @@ L_EEPROM:
 EROM_N:
         NF 6,eeprom
 EROM:
-        banksel cse
         movlw   2
         movwf   BANKMASK(cse), B
         return
@@ -3664,7 +3667,6 @@ L_RAM:
 FRAM_N:
         NF 3,ram
 FRAM:
-        banksel cse
         movlw   4
         movwf   BANKMASK(cse), B
         return
@@ -3683,7 +3685,6 @@ DP:
 ;;;
         NF 3,BANKMASK(cse)
 CSE:
-        banksel cse
         clrf    Sminus, A
         movf    BANKMASK(cse), W, B
         movwf   Sminus, A
@@ -3960,7 +3961,7 @@ ACCEPT:
         rcall   DUP
 ACC_1:
         rcall   KEY
-        movf    1, W, A
+        movf    [1], W
         sublw   8             ; L - W
         bz      ACC_BS_DEL
         sublw   -2            ;
@@ -4066,8 +4067,7 @@ L_SQUOTE:
         NF IMMED|2,s"
 SQUOTE:
         rcall   PARSEQ
-        banksel state
-        movf    BANKMASK(state), W, A
+        movf    BANKMASK(state), W, B
         bz      SLIT1
 SLIT:
         rcall   DOCOMMAXT
@@ -4497,7 +4497,6 @@ L_STORE_P:
         db      NFA|2,'!','p'
         align   2
 STORE_P:
-        banksel p_lo
         movf    plusS, W, A
         movwf   BANKMASK(p_lo), B
         movf    plusS, W, A
@@ -4511,7 +4510,6 @@ L_STORE_P_TO_R:
         STRING  p>r
         align   2
 STORE_P_TO_R:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   plusR, A
         movf    BANKMASK(p_lo), W, B
@@ -4522,7 +4520,6 @@ STORE_P_TO_R:
 L_R_TO_P:
         NF 3,r>p
 R_TO_P:
-        banksel p_lo
         movf    Rminus, W, A
         movwf   BANKMASK(p_lo), B
         movf    Rminus, W, A
@@ -4533,7 +4530,6 @@ R_TO_P:
 L_PFETCH:
         NF 2,p@ ; ( -- u ) Fetch cell from pointer
 PFETCH:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   Sminus, A
         movf    BANKMASK(p_lo), W, B
@@ -4545,7 +4541,6 @@ L_PSTORE:
         db      NFA|2,'p','!'   ; store cell to pointer
         align   2
 PSTORE:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   Sminus, A
         movf    BANKMASK(p_lo), W, B
@@ -4559,7 +4554,6 @@ L_PCSTORE:
         db      '!'
         align   2
 PCSTORE:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   Sminus, A
         movf    BANKMASK(p_lo), W, B
@@ -4570,7 +4564,6 @@ PCSTORE:
 L_PPLUS:
         NF INLINE|2,p+  ; Increment p by one
 PPLUS:
-        banksel p_lo
         infsnz  BANKMASK(p_lo), F, B
         incf    BANKMASK(p_hi), F, B
         return
@@ -4580,7 +4573,6 @@ L_PTWOPLUS:
 kernellink:
         NF 3,p2+ ; ( n -- ) Add 2 to p
 PTWOPLUS:
-        banksel p_lo
         movlw   2
         addwf   BANKMASK(p_lo), F, B
         movlw   0
@@ -4820,7 +4812,7 @@ TODIGIT:
 TODIGIT1:
         addlw   0x3a
         movwf   Sminus, A
-        clrf    2, A
+        clrf    [2]
         return
 
 
@@ -4997,8 +4989,6 @@ HB:
 L_BASE:
         NF 4,base
 BASE:
-        LIT     0xc110
-        return
         rcall   DOUSER
         dw      ubase&0xffff
 
@@ -5011,7 +5001,6 @@ USER:
         call    CONSTANT_
         rcall   XDOES
 DOUSER:
-        banksel upcurr
         clrf    TBLPTRU, A
         movf    TOSL, W, A
         movwf   TBLPTRL, A
@@ -5061,7 +5050,6 @@ BSLASH:
         rcall   SOURCE
         rcall   TOIN
         rcall   STORE_A
-        banksel FLAGS1
         bsf     BANKMASK(FLAGS1), noclear, B
         goto    DROP
 
@@ -5242,7 +5230,6 @@ L_IMMEDQ:
 IMMEDQ:
         rcall   CFETCH_A
         movf    [1], W
-        banksel wflags
         movwf   BANKMASK(wflags), B ; COMPILE and INLINE flags for the compiler
         LIT     IMMED
         goto    AND_
@@ -5359,7 +5346,6 @@ ROT_A:
 L_TO_A:
         NF 2,>a
 TO_A:
-        banksel areg
         movf    plusS, W, A
         movwf   BANKMASK(areg)+0, B
         movf    plusS, W, A
@@ -5370,7 +5356,6 @@ TO_A:
 L_A_FROM:
         NF 2,a>
 A_FROM:
-        banksel areg
         movf    BANKMASK(areg)+1, W, B
         movwf   Sminus, A
         movf    BANKMASK(areg)+0, W, B
@@ -5393,7 +5378,7 @@ TONUM1:
         rcall   DUP
         rcall   TOR               ; ud.l ud.h adr
         rcall   CFETCH_A          ; ud.l ud.h c
-        movf    1, W, A
+        movf    [1], W
         sublw   '.'
         bz      TONUM_SKIP
         rcall   DIGITQ          ; ud.l ud.h digit flag
@@ -5495,8 +5480,7 @@ QNUMD1:
         DROPM                   ; d.h d.l
         call    ONE             ; d.h d.l 1
         movlw   '.'             ; d.h d.l
-        banksel areg
-        subwf   BANKMASK(areg), W, A
+        subwf   BANKMASK(areg), W, B
         bz      QNUM1
         call    ROT
         addfsr  Sptr, 2         ; n 1           Single number
@@ -5593,11 +5577,8 @@ IEXEC:                          ; Execute a word
         align   2
         rcall   QABORT
 IEXECUTE:
-        banksel FLAGS1
         bcf     BANKMASK(FLAGS1), noclear, B
         call    EXECUTE
-        banksel FLAGS1
-
         btfsc   BANKMASK(FLAGS1), noclear, B ;  set by \ and by (
         bra     IPARSEWORD
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
@@ -5606,7 +5587,7 @@ IEXECUTE:
 ICOMPILE_1:
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
         rcall   DUP_A
-        LIT     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
+        LIT2    ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
         rcall   EQUAL
         rcall   ZEROSENSE
         bz      ICOMPILE_2
@@ -5615,7 +5596,7 @@ ICOMPILE_1:
 ICOMPILE_2:
         bcf     BANKMASK(FLAGS1), idup, B    ; Clear DUP encountered in compilation
         rcall   DUP_A
-        LIT     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
+        LIT2    DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
         rcall   EQUAL
         rcall   ZEROSENSE
         bz      ICOMPILE
@@ -5794,7 +5775,6 @@ QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1:
-        banksel FLAGS2
         bcf     BANKMASK(FLAGS2), fCREATE, B
         call    check_sp
         rcall   CR
@@ -6210,7 +6190,6 @@ BL:
 L_STATE:
         NF 5,state
 STATE_:
-        banksel state
         movf    BANKMASK(state), W, B
         movwf   Sminus, A
         movwf   Sminus, A
@@ -6247,7 +6226,6 @@ L_TICKS:
         NF 5,ticks
 TICKS:
         bcf     GIE
-        banksel ms_count
         movf    BANKMASK(ms_count)+1, W, B
         movwf   Sminus, A
         movf    BANKMASK(ms_count), W, B
@@ -6274,9 +6252,7 @@ MS_1:
         swapf   [2], W    ; timeout_hi
         movwf   Tp, A
         movf    [1], W     ; timeout_lo
-        banksel ms_count
         bcf     GIE
-        banksel ms_count
         subwf   BANKMASK(ms_count), W, B  ; ticks_lo - timeout_lo
         swapf   Tp, W, A
         subwfb  BANKMASK(ms_count)+1, W, B ; ticks_hi - timeout_hi
@@ -6509,11 +6485,11 @@ BRQ1:
 COMMAZEROSENSE:
         btfsc   BANKMASK(FLAGS1), idup, B
         bra     COMMAZEROSENSE1
-        LIT     ZEROSENSE
+        LIT2     ZEROSENSE
         bra     COMMAZEROSENSE2
 COMMAZEROSENSE1:
         rcall   IDPMINUS
-        LIT     DUPZEROSENSE
+        LIT2    DUPZEROSENSE
 COMMAZEROSENSE2:
         bcf     BANKMASK(FLAGS1), idup, B
         bra     INLINE0
@@ -6586,7 +6562,7 @@ L_THENC:
         db      ','
         align   2
 THENC:
-        bsf     BANKMASK(FLAGS1), fTAILC, A  ; Disable tail call optimisation
+        bsf     BANKMASK(FLAGS1), fTAILC, B  ; Disable tail call optimisation
         rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
         movf    [2], W
@@ -6676,7 +6652,7 @@ UNTILC:
 L_IF:
         NF IMMED|COMPILE|2,if
 IF_:
-        btfsc   BANKMASK(FLAGS1), izeroeq, B
+       btfsc   BANKMASK(FLAGS1), izeroeq, B
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
         rcall   NZC
@@ -6802,11 +6778,11 @@ L_NEXT:
         NF IMMED|COMPILE|4,next
 NEXT:
         rcall   THENC
-        LIT     XNEXT
+        LIT2    XNEXT
         rcall   INLINE0
         rcall   NCC
         rcall   UNTILC
-        LIT     RDROP
+        LIT2    RDROP
         goto    INLINE0
 
 
@@ -7046,7 +7022,6 @@ MEMHI:
 L_FETCH_P:
         NF 2,@p
 FETCH_P:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   Sminus, A
         movf    BANKMASK(p_lo), W, B
@@ -7057,7 +7032,6 @@ FETCH_P:
 L_PCFETCH:
         NF 3,pc@ ; ( -- c ) Fetch char from pointer
 PCFETCH:
-        banksel p_lo
         movf    BANKMASK(p_hi), W, B
         movwf   Sminus, A
         movf    BANKMASK(p_lo), W, B
@@ -7068,7 +7042,6 @@ PCFETCH:
 L_PNPLUS:
         NF 3,p++ ; ( n -- ) Add n to p
 PNPLUS:
-        banksel p_lo
         movf    plusS, W, A
         addwf   BANKMASK(p_lo), F, B
         movf    plusS, W, A
@@ -7128,7 +7101,7 @@ L_DOTBASE:
 DOTBASE:
         call    BASE
         call    FETCH_A
-        movf    1, W, A
+        movf    [1], W
         xorlw   0x10
         bnz     DOTBASE1
         movlw   '$'
@@ -7146,8 +7119,8 @@ DOTBASE2:
 DOTBASE3:
         movlw   '?'
 DOTBASEEND:
-        movwf   1, A
-        clrf    2, A
+        movwf   [1]
+        clrf    [2]
         return
 
 ;;FF_END_CODE code
@@ -7161,7 +7134,7 @@ L_MEMQ:
         NF 1,I
 MEMQ:
         call    CSE
-        LIT     MEMQADDR_N
+        LIT2    MEMQADDR_N
         call    PLUS
         call    FETCH
         call    CFETCHPP
@@ -7201,4 +7174,9 @@ hexemit3:
 #endif
 dpcode:
 ;;****************************************************
+#ifdef K42
+MESSG "Manual post build check !"
+MESSG "Use macro LIT2 for PUSHL literal values 0xdb 0xdc 0xde."
+MESSG "PUSHL is broken for those literal values on K and Q chips (except for K50)."
+#endif
         END resetVec
