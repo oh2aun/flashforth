@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                        *
-;;    Date:          25.03.2024                                        *
+;;    Date:          26.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -148,10 +148,10 @@
 
 ; Status flags defintions
 #ifndef CARRY
-#define CARRY BANKMASK(STATUS), 0, a
+#define CARRY BANKMASK(STATUS), 0, B
 #endif
 #ifndef ZERO
-#define ZERO BANKMASK(STATUS), 2, a
+#define ZERO BANKMASK(STATUS), 2, B
 #endif
 
 LIT MACRO literal
@@ -275,11 +275,11 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 ;;****************************************************
 ;; USE ACCESS BANK to R/W these registers
 ;; Internal variables used by asm code
-PSECT   udata_acs;;,global,class=COMRAM,space=1,delta=1,lowdata,noexec
+PSECT   udata_acs
 reset0:   ds 1
 reset1:   ds 1
 reset2:   ds 1
-appacs:   ds 13      ;;
+acs:      ds 13      ;;
 ms_count: ds 2       ;; millisecond counter 4 bytes
 upcurr:   ds 2       ;; Current USER area pointer
 p_lo:     ds 1       ;; P and DO LOOP INDEX
@@ -524,7 +524,7 @@ PSECT   hi_int,class=CODE
 ;; ' interrupt-routine 0 int!
 irq_user:
         push
-        banksel irq_v
+        banksel acs
         movf    BANKMASK(irq_v)+1, W, B
         movwf   TOSH, A
         movf    BANKMASK(irq_v), W, B
@@ -538,7 +538,7 @@ PSECT   lo_int,class=CODE
 #ifndef K42
         movff   STATUS, ilstatus
         movff   BSR, ilbsr
-        banksel ilw
+        banksel acs
         movwf   BANKMASK(ilw), B
 #endif
 #ifdef IDLEN
@@ -549,7 +549,6 @@ PSECT   lo_int,class=CODE
         btfss   TMR0IF
         bra     irq_t0_end
         bcf     TMR0IF
-        banksel load_acc
         incf    BANKMASK(load_acc), B
         bra     irq_end
 #else
@@ -559,7 +558,7 @@ PSECT   lo_int,class=CODE
         btfss   TMR0IF
         bra     irq_t0_end
         bcf     TMR0IF
-        banksel load_acc
+        banksel acs
         incf    BANKMASK(load_acc), B
         retfie  1
 #endif
@@ -634,7 +633,7 @@ irq_ms:
         bra     irq_ms_end
         bcf     TMR6IF
 #endif
-        banksel ms_count
+        banksel acs
         movlw   TICK_TIME
         addwf   BANKMASK(ms_count), F, B
         movlw   0
@@ -642,7 +641,6 @@ irq_ms:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
-        movf    BANKMASK(ms_count), W, B
         bnz     irq_load_end
         movf    TMR0L, W, A
         movwf   BANKMASK(load_res), B
@@ -671,7 +669,7 @@ irq_async_rx1:
         banksel REG_U1RXIF
         btfss   U1RXIF
         bra     irq_async_rx1_end
-        banksel upcurr
+        banksel acs
 #ifndef K42
         movf    Tp, W, A
         movwf   BANKMASK(ihtp), B
@@ -693,6 +691,7 @@ irq_async_rx1_2:
 #else
         banksel U1ERRIR
         bcf     U1RXFOIF
+        banksel acs
 #endif
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
@@ -709,10 +708,8 @@ irq_async_rx1_3:
         movf    BANKMASK(ihtp), W, B
         movwf   Tp, A
 #endif
-        banksel upcurr
         bra     irq_end
 irq_async_rx1_end:
-        banksel upcurr
 
 ;; UART 2
 #if WANT_UART2 == ENABLE
@@ -720,7 +717,7 @@ irq_async_rx2:
         banksel REG_U2RXIF
         btfss   U2RXIF
         bra     irq_async_rx2_end
-        banksel FLAGS1
+        banksel acs
 #ifndef K42
         movf    Tp, W, A
         movwf   BANKMASK(ihtp), B
@@ -734,16 +731,15 @@ irq_async_rx2_2:
 
         movff   U2RXB,  TWrw
 #ifndef K42
-        movff   BSR, ilbsr
         banksel RCSTA2
         btfsc   RCSTA2, OERR2, B
         bcf     RCSTA2, CREN2, B ;; Restart RX on case of RX overrun
         bsf     RCSTA2, CREN2, B
-        movff   ilbsr, BSR
 #else
         banksel U2ERRIR
         bcf     U2RXFOIF
 #endif
+        banksel acs
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
 #if OPERATOR_UART == 2
@@ -773,7 +769,7 @@ irq_async_rx3:
         banksel REG_U3RXIF
         btfss   U3RXIF
         bra     irq_async_rx3_end
-        banksel FLAGS1
+        banksel acs
         bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 #if OPERATOR_UART == 3
 #if FC_TYPE == XONXOFF
@@ -798,16 +794,15 @@ irq_async_rx3_2:
 
         movff  U3RXB,  TWrw
 #ifndef K42
-        movff   BSR, ilbsr
         banksel RCSTA3
         btfsc   RCSTA3, OERR2, B
         bcf     RCSTA3, CREN2, B ;; Restart RX on case of RX overrun
         bsf     RCSTA3, CREN2, B
-        movff   ilbsr, BSR
 #else
         banksel U3ERRIR
         bcf     U3RXFOIF
 #endif
+        banksel acs
         movf    TWrw, W, A
         sublw   0x0f                    ;; ctrl-o
 #if OPERATOR_UART == 3
@@ -818,7 +813,7 @@ irq_async_rx3_2:
 irq_async_rx3_3:
 #endif
 irq_async_rx3_4:
-        banksel RX3head
+        banksel acs
         incf    BANKMASK(RX3head), F, B
         movlw   RX3bufmask               ;; Wrap the RXhead pointer.
         andwf   BANKMASK(RX3head), F, B
@@ -828,7 +823,7 @@ irq_async_rx3_end:
 ;;;; Restore Tp and Tbank
 irq_end:
 #ifndef K42
-        banksel ilw
+        banksel acs
         movf    BANKMASK(ilw), W, B
         movff   ilstatus, STATUS
         movff   ilbsr, BSR
@@ -900,7 +895,7 @@ PAUSE_USB_CDC_END:
 #endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
-        banksel fstatus
+        banksel acs
         movf    BANKMASK(fstatus), W, B  ; idle allowed ?
         bz      PAUSE_IDLE1
         movf    BANKMASK(upcurr), W, B
@@ -935,7 +930,7 @@ PAUSE_IDLE1:
 #endif
 #endif
 PAUSE000:
-        banksel upcurr
+        banksel acs
         ; Set user pointer in Tp, Tbank (FSR1)
         movf    BANKMASK(upcurr), W, B
         movwf   Tp, A
@@ -1084,7 +1079,7 @@ WARM:
         movwf   PCON0, A
 #endif
         clrf    STKPTR, A       ; Clear return stack
-        lfsr    Sptr, appacs   ; Zero ram from appacs and upwards
+        lfsr    Sptr, acs       ; Zero ram from appacs and upwards
 #ifdef USB_CDC
         lfsr    Tptr, usb_device_state+1
 WARM_ZERO_1:
@@ -1104,7 +1099,7 @@ WARM_ZERO_1:
         sublw   0x0f
         bnz     WARM_ZERO_1
 #endif
-        banksel ibase_hi
+        banksel acs
         setf    BANKMASK(ibase_hi), B   ; Mark flash buffer empty
 
         lfsr    Sptr, S0bot    ; Initalise Parameter stack FIXME
@@ -1550,7 +1545,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 25.03.2024        ; 10
+        STRING 26.03.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2057,7 +2052,7 @@ fill_buffer_from_imem_1:
         bsf     NVMGO
         btfsc   NVMGO
         bra     $-2
-        banksel upcurr
+        banksel acs
 #endif
         return
 ;***********************************************************
@@ -2131,7 +2126,7 @@ verify_imem_1:
         decfsz  PCLATH, F, A
         bra     verify_imem_1
 
-        banksel FLAGS1
+        banksel acs
         bcf     BANKMASK(FLAGS1), idirty, B ; Mark flash buffer clean
         setf    BANKMASK(ibase_hi), B       ; Mark flash buffer empty
 #if XSTORE == ENABLE
@@ -2178,7 +2173,7 @@ asmemit:
         bra     asmemit
         banksel U1TXB
         movwf   U1TXB, B
-        banksel upcurr
+        banksel acs
         return
 #endif
 ;***************************************************
@@ -2568,7 +2563,7 @@ ECSTORE2:
         clrf    NVMCON1, B
         clrf    NVMADRU, B
 #endif
-        banksel upcurr
+        banksel acs
         return
 
 
@@ -2588,7 +2583,7 @@ EFETCH:
         rcall   asmecfetch
         decf    EEADR, F, B
         rcall   asmecfetch
-        banksel upcurr
+        banksel acs
         return
 
 ; EC@      addr -- c  fetch char from data EEPROM
@@ -2606,7 +2601,7 @@ ECFETCH:
 #endif
         clrf    Sminus, A
         rcall   asmecfetch
-        banksel upcurr
+        banksel acs
         return
 
 asmecfetch:
@@ -2737,7 +2732,7 @@ TX0:
         bra     TX0_DROP
         btfsc   BANKMASK(ep2istat), UOWN, B
         bra     TX0
-        banksel upcurr
+        banksel acs
         movf    BANKMASK(ms_count), W, B
         addlw   2+TICK_TIME
         movwf   ep2itmo, B
@@ -2759,13 +2754,13 @@ TX0_SEND2:
         movlw   0x8
         movwf   BANKMASK(ep2istat), B
         bsf     BANKMASK(ep2istat), UOWN, B
-        banksel upcurr
+        banksel acs
         clrf    ep2icount, B
         bra     TX0_END
 TX0_DROP:
         DROPM
 TX0_END:
-        banksel upcurr
+        banksel acs
         return
 ;***************************************************
 ; KEY   -- c    get character from the USB line
@@ -2779,7 +2774,7 @@ RX0:
         btfsc   BANKMASK(ep2ostat), UOWN, B
         bra     RX0
         lfsr    Tptr, cdc_data_rx
-        banksel upcurr
+        banksel acs
         movf    ep2optr, W, B
         movff   TWrw, plusS
         incf    ep2optr, F, B
@@ -2796,7 +2791,7 @@ RX0:
         clrf    ep2optr, B
 RX0_END:
         clrf    plusS, A
-        banksel upcurr
+        banksel acs
         return
 ;***************************************************
 ; KEY?  -- f    return true if a char is waiting
@@ -3198,7 +3193,7 @@ PPS_UNLOCK:
         movwf   PPSLOCK, B
         bcf     PPSLOCKED       ; disable the pps lock
         bsf     GIE
-        banksel upcurr
+        banksel acs
         return
         
         dw      L_PPS_UNLOCK
@@ -3213,7 +3208,7 @@ PPS_LOCK:
         movwf   PPSLOCK, B
         bsf     PPSLOCKED         ; enable the pps lock
         bsf     GIE
-        banksel upcurr
+        banksel acs
         return
 
         dw      L_PPS_LOCK
@@ -3860,7 +3855,6 @@ TWODROP:
         return
 
 ; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
-;   OVER OVER ;
         dw      L_TWODROP
 L_TWODUP:
         NF 4,2dup
@@ -3873,20 +3867,19 @@ TWODUP:
         return
 
 
-; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
-;   OVER OVER ;
+; 2OVER   x1 x2 -- x1 x2 x1 x1
         dw      L_TWODUP
 L_TWOOVER:
         NF 5,2over
 TWOOVER:
-        movlw   -7
+        movlw   8
         movff   SWrw, Sminus
         movff   SWrw, Sminus
         movff   SWrw, Sminus
         movff   SWrw, Sminus
         return
 
-; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2    dup top 2 cells
+; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2
         dw      L_TWOOVER
 L_TWOSWAP:
         NF 5,2swap
@@ -5307,18 +5300,17 @@ SIGNQEND:
 L_UDSTAR:
         NF 3,ud*
 UDSTAR:
-        rcall   DUP     ; ud.h ud.l u u 
-        rcall   TOR     ; ud.h ud.l u
-        rcall   ROT     ; ud.l u ud.h
+        rcall   TOR     ; ud.h ud.l
+        rcall   SWOP    ; ud.l ud.h
+        rcall   RFETCH  ; ud.l ud.h h
         rcall   UMSTAR  ; ud.l u1.h u1.l
         rcall   NIP     ; ud.l u1.l
         rcall   SWOP    ; u1.l ud.l
         rcall   RFROM   ; u1.l ud.l u
-        rcall   UMSTAR  ; u1.l u2.l u2.h
-        rcall   ROT     ; u2.l u2.h u1.l
-        rcall   PLUS    ; ur.l ur.h
-        return
-;        goto    SWOP
+        rcall   UMSTAR  ; u1.l u2.h u2.l
+        rcall   TOR     ; u1.l u2.h
+        rcall   PLUS    ; ur.h
+        goto    RFROM   ; ur.h ur.l
 
 ; UD/MOD  ud u --u(rem) ud(quot)
 
@@ -5363,7 +5355,7 @@ A_FROM:
         return
 
 
-; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
+; >NUMBER  0 0 adr u -- ud.h ud.l adr' u'
 ;                       convert string to number
         dw      L_A_FROM
 L_TONUMBER:
@@ -5372,37 +5364,37 @@ TONUMBER:
         LIT     1
         rcall   TO_A
 TONUM1:
-        rcall   DUPZEROSENSE      ; ud.l ud.h adr u
+        rcall   DUPZEROSENSE      ; ud.h ud.l adr u
         bz      TONUM3
-        rcall   TOR               ; ud.l ud.h adr
+        rcall   TOR               ; ud.h ud.l adr
         rcall   DUP
-        rcall   TOR               ; ud.l ud.h adr
-        rcall   CFETCH_A          ; ud.l ud.h c
+        rcall   TOR               ; ud.h ud.l adr
+        rcall   CFETCH_A          ; ud.h ud.l c
         movf    [1], W
         sublw   '.'
         bz      TONUM_SKIP
-        rcall   DIGITQ          ; ud.l ud.h digit flag
+        rcall   DIGITQ          ; ud.h ud.l digit flag
         rcall   ZEROSENSE
         bnz     TONUM2
         DROPM
-        rcall   RFROM           ; ud.l ud.h adr
-        rcall   RFROM           ; ud.l ud.h adr u
+        rcall   RFROM           ; ud.h ud.l adr
+        rcall   RFROM           ; ud.h ud.l adr u
         bra     TONUM3
 TONUM2:
-        rcall   TOR             ; ud.l ud.h
+        rcall   TOR             ; ud.h ud.l
         rcall   BASE
         rcall   FETCH_A
         rcall   UDSTAR
-        rcall   RFROM           ; ud.l ud.h digit
-        rcall   MPLUS           ; ud.l ud.h
+        rcall   RFROM           ; ud.h ud.l digit
+        rcall   MPLUS           ; ud.h ud.l
         rcall   FALSE_
         rcall   TO_A
         bra     TONUM_CONT
 TONUM_SKIP:
         DROPM
 TONUM_CONT:
-        rcall   RFROM           ; ud.l ud.h adr
-        rcall   RFROM           ; ud.l ud.h adr u
+        rcall   RFROM           ; ud.h ud.l adr
+        rcall   RFROM           ; ud.h ud.l adr u
         rcall   SLASHONE
         bra     TONUM1
 TONUM3:
@@ -5786,7 +5778,7 @@ QUIT1:
         call    ACCEPT
         call    SPACE_
         rcall   INTERPRET
-        banksel state
+        banksel acs
         movf    BANKMASK(state), W, B
         bnz     QUIT1
         call    IFLUSH
@@ -6968,9 +6960,8 @@ L_DLESS:
         db      NFA|2,'d','<'
         align   2
 DLESS:
-        rcall   DMINUS ;    FIXME
-        swapf   Sminus, W, A
-        swapf   Sminus, W, A
+        rcall   DMINUS
+        addfsr  Sptr, 2
         goto    LESS2
 
 ; D>    d1 d2 -- f        double greater than
@@ -6978,7 +6969,7 @@ DLESS:
 L_DGREATER:
         NF 2,d>
 DGREATER:
-        call    TWOSWAP; FIXME
+        call    TWOSWAP
         goto    DLESS
 
 
@@ -7069,8 +7060,10 @@ QBSLASH1:
 L_PAD:        
         NF  3,pad
 PAD:
-        movff   dpRAM, plusS
-        movff   dpRAM+1, plusS
+        movf    dpRAM+1, W, B
+        movwf   Sminus, A
+        movf    dpRAM, W, B
+        movwf   Sminus, A
         return
 
 ;***************************************************
