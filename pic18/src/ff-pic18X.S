@@ -1,6 +1,6 @@
 ;;**********************************************************************
 ;;                                                                     *
-;;    Filename:      ff-pic18X.S                                        *
+;;    Filename:      ff-pic18X2.S                                      *
 ;;    Date:          26.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
@@ -1102,7 +1102,7 @@ WARM_ZERO_1:
         banksel acs
         setf    BANKMASK(ibase_hi), B   ; Mark flash buffer empty
 
-        lfsr    Sptr, S0bot    ; Initalise Parameter stack FIXME
+        lfsr    Sptr, S0bot    ; Initalise Parameter stack
         lfsr    Rptr, urbuf
 
         banksel PIE1
@@ -1542,7 +1542,7 @@ VER:
         call    XSQUOTE
         db 28+PICLEN,' '         ; 1
         STRING  FlashForth       ; 10
-        db      ' ','5','X',' '  ; 4
+        db      ' ','5','Y',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
         STRING 26.03.2024        ; 10
@@ -1908,47 +1908,47 @@ L_IR:
 ;;; TBLPTRH TBLPTRL PCLATH TABLAT PRODL PRODH
 ;;; 42 clock cycles
 ;;; UM* ( u u -- ud )
-umstar0:
-        movf    [1], W
-        movwf   TBLPTRL, A
-        movf    [2], W
-        movwf   TBLPTRH, A
+umstar0:                    ; fixme
         movf    [3], W
-        movwf   TABLAT, A
+        movwf   TBLPTRL, A
         movf    [4], W
+        movwf   TBLPTRH, A
+        movf    [1], W
+        movwf   TABLAT, A
+        movf    [2], W
         movwf   PCLATH, A
         ; L1 * L2
         movf    TBLPTRL, W, A
         mulwf   TABLAT, A
         movf    PRODL, W, A
-        movwf   [1]
+        movwf   [3]
         movf    PRODH, W, A
-        movwf   [2]
+        movwf   [4]
         ; H2 * H2
         movf    TBLPTRH, W, A
         mulwf   PCLATH, A
         movf    PRODL, W, A
-        movwf   [3]
+        movwf   [1]
         movf    PRODH, W, A
-        movwf   [4]
+        movwf   [2]
         ; L1 * H2
         movf    TBLPTRL, W, A
         mulwf   PCLATH, A
         movf    PRODL, W, A
-        addwf   [2], F
+        addwf   [4], F
         movf    PRODH, W, A
-        addwfc  [3], F
+        addwfc  [1], F
         clrf    WREG, A
-        addwfc  [4], F
+        addwfc  [2], F
         ; H1 * L2
         movf    TBLPTRH, W, A
         mulwf   TABLAT, A
         movf    PRODL, W, A
-        addwf   [2], F
+        addwf   [4], F
         movf    PRODH, W, A
-        addwfc  [3], F
+        addwfc  [1], F
         clrf    WREG, A
-        addwfc  [4], F
+        addwfc  [2], F
         return
 
 ;***********************************************************
@@ -1972,29 +1972,29 @@ umslashmod3:
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     CARRY
-        rlcf    [1], F             ; DIVIDEND_0
-        rlcf    [2], F             ; DIVIDEND_1
-        rlcf    [3], F             ; DIVIDEND_2
-        rlcf    [4], F             ; DIVIDEND_3
+        rlcf    [3], F             ; DIVIDEND_0
+        rlcf    [4], F             ; DIVIDEND_1
+        rlcf    [1], F             ; DIVIDEND_2
+        rlcf    [2], F             ; DIVIDEND_3
         rlcf    Tp, F, A
 
         movf    DIVISOR_0, W, A
-        subwf   [3], W
+        subwf   [1], W
         movf    DIVISOR_1, W, A
-        subwfb  [4], W
+        subwfb  [2], W
         movlw   0
         subwfb  Tp, W, A
         bnc     UMSLASHMOD2
 
         movf    DIVISOR_0, W, A
-        subwf   [3], F
+        subwf   [1], F
         movf    DIVISOR_1, W, A
-        subwfb  [4], F
-        bsf     [1], 0
+        subwfb  [2], F
+        bsf     [3], 0
 UMSLASHMOD2:
         decfsz  DCNT, F, A
         bra     UMSLASHMOD1         ; 16*(18-22) = ~320
-        return                      ; 11 cycles
+        goto    SWOP                ; 11 cycles
 ; *******************************************************************
 ;if (ibaselo != (iaddrlo&0xc0))&& (ibasehi != iaddrhi)
 ;   if (idirty)
@@ -3823,7 +3823,7 @@ STORCOLON:
 ;   the higher address will appear on top of stack
         dw      L_COMMAXT
 L_TWOFETCH:
-        NF 2,2@
+        NF 2,2@ ; fixme ok
 TWOFETCH:
         rcall   DUP
         rcall   FETCH
@@ -3836,7 +3836,7 @@ TWOFETCH:
 ;   the top of stack is stored at the higher adrs
         dw      L_TWOFETCH
 L_TWOSTORE:
-        db      NFA|2,'2','!'
+        db      NFA|2,'2','!' ; fixme
         align   2
 TWOSTORE:
         rcall   SWOP
@@ -4204,7 +4204,6 @@ DUP:
         movf    [2], W
         movwf   Sminus, A
         return
-
 ;***********************************************************
 ;   ABS     n   --- n1      absolute value of n
         dw      L_DUP
@@ -4629,14 +4628,14 @@ DUPZEROSENSE:
 ; UM*     u1 u2 -- ud   unsigned 16x16->32 mult.
         dw      L_UKEYQ
 L_UMSTAR:
-        NF 3,um*
+        NF 3,um*    ; fixme
 UMSTAR:
         goto    umstar0
 
 ; UM/MOD   ud u1 -- u2(rem) u3(quot)     unsigned 32/16->16
         dw      L_UMSTAR
 L_UMSLASHMOD:
-        NF 6,um/mod
+        NF 6,um/mod     ; fixme OK
 UMSLASHMOD:
         goto    umslashmod0
 
@@ -4645,12 +4644,12 @@ UMSLASHMOD:
 ;
         dw      L_UMSLASHMOD
 L_USLASHMOD:
-        NF 5,u/mod
+        NF 5,u/mod      ; fixme OK
 USLASHMOD:
         rcall   TOR
-        call    UTOD
+        LIT     0
         rcall   RFROM
-        goto    umslashmod0
+        goto    UMSLASHMOD
 
 ; *      n1|u1 n2|u2 -- n3|u3      16*16->16 multiply
 ;   um* drop ;
@@ -4658,8 +4657,8 @@ USLASHMOD:
 L_STAR:
         NF 1,*
 STAR:
-        rcall   UMSTAR
-        goto    NIP
+        rcall   UMSTAR  ; fixme OK
+        goto    DROP
 
 ; U/      u1 u2 -- u3      16/16-> divide
         dw      L_STAR
@@ -4679,8 +4678,6 @@ USSMOD:
         rcall   UMSTAR
         rcall   RFROM
         goto    UMSLASHMOD
-
-
 
 ; / n1 n2 -- n3  signed 16/16->16 divide
         dw      L_USSMOD
@@ -5298,39 +5295,31 @@ SIGNQEND:
 ; UD*  ud u -- ud
         dw      L_SIGNQ
 L_UDSTAR:
-        NF 3,ud*
+        NF 3,ud*        ; fixme
 UDSTAR:
-        rcall   TOR     ; ud.h ud.l
-        rcall   SWOP    ; ud.l ud.h
-        rcall   RFETCH  ; ud.l ud.h h
-        rcall   UMSTAR  ; ud.l u1.h u1.l
-        rcall   NIP     ; ud.l u1.l
-        rcall   SWOP    ; u1.l ud.l
-        rcall   RFROM   ; u1.l ud.l u
-        rcall   UMSTAR  ; u1.l u2.h u2.l
-        rcall   TOR     ; u1.l u2.h
-        rcall   PLUS    ; ur.h
-        goto    RFROM   ; ur.h ur.l
+        rcall   DUP         ; ud.l ud.h u u
+        rcall   TOR         ; ud.l ud.h u
+        rcall   UMSTAR      ; ud.l u1.l u1.h
+        DROPM               ; ud.l u1.l
+        rcall   SWOP        ; u1.l ud.l
+        rcall   RFROM       ; u1.l ud.l u
+        rcall   UMSTAR      ; u1.l u2.l u2.h
+        rcall   ROT         ; u2.l u2.h u1.l
+        goto    PLUS        ; ud.l ud.h
 
 ; UD/MOD  ud u --u(rem) ud(quot)
-
         dw      L_UDSTAR
 L_UDSLASHMOD:
-        NF 6,ud/mod
+        NF 6,ud/mod         ; fixme
 UDSLASHMOD:
-        rcall   TOR             ; ud.h ud.l
-        rcall   SWOP            ; ud.l ud.h
+        rcall   TOR             ; ud.l ud.h
         rcall   FALSE_          ; ud.l ud.h 0
-        rcall   SWOP            ; ud.l 0 ud.h
-        rcall   RFETCH          ; ud.l 0 ud.h u
+        rcall   RFETCH          ; ud.l ud.h 0 u
         rcall   UMSLASHMOD      ; ud.l r.h q.h
         rcall   ROT             ; r.h q.h ud.l
         rcall   ROT             ; q.h ud.l r.h
-        rcall   SWOP
         rcall   RFROM           ; q.h ud.l r.h u
         rcall   UMSLASHMOD      ; q.h r.l q.l
-        rcall   ROT             ; r.l q.l q.h
-        goto    SWOP
 ROT_A:
         goto    ROT
 
@@ -5359,7 +5348,7 @@ A_FROM:
 ;                       convert string to number
         dw      L_A_FROM
 L_TONUMBER:
-        NF 7,>number
+        NF 7,>number        ; fixme
 TONUMBER:
         LIT     1
         rcall   TO_A
@@ -5412,7 +5401,7 @@ BASEQV:
 ;                 -- c-addr 0  if convert error
         dw      L_TONUMBER
 L_NUMBERQ:
-        NF 7,number?
+        NF 7,number?            ; fixme
 NUMBERQ:
         rcall   DUP             ; a a
         rcall   FALSE_          ; a a 0 0
@@ -5471,11 +5460,10 @@ QNUMD1:
         rcall   ROT_A           ; d.h d.l a
         DROPM                   ; d.h d.l
         call    ONE             ; d.h d.l 1
-        movlw   '.'             ; d.h d.l
+        movlw   '.'             ; d.h d.l 1
         subwf   BANKMASK(areg), W, B
         bz      QNUM1
-        call    ROT
-        addfsr  Sptr, 2         ; n 1           Single number
+        call    NIP
         return
 QNUM1:
         goto    ONEPLUS         ; d.h d.l 2     Double number
@@ -6381,8 +6369,8 @@ DOTS:
         rcall   S0
         rcall   FETCH_A
         call    SPFETCH
-	call	ONEPLUS
-	call	TWOPLUS
+        call    ONEPLUS
+        call    TWOPLUS
 DOTS1:
         call    TWODUP      ; s0 sp s0 sp
         call    ULESS
@@ -6800,32 +6788,32 @@ L_RDROP:
         NF INLINE|5,rdrop
 RDROP:
         movwf    Rminus, A
-        movwf    Rminus , A ;status flags are not affected my movwf
+        movwf    Rminus, A ;status flags are not affected my movwf
         return
 
 ; S>D  n -- d
         dw      L_RDROP
 L_STOD:
-        NF 3,s>d
+        NF 3,s>d    ; fixme ok
 STOD:
         call    DUP
-        clrf    [3]
-        clrf    [4]
-        btfss   [2], 7
+        clrf    [1]
+        clrf    [2]
+        btfss   [4], 7
         bra     STOD2
-        comf    [3]
-        comf    [4]
+        comf    [1]
+        comf    [2]
 STOD2:
         return
         
 ; S>D  n -- d
         dw      L_STOD
 L_UTOD:
-        NF 3,u>d
+        NF 3,u>d    ; fixme OK
 UTOD:
         call    DUP
-        clrf    [3]
-        clrf    [4]
+        clrf    [1]
+        clrf    [2]
         return
 
 
@@ -6841,7 +6829,7 @@ DNEGATE:
 ; DNEGATE  d -n -- -d
         dw      L_DNEGATE
 L_QDNEGATE:
-        NF 8,?dnegate
+        NF 8,?dnegate   ; fixme
 QDNEGATE:
         movf    plusS, W, A
         movf    plusS, W, A
@@ -6853,26 +6841,26 @@ QDNEGATE1:
 ; DABS  -d -- d
         dw      L_QDNEGATE
 L_DABS:
-        NF 4,dabs
+        NF 4,dabs       ; fixme ok
 DABS_:
-        btfsc   [4], 7
+        btfsc   [2], 7
         rcall   DNEGATE
         return
 
 ; D+       d d -- d         add double to double
         dw      L_DABS
 L_DPLUS:
-        NF 2,d+
+        NF 2,d+     ; fixme  OK
 DPLUS:
-        movf    plusS, W, A
-        addwf   [4], F
-        movf    plusS, W, A
-        addwfc  [4], F
-        movf    plusS, W, A
-        addwfc  [4], F
-        movf    plusS, W, A
-        addwfc  [4], F
-
+        movf    [3], W
+        addwf   [7], F
+        movf    [4], W
+        addwfc  [8], F
+        movf    [1], W
+        addwfc  [5], F
+        movf    [2], W
+        addwfc  [6], F
+        addfsr  Sptr, 4
         return
 
 ; D-    d1 d2 -- d3        double minus
@@ -6886,44 +6874,44 @@ DMINUS:
 ; D2/    d1 -- d2        double divide by 2
         dw      L_DMINUS
 L_DTWOSLASH:
-        NF 3,d2/
+        NF 3,d2/        ; fixme ok
 DTWOSLASH:
         bcf     CARRY
-        btfsc   [4], 7
+        btfsc   [2], 7
         bsf     CARRY
-        rrcf    [4], F
-        rrcf    [3], F
         rrcf    [2], F
         rrcf    [1], F
+        rrcf    [4], F
+        rrcf    [3], F
         return
 
 ; D2*    d1 -- d2        double multiply by 2
         dw      L_DTWOSLASH
 L_DTWOSTAR:
-        NF 3,d2*
+        NF 3,d2*        ; fixme ok
 DTWOSTAR:
         bcf     CARRY
-        rlcf    [4], F
-        rlcf    [3], F
         rlcf    [2], F
         rlcf    [1], F
+        rlcf    [4], F
+        rlcf    [3], F
         return
 
 ; DINVERT    d1 -- d2        double invert
         dw      L_DTWOSTAR
 L_DINVERT:
-        NF 7,dinvert
+        NF 7,dinvert        ; fixme ok
 DINVERT:
-        comf    [1], F
-        comf    [2], F
         comf    [3], F
         comf    [4], F
+        comf    [1], F
+        comf    [2], F
         return
 
 ; D0=    d1 -- f        double zeroequal
         dw      L_DINVERT
 L_DZEROEQUAL:
-        NF 3,d0=
+        NF 3,d0=            ; fixme ok
 DZEROEQUAL:
         movf    plusS, W, A
         iorwf   plusS, W, A
@@ -6936,11 +6924,11 @@ DZEROEQUAL_TRUE:
 ; D0<    d1 -- f        double zeroless
         dw      L_DZEROEQUAL
 L_DZEROLESS:
-        db      NFA|3,'d','0','<'
+        db      NFA|3,'d','0','<'   ; fixme ok
         align   2
 DZEROLESS:
-        addfsr  Sptr, 3
-        movf    plusS, F, A
+        movf    [2], F
+        addfsr  Sptr, 4
         bn      DZEROEQUAL_TRUE
 DZEROLESS_FALSE:
         goto    FALSE_
@@ -6957,7 +6945,7 @@ DEQUAL:
 ; D<    d1 d2 -- f        double less than
         dw      L_DEQUAL
 L_DLESS:
-        db      NFA|2,'d','<'
+        db      NFA|2,'d','<'   ; fixme
         align   2
 DLESS:
         rcall   DMINUS
