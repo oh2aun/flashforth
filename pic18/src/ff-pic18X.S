@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
-;;    Filename:      ff-pic18X2.S                                      *
-;;    Date:          26.03.2024                                        *
+;;    Filename:      ff-pic18X.S                                      *
+;;    Date:          28.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1542,10 +1542,10 @@ VER:
         call    XSQUOTE
         db 28+PICLEN,' '         ; 1
         STRING  FlashForth       ; 10
-        db      ' ','5','Y',' '  ; 4
+        db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 26.03.2024        ; 10
+        STRING 28.03.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1872,7 +1872,7 @@ L_LI:
         movwf   BANKMASK(ihtblptrh), B
         movf    TABLAT, W, A
         movwf   BANKMASK(ihtablat), B
-        lfsr    Sptr, irq_s0 + 0x10
+        lfsr    Sptr, irq_s0 + PARAMETER_STACK_SIZE_IRQ
         return
 
 ; i]   --    Restore registers for the Forth interrupt context
@@ -1908,7 +1908,7 @@ L_IR:
 ;;; TBLPTRH TBLPTRL PCLATH TABLAT PRODL PRODH
 ;;; 42 clock cycles
 ;;; UM* ( u u -- ud )
-umstar0:                    ; fixme
+umstar0:
         movf    [3], W
         movwf   TBLPTRL, A
         movf    [4], W
@@ -3823,7 +3823,7 @@ STORCOLON:
 ;   the higher address will appear on top of stack
         dw      L_COMMAXT
 L_TWOFETCH:
-        NF 2,2@ ; fixme ok
+        NF 2,2@
 TWOFETCH:
         rcall   DUP
         rcall   FETCH
@@ -3836,7 +3836,7 @@ TWOFETCH:
 ;   the top of stack is stored at the higher adrs
         dw      L_TWOFETCH
 L_TWOSTORE:
-        db      NFA|2,'2','!' ; fixme
+        db      NFA|2,'2','!'
         align   2
 TWOSTORE:
         rcall   SWOP
@@ -4628,14 +4628,14 @@ DUPZEROSENSE:
 ; UM*     u1 u2 -- ud   unsigned 16x16->32 mult.
         dw      L_UKEYQ
 L_UMSTAR:
-        NF 3,um*    ; fixme
+        NF 3,um*
 UMSTAR:
         goto    umstar0
 
 ; UM/MOD   ud u1 -- u2(rem) u3(quot)     unsigned 32/16->16
         dw      L_UMSTAR
 L_UMSLASHMOD:
-        NF 6,um/mod     ; fixme OK
+        NF 6,um/mod
 UMSLASHMOD:
         goto    umslashmod0
 
@@ -4644,7 +4644,7 @@ UMSLASHMOD:
 ;
         dw      L_UMSLASHMOD
 L_USLASHMOD:
-        NF 5,u/mod      ; fixme OK
+        NF 5,u/mod
 USLASHMOD:
         rcall   TOR
         LIT     0
@@ -4657,7 +4657,7 @@ USLASHMOD:
 L_STAR:
         NF 1,*
 STAR:
-        rcall   UMSTAR  ; fixme OK
+        rcall   UMSTAR
         goto    DROP
 
 ; U/      u1 u2 -- u3      16/16-> divide
@@ -4867,7 +4867,7 @@ L_UDOT:
         NF 2,u.
 UDOT:
         rcall   LESSNUM
-        call    UTOD
+        LIT     0
         rcall   NUMS
         rcall   NUMGREATER
         rcall   TYPE
@@ -4882,7 +4882,7 @@ UDOTR:
         rcall   LESSNUM
         rcall   ONEMINUS
         rcall   TOR
-        call    UTOD
+        LIT     0
         bra     UDOTR2
 UDOTR1:
         rcall   NUM
@@ -5295,7 +5295,7 @@ SIGNQEND:
 ; UD*  ud u -- ud
         dw      L_SIGNQ
 L_UDSTAR:
-        NF 3,ud*        ; fixme
+        NF 3,ud*
 UDSTAR:
         rcall   DUP         ; ud.l ud.h u u
         rcall   TOR         ; ud.l ud.h u
@@ -5310,7 +5310,7 @@ UDSTAR:
 ; UD/MOD  ud u --u(rem) ud(quot)
         dw      L_UDSTAR
 L_UDSLASHMOD:
-        NF 6,ud/mod         ; fixme
+        NF 6,ud/mod
 UDSLASHMOD:
         rcall   TOR             ; ud.l ud.h
         rcall   FALSE_          ; ud.l ud.h 0
@@ -5344,46 +5344,46 @@ A_FROM:
         return
 
 
-; >NUMBER  0 0 adr u -- ud.h ud.l adr' u'
+; >NUMBER  0 0 adr u -- ud adr' u'
 ;                       convert string to number
         dw      L_A_FROM
 L_TONUMBER:
-        NF 7,>number        ; fixme
+        NF 7,>number
 TONUMBER:
         LIT     1
         rcall   TO_A
 TONUM1:
-        rcall   DUPZEROSENSE      ; ud.h ud.l adr u
+        rcall   DUPZEROSENSE      ; ud.l ud.h adr u
         bz      TONUM3
-        rcall   TOR               ; ud.h ud.l adr
+        rcall   TOR               ; ud.l ud.h adr
         rcall   DUP
-        rcall   TOR               ; ud.h ud.l adr
-        rcall   CFETCH_A          ; ud.h ud.l c
+        rcall   TOR               ; ud.l ud.h adr
+        rcall   CFETCH_A          ; ud.l ud.h c
         movf    [1], W
         sublw   '.'
         bz      TONUM_SKIP
-        rcall   DIGITQ          ; ud.h ud.l digit flag
+        rcall   DIGITQ          ; ud.l ud.h digit flag
         rcall   ZEROSENSE
         bnz     TONUM2
         DROPM
-        rcall   RFROM           ; ud.h ud.l adr
-        rcall   RFROM           ; ud.h ud.l adr u
+        rcall   RFROM           ; ud.l ud.h adr
+        rcall   RFROM           ; ud.l ud.h adr u
         bra     TONUM3
 TONUM2:
-        rcall   TOR             ; ud.h ud.l
+        rcall   TOR             ; ud.l ud.h
         rcall   BASE
         rcall   FETCH_A
         rcall   UDSTAR
-        rcall   RFROM           ; ud.h ud.l digit
-        rcall   MPLUS           ; ud.h ud.l
+        rcall   RFROM           ; ud.l ud.h digit
+        rcall   MPLUS           ; ud.l ud.h
         rcall   FALSE_
         rcall   TO_A
         bra     TONUM_CONT
 TONUM_SKIP:
         DROPM
 TONUM_CONT:
-        rcall   RFROM           ; ud.h ud.l adr
-        rcall   RFROM           ; ud.h ud.l adr u
+        rcall   RFROM           ; ud.l ud.h adr
+        rcall   RFROM           ; ud.l ud.h adr u
         rcall   SLASHONE
         bra     TONUM1
 TONUM3:
@@ -5397,23 +5397,24 @@ BASEQV:
 
 
 ; NUMBER?  c-addr -- n 1
-;                 -- dl dh 2
+;                 -- d 2
 ;                 -- c-addr 0  if convert error
         dw      L_TONUMBER
 L_NUMBERQ:
-        NF 7,number?            ; fixme
+        NF 7,number?
 NUMBERQ:
-        rcall   DUP             ; a a
-        rcall   FALSE_          ; a a 0 0
-        rcall   FALSE_          ; a a 0 0
-        rcall   ROT             ; a 0 0 a
-        rcall   CFETCHPP        ; a 0 0 a' u
-        rcall   SIGNQ           ; a 0 0 a' u f
-        rcall   TOR             ; a 0 0 a' u
+        rcall   DUP
+        rcall   TOR             ; a
+        rcall   FALSE_          ; a 0 0
+        rcall   FALSE_          ; a 0 0
+        rcall   ROT             ; 0 0 a
+        rcall   CFETCHPP        ; 0 0 a' u
+        rcall   SIGNQ           ; 0 0 a' u f
+        rcall   TOR             ; 0 0 a' u
 
         rcall   BASE
         rcall   FETCH_A
-        rcall   TOR             ; a 0 0 a' u
+        rcall   TOR             ; 0 0 a' u
 
         call    OVER
         rcall   CFETCH_A
@@ -5435,38 +5436,37 @@ NUMBERQ:
         bra     BASEQ2
 BASEQ1:
         DROPM
-BASEQ2:                         ; a 0 0 a' u
-        rcall   TONUMBER        ; a ud.h ud.l  a' u
+BASEQ2:                         ; 0 0 a' u
+        rcall   TONUMBER        ; ud.l ud.h  a' u
 
-        rcall   RFROM           ; a ud.h ud.l  a' u oldbase
-        rcall   BASE            ; a ud.h ud.l  a' u oldbase addr
-        rcall   STORE_A         ; a ud.h ud.l  a' u
+        rcall   RFROM           ; ud.l ud.h  a' u oldbase
+        rcall   BASE            ; ud.l ud.h  a' u oldbase addr
+        rcall   STORE_A         ; ud.l ud.h  a' u
                                 ; u > 0 -> error
-        rcall   ZEROSENSE       ; a ud.h ud.l  a'
+        rcall   ZEROSENSE       ; ud.l ud.h  a'
         bz      QNUMD           ; u = 0 -> single or double number
 QNUM_ERR:                       ; Not a number
-        call    RFROM            ; a ud.h ud.l a' sign
-        call    TWODROP
-        call    TWODROP
+        call    RFROM           ; ud.l ud.h a' sign
+        addfsr  Sptr, 8         ; 4drop
+        rcall   RFROM           ; a
         bra     FALSE_          ; a 0           Not a number
 QNUMD:                          ; Single or double Double number
-                                ; a ud.h ud.l a'
+                                ; ud.l ud.h a'
         rcall   ONEMINUS
-        call    CFETCH          ; a ud.h ud.l c
-        rcall   TO_A            ; a ud.h ud.l
-        call    RFROM           ; a ud.h ud.l sign
+        call    CFETCH          ; ud.l ud.h c
+
+        rcall   TO_A            ; ud.l ud.h
+        call    RFROM           ; ud.l ud.h sign
         call    QDNEGATE
+        subfsr  Rptr, 2         ; RDROP
 QNUMD1:
-        rcall   ROT_A           ; d.h d.l a
-        DROPM                   ; d.h d.l
-        call    ONE             ; d.h d.l 1
-        movlw   '.'             ; d.h d.l 1
+        call    ONE             ; d.l d.h 1
+        movlw   '.'             ; d.l d.h 1
         subwf   BANKMASK(areg), W, B
         bz      QNUM1
-        call    NIP
-        return
+        goto    NIP
 QNUM1:
-        goto    ONEPLUS         ; d.h d.l 2     Double number
+        goto    ONEPLUS         ; d.l d.h 2     Double number
 
 ; TI#  -- n                      size of TIB
 ; : ti# task @ 8 + @ ;
@@ -6794,7 +6794,7 @@ RDROP:
 ; S>D  n -- d
         dw      L_RDROP
 L_STOD:
-        NF 3,s>d    ; fixme ok
+        NF 3,s>d
 STOD:
         call    DUP
         clrf    [1]
@@ -6806,19 +6806,8 @@ STOD:
 STOD2:
         return
         
-; S>D  n -- d
-        dw      L_STOD
-L_UTOD:
-        NF 3,u>d    ; fixme OK
-UTOD:
-        call    DUP
-        clrf    [1]
-        clrf    [2]
-        return
-
-
 ; DNEGATE  +d -- -d
-        dw      L_UTOD
+        dw      L_STOD
 L_DNEGATE:
         NF 7,dnegate
 DNEGATE:
@@ -6829,7 +6818,7 @@ DNEGATE:
 ; DNEGATE  d -n -- -d
         dw      L_DNEGATE
 L_QDNEGATE:
-        NF 8,?dnegate   ; fixme
+        NF 8,?dnegate
 QDNEGATE:
         movf    plusS, W, A
         movf    plusS, W, A
@@ -6841,7 +6830,7 @@ QDNEGATE1:
 ; DABS  -d -- d
         dw      L_QDNEGATE
 L_DABS:
-        NF 4,dabs       ; fixme ok
+        NF 4,dabs
 DABS_:
         btfsc   [2], 7
         rcall   DNEGATE
@@ -6850,7 +6839,7 @@ DABS_:
 ; D+       d d -- d         add double to double
         dw      L_DABS
 L_DPLUS:
-        NF 2,d+     ; fixme  OK
+        NF 2,d+
 DPLUS:
         movf    [3], W
         addwf   [7], F
@@ -6874,7 +6863,7 @@ DMINUS:
 ; D2/    d1 -- d2        double divide by 2
         dw      L_DMINUS
 L_DTWOSLASH:
-        NF 3,d2/        ; fixme ok
+        NF 3,d2/
 DTWOSLASH:
         bcf     CARRY
         btfsc   [2], 7
@@ -6888,7 +6877,7 @@ DTWOSLASH:
 ; D2*    d1 -- d2        double multiply by 2
         dw      L_DTWOSLASH
 L_DTWOSTAR:
-        NF 3,d2*        ; fixme ok
+        NF 3,d2*
 DTWOSTAR:
         bcf     CARRY
         rlcf    [2], F
@@ -6900,7 +6889,7 @@ DTWOSTAR:
 ; DINVERT    d1 -- d2        double invert
         dw      L_DTWOSTAR
 L_DINVERT:
-        NF 7,dinvert        ; fixme ok
+        NF 7,dinvert
 DINVERT:
         comf    [3], F
         comf    [4], F
@@ -6911,7 +6900,7 @@ DINVERT:
 ; D0=    d1 -- f        double zeroequal
         dw      L_DINVERT
 L_DZEROEQUAL:
-        NF 3,d0=            ; fixme ok
+        NF 3,d0=
 DZEROEQUAL:
         movf    plusS, W, A
         iorwf   plusS, W, A
@@ -6924,7 +6913,7 @@ DZEROEQUAL_TRUE:
 ; D0<    d1 -- f        double zeroless
         dw      L_DZEROEQUAL
 L_DZEROLESS:
-        db      NFA|3,'d','0','<'   ; fixme ok
+        db      NFA|3,'d','0','<'
         align   2
 DZEROLESS:
         movf    [2], F
@@ -6945,7 +6934,7 @@ DEQUAL:
 ; D<    d1 d2 -- f        double less than
         dw      L_DEQUAL
 L_DLESS:
-        db      NFA|2,'d','<'   ; fixme
+        db      NFA|2,'d','<'
         align   2
 DLESS:
         rcall   DMINUS
