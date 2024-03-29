@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                      *
-;;    Date:          28.03.2024                                        *
+;;    Date:          29.03.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -352,7 +352,7 @@ PSECT udata_bank4
 ep0ostat:	ds 1
 ep0ocnt: 	ds 1
 ep0oadr:	ds 2
-ep0istat: ds 1
+ep0istat:   ds 1
 ep0icnt: 	ds 1
 ep0iadr:	ds 2
 
@@ -376,6 +376,15 @@ ep0buf:      ds 8
 cdc_data_rx: ds 8
 cdc_data_tx: ds 8
 
+count:          ds 1
+dPtr:           ds 2
+ep2icount:      ds 1
+ep2itmo:        ds 1
+ep2optr:        ds 1
+usb_device_state: ds 1
+usb_status:     ds 1
+ctrl_trf_state: ds 1
+
 #define TIB_DEFINED
 wordlenchar: ds 1
 utibbuf:     ds utibsize
@@ -384,7 +393,6 @@ utibbuf:     ds utibsize
 usbuf:       ds ussize
 
 #define RXBUF_DEFINED
-irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
 RXbuf:       ds RX_BUF_SIZE
 RXbufmask   equ RX_BUF_SIZE - 1
 #else        // NOT USB
@@ -409,9 +417,11 @@ flash_buf:   ds flash_block_size
 #endif
 #endif
 
-#ifndef RXBUF_DEFINED
 psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 irq_s0:      ds PARAMETER_STACK_SIZE_IRQ   ;; Interrupt parameter stack.
+
+#ifndef RXBUF_DEFINED
+psect udatabig,class=BIGRAM,space=SPACE_DATA,noexec
 RXbuf:       ds RX_BUF_SIZE
 RXbufmask   equ RX_BUF_SIZE - 1
 #endif
@@ -641,6 +651,7 @@ irq_ms:
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
+        movf    BANKMASK(ms_count), W, B
         bnz     irq_load_end
         movf    TMR0L, W, A
         movwf   BANKMASK(load_res), B
@@ -879,15 +890,18 @@ L_PAUSE:
 PAUSE:
         clrwdt
 #ifdef USB_CDC
+        banksel acs
         movf    BANKMASK(upcurr), W, B
         sublw   low(u0)           ; check usb only in operator task
         bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
         btfss   USBEN
         bra     PAUSE_USB_CDC_END
         call    USBDriverService
+        banksel ep2icount
         movf    ep2icount, W, B
         bz      PAUSE_USB_CDC_END
         movf    ep2itmo, W, B
+        banksel acs
         subwf   BANKMASK(ms_count), W, B
         bn      PAUSE_USB_CDC_END
         rcall   TX0_SEND
@@ -903,7 +917,7 @@ PAUSE_USB_CDC_END:
         bnz     PAUSE000       ; Lowers execution delay when many tasks are running
 #if CPU_LOAD_LED == ENABLE
         banksel CPU_LOAD_PORT
-#if CPU_LOAD_LED_POLARITY == POSITIVE
+#if CPU_LOAD_LED_POLARITY == POSITIVE_
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
 #else
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
@@ -921,7 +935,7 @@ PAUSE_USB_CDC_END:
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
         banksel CPU_LOAD_PORT
-#if CPU_LOAD_LED_POLARITY == POSITIVE
+#if CPU_LOAD_LED_POLARITY == POSITIVE_
         bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
 #else
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
@@ -1383,9 +1397,9 @@ WARM_ZERO_1:
 #if MS_TMR == 2                 // Timer 2 for 1 ms system tick
 #ifndef K42
         movlw   0x7d            ; Prescale = 4, Postscale = 16
-        movwf   T2CON
+        movwf   T2CON, A
         movlw   tmr2ms_val
-        movwf   PR2
+        movwf   PR2, A
         bsf     TMR2IE
         bcf     TMR2IP
 #else
@@ -1545,7 +1559,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 28.03.2024        ; 10
+        STRING 29.03.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1769,15 +1783,14 @@ BUSY:
 L_LOAD:
         NF 4,load
 LOAD:
-        clrf    Sminus, A
-        movf    BANKMASK(load_res)+2, W, B
-        movwf   Sminus, A
         movf    BANKMASK(load_res)+1, W, B
         movwf   Sminus, A
         movf    BANKMASK(load_res), W, B
         movwf   Sminus, A
-        call    LIT
-        dw      CPU_LOAD_VAL
+        clrf    Sminus, A
+        movf    BANKMASK(load_res)+2, W, B
+        movwf   Sminus, A
+        LIT     CPU_LOAD_VAL
         call    UMSLASHMOD
         goto    NIP
 
@@ -2735,17 +2748,19 @@ TX0:
         banksel acs
         movf    BANKMASK(ms_count), W, B
         addlw   2+TICK_TIME
+        banksel ep2itmo
         movwf   ep2itmo, B
         lfsr    Tptr, cdc_data_tx
-        movf    Sminus, W, A
         movf    ep2icount, W, B
-        movff   Sminus, TWrw
+        movff   plusS, TWrw
+        addfsr  Sptr, 1
         addlw   1
         movwf   ep2icount, B
         sublw   6                       ; l - w
         bnn     TX0_END
 TX0_SEND:
-        movf    ep2icount, W, A
+        banksel ep2icount
+        movf    ep2icount, W, B
 TX0_SEND2:
         banksel ep2istat
         movwf   BANKMASK(ep2icnt), B
@@ -2754,7 +2769,6 @@ TX0_SEND2:
         movlw   0x8
         movwf   BANKMASK(ep2istat), B
         bsf     BANKMASK(ep2istat), UOWN, B
-        banksel acs
         clrf    ep2icount, B
         bra     TX0_END
 TX0_DROP:
@@ -2774,11 +2788,10 @@ RX0:
         btfsc   BANKMASK(ep2ostat), UOWN, B
         bra     RX0
         lfsr    Tptr, cdc_data_rx
-        banksel acs
+        clrf    Sminus, A
         movf    ep2optr, W, B
-        movff   TWrw, plusS
+        movff   TWrw, Sminus
         incf    ep2optr, F, B
-        banksel ep2ocnt
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
         movlw   8
@@ -2790,7 +2803,6 @@ RX0:
         bsf     BANKMASK(ep2ostat), UOWN, B
         clrf    ep2optr, B
 RX0_END:
-        clrf    plusS, A
         banksel acs
         return
 ;***************************************************
@@ -2800,8 +2812,11 @@ L_RX0Q:
         NF 4,rxu?
 RX0Q:
         banksel ep2ostat
-        btfsc   BANKMASK(usb_device_state), 3, B
-        btfsc   BANKMASK(ep2ostat), 7, B ;FIXME 
+        movff   ep2ostat, acs
+        movff   usb_device_state, acs+1
+        banksel acs
+        btfsc   BANKMASK(acs+1), 3, B
+        btfsc   BANKMASK(acs), 7, B
 RX0Q1:
         goto    FALSE_
         goto    TRUE_
@@ -7117,7 +7132,7 @@ FLASHHI:
         dw      RAM_HI
 
 #ifdef USB_CDC
-#include "ff-usbcdc.S"
+#include "ff-usbcdcX.S"
 #endif
 #if 0
 hexemit:
