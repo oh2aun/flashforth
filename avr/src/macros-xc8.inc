@@ -1,4 +1,4 @@
-#include <xc.h>
+
 ; Register definitions
   .equ upl, 2         ; not in interrupt 
   .equ uph, 3         ; not in interrupt

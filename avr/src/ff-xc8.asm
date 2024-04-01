@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          07.03.2024                                        *
+;    Date:          11.03.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -31,11 +31,11 @@
 ;**********************************************************************
 
 ; Include the FlashForth configuration file
-#include <xc.h>
+#include <avr/io.h>
 #include <config-xc8.inc>
 
 ; Define the FF version date string
-#define DATE "07.03.2024"
+#define DATE "11.03.2024"
 #define datelen 10
 
 
