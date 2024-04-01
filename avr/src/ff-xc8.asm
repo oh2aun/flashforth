@@ -32,7 +32,7 @@
 
 ; Include the FlashForth configuration file
 #include <avr/io.h>
-#include <config-xc8.inc>
+#include "config-xc8.inc"
 
 ; Define the FF version date string
 #define DATE "11.03.2024"
@@ -180,7 +180,7 @@
 .equ EEPROM_HI , PEEPROM + E2END
 .equ RAM_HI , RAMEND
 
-#include <macros-xc8.inc>
+#include "macros-xc8.inc"
         
 ;;; USER AREA for the OPERATOR task
 .equ ursize,       RETURN_STACK_SIZE
@@ -5024,7 +5024,7 @@ FLASHHI:
         jmp    ISTORE1
 
 ;***************************************************
-#include <registers.inc>
+#include "registers.inc"
 ;***************************************************
         fdw      9b
 L_FETCH_P:
