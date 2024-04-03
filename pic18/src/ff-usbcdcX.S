@@ -189,7 +189,7 @@ USBCtrlEPService:
         bz      USBCtrlTrfInHandler         ; IN token
         return
 USBCtrlEPService_out_setup:
-        btfss   PKTDIS                     ; SETUP token ?
+        btfss   PKTDIS                      ; SETUP token ?
         bra     USBCtrlTrfOutHandler        ; OUT token
 USBCtrlTrfSetupHandler:
         clrf    ctrl_trf_state, B              ; WAIT_SETUP

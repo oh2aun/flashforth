@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                      *
-;;    Date:          29.03.2024                                        *
+;;    Date:          03.04.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -192,6 +192,13 @@ ENDM STRING
 DROPM MACRO
         addfsr Sptr, 2
 ENDM
+TWODROPM MACRO
+        addfsr Sptr, 4
+ENDM
+RDROPM MACRO
+        subfsr  Rptr, 2
+ENDM
+
 ;;   FSR2    Sp  - Parameter Stack Pointer
 ;;   FSR1    Tp  - Temporary Ram Pointer
 ;;   FSR0    Rp  - R stack pointer
@@ -273,7 +280,8 @@ utibsize    equ TIB_SIZE + HOLD_SIZE
 
 
 ;;****************************************************
-;; USE ACCESS BANK to R/W these registers
+;; USE BANKED mode to R/W these registers.
+;; Lower access bank not available in extended mode.
 ;; Internal variables used by asm code
 PSECT   udata_acs
 reset0:   ds 1
@@ -518,13 +526,17 @@ resetVec:
 ;;;;***************************************************
 ;   High priority interrupt vector
 PSECT   hi_int,class=CODE
+#ifdef Qxx
+#undef CPU_LOAD
+#define CPU_LOAD DISABLE
+#warning CPU_LOAD disabled
+#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bsf     TMR0ON
 #else
-        banksel T0CON0
         bsf     T0EN
 #endif
 #endif
@@ -1559,7 +1571,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 29.03.2024        ; 10
+        STRING 03.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1981,7 +1993,7 @@ umslashmod0:
         bra     WARM
 umslashmod3:
         movlw   16
-        movwf   DCNT, A             ; count to 16; 19
+        movwf   DCNT, A             ; count to 16
 UMSLASHMOD1:
         clrf    Tp, A
         bcf     CARRY
@@ -2070,19 +2082,7 @@ fill_buffer_from_imem_1:
         return
 ;***********************************************************
 write_buffer_to_imem:
-;; Loop here until there are no more characters has been received for a while
-;; from the operator UART.
-;; The assumption is that the serial line is silent then.
-#ifdef OPERATOR_RX_IS_UART
-wbtil:
-        bcf     BANKMASK(FLAGS1), istream, B
-        LIT2    (19200/baud)+2
-        call    MS
-        btfsc   BANKMASK(FLAGS1), istream, B
-        bra     wbtil
-#endif
         bcf     GIE             ; Disable Interrupts
-
         banksel EECON1
 #ifndef Qxx
         rcall   init_ptrs             ; Init TBLPTR, ram pointer, banksel
@@ -2355,7 +2355,7 @@ INT:
 ; LITERAL  x --           compile literal x as native code
 ; Use PUSHL for all values except  those beginning with mask 0xD8.
 ; Those use MOVLW/MOVWF.
-; PUSHL has a bug for values masked with 0xD8
+; PUSHL has a bug for values masked with 0xD8 and with 0xe0 
         dw      L_INT
 L_LITERAL:
         NF IMMED|7,literal
@@ -2370,31 +2370,23 @@ LITERAL:
         return
 LIT_COMMA:
 #ifdef K42
-        movlw   0xd8               ; BUG in PUSHL instruction
-        andwf   [1], W
-        xorlw   0xd8
-        bz      LIT_MOVLW
-        movlw   0xe0
-        andwf   [1], W
-        xorlw   0xe0
-        bz      LIT_MOVLW
+        movf    [1],w                  ; if (low(PLUSW2) <= [1] < low(INDF0))
+        addlw   -INDF0                 ; {
+        addlw   INDF0 - PLUSW2         ;
+        bnc     LIT_PUSHL              ;
+LIT_FIX:
+        bcf     [1],7                  ;     PUSHL k, where 0 <= k <= 127
+        rcall   LIT_PUSHL              ;
+        pushl   0x8E                   ;     BSF   [1],7
+        pushl   0x01                   ;
+        bra     LIT_ICOMMA             ; }
 #endif
-        pushl   0xea
-        movf    [2], W
-        movwf   Sminus, A
-#ifdef K42
-        bra     LIT_RET
-LIT_MOVLW:
-        pushl   0x0e
-        movf    [2], W
-        movwf   Sminus, A
-        rcall   LIT_RET
-        pushl   0x6e
-        movlw   0xdd
-        movwf   Sminus, A
-#endif
-LIT_RET:
-        goto    ICOMMA
+LIT_PUSHL:                             ; else {
+        pushl   0xEA                   ;     PUSHL k, where 0 <= k <= 255
+        movf    [2],w                  ;
+        movwf   POSTDEC2,a             ; }
+LIT_ICOMMA:
+        goto    ICOMMA                 ; flash opcode
 ;**************************************************
 ;   INSTRUCTION MEMORY INSTRUCTIONS
 FETCHLIT:
@@ -2447,7 +2439,7 @@ ISTOREOK:
 
 ; I!       x a-addr --    store cell in Code mem
 ISTORE:
-        call   ISTORE_SETUP
+        rcall   ISTORE_SETUP
         movff   plusS, Tplus
         movff   plusS, Trw
         bra     ICSTORE1
@@ -2565,7 +2557,7 @@ ECSTORE1:
         movwf   NVMCON1, B
 #endif
         bcf     GIE
-        call    magic
+        rcall   magic
         bsf     GIE
 ECSTORE2:
 #ifndef Qxx
@@ -3065,7 +3057,7 @@ AS3_DOES:
         rcall   ROT             ;  d/b a f
         rcall   ICCOMMA         ;  d/b a
         rcall   SWOP            ;  a d/b
-        call    TWOSTAR
+        rcall   TWOSTAR
         rcall   OR_A
         rcall   RFROM
 AS3_2:
@@ -3403,6 +3395,7 @@ L_CON:
         NF 8,constant
 CON_:
         call    COLON         ; Create a word header
+        call    INLINED
         rcall   LITERAL       ; Append the constant value  as inline literal
         goto    SEMICOLON     ; Compile return
 
@@ -3412,6 +3405,7 @@ L_2CON:
 TWOCON:
         rcall   SWOP
         call    COLON         ; Create a word header
+        call    INLINED
         rcall   LITERAL       ; Append the constant value  as inline literal
         rcall   LITERAL       ; Append the constant value  as inline literal
         goto    SEMICOLON     ; Compile return
@@ -3445,7 +3439,7 @@ DODOES:
         movf    TOSL, W, A
         movwf   TBLPTRL, A
         movf    TOSH, W, A
-        call    FETCHLIT
+        rcall   FETCHLIT
         movf    PCLATH, W, A
         movwf   TOSH, A
         movf    Tp, W, A
@@ -3459,7 +3453,7 @@ DOCOMMAXT:
         movf    TOSL, W, A
         movwf   TBLPTRL, A
         movf    TOSH, W, A
-        call    FETCHLIT
+        rcall   FETCHLIT
         movf    TBLPTRH, W, A
         movwf   TOSH, A
         movf    TBLPTRL, W, A
@@ -3491,7 +3485,7 @@ L_XSTORE:
         movf    Sminus, W, A
         movf    Sminus, W, A
         movwf   BANKMASK(iaddr_up), B
-        call    ISTORE
+        rcall   ISTORE
         clrf    BANKMASK(iaddr_up), B
         return
 
@@ -3646,7 +3640,7 @@ XFETCH:
         movwf   TBLPTRH, A
         movf    Sminus, W, A
         movwf   TBLPTRL, A
-        call    pfetch0
+        rcall   pfetch0
         clrf    TBLPTRU, A
         return
 
@@ -3866,7 +3860,7 @@ TWOSTORE:
 L_TWODROP:
         NF INLINE|5,2drop
 TWODROP:
-        addfsr  Sptr, 4
+        TWODROPM
         return
 
 ; 2DUP   x1 x2 -- x1 x2 x1 x2    dup top 2 cells
@@ -3927,7 +3921,8 @@ SPCS1:
         bn      SPCS2
         rcall   SPACE_
         bra     SPCS1
-SPCS2:  goto    DROP
+SPCS2:  DROPM
+        return
 
 
 ; umin     u1 u2 -- u           unsigned minimum
@@ -4019,7 +4014,7 @@ ACC_3:
         rcall   ZEROSENSE
         bz      ACC_1
 ACC_6:
-        call    RDROP
+        RDROPM
         rcall   SWOP
         goto    MINUS
 
@@ -4044,7 +4039,8 @@ TYPE2:
         bc      TYPE1           ; XNEXT
         movwf   Rminus, A
         movwf   Rminus, A    ; UNNEXT
-        goto    DROP
+        DROPM
+        return
 
 ; (S"    -- c-addr u      run-time code for S"
         dw      L_TYPE
@@ -4673,7 +4669,8 @@ L_STAR:
         NF 1,*
 STAR:
         rcall   UMSTAR
-        goto    DROP
+        DROPM
+        return
 
 ; U/      u1 u2 -- u3      16/16-> divide
         dw      L_STAR
@@ -4755,7 +4752,8 @@ MINMAX:
         rcall   ZEROSENSE
         bz      max1
         rcall   SWOP
-max1:   goto    DROP
+max1:   DROPM
+        return
 
 
 ; MIN    n1 n2 -- n3              signed minimum
@@ -4853,7 +4851,7 @@ NUMS:
 L_NUMGREATER:
         NF 2,#>
 NUMGREATER:
-        rcall   TWODROP
+        TWODROPM
         rcall   HP
         rcall   FETCH
         rcall   HB
@@ -4934,7 +4932,7 @@ DOT:    rcall   LESSNUM
 L_DECIMAL:
         NF 7,decimal
 DECIMAL:
-        rcall   TEN
+        LIT     10
         rcall   BASE
         goto    STORE
 
@@ -5056,7 +5054,8 @@ BSLASH:
         rcall   TOIN
         rcall   STORE_A
         bsf     BANKMASK(FLAGS1), noclear, B
-        goto    DROP
+        DROPM
+        return
 
 ; PARSE  char -- c-addr u
         dw      L_BSLASH
@@ -5122,7 +5121,8 @@ CMOVE2:
         movwf   Rminus, A
         movwf   Rminus, A   ; UNNEXT
         rcall   R_TO_P
-        goto    DROP
+        DROPM
+        return
 
 
 ; place  src n dst --     place as counted str
@@ -5251,7 +5251,7 @@ FIND:
         rcall   DUPZEROSENSE
         bnz     FIND1
         DROPM
-        LIT     latest
+        LIT2    latest
         rcall   FETCH_A
         rcall   findi
 FIND1:
@@ -5473,7 +5473,7 @@ QNUMD:                          ; Single or double Double number
         rcall   TO_A            ; ud.l ud.h
         call    RFROM           ; ud.l ud.h sign
         call    QDNEGATE
-        subfsr  Rptr, 2         ; RDROP
+        RDROPM
 QNUMD1:
         call    ONE             ; d.l d.h 1
         movlw   '.'             ; d.l d.h 1
@@ -5632,7 +5632,8 @@ IUNKNOWN:
         rcall   FALSE_
         rcall   QABORTQ         ; Never returns & resets the stacks
 INOWORD:
-        goto    DROP
+        DROPM
+        return
 
         NF 1,@
 FETCH_A:
@@ -5692,13 +5693,6 @@ DOTSTATUS:
         NF 2,>r
 TOR_A:  goto    TOR
 
-
-;;; TEN ( -- n ) Leave decimal 10 on the stack
-        NF 1,a
-TEN:
-        LIT     10
-        return
-
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
 ;        dw      link
 ; link    set     $
@@ -5706,7 +5700,7 @@ TEN:
 DP_TO_RAM:
         LIT     dp_start
         rcall   INI
-        rcall   TEN
+        LIT     10
         rcall   CMOVE
         return
 
@@ -5739,7 +5733,8 @@ DP_TO_EEPROM_3:
         bc      DP_TO_EEPROM_0
         movf    Rminus, W, A
         call    R_TO_P
-        goto    DROP
+        DROPM
+        return
 
 ;***************************************************************
         dw      L_DOTSTATUS
@@ -5776,7 +5771,7 @@ QUIT1:
         rcall   TIB
         rcall   DUP_A
         rcall   TIBSIZE
-        rcall   TEN                 ; Reserve 10 bytes for hold buffer
+        LIT     10                 ; Reserve 10 bytes for hold buffer
         call    MINUS
         call    ACCEPT
         call    SPACE_
@@ -5846,7 +5841,8 @@ QABORT1:
         call    SPACE_
         call    TYPE
         rcall   ABORT  ; ABORT never returns
-QABO1:  goto    TWODROP
+QABO1:  TWODROPM
+        return
 
         NF 3,(,)
 DOCOMMAXT_A: goto DOCOMMAXT
@@ -5890,7 +5886,8 @@ PAREN:
         LIT     0x29
         rcall   PARSE
         bsf     BANKMASK(FLAGS1), noclear, B ; dont clear flags in case of (
-        goto    TWODROP
+        TWODROPM
+        return
 
         NF 3,(c)
 DOCREATE_A:
@@ -5946,7 +5943,7 @@ CREATE:
         btfsc   BANKMASK(FLAGS2), fCREATE, B
         call    IFLUSH
         btfsc   BANKMASK(FLAGS2), fCREATE, B
-        call    DP_TO_EEPROM
+        rcall   DP_TO_EEPROM
 
         rcall   BL
         rcall   WORD            ; Parse a word
@@ -6253,7 +6250,8 @@ MS_1:
         subwfb  BANKMASK(ms_count)+1, W, B ; ticks_hi - timeout_hi
         bsf     GIE
         bn      MS_1
-        goto    DROP
+        DROPM
+        return
 
 CFETCHPP_A: goto CFETCHPP
 ;  .id ( nfa -- )
@@ -6275,7 +6273,8 @@ DOTID3:
         decf    Rrw, F, A
         bc      DOTID1
         movf    Rminus, W, A
-        goto    DROP
+        DROPM
+        return
 
  ; >pr   c -- c      Filter a character to printable 7-bit ASCII
         dw      L_DOTID
@@ -6395,7 +6394,8 @@ DOTS1:
         call    UDOT
         bra     DOTS1
 DOTS2:
-        goto    TWODROP
+        TWODROPM
+        return
 
 ;   DUMP  ADDR U --       DISPLAY MEMORY
         dw      L_DOTS
@@ -6439,8 +6439,9 @@ DUMP7:
         movlw   0
         subwfb  Rplus, F, A
         bc      DUMP1
-        rcall   RDROP
-        goto    DROP
+        RDROPM
+        DROPM
+        return
 
 ; IALLOT   n --    allocate n bytes in ROM
 ;       dw      link
@@ -6751,7 +6752,8 @@ INLINE2:
         call    ICOMMA
         bra     INLINE0
 INLINE1:
-        goto    TWODROP
+        TWODROPM
+        return
 
 ; FOR   -- bc-addr bra-addr
 ; ['] >r cf, ihere ['] (for) cf, ihere
@@ -6802,8 +6804,7 @@ ENDIT:
 L_RDROP:
         NF INLINE|5,rdrop
 RDROP:
-        movwf    Rminus, A
-        movwf    Rminus, A ;status flags are not affected my movwf
+        RDROPM
         return
 
 ; S>D  n -- d
@@ -6864,7 +6865,7 @@ DPLUS:
         addwfc  [5], F
         movf    [2], W
         addwfc  [6], F
-        addfsr  Sptr, 4
+        TWODROPM
         return
 
 ; D-    d1 d2 -- d3        double minus
@@ -6932,7 +6933,7 @@ L_DZEROLESS:
         align   2
 DZEROLESS:
         movf    [2], F
-        addfsr  Sptr, 4
+        TWODROPM
         bn      DZEROEQUAL_TRUE
 DZEROLESS_FALSE:
         goto    FALSE_
@@ -7052,9 +7053,9 @@ QBSLASH1:
 L_PAD:        
         NF  3,pad
 PAD:
-        movf    dpRAM+1, W, B
+        movf    BANKMASK(dpRAM+1), W, B
         movwf   Sminus, A
-        movf    dpRAM, W, B
+        movf    BANKMASK(dpRAM), W, B
         movwf   Sminus, A
         return
 
@@ -7069,15 +7070,15 @@ MARKER:
         call    CREATE
         LIT     dp_start
         call    HERE
-        call    TEN
+        LIT     10
         call    CMOVE
-        call    TEN
+        LIT     10
         call    ALLOT
         call    FRAM
         rcall   XDOES
         call    DODOES
         rcall   INI
-        call    TEN
+        LIT     10
         goto    CMOVE
 
 ;        dw      L_RDROP
@@ -7161,7 +7162,7 @@ dpcode:
 ;;****************************************************
 #ifdef K42
 MESSG "Manual post build check !"
-MESSG "Use macro LIT2 for PUSHL literal values 0xdb 0xdc 0xde."
-MESSG "PUSHL is broken for those literal values on K and Q chips (except for K50)."
+MESSG "Use macro LIT2 for PUSHL literal values low(FSR2H) < LITERAL < low(INDF0)"
+MESSG "PUSHL is broken on chips that have CALLW SUBFSR ADDFSR in the standard instruction set."
 #endif
         END resetVec
