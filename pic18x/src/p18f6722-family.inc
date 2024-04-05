@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f6722-family.inc                               *
-;    Date:          01.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -29,7 +29,7 @@
         config STVREN = ON
         config LVP = OFF
         config BBSIZ = BB8K
-        config XINST = OFF
+        config XINST = ON
         config DEBUG = OFF
         config WRTC = ON
         config WRTB = ON

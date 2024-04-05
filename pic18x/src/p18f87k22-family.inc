@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f87k22-family.inc                              *
-;    Date:          01.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -26,7 +26,7 @@
         config WDTPS = 256
         config CCP2MX = PORTC
         config MCLRE = ON
-        config XINST = OFF
+        config XINST = ON
         config DEBUG = OFF
         config CP0 = OFF
         config CPB = OFF

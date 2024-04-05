@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f2682-2685-4682-4685.inc                       *
-;    Date:          01.01.2022                                        *
+;    Date:          05.04.2024                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -29,7 +29,7 @@
         config STVREN = ON
         config LVP = OFF
         config BBSIZ = 4096 ; How does he boot block size work. Not described in the datasheet.
-        config XINST = OFF
+        config XINST = ON
         config DEBUG = OFF
         config WRT0 = OFF
         config WRTC = ON

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f2420-2520-4420-4520.inc                       *
-;    Date:          01.01.2022                                        *
+;    Date:          05.04.2024                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -28,7 +28,7 @@
         config CCP2MX = PORTC
         config STVREN = ON
         config LVP = OFF
-        config XINST = OFF
+        config XINST = ON
         config DEBUG = OFF
         config CP0 = ON
         config CPB = ON

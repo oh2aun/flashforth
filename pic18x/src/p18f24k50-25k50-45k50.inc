@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f24k50-25k50-45k50.inc                         *
-;    Date:          01.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    MCU            18f24k50 18f25k50 18f45k50                        *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -63,7 +63,7 @@
         config ICPRT = OFF
         config STVREN = ON
         config LVP = OFF
-        config XINST = OFF
+        config XINST = ON
 
 #define REG_U1RXIF PIR1
 #define REG_U1RXIE PIE1

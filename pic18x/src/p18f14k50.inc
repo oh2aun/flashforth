@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f14k50.inc                                     *
-;    Date:          17.01.2022                                        *
+;    Date:          05.04.2024                                        *
 ;    FF Version:    5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -43,7 +43,7 @@
         config HFOFST = OFF
         config STVREN = ON
         config LVP = OFF
-        config XINST = OFF
+        config XINST = ON
         config BBSIZ = OFF
         config CP0 = OFF
         config CP1 = OFF

@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18fxxk42.inc                                     *
-;    Date:          01.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     *

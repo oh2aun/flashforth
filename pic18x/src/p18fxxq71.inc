@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18fxxq71.inc                                     *
-;    Date:          02.04.2023                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -43,7 +43,7 @@
   CONFIG  STVREN = ON           ; Stack Full/Underflow Reset Enable bit (Stack full/underflow will cause Reset)
   CONFIG  LVP = OFF             ; Low Voltage Programming Enable bit (HV on MCLR/VPP must be used for programming)
   CONFIG  DEBUG = OFF           ; Background Debugger (Background Debugger disabled)
-  CONFIG  XINST = OFF           ; Extended Instruction Set Enable bit (Extended Instruction Set and Indexed Addressing Mode disabled)
+  CONFIG  XINST = ON            ; Extended Instruction Set Enable bit (Extended Instruction Set and Indexed Addressing Mode disabled)
 
 ; CONFIG5
   CONFIG  WDTCPS = WDTCPS_24    ; WDT Period selection bits (Divider ratio 1:32)

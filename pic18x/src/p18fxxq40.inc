@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18fxxq40.inc                                     *
-;    Date:          16.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     * 
@@ -34,7 +34,7 @@
         CONFIG  PPS1WAY = OFF         
         CONFIG  STVREN = ON           
         CONFIG  DEBUG = OFF           
-        CONFIG  XINST = OFF           
+        CONFIG  XINST = ON           
         CONFIG  WDTCPS = WDTCPS_31    
         CONFIG  WDTE = ON           
         CONFIG  WDTCWS = WDTCWS_7     

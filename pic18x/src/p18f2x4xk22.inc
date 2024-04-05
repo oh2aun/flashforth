@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      p18f2x4xk22.inc                                   *
-;    Date:          01.01.2022                                        *
-;    FF Version:    5.0                                               *
+;    Date:          05.04.2024                                        *
+;    FF Version:    5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     *
@@ -31,7 +31,7 @@
         config PBADEN = OFF
         config STVREN = ON
         config LVP = OFF
-        config XINST = OFF
+        config XINST = ON
         config DEBUG = OFF
         config CP0 = OFF
         config CPB = OFF
