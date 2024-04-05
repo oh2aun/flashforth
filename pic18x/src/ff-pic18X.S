@@ -161,8 +161,7 @@ ENDM
 
 #ifdef K42
 LIT2 MACRO literal
-        movlw   high(literal)
-        movwf   Sminus, A
+        pushl   high(literal)
         movlw   low(literal)
         movwf   Sminus, A
 ENDM
@@ -2383,8 +2382,8 @@ LIT_FIX:
 #endif
 LIT_PUSHL:                             ; else {
         pushl   0xEA                   ;     PUSHL k, where 0 <= k <= 255
-        movf    [2],w                  ;
-        movwf   POSTDEC2,a             ; }
+        movf    [2],W                  ;
+        movwf   POSTDEC2, A            ; }
 LIT_ICOMMA:
         goto    ICOMMA                 ; flash opcode
 ;**************************************************
@@ -4773,10 +4772,10 @@ CFETCH_A:
 ; UP    -- a-addr       Current User Area pointer
         dw      L_MIN
 L_UPTR:
-        NF 2,up
+        NF INLINE|2,up
 UPTR:
-        call    DOCREATE
-        dw      BANKMASK(upcurr)+PRAM
+        LIT     BANKMASK(upcurr)+PRAM
+        return
 
 ; NUMERIC OUTPUT ================================
 ; HOLD  char --        add char to output string
@@ -5251,7 +5250,7 @@ FIND:
         rcall   DUPZEROSENSE
         bnz     FIND1
         DROPM
-        LIT2    latest
+        LIT     latest
         rcall   FETCH_A
         rcall   findi
 FIND1:
@@ -6371,7 +6370,7 @@ L_WORDS:
         rcall   LAST
 WORDS1:
         rcall   CR
-        bra     LIKES
+        goto    LIKES
 
 ; .S      --           print stack contents
 ; : .s sp@ s0 @ 1+ begin 2dup < 0= while @+ u. repeat 2drop ;
@@ -6481,7 +6480,7 @@ BRQ1:
 COMMAZEROSENSE:
         btfsc   BANKMASK(FLAGS1), idup, B
         bra     COMMAZEROSENSE1
-        LIT2     ZEROSENSE
+        LIT2    ZEROSENSE
         bra     COMMAZEROSENSE2
 COMMAZEROSENSE1:
         rcall   IDPMINUS
@@ -7160,9 +7159,4 @@ hexemit3:
 #endif
 dpcode:
 ;;****************************************************
-#ifdef K42
-MESSG "Manual post build check !"
-MESSG "Use macro LIT2 for PUSHL literal values low(FSR2H) < LITERAL < low(INDF0)"
-MESSG "PUSHL is broken on chips that have CALLW SUBFSR ADDFSR in the standard instruction set."
-#endif
         END resetVec
