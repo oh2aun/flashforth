@@ -15,7 +15,7 @@
 ;;; Define USB_CDC if you want to use USB serial emulation
 ;;; If you use CDC, you must also compile usbcdc.asm
 #define USB_CDC
-#define USB_SPEED 0  // 0 = low speed, 1 = high speed
+#define USB_SPEED 1  // 0 = low speed, 1 = high speed
 #define USB_BANK 4
 ; The config directive is used control the processor configuration bits
 ; See processor specific include file for details.

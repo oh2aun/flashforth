@@ -2350,7 +2350,7 @@ LITERAL:
         movf    Rminus, W, A
         movwf   [1]
         rcall   LIT_COMMA
-        addfsr  Sptr, 1
+        movf    plusS, W, A
         return
 LIT_COMMA:
 #ifdef K42
