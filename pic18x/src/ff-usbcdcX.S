@@ -1,8 +1,8 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      usbcdcX.S                                          *
-;    Date:          28.04.2024                                        *
-;    File Version:  5.0                                               *
+;    Filename:      usbcdcX.S                                         *
+;    Date:          08.04.2024                                        *
+;    File Version:  5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
 ;                                                                     *
@@ -192,17 +192,17 @@ USBCtrlEPService_out_setup:
         btfss   PKTDIS                      ; SETUP token ?
         bra     USBCtrlTrfOutHandler        ; OUT token
 USBCtrlTrfSetupHandler:
-        clrf    ctrl_trf_state, B              ; WAIT_SETUP
-        clrf    usb_status, B                  ; MUID_NULL, FLASH
-        clrf    count, B
+        clrf    BANKMASK(ctrl_trf_state), B ; WAIT_SETUP
+        clrf    BANKMASK(usb_status), B     ; MUID_NULL, FLASH
+        clrf    BANKMASK(count), B
         rcall   USBCheckStdRequest
-        btfss   usb_status, 1, B
+        btfss   BANKMASK(usb_status), 1, B
         RCALL   USBCheckCdcRequest
         BRA     USBCtrlEPServiceComplete
 ;*******************************************************************************
 USBCtrlTrfOutHandler:
         movlw   CTRL_TRF_RX      ; 2
-        subwf   ctrl_trf_state, W, B
+        subwf   BANKMASK(ctrl_trf_state), W, B
         bnz     USBPrepareForNextSetupTrf
         rcall   USBCtrlTrfRxService
         movlw   0xc8
@@ -212,7 +212,7 @@ USBCtrlTrfOutHandler:
         return
 
 USBPrepareForNextSetupTrf:
-        CLRF    ctrl_trf_state, B
+        CLRF    BANKMASK(ctrl_trf_state), B
         MOVLW   CDC_EP_SIZE
         MOVWF   BANKMASK(ep0ocnt), B
         MOVLW   low(ep0buf)
@@ -237,13 +237,13 @@ USBCtrlTrfInHandler:
         banksel ep0ostat
         MOVWF   BANKMASK(usb_device_state), B
 USBCtrlTrfInHandler_2:
-        DECF    ctrl_trf_state, W, B
+        DECF    BANKMASK(ctrl_trf_state), W, B
         BNZ     USBPrepareForNextSetupTrf
         bra     USBCtrlTrfTxService
 ;*******************************************************************************
 USBCtrlTrfRxService:
         movf    BANKMASK(ep0ocnt), W, B
-        movwf   moveLen, B
+        movwf   moveLen, A
         movff   FSR2L, PREINC0
         movff   FSR2H, PREINC0
         lfsr    2, ep0buf      ; SRC ptr
@@ -256,11 +256,11 @@ ramcp1:
         movf    POSTINC2, W, A
         movwf   POSTINC1, A
 ramcp2:
-        decf    moveLen, F, B
+        decf    moveLen, F, A
         bc      ramcp1
         movff   POSTDEC0, FSR2H
         movff   POSTDEC0, FSR2L
-        bcf     usb_status, 0, B
+        bcf     BANKMASK(usb_status), 0, B
         return
 ramcp_tx:
         movff   FSR2L, PREINC0
@@ -270,22 +270,22 @@ ramcp_tx:
         bra     ramcp
 ;**********************************************
 USBCtrlTrfTxService:
-        movf    count, W, B
+        movf    BANKMASK(count), W, B
         sublw   CDC_EP_SIZE-1 ; CDC_EP_SIZE - count
         bnn     LT1
 GTE:
         movlw   CDC_EP_SIZE
-        movwf   moveLen, B    ; moveLen =  CDC_EP_SIZE
+        movwf   moveLen, A    ; moveLen =  CDC_EP_SIZE
         bra     SUB
 LT1:
-        movf    count, W, B
-        movwf   moveLen, B    ; moveLen = count
+        movf    BANKMASK(count), W, B
+        movwf   moveLen, A    ; moveLen = count
 SUB:
         movwf   BANKMASK(ep0icnt), B
-        subwf   count, F, B       ; count = count - moveLen
+        subwf   BANKMASK(count), F, B       ; count = count - moveLen
 romcp:
         lfsr    1, ep0buf      ; DST ptr
-        btfsc   usb_status, 0, B
+        btfsc   BANKMASK(usb_status), 0, B
         bra     ramcp_tx
         movff   dPtr, TBLPTRL
         movff   dPtr+1, TBLPTRH
@@ -295,7 +295,7 @@ romcp1:
         movf    TABLAT, W, A
         movwf   POSTINC1, A
 romcp2:
-        decf    moveLen, F, B
+        decf    moveLen, F, A
         bc      romcp1
         movff   TBLPTRL, dPtr
         movff   TBLPTRH, dPtr+1
@@ -316,7 +316,7 @@ USBCtrlEPServiceComplete:
         MOVWF   BANKMASK(ep0oadr+1), B
         MOVWF   BANKMASK(ep0iadr+1), B
 
-        btfsc   usb_status, 1, B
+        btfsc   BANKMASK(usb_status), 1, B
         bra     DATADIR_CHECK
         MOVLW   0x84; _USIE|_BSTALL
         MOVWF   BANKMASK(ep0ostat), B
@@ -327,15 +327,15 @@ DATADIR_CHECK:
         BRA     DATADIR_HOST_TO_DEV
         MOVF    BANKMASK(ep0buf+7), W, B
         bnz     DATADIR_DEV_TO_HOST
-        MOVF    count, W, B
+        MOVF    BANKMASK(count), W, B
         SUBWF   BANKMASK(ep0buf+6), W, B  ; F - W
         BC      DATADIR_DEV_TO_HOST
         MOVF    BANKMASK(ep0buf+6), W, B
-        MOVWF   count, B
+        MOVWF   BANKMASK(count), B
 DATADIR_DEV_TO_HOST:
         RCALL   USBCtrlTrfTxService
         MOVLW   CTRL_TRF_TX
-        MOVWF   ctrl_trf_state, B
+        MOVWF   BANKMASK(ctrl_trf_state), B
         MOVLW   low(ep0buf)
         MOVWF   BANKMASK(ep0iadr), B
         MOVLW   0x80; _USIE
@@ -345,7 +345,7 @@ DATADIR_DEV_TO_HOST:
         BRA     USBCtrlEPServiceComplete_4
 DATADIR_HOST_TO_DEV:
         MOVLW   CTRL_TRF_RX
-        MOVWF   ctrl_trf_state, B
+        MOVWF   BANKMASK(ctrl_trf_state), B
         CLRF    BANKMASK(ep0icnt), B
         MOVLW   0xc8;_DAT1|_USIE|_DTSEN
         MOVWF   BANKMASK(ep0istat), B
@@ -372,7 +372,7 @@ SET_ADR:
         MOVWF   BANKMASK(usb_device_state), B
 
 SESSION_OWNER_USB9:
-        bsf     usb_status, 1, B
+        bsf     BANKMASK(usb_status), 1, B
 RETURN__:
         return
 SET_CFG:
@@ -404,11 +404,9 @@ CDCInitEP:
         MOVLW   0x88;_USIE|_DTSEN
         MOVWF   BANKMASK(ep2ostat), B
         CLRF    BANKMASK(ep2istat), B
-        clrf    ep2optr, B
-        clrf    BANKMASK(cdc_data_tx), B
-        clrf    ep2icount, B
-        movlw   1
-        call    TX0_SEND2
+        clrf    BANKMASK(ep2optr), B
+        LIT     0
+        call    TX0_SEND
         banksel ep0ostat
         bra     SESSION_OWNER_USB9
 ;*******************************************************************************
@@ -425,16 +423,16 @@ GET_DSC:
         BNZ     GetDsc_6
 GET_DSC_DEV:
         MOVLW   low(device_dsc)
-        MOVWF   dPtr, B
+        MOVWF   BANKMASK(dPtr), B
         MOVLW   high(device_dsc)
-        MOVWF   dPtr+1, B
+        MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0x12
         BRA     GetDsc_4
 GET_DSC_CFG:
         MOVLW   low(USB_CFG)
-        MOVWF   dPtr, B
+        MOVWF   BANKMASK(dPtr), B
         MOVLW   high(USB_CFG)
-        MOVWF   dPtr+1, B
+        MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0x43
         BRA     GetDsc_4
 GET_DSC_STR:
@@ -442,21 +440,21 @@ GET_DSC_STR:
         bra     GET01
 GET00:
         MOVLW   low(SD000)
-        MOVWF   dPtr, B
+        MOVWF   BANKMASK(dPtr), B
         MOVLW   high(SD000)
-        MOVWF   dPtr+1, B
+        MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0x4
         BRA     GetDsc_4
 GET01:
         MOVLW   low(SD001)
-        MOVWF   dPtr, B
+        MOVWF   BANKMASK(dPtr), B
         MOVLW   high(SD001)
-        MOVWF   dPtr+1, B
+        MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0xa
 GetDsc_4:
-        MOVWF   count, B
+        MOVWF   BANKMASK(count), B
 GetDsc_6:
-        bsf     usb_status, 1, B
+        bsf     BANKMASK(usb_status), 1, B
         RETURN
 
 USBCheckCdcRequest:
@@ -476,17 +474,17 @@ USBCheckCdcRequest:
         bnz     return6
 SET_LINE_CODING:
         movlw   low(line_coding)
-        movwf   dPtr, B
+        movwf   BANKMASK(dPtr), B
         movlw   high(line_coding)
-        movwf   dPtr+1, B
+        movwf   BANKMASK(dPtr+1), B
 SET_CONTROL_LINE_STATE:
 SET_MUID_CDC:
-        bsf     usb_status, 1, B
+        bsf     BANKMASK(usb_status), 1, B
 return6:
         return
 GET_LINE_CODING:
         movlw   7
-        movwf   count, B
-        bsf     usb_status, 0, B
+        movwf   BANKMASK(count), B
+        bsf     BANKMASK(usb_status), 0, B
         bra     SET_MUID_CDC
 dpusb:

@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          03.04.2024                                        *
+;;    Date:          08.04.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -265,7 +265,6 @@ ixoff   equ 0           ;; 1=XOFF has been sent
 noclear equ 6           ;; dont clear optimisation flags
 idup    equ 5           ;; Use dupzeroequal instead of zeroequal
 izeroeq equ 4           ;; Use bnz instead of bz if zeroequal
-istream equ 3
 fLOCK   equ 2           ;; Lock writes to flash and eeprom
 fTAILC  equ 1           ;; Disable tailcall optimisation
 idirty  equ 0           ;; Flash buffer dirty flag
@@ -381,12 +380,10 @@ ep2iadr:	ds 2
 line_coding: ds 7
 ep0buf:      ds 8
 cdc_data_rx: ds 8
-cdc_data_tx: ds 8
+cdc_data_tx: ds 1
 
 count:          ds 1
 dPtr:           ds 2
-ep2icount:      ds 1
-ep2itmo:        ds 1
 ep2optr:        ds 1
 usb_device_state: ds 1
 usb_status:     ds 1
@@ -698,7 +695,6 @@ irq_async_rx1:
         movf    Tbank, W, A
         movwf   BANKMASK(ihtbank), B
 #endif
-        bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 irq_async_rx1_2:
         lfsr    Tptr, RXbuf
         movf    BANKMASK(RXhead), W, B
@@ -746,7 +742,6 @@ irq_async_rx2:
         movf    Tbank, W, A
         movwf   BANKMASK(ihtbank), B
 #endif
-        bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 irq_async_rx2_2:
         lfsr    Tptr, RX2buf
         movf    BANKMASK(RX2head), W, B
@@ -792,7 +787,6 @@ irq_async_rx3:
         btfss   U3RXIF
         bra     irq_async_rx3_end
         banksel acs
-        bsf     BANKMASK(FLAGS1), istream, B      ;; Indicate input stream activity to FLASH write routine
 #if OPERATOR_UART == 3
 #if FC_TYPE == XONXOFF
         movf    BANKMASK(RX3cnt), W, B
@@ -908,14 +902,6 @@ PAUSE:
         btfss   USBEN
         bra     PAUSE_USB_CDC_END
         call    USBDriverService
-        banksel ep2icount
-        movf    ep2icount, W, B
-        bz      PAUSE_USB_CDC_END
-        movf    ep2itmo, W, B
-        banksel acs
-        subwf   BANKMASK(ms_count), W, B
-        bn      PAUSE_USB_CDC_END
-        rcall   TX0_SEND
 PAUSE_USB_CDC_END:
 #endif
 #ifdef IDLEN
@@ -1129,7 +1115,7 @@ WARM_ZERO_1:
 
         lfsr    Sptr, S0bot    ; Initalise Parameter stack
         lfsr    Rptr, urbuf
-
+#ifdef USB_CDC
         banksel PIE1
 #ifdef PIE0                     // Disable all peripheral interrupts
         clrf    PIE0, B
@@ -1160,7 +1146,7 @@ WARM_ZERO_1:
 #ifdef PIE10
         clrf    PIE10, B
 #endif
-
+#endif
 #ifndef K42
 ;; UART == 1  ----------------------------------------------
 #ifdef BRG16
@@ -1521,12 +1507,11 @@ WARM_ZERO_1:
 
         LIT     dp_start
         call    FETCH
-        call    TRUE_
-        call    EQUAL
+        call    ONEPLUS
         call    ZEROSENSE
-        bz      WARM_2
-        LIT     20
-        call    MS        ; Write to EEPROM fails with a shorter delay, why ?
+        bnz     WARM_2
+        LIT     200
+        call    MS    ; Delay after pickit resets. 
         call    EMPTY
 WARM_2:
         call    DP_TO_RAM
@@ -1570,7 +1555,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 03.04.2024        ; 10
+        STRING 08.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1838,7 +1823,7 @@ L_MOVF_:
 ; movwf, ( f a -- )
         dw      L_MOVF_
 L_MOVWF_:
-        NF2     5,movwf
+        NF2     6,movwf
         db      ','
         align   2
         rcall   AS2_DOES
@@ -2736,32 +2721,16 @@ TX0:
         bra     TX0_DROP
         btfsc   BANKMASK(ep2istat), UOWN, B
         bra     TX0
-        banksel acs
-        movf    BANKMASK(ms_count), W, B
-        addlw   2+TICK_TIME
-        banksel ep2itmo
-        movwf   ep2itmo, B
-        lfsr    Tptr, cdc_data_tx
-        movf    ep2icount, W, B
-        movff   plusS, TWrw
-        addfsr  Sptr, 1
-        addlw   1
-        movwf   ep2icount, B
-        sublw   6                       ; l - w
-        bnn     TX0_END
 TX0_SEND:
-        banksel ep2icount
-        movf    ep2icount, W, B
-TX0_SEND2:
-        banksel ep2istat
+        movf    [1], W
+        movwf   BANKMASK(cdc_data_tx), B
+        movlw   1
         movwf   BANKMASK(ep2icnt), B
         movlw   0x48
         btfsc   BANKMASK(ep2istat), DTS, B
         movlw   0x8
         movwf   BANKMASK(ep2istat), B
         bsf     BANKMASK(ep2istat), UOWN, B
-        clrf    ep2icount, B
-        bra     TX0_END
 TX0_DROP:
         DROPM
 TX0_END:
@@ -2780,9 +2749,9 @@ RX0:
         bra     RX0
         lfsr    Tptr, cdc_data_rx
         clrf    Sminus, A
-        movf    ep2optr, W, B
+        movf    BANKMASK(ep2optr), W, B
         movff   TWrw, Sminus
-        incf    ep2optr, F, B
+        incf    BANKMASK(ep2optr), F, B
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
         movlw   8
@@ -2792,7 +2761,7 @@ RX0:
         movlw   8
         movwf   BANKMASK(ep2ostat), B
         bsf     BANKMASK(ep2ostat), UOWN, B
-        clrf    ep2optr, B
+        clrf    BANKMASK(ep2optr), B
 RX0_END:
         banksel acs
         return
@@ -2802,10 +2771,8 @@ RX0_END:
 L_RX0Q:
         NF 4,rxu?
 RX0Q:
-        banksel ep2ostat
         movff   ep2ostat, acs
         movff   usb_device_state, acs+1
-        banksel acs
         btfsc   BANKMASK(acs+1), 3, B
         btfsc   BANKMASK(acs), 7, B
 RX0Q1:
@@ -3249,7 +3216,6 @@ USB_ON:
         bsf     USBEN
         clrf    UIR, A
         clrf    BANKMASK(usb_device_state), B
-        clrf    ep2icount, B
 #ifdef USB_CDC
 #if USB_SPEED == 1
 #ifdef ACTCON
@@ -4300,7 +4266,8 @@ INVERT:
 L_NEGATE:
         NF 6,negate
 NEGATE:
-        rcall   INVERT
+        comf   [1], F
+        comf   [2], F
         goto    ONEPLUS
 
 ;   1+
@@ -4732,9 +4699,9 @@ TUCK:
 L_QNEGATE:
         NF 7,?negate
 QNEGATE:
-        rcall   ZEROLESS
-        rcall   ZEROSENSE
-        bz      QNEGATE1
+        movf    plusS, W, A
+        movf    plusS, W, A
+        bnn     QNEGATE1
         rcall   NEGATE
 QNEGATE1:
         return
@@ -4917,7 +4884,7 @@ L_DOT:
 DOT:    rcall   LESSNUM
         rcall   DUP
         rcall   ABS
-        call    STOD
+        LIT     0
         rcall   NUMS
         rcall   ROT
         rcall   SIGN
