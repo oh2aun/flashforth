@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          08.04.2024                                        *
+;;    Date:          10.04.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -522,17 +522,13 @@ resetVec:
 ;;;;***************************************************
 ;   High priority interrupt vector
 PSECT   hi_int,class=CODE
-#ifdef Qxx
-#undef CPU_LOAD
-#define CPU_LOAD DISABLE
-#warning CPU_LOAD disabled
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
 #if CPU_LOAD == ENABLE
 #ifndef K42
         bsf     TMR0ON
 #else
+        banksel T0CON0
         bsf     T0EN
 #endif
 #endif
@@ -541,13 +537,20 @@ PSECT   hi_int,class=CODE
 ;; irq_v must be initialized before any high priority interrupt is enabled.
 ;; ' interrupt-routine 0 int!
 irq_user:
+#ifndef K42
         push
-        banksel acs
-        movf    BANKMASK(irq_v)+1, W, B
+        movf    BANKMASK(irq_v)+1, W, A
         movwf   TOSH, A
-        movf    BANKMASK(irq_v), W, B
+        movf    BANKMASK(irq_v), W, A
         movwf   TOSL, A
         return              ;; Now the interrupt routine is executing
+#else
+        banksel acs
+        movf    BANKMASK(irq_v)+1, W, B
+        movwf   PCLATH, A
+        movf    BANKMASK(irq_v), W, B
+        movwf   PCL, A      ;; Now the interrupt routine is executing
+#endif
 ;; *******************************************
 ;; ****** LOW PRIORITY INTERRUPT
 ;; Timer 0 interrupt must be marked low priority
@@ -1555,7 +1558,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 08.04.2024        ; 10
+        STRING 10.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -4961,7 +4964,7 @@ BASE:
         rcall   DOUSER
         dw      ubase&0xffff
 
-; USER   n --        holds conversion radix
+; USER   n --
 ; 18 cycles
         dw      L_BASE
 L_USER:
@@ -5119,9 +5122,12 @@ L_FETCHPP:
         NF 2,@+
 FETCHPP:
         rcall   DUP
-        rcall   TWOPLUS
-        rcall   SWOP
-        goto    FETCH
+        rcall   FETCH_A
+        infsnz  [3], F
+        incf    [4], F
+        infsnz  [3], F
+        incf    [4], F
+        return
 ;;; ******************************************************
         db      NFA|1,'!'
 STORE_A:
@@ -5278,15 +5284,15 @@ SIGNQEND:
 L_UDSTAR:
         NF 3,ud*
 UDSTAR:
-        rcall   DUP         ; ud.l ud.h u u
-        rcall   TOR         ; ud.l ud.h u
-        rcall   UMSTAR      ; ud.l u1.l u1.h
-        DROPM               ; ud.l u1.l
-        rcall   SWOP        ; u1.l ud.l
-        rcall   RFROM       ; u1.l ud.l u
-        rcall   UMSTAR      ; u1.l u2.l u2.h
-        rcall   ROT         ; u2.l u2.h u1.l
-        goto    PLUS        ; ud.l ud.h
+        rcall   DUP
+        rcall   TOR
+        rcall   UMSTAR
+        DROPM
+        rcall   SWOP
+        rcall   RFROM
+        rcall   UMSTAR
+        rcall   ROT
+        goto    PLUS
 
 ; UD/MOD  ud u --u(rem) ud(quot)
         dw      L_UDSTAR
@@ -5441,7 +5447,7 @@ QNUMD:                          ; Single or double Double number
         call    QDNEGATE
         RDROPM
 QNUMD1:
-        call    ONE             ; d.l d.h 1
+        LIT     1               ; d.l d.h 1
         movlw   '.'             ; d.l d.h 1
         subwf   BANKMASK(areg), W, B
         bz      QNUM1
@@ -6306,8 +6312,7 @@ LIKEQ3:
 TWODROPZ:
         bsf     ZERO
 LIKEQ4:
-        movwf   Rminus, A
-        movwf   Rminus, A
+        subfsr  Rptr, 2
         bra     DOTS2
 
 ;;;;;;;;;;;;;;;
@@ -6323,7 +6328,7 @@ LIKES1:
         rcall   FETCH_A
         call    DUPZEROSENSE
         bnz     LIKES
-        bra     DOTS2
+        bra     DOTS2       ; 2drop return
 
  ; WORDS    --          list all words in dict.
         dw      L_TO_PRINTABLE
@@ -6334,6 +6339,7 @@ L_WORDS:
         rcall   DUP_A
         LIT2    kernellink
         rcall   WORDS1
+        rcall   CR
         rcall   LAST
 WORDS1:
         rcall   CR
@@ -6862,10 +6868,10 @@ L_DTWOSTAR:
         NF 3,d2*
 DTWOSTAR:
         bcf     CARRY
-        rlcf    [2], F
-        rlcf    [1], F
-        rlcf    [4], F
         rlcf    [3], F
+        rlcf    [4], F
+        rlcf    [1], F
+        rlcf    [2], F
         return
 
 ; DINVERT    d1 -- d2        double invert
