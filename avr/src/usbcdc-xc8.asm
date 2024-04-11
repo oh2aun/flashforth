@@ -159,6 +159,13 @@ USB_RET:
         ret
 
 GET_DESCRIPTOR_SEND:
+        lds     t0, wLength
+        cp      t0, t1
+        lds     t0, wLength+1
+        cpc     t0, r_zero
+        brcc    1f
+        lds     t1, wLength     ; send no more than requested
+1:
         rcall   USB_WAIT_TX
         lds     t0, UEINTX
         andi    t0, (1<<RXOUTI)
@@ -253,14 +260,7 @@ GET_DEVICE_DESCRIPTOR:
 GET_CONFIGURATION_DESCRIPTOR:
         ldi     zl, lo8(USB_CFG)
         ldi     zh, hi8(USB_CFG)
-        lds     t0, wLength
-        lds     t1, wLength+1
-        subi    t0, 0x9
-        sbci    t1, 0
-        ldi     t1, 0x9
-        breq    GET_CONFIGURATION_DESCRIPTOR2
         ldi     t1, 0x3e //wLength
-GET_CONFIGURATION_DESCRIPTOR2:
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
         lds     t0, wIndex
