@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc-xc8.asm                                    *
-;    Date:          27.11.2021                                        *
+;    Date:          12.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2021  Mikael Nordman
+; Copyright (C) 2024  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -40,9 +40,9 @@ device_dsc:
                            ; DEVICE descriptor type
         .word   0x0110     ; USB Spec Release Number in BCD format
         .byte   0x02,0x00  ; Class Code CDC device
-                         ; Subclass 
+                           ; Subclass 
         .byte   0x00,0x20  ; Protocol
-                         ; EP0 packet size = 32 bytes
+                           ; EP0 packet size = 32 bytes
         .word   U_VID      ; Vendor ID
         .word   U_PID      ; Product ID
         .word   0x0000     ; Device release Number in BCD
@@ -110,8 +110,8 @@ USB_PLL_WAIT:
         andi    t0, (1<<PLOCK)
         breq    USB_PLL_WAIT      ; Wait for PLL Lock to be achieved
         m_sbi   USBCON, USBE      ; Enable USB Controller
-        m_cbi   USBCON, FRZCLK      ; Unfreeze the clock
-        sts     UDCON, r_zero        ; Full speed mode and ATTACH
+        m_cbi   USBCON, FRZCLK    ; Unfreeze the clock
+        sts     UDCON, r_zero     ; Full speed mode and ATTACH
         sts     usb_config_status, r_zero
 USB_ON_RET:
         ret
@@ -159,13 +159,13 @@ USB_RET:
         ret
 
 GET_DESCRIPTOR_SEND:
-        lds     t0, wLength
-        cp      t0, t1
-        lds     t0, wLength+1
-        cpc     t0, r_zero
-        brcc    1f
-        lds     t1, wLength     ; send no more than requested
-1:
+;        lds     t0, wLength
+;        cp      t0, t1
+;        lds     t0, wLength+1
+;        cpc     t0, r_zero
+;        brcc    1f
+;        lds     t1, wLength     ; send no more than requested
+;1:
         rcall   USB_WAIT_TX
         lds     t0, UEINTX
         andi    t0, (1<<RXOUTI)
@@ -244,6 +244,7 @@ GET_LINE_CODING:
         rjmp    USB_IN_MSG
 
 GET_DESCRIPTOR_:
+        lds     t1, wLength
         lds     t0, wValue+1
         cpi     t0, 1
         breq    GET_DEVICE_DESCRIPTOR
@@ -255,12 +256,12 @@ GET_DESCRIPTOR_:
 GET_DEVICE_DESCRIPTOR:
         ldi     zl, lo8(device_dsc)
         ldi     zh, hi8(device_dsc)
-        ldi     t1, 0x12
+;        ldi     t1, 0x12
         rjmp    GET_DESCRIPTOR_SEND
 GET_CONFIGURATION_DESCRIPTOR:
         ldi     zl, lo8(USB_CFG)
         ldi     zh, hi8(USB_CFG)
-        ldi     t1, 0x3e //wLength
+;        ldi     t1, 0x3e //wLength
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
         lds     t0, wIndex
