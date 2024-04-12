@@ -148,10 +148,10 @@
 
 ; Status flags defintions
 #ifndef CARRY
-#define CARRY BANKMASK(STATUS), 0, B
+#define CARRY BANKMASK(STATUS), 0, A
 #endif
 #ifndef ZERO
-#define ZERO BANKMASK(STATUS), 2, B
+#define ZERO BANKMASK(STATUS), 2, A
 #endif
 
 LIT MACRO literal
@@ -1558,7 +1558,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 10.04.2024        ; 10
+        STRING 12.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
