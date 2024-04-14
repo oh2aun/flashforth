@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdcX.S                                         *
-;    Date:          08.04.2024                                        *
+;    Date:          14.04.2024                                        *
 ;    File Version:  5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -56,7 +56,6 @@
 #define CDC_BULK_OUT_EP_SIZE    8
 #define CDC_BULK_IN_EP_SIZE     8
 
-moveLen        equ PRODL           ; local variable
 ; USB Device States - To be used with usb_device_state
 #define DETACHED_STATE          0
 #define ATTACHED_STATE          0
@@ -64,7 +63,6 @@ moveLen        equ PRODL           ; local variable
 #define DEFAULT_STATE           1
 #define ADR_PENDING_STATE       3
 #define ADDRESS_STATE           0x07
-#define ADDRESS_STATE2          0x83  ; Shifted to h'07'
 #define CONFIGURED_STATE        0x0f
 
 ; Control transfer session owner. usb_status
@@ -76,12 +74,24 @@ moveLen        equ PRODL           ; local variable
 #define CTRL_TRF_TX         1
 #define CTRL_TRF_RX         2
 
+; ep0buf standard messages
+#define bmRequestType (ep0buf)
+#define bRequest (ep0buf+1)
+#define bIndex (ep0buf+2)
+#define bDescriptorType (ep0buf+3)
+#define wLanguageId (ep0buf+4)
+#define wLength (ep0buf+6)
+
+; eb0buf CDC messages
+#define cdcRequestCode (ep0buf+1)
+#define cdcIndex (ep0buf+4)
+
 ;*******************************************************************************
 PSECT code
 device_dsc:
         db   0x12    ; Size of this descriptor in bytes
         db   0x01    ; DEVICE descriptor type
-        dw   0x0200  ; USB Spec Release Number in BCD format
+        dw   0x0110  ; USB Spec Release Number in BCD format
         db   0x02    ; Class Code CDC device
         db   0x00    ; Subclass
         db   0x00    ; Protocol
@@ -133,6 +143,7 @@ USB_CFG:
         align 2
 ;*******************************************************************************
 USBDriverService:
+        bcf     USBIF
         banksel ep0ostat
         btfsc   ACTVIE        ; Is suspend mode ?
         rcall   USBWake
@@ -196,7 +207,7 @@ USBCtrlTrfSetupHandler:
         clrf    BANKMASK(usb_status), B     ; MUID_NULL, FLASH
         clrf    BANKMASK(count), B
         rcall   USBCheckStdRequest
-        btfss   BANKMASK(usb_status), 1, B
+        btfss   BANKMASK(usb_status), 1, B   ; USB9
         RCALL   USBCheckCdcRequest
         BRA     USBCtrlEPServiceComplete
 ;*******************************************************************************
@@ -228,7 +239,7 @@ USBCtrlTrfInHandler:
         MOVLW   ADR_PENDING_STATE
         SUBWF   BANKMASK(usb_device_state), W, B
         BNZ     USBCtrlTrfInHandler_2
-        MOVF    BANKMASK(ep0buf+2), W, B
+        MOVF    BANKMASK(bIndex), W, B
         banksel UADDR
         movwf   UADDR, B
         MOVLW   DEFAULT_STATE
@@ -242,63 +253,63 @@ USBCtrlTrfInHandler_2:
         bra     USBCtrlTrfTxService
 ;*******************************************************************************
 USBCtrlTrfRxService:
-        movf    BANKMASK(ep0ocnt), W, B
-        movwf   moveLen, A
-        movff   FSR2L, PREINC0
-        movff   FSR2H, PREINC0
-        lfsr    2, ep0buf      ; SRC ptr
-        movff   dPtr, FSR1L    ; DST ptr
-        movff   dPtr+1, FSR1H
-;**********************************************
-ramcp:
-        bra     ramcp2
-ramcp1:
-        movf    POSTINC2, W, A
-        movwf   POSTINC1, A
-ramcp2:
-        decf    moveLen, F, A
-        bc      ramcp1
-        movff   POSTDEC0, FSR2H
-        movff   POSTDEC0, FSR2L
-        bcf     BANKMASK(usb_status), 0, B
+ramcp:  ; Only SET_LINE_CODING supported
+        movff   ep0buf+0, line_coding+0
+        movff   ep0buf+1, line_coding+1
+        movff   ep0buf+2, line_coding+2
+        movff   ep0buf+3, line_coding+3
+        movff   ep0buf+4, line_coding+4
+        movff   ep0buf+5, line_coding+5
+        movff   ep0buf+6, line_coding+6
         return
-ramcp_tx:
-        movff   FSR2L, PREINC0
-        movff   FSR2H, PREINC0
-        movff   dPtr, FSR2L
-        movff   dPtr+1, FSR2H
-        bra     ramcp
+ramcp_tx:  ; Only GET_LINE_CODING supported
+        clrf    BANKMASK(count), B
+        movff   line_coding+0, ep0buf+0
+        movff   line_coding+1, ep0buf+1
+        movff   line_coding+2, ep0buf+2
+        movff   line_coding+3, ep0buf+3
+        movff   line_coding+4, ep0buf+4
+        movff   line_coding+5, ep0buf+5
+        movff   line_coding+6, ep0buf+6
+        return
 ;**********************************************
 USBCtrlTrfTxService:
-        movf    BANKMASK(count), W, B
-        sublw   CDC_EP_SIZE-1 ; CDC_EP_SIZE - count
-        bnn     LT1
-GTE:
         movlw   CDC_EP_SIZE
-        movwf   moveLen, A    ; moveLen =  CDC_EP_SIZE
-        bra     SUB
-LT1:
+        cpfsgt  BANKMASK(count), B
         movf    BANKMASK(count), W, B
-        movwf   moveLen, A    ; moveLen = count
-SUB:
         movwf   BANKMASK(ep0icnt), B
-        subwf   BANKMASK(count), F, B       ; count = count - moveLen
-romcp:
-        lfsr    1, ep0buf      ; DST ptr
-        btfsc   BANKMASK(usb_status), 0, B
+        subwf   BANKMASK(count), F, B       ; count = count - ep0icnt
+        btfsc   BANKMASK(usb_status), 0, B  ; 0=FLASH 1=RAM
         bra     ramcp_tx
+
+        movff   TBLPTRL, iltblptr
+        movff   TBLPTRH, iltblptr+1
+        movff   TABLAT, iltblptr+2
         movff   dPtr, TBLPTRL
         movff   dPtr+1, TBLPTRH
-        bra     romcp2
-romcp1:
+
         TBLRD*+
-        movf    TABLAT, W, A
-        movwf   POSTINC1, A
-romcp2:
-        decf    moveLen, F, A
-        bc      romcp1
+        movff   TABLAT, ep0buf+0
+        TBLRD*+
+        movff   TABLAT, ep0buf+1
+        TBLRD*+
+        movff   TABLAT, ep0buf+2
+        TBLRD*+
+        movff   TABLAT, ep0buf+3
+        TBLRD*+
+        movff   TABLAT, ep0buf+4
+        TBLRD*+
+        movff   TABLAT, ep0buf+5
+        TBLRD*+
+        movff   TABLAT, ep0buf+6
+        TBLRD*+
+        movff   TABLAT, ep0buf+7
+
         movff   TBLPTRL, dPtr
         movff   TBLPTRH, dPtr+1
+        movff   iltblptr+1, TBLPTRH
+        movff   iltblptr, TBLPTRL
+        movff   iltblptr+2, TABLAT
 
         MOVLW   0x88;USIE|DTSEN;0x88
         BTFSS   BANKMASK(ep0istat), __DTS, B
@@ -316,21 +327,19 @@ USBCtrlEPServiceComplete:
         MOVWF   BANKMASK(ep0oadr+1), B
         MOVWF   BANKMASK(ep0iadr+1), B
 
-        btfsc   BANKMASK(usb_status), 1, B
+        btfsc   BANKMASK(usb_status), 1, B  ; USB9
         bra     DATADIR_CHECK
         MOVLW   0x84; _USIE|_BSTALL
         MOVWF   BANKMASK(ep0ostat), B
         MOVWF   BANKMASK(ep0istat), B
         BRA     USBCtrlEPServiceComplete_4
 DATADIR_CHECK:
-        BTFSS   BANKMASK(ep0buf), 7, B
+        BTFSS   BANKMASK(bmRequestType), 7, B
         BRA     DATADIR_HOST_TO_DEV
-        MOVF    BANKMASK(ep0buf+7), W, B
-        bnz     DATADIR_DEV_TO_HOST
         MOVF    BANKMASK(count), W, B
-        SUBWF   BANKMASK(ep0buf+6), W, B  ; F - W
+        SUBWF   BANKMASK(wLength), W, B  ; F - W
         BC      DATADIR_DEV_TO_HOST
-        MOVF    BANKMASK(ep0buf+6), W, B
+        MOVF    BANKMASK(wLength), W, B
         MOVWF   BANKMASK(count), B
 DATADIR_DEV_TO_HOST:
         RCALL   USBCtrlTrfTxService
@@ -358,9 +367,9 @@ USBCtrlEPServiceComplete_4:
 
 ;*******************************************************************************
 USBCheckStdRequest:
-        ANDWF   BANKMASK(ep0buf), W, B
+        ANDWF   BANKMASK(bmRequestType), W, B
         BNZ     RETURN__
-        MOVF    BANKMASK(ep0buf+1), W, B
+        MOVF    BANKMASK(bRequest), W, B
         XORLW   0x9
         BZ      SET_CFG   ; 9(J) == SET_CFG
         XORLW   0xF
@@ -372,15 +381,15 @@ SET_ADR:
         MOVWF   BANKMASK(usb_device_state), B
 
 SESSION_OWNER_USB9:
-        bsf     BANKMASK(usb_status), 1, B
+        bsf     BANKMASK(usb_status), 1, B      ; USB9
 RETURN__:
         return
 SET_CFG:
         MOVLW   ADDRESS_STATE
-        TSTFSZ  BANKMASK(ep0buf+2), B
+        TSTFSZ  BANKMASK(bIndex), B
         MOVLW   CONFIGURED_STATE      ; USB ACTIVE CFG != 0
         MOVWF   BANKMASK(usb_device_state), B
-        MOVF    BANKMASK(ep0buf+2), W, B
+        MOVF    BANKMASK(bIndex), W, B
         BZ      SESSION_OWNER_USB9
 ;*******************************************************************************
 CDCInitEP:
@@ -393,7 +402,7 @@ CDCInitEP:
         CLRF    BANKMASK(ep1istat), B ; CDC notification end point not used
         MOVLW   8
         MOVWF   BANKMASK(ep2ocnt), B
-        MOVWF   BANKMASK(ep2icnt), B
+        clrf    BANKMASK(ep2icnt), B
         MOVLW   low(cdc_data_rx)
         MOVWF   BANKMASK(ep2oadr), B
         MOVLW   low(cdc_data_tx)
@@ -412,31 +421,38 @@ CDCInitEP:
 ;*******************************************************************************
 GET_DSC:
         MOVLW   0x80
-        SUBWF   BANKMASK(ep0buf), W, B
-        BNZ     GetDsc_6
-        MOVF    BANKMASK(ep0buf+3), W, B
+        SUBWF   BANKMASK(bmRequestType), W, B
+        BNZ     RETURN__
+        MOVF    BANKMASK(bDescriptorType), W, B
         XORLW   0x3
         BZ      GET_DSC_STR
         XORLW   0x1
         BZ      GET_DSC_CFG
         XORLW   0x3
-        BNZ     GetDsc_6
+        BNZ     RETURN__
 GET_DSC_DEV:
         MOVLW   low(device_dsc)
         MOVWF   BANKMASK(dPtr), B
         MOVLW   high(device_dsc)
         MOVWF   BANKMASK(dPtr+1), B
-        MOVLW   0x12
-        BRA     GetDsc_4
+        movf    BANKMASK(wLength), W, B     ; 0x12
+        BRA     GET_DSC_END
 GET_DSC_CFG:
         MOVLW   low(USB_CFG)
         MOVWF   BANKMASK(dPtr), B
         MOVLW   high(USB_CFG)
         MOVWF   BANKMASK(dPtr+1), B
-        MOVLW   0x43
-        BRA     GetDsc_4
+        movf    BANKMASK(wLength), W, B     ; 0x9 or 0x3e
+        tstfsz  BANKMASK(wLength+1), B
+        rcall   GET_DSC_CFG_FIX
+        movwf   BANKMASK(wLength), B        ; Overwrite the request length. Windows requests 265 should be 62 
+        BRA     GET_DSC_END
+GET_DSC_CFG_FIX:
+        clrf    BANKMASK(wLength+1), B      ; Overwrite the request length. Windows requests 265 should be 62
+        movlw   0x3e
+        return
 GET_DSC_STR:
-        tstfsz  BANKMASK(ep0buf+2), B
+        tstfsz  BANKMASK(bIndex), B
         bra     GET01
 GET00:
         MOVLW   low(SD000)
@@ -444,47 +460,40 @@ GET00:
         MOVLW   high(SD000)
         MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0x4
-        BRA     GetDsc_4
+        BRA     GET_DSC_END
 GET01:
         MOVLW   low(SD001)
         MOVWF   BANKMASK(dPtr), B
         MOVLW   high(SD001)
         MOVWF   BANKMASK(dPtr+1), B
         MOVLW   0xa
-GetDsc_4:
+GET_DSC_END:
         MOVWF   BANKMASK(count), B
-GetDsc_6:
-        bsf     BANKMASK(usb_status), 1, B
-        RETURN
+        bra     SESSION_OWNER_USB9
 
 USBCheckCdcRequest:
-        movf    BANKMASK(ep0buf), W, B     ; IF INTF & CLASS &  TO_DEVICE
+        movf    BANKMASK(bmRequestType), W, B     ; IF INTF & CLASS &  TO_DEVICE
         andlw   0x7f                  ;
         xorlw   0x21
-        bnz     return6
-        movf    BANKMASK(ep0buf+4), W, B
+        bnz     RETURN__
+        movf    BANKMASK(cdcIndex), W, B
         sublw   1       ;1 - w        ; IF COMM_INTF || DATA_INTF
-        bn      return6
-        MOVF    BANKMASK(ep0buf+1), W, B
-        addlw   -21                   ; GET_LINE_CODING 0x21
+        bn      RETURN__
+        MOVF    BANKMASK(cdcRequestCode), W, B
+        addlw   -0x21                  ; GET_LINE_CODING 0x21
         bz      GET_LINE_CODING
         addlw   -1                    ; SET_CONTROL_LINE_STATE 0x22
         bz      SET_CONTROL_LINE_STATE
         addlw   2                     ; SET_LINE_CODING 0x20
-        bnz     return6
+        bnz     RETURN__
 SET_LINE_CODING:
-        movlw   low(line_coding)
-        movwf   BANKMASK(dPtr), B
-        movlw   high(line_coding)
-        movwf   BANKMASK(dPtr+1), B
 SET_CONTROL_LINE_STATE:
 SET_MUID_CDC:
-        bsf     BANKMASK(usb_status), 1, B
-return6:
-        return
+        bsf     BANKMASK(usb_status), 0, B  ; RAM
+        bsf     BANKMASK(usb_status), 1, B  ; USB9
+        bra     SESSION_OWNER_USB9
 GET_LINE_CODING:
         movlw   7
         movwf   BANKMASK(count), B
-        bsf     BANKMASK(usb_status), 0, B
         bra     SET_MUID_CDC
 dpusb:

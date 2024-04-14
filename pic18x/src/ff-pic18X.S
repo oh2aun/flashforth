@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          10.04.2024                                        *
+;;    Date:          14.04.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -378,12 +378,13 @@ ep2iadr:	ds 2
 
 ; BUFFERS
 line_coding: ds 7
+cdc_data_tx: ds 1
+iltblptr:    ds 3
 ep0buf:      ds 8
 cdc_data_rx: ds 8
-cdc_data_tx: ds 1
 
-count:          ds 1
 dPtr:           ds 2
+count:          ds 1
 ep2optr:        ds 1
 usb_device_state: ds 1
 usb_status:     ds 1
@@ -838,6 +839,9 @@ irq_async_rx3_4:
         andwf   BANKMASK(RX3head), F, B
 irq_async_rx3_end:
 #endif
+        btfsc   USBIF
+        call    USBDriverService
+
 ;; *****************************************************************
 ;;;; Restore Tp and Tbank
 irq_end:
@@ -897,16 +901,6 @@ L_PAUSE:
         NF 5,pause
 PAUSE:
         clrwdt
-#ifdef USB_CDC
-        banksel acs
-        movf    BANKMASK(upcurr), W, B
-        sublw   low(u0)           ; check usb only in operator task
-        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
-        btfss   USBEN
-        bra     PAUSE_USB_CDC_END
-        call    USBDriverService
-PAUSE_USB_CDC_END:
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
         banksel acs
@@ -1519,6 +1513,8 @@ WARM_ZERO_1:
 WARM_2:
         call    DP_TO_RAM
 #ifdef USB_CDC
+        LIT     200
+        call    MS    ; Delay after pickit resets. 
         call    USB_ON
 #endif
         rcall   RQ
@@ -1558,7 +1554,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 12.04.2024        ; 10
+        STRING 14.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2166,8 +2162,8 @@ magic:
         return
 
 ;***************************************************
-asmemit:
 #if 0
+asmemit:
         banksel REG_U1RXIF
         btfss   U1TXIF
         bra     asmemit
@@ -3228,6 +3224,11 @@ USB_ON:
 #endif
 #endif
 USB_ON_RET:
+        bsf     IDLEIE
+        bsf     URSTIE
+        bsf     TRNIE
+        bcf     USBIP
+        bsf     USBIE
         return
 ;*******************************************************
         dw      L_USB_ON
@@ -3240,7 +3241,7 @@ USB_OFF:
 #ifdef ACTCON
         bcf     ACTEN
 #endif
-
+        bcf     USBIE
         return
 ;*******************************************************
         dw      L_USB_OFF
@@ -7120,6 +7121,8 @@ hexemit:
         movlw ' '
         call  asmemit
         return
+#endif
+#if 0
 hexemit2:
         andlw   0xf
         addlw   0xf6
@@ -7127,8 +7130,7 @@ hexemit2:
         addlw   0x27
 hexemit3:
         addlw   0x3a
-        call  asmemit
-        return
+        goto    asmemit
 #endif
 dpcode:
 ;;****************************************************
