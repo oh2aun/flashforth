@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          14.04.2024                                        *
+;;    Date:          15.04.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1554,7 +1554,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 14.04.2024        ; 10
+        STRING 15.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE

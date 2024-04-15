@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdcX.S                                         *
-;    Date:          14.04.2024                                        *
+;    Date:          15.04.2024                                        *
 ;    File Version:  5X                                                *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -52,7 +52,7 @@
 #define __DTS       6
 #define __DTSEN     3
 
-#define CDC_EP_SIZE         8
+#define CDC_EP_SIZE             8
 #define CDC_BULK_OUT_EP_SIZE    8
 #define CDC_BULK_IN_EP_SIZE     8
 
@@ -82,7 +82,7 @@
 #define wLanguageId (ep0buf+4)
 #define wLength (ep0buf+6)
 
-; eb0buf CDC messages
+; ep0buf CDC messages
 #define cdcRequestCode (ep0buf+1)
 #define cdcIndex (ep0buf+4)
 
@@ -212,9 +212,8 @@ USBCtrlTrfSetupHandler:
         BRA     USBCtrlEPServiceComplete
 ;*******************************************************************************
 USBCtrlTrfOutHandler:
-        movlw   CTRL_TRF_RX      ; 2
-        subwf   BANKMASK(ctrl_trf_state), W, B
-        bnz     USBPrepareForNextSetupTrf
+        btfss   BANKMASK(ctrl_trf_state), 1, B
+        bra     USBPrepareForNextSetupTrf  ; if not CTRL_TRF_RX state
         rcall   USBCtrlTrfRxService
         movlw   0xc8
         btfsc   BANKMASK(ep0ostat), __DTS, B
@@ -263,14 +262,10 @@ ramcp:  ; Only SET_LINE_CODING supported
         movff   ep0buf+6, line_coding+6
         return
 ramcp_tx:  ; Only GET_LINE_CODING supported
-        clrf    BANKMASK(count), B
-        movff   line_coding+0, ep0buf+0
-        movff   line_coding+1, ep0buf+1
-        movff   line_coding+2, ep0buf+2
-        movff   line_coding+3, ep0buf+3
-        movff   line_coding+4, ep0buf+4
-        movff   line_coding+5, ep0buf+5
-        movff   line_coding+6, ep0buf+6
+        movlw   low(line_coding)
+        movwf   BANKMASK(ep0iadr), B
+        movlw   high(line_coding)
+        movwf   BANKMASK(ep0iadr+1), B
         return
 ;**********************************************
 USBCtrlTrfTxService:
@@ -323,6 +318,7 @@ USBCtrlEPServiceComplete:
         MOVWF   BANKMASK(ep0ocnt), B
         MOVLW   low(ep0buf)
         MOVWF   BANKMASK(ep0oadr), B
+        MOVWF   BANKMASK(ep0iadr), B
         MOVLW   high(ep0buf)
         MOVWF   BANKMASK(ep0oadr+1), B
         MOVWF   BANKMASK(ep0iadr+1), B
@@ -336,25 +332,26 @@ USBCtrlEPServiceComplete:
 DATADIR_CHECK:
         BTFSS   BANKMASK(bmRequestType), 7, B
         BRA     DATADIR_HOST_TO_DEV
-        MOVF    BANKMASK(count), W, B
-        SUBWF   BANKMASK(wLength), W, B  ; F - W
-        BC      DATADIR_DEV_TO_HOST
-        MOVF    BANKMASK(wLength), W, B
-        MOVWF   BANKMASK(count), B
+; DEVICE_TO_HOST
+        movf    BANKMASK(count), W, B
+        subwf   BANKMASK(wLength), W, B
+        movlw   0
+        subwfb  BANKMASK(wLength+1), W, B ; wlength - count
+        bc      DATADIR_DEV_TO_HOST       ; if wlength > count the count is assumed correct
+        movf    BANKMASK(wLength), W, B   ; if count >= wlength then count = wlength
+        movwf   BANKMASK(count), B        ; Takes care of the configuration descriptor short and long form
+        bra     DATADIR_DEV_TO_HOST
 DATADIR_DEV_TO_HOST:
-        RCALL   USBCtrlTrfTxService
-        MOVLW   CTRL_TRF_TX
-        MOVWF   BANKMASK(ctrl_trf_state), B
-        MOVLW   low(ep0buf)
-        MOVWF   BANKMASK(ep0iadr), B
+        RCALL   USBCtrlTrfTxService       ; At this stage wlength is not used anymore
+        bsf     BANKMASK(ctrl_trf_state), 0, B ;    CTRL_TRF_TX
         MOVLW   0x80; _USIE
         MOVWF   BANKMASK(ep0ostat), B
         MOVLW   0xc8;_DAT1|_USIE|_DTSEN
         MOVWF   BANKMASK(ep0istat), B
         BRA     USBCtrlEPServiceComplete_4
+; HOST_TO_DEVICE
 DATADIR_HOST_TO_DEV:
-        MOVLW   CTRL_TRF_RX
-        MOVWF   BANKMASK(ctrl_trf_state), B
+        bsf     BANKMASK(ctrl_trf_state), 1, B ; CTRL_TRF_RX
         CLRF    BANKMASK(ep0icnt), B
         MOVLW   0xc8;_DAT1|_USIE|_DTSEN
         MOVWF   BANKMASK(ep0istat), B
@@ -442,15 +439,8 @@ GET_DSC_CFG:
         MOVWF   BANKMASK(dPtr), B
         MOVLW   high(USB_CFG)
         MOVWF   BANKMASK(dPtr+1), B
-        movf    BANKMASK(wLength), W, B     ; 0x9 or 0x3e
-        tstfsz  BANKMASK(wLength+1), B
-        rcall   GET_DSC_CFG_FIX
-        movwf   BANKMASK(wLength), B        ; Overwrite the request length. Windows requests 265 should be 62 
-        BRA     GET_DSC_END
-GET_DSC_CFG_FIX:
-        clrf    BANKMASK(wLength+1), B      ; Overwrite the request length. Windows requests 265 should be 62
         movlw   0x3e
-        return
+        BRA     GET_DSC_END
 GET_DSC_STR:
         tstfsz  BANKMASK(bIndex), B
         bra     GET01
