@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      usbcdc-xc8.asm                                    *
-;    Date:          14.04.2024                                        *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -159,6 +159,13 @@ USB_RET:
         ret
 
 GET_DESCRIPTOR_SEND:
+        lds     t0, wLength
+        cp      t0, t1
+        lds     t0, wLength+1
+        cpc     t0, r_zero
+        brcc    1f
+        lds     t1, wLength     ; send no more than requested
+1:
         rcall   USB_WAIT_TX
         lds     t0, UEINTX
         andi    t0, (1<<RXOUTI)
@@ -237,7 +244,6 @@ GET_LINE_CODING:
         rjmp    USB_IN_MSG
 
 GET_DESCRIPTOR_:
-        lds     t1, wLength
         lds     t0, wValue+1
         cpi     t0, 1
         breq    GET_DEVICE_DESCRIPTOR
@@ -249,16 +255,12 @@ GET_DESCRIPTOR_:
 GET_DEVICE_DESCRIPTOR:
         ldi     zl, lo8(device_dsc)
         ldi     zh, hi8(device_dsc)
+        ldi     t1, 0x12
         rjmp    GET_DESCRIPTOR_SEND
 GET_CONFIGURATION_DESCRIPTOR:
-        lds     t0, wLength+1
-        cpi     t0, 0
-        breq    1f
-        sts     wLength+1,r_zero
-        ldi     t1, 0x3e
-1:
         ldi     zl, lo8(USB_CFG)
         ldi     zh, hi8(USB_CFG)
+        ldi     t1, 0x3e
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
         lds     t0, wIndex

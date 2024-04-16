@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          14.04.2024                                        *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include "config-xc8.inc"
 
 ; Define the FF version date string
-#define DATE "14.04.2024"
+#define DATE "16.04.2024"
 #define datelen 10
 
 
