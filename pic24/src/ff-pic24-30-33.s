@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          05.03.2024                                        *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1194,7 +1194,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 05.03.2024\r\n"
+        .ascii  " FlashForth 5 PIC24 16.04.2024\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1297,6 +1297,9 @@ PPS_MINUS:
 PAUSE_:
         clrwdt
 .if USB_CDC == 1
+        mov     #u0, W0        ; USB only in operator task.
+        cp      upcurr
+        bra     nz, PAUSE_USB_CDC_END
         rcall   USBDriverService
 PAUSE_USB_CDC_END:
 .endif

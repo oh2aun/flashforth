@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          23.08.2020                                        *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -32,7 +32,7 @@
 device_dsc:
         .byte   0x12    ; Size of this descriptor in bytes
         .byte   0x01    ; DEVICE descriptor type
-        .word   0x0200  ; USB Spec Release Number in BCD format
+        .word   0x0110  ; USB Spec Release Number in BCD format
         .byte   0x02    ; Class Code CDC device
         .byte   0x00    ; Subclass 
         .byte   0x00    ; Protocol
@@ -226,11 +226,10 @@ SUB:
         mov.b   WREG, ep0icnt
         sub.b   count                  ; count = count - moveLen
 romcp:
-        mov     #ep0buf, W2        ; DST ptr
+        mov     #ep0buf, W2            ; DST ptr
         mov     dPtr, W3
         btss.b  usb_status, #MEM
         bra     romcp2
-        mov     dPtr, W3   
         bra     ramcp
 romcp1:
         tblrdl.b [W3++], W1
@@ -256,10 +255,9 @@ USBCtrlEPServiceComplete:
 DATADIR_DEV_TO_HOST:
         btss    ep0buf, #7
         bra     DATADIR_HOST_TO_DEV
-        mov.b   ep0buf+7, WREG
-        bra     nz, DATADIR_DEV_TO_HOST_2
+        clr     W0
         mov.b   count, WREG
-        cp.b    ep0buf+6                ; F - W
+        cp      ep0buf+6                ; F - W
         bra     c, DATADIR_DEV_TO_HOST_2
         mov.b   ep0buf+6, WREG
         mov.b   WREG, count
@@ -269,7 +267,7 @@ DATADIR_DEV_TO_HOST_2:
         mov.b   WREG, ctrl_trf_state
         mov     #ep0buf, W0
         mov     WREG, ep0iadr
-        mov     #_USIE,  W0                   ; 0x80
+        mov     #_USIE,  W0                 ; 0x80
         mov.b   WREG, ep0ostat
         mov     #(_DAT1|_USIE|_DTSEN), W0   ;0xC8
         mov.b   WREG, ep0istat
@@ -362,7 +360,7 @@ GET_DSC_DEV:
         bra     GetDsc_4
 GET_DSC_CFG:
         mov     #handle(USB_CFG), W2
-        mov     #0x43, W0
+        mov     #0x3e, W0
         BRA     GetDsc_4
 GET_DSC_STR:
         cp0     ep0buf+2
