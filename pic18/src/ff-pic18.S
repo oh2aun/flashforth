@@ -317,7 +317,9 @@ ilw:         ds 1
 ilstatus:    ds 1
 ilbsr:       ds 1
 #endif
-
+#ifdef USB_CDC
+iltblptr:    ds 3
+#endif
 ;; Interrupt high priority save variables
 ihpclath:    ds 1
 ihtablat:    ds 1
@@ -368,7 +370,6 @@ ep2iadr:	ds 2
 ; BUFFERS
 line_coding: ds 7
 cdc_data_tx: ds 1
-iltblptr:    ds 3
 ep0buf:      ds 8
 cdc_data_rx: ds 8
 
