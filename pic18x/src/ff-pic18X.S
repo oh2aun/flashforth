@@ -7106,7 +7106,7 @@ FLASHHI:
         dw      RAM_HI
 
 #ifdef USB_CDC
-#include "ff-usbcdcX.S"
+#include "../../pic18/src/ff-usbcdc.S"
 #endif
 #if 0
 hexemit:

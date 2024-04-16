@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          07.03.2024                                        *
+;;    Date:          16.04.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -365,22 +365,19 @@ ep2istat:	ds 1
 ep2icnt: 	ds 1
 ep2iadr:	ds 2
 
-; USB Device States - To be used with usb_device_state
-usb_device_state: ds 1
-#define DETACHED_STATE          0
-#define ATTACHED_STATE          0
-#define POWERED_STATE           0
-#define DEFAULT_STATE           1
-#define ADR_PENDING_STATE       3
-#define ADDRESS_STATE           0x07
-#define ADDRESS_STATE2          0x83  ; Shifted to h'07'
-#define CONFIGURED_STATE        0x0f
-
 ; BUFFERS
 line_coding: ds 7
+cdc_data_tx: ds 1
+iltblptr:    ds 3
 ep0buf:      ds 8
 cdc_data_rx: ds 8
-cdc_data_tx: ds 8
+
+dPtr:           ds 2
+count:          ds 1
+ep2optr:        ds 1
+usb_device_state: ds 1
+usb_status:     ds 1
+ctrl_trf_state: ds 1
 
 #define TIB_DEFINED
 wordlenchar: ds 1
@@ -876,6 +873,8 @@ irq_async_rx3_4:
 #endif
 irq_async_rx3_end:
 #endif
+        btfsc   USBIF
+        call    USBDriverService
 ;; *****************************************************************
 ;;;; Restore Tp and Tbank
 irq_end:
@@ -933,21 +932,6 @@ L_PAUSE:
         NF 5,pause
 PAUSE:
         clrwdt
-#ifdef USB_CDC
-        movf    BANKMASK(upcurr), W, A
-        sublw   low(u0)           ; check usb only in operator task
-        bnz     PAUSE_USB_CDC_END ; Lowers execution cpu load when many tasks are running
-        btfss   USBEN
-        bra     PAUSE_USB_CDC_END
-        call    USBDriverService
-        movf    ep2icount, W, A
-        bz      PAUSE_USB_CDC_END
-        movf    ep2itmo, W, A
-        subwf   BANKMASK(ms_count), W, A
-        bn      PAUSE_USB_CDC_END
-        rcall   TX0_SEND
-PAUSE_USB_CDC_END:
-#endif
 #ifdef IDLEN
 #if IDLE_MODE == ENABLE
         movf    BANKMASK(fstatus), W, A  ; idle allowed ?
@@ -1611,7 +1595,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 07.03.2024        ; 10
+        STRING 16.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2912,28 +2896,17 @@ TX0:
         bra     TX0_DROP
         btfsc   BANKMASK(ep2istat), UOWN, B
         bra     TX0
-        movf    BANKMASK(ms_count), W, A
-        addlw   2+TICK_TIME
-        movwf   ep2itmo, A
-        lfsr    Tptr, cdc_data_tx
-        movf    Sminus, W, A
-        movf    ep2icount, W, A
-        movff   Sminus, TWrw
-        addlw   1
-        movwf   ep2icount, A
-        sublw   6                       ; l - w
-        bnn     TX0_END
 TX0_SEND:
-        movf    ep2icount, W, A
-TX0_SEND2:
+        movf    Sminus, W, A
+        movf    Splus, W, A
+        movwf   BANKMASK(cdc_data_tx), B
+        movlw   1
         movwf   BANKMASK(ep2icnt), B
         movlw   0x48
         btfsc   BANKMASK(ep2istat), DTS, B
         movlw   0x8
         movwf   BANKMASK(ep2istat), B
         bsf     BANKMASK(ep2istat), UOWN, B
-        clrf    ep2icount, A
-        bra     TX0_END
 TX0_DROP:
         DROPM
 TX0_END:
@@ -2950,9 +2923,9 @@ RX0:
         btfsc   BANKMASK(ep2ostat), UOWN, B
         bra     RX0
         lfsr    Tptr, cdc_data_rx
-        movf    ep2optr, W, A
+        movf    BANKMASK(ep2optr), W, B
         movff   TWrw, plusS
-        incf    ep2optr, F, A
+        incf    BANKMASK(ep2optr), F, B
         decf    BANKMASK(ep2ocnt), F, B
         bnz     RX0_END
         movlw   8
@@ -2962,7 +2935,7 @@ RX0:
         movlw   8
         movwf   BANKMASK(ep2ostat), B
         bsf     BANKMASK(ep2ostat), UOWN, B
-        clrf    ep2optr, A
+        clrf    BANKMASK(ep2optr), B
 RX0_END:
         clrf    plusS, A
         return
@@ -3441,7 +3414,6 @@ USB_ON:
         clrf    UIR, A
         banksel usb_device_state
         clrf    BANKMASK(usb_device_state), B
-        clrf    ep2icount, A
 #ifdef USB_CDC
 #if USB_SPEED == 1
 #ifdef ACTCON
@@ -3451,6 +3423,11 @@ USB_ON:
 #endif
 #endif
 USB_ON_RET:
+        bsf     IDLEIE
+        bsf     URSTIE
+        bsf     TRNIE
+        bcf     USBIP
+        bsf     USBIE
         return
 ;*******************************************************
         dw      L_USB_ON
@@ -3464,7 +3441,7 @@ USB_OFF:
 #ifdef ACTCON
         bcf     ACTEN
 #endif
-
+        bcf     USBIE
         return
 ;*******************************************************
         dw      L_USB_OFF
@@ -5723,7 +5700,7 @@ QNUMD1:
         rcall   ROT_A           ; d.l d.h a
         DROPM                   ; d.l d.h
         call    ONE             ; d.l d.h 1
-        movlw   '.'             ; d.l d.h
+        movlw   '.'             ; d.l d.h 1
         subwf   BANKMASK(areg), W, A
         bz      QNUM1
         bra     NIP             ; n 1           Single number
