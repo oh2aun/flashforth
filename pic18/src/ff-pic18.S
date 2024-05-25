@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          16.04.2024                                        *
+;;    Date:          25.04.2024                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -874,8 +874,10 @@ irq_async_rx3_4:
 #endif
 irq_async_rx3_end:
 #endif
+#ifdef USB_CDC
         btfsc   USBIF
         call    USBDriverService
+#endif
 ;; *****************************************************************
 ;;;; Restore Tp and Tbank
 irq_end:
@@ -1596,7 +1598,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 16.04.2024        ; 10
+        STRING 25.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -3508,7 +3510,7 @@ LIT:
         movf    TOSL, W, A
         movwf   TBLPTRL, A
         movf    TOSH, W, A
-        rcall	  FETCHLIT
+        rcall	FETCHLIT
         movf    TBLPTRH, W, A
         movwf   TOSH, A
         movf    TBLPTRL, W, A
