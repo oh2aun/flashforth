@@ -1,4 +1,4 @@
-\ PIC18 disassembler
+\ PIC18X disassembler
 -see
 marker -see
 
@@ -114,8 +114,7 @@ flash create regs
 : x.$ c@+ type space ;
 : Next c@+ + aligned ;
 : Skip 2* over + 2+ ;
-: And and ;
-: u.2 $ff And 2 u.r ;
+: u.2 $ff and 2 u.r ;
 : u.4 4 u.r ;
 : x.s ( a symtab -- a' code )
   over @ !p>r         \ P instruction
@@ -123,7 +122,7 @@ flash create regs
   begin               \ a s
     c@+ 8 lshift Dup        \ a s n n
   while
-    Dup @p r@ And xor \ a s n flag
+    Dup @p r@ and xor \ a s n flag
   while
     drop Next         \ a s
   repeat              \ a s n
@@ -131,16 +130,16 @@ flash create regs
   then                \ a s n
   nip rdrop r>p
 ;
-: x.a ( opc -- ) $0100 And if [char] b else [char] a then emit ;
-: x.d ( opc -- ) $0200 And if [char] f else [char] w then emit space ;
-: x.b ( opc -- ) $0e00 And 9 rshift u. ;
+: x.a ( opc -- ) $0100 and if [char] b else [char] a then emit ;
+: x.d ( opc -- ) $0200 and if [char] f else [char] w then emit space ;
+: x.b ( opc -- ) $0e00 and 9 rshift u. ;
 
 : x.r ( opc -- opc )
   >r regs
   begin
     c@+ Dup
   while
-    $1ff r@ And xor
+    r@ $1ff and xor
   while
     Next
   repeat
@@ -153,7 +152,7 @@ flash create regs
 
 : x.1 ( a -- a' ) xm1 x.s if *@ x.r Dup x.d x.a then ;
 
-: x02 $fff And Dup $f5f > if $ff And x.r drop else u.4 then ;
+: x02 $fff and Dup $f5f > if $ff and x.r drop else u.4 then ;
 
 : x.2
   xm2 x.s Dup
@@ -166,7 +165,7 @@ flash create regs
  
 : x.3
   xm3 x.s
-  if *@ $ff And Dup 80 And
+  if *@ $ff and Dup 80 and
      if   $ff00 or
      then Skip u.4
   then ;
@@ -178,7 +177,7 @@ flash create regs
 : x.5
   xm5 x.s Dup >a
   if
-       *@ $7ff And Dup $400 And
+       *@ $7ff and Dup $400 and
        if   $f800 or 
        then Skip
        a> $d800 =
@@ -189,7 +188,7 @@ flash create regs
 
 : x.6
   xm6 x.s Dup >a
-  if @+ $ff And over @ 8 lshift or 2* Dup  c>n .id
+  if @+ $ff and over @ 8 lshift or 2* Dup  c>n .id
       a> $ec00 =
       if   .(s
       else drop

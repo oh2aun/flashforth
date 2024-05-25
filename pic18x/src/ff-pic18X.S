@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          15.04.2024                                        *
+;;    Date:          25.05.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -262,6 +262,7 @@ fFC     equ 1           ;; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ;; 1=XOFF has been sent
 
 ;; BANKMASK(FLAGS1)
+fLIT    equ 7           ;; Literal compiled
 noclear equ 6           ;; dont clear optimisation flags
 idup    equ 5           ;; Use dupzeroequal instead of zeroequal
 izeroeq equ 4           ;; Use bnz instead of bz if zeroequal
@@ -300,6 +301,8 @@ iaddr_hi: ds 1       ;; Instruction Memory access address
 #if XSTORE == ENABLE
 iaddr_up: ds 1       ;; Instruction Memory access address
 #endif
+litbuf0:  ds 1
+litbuf1:  ds 1
 FLAGS1:   ds 1       ;; Some flags
 FLAGS2:   ds 1       ;; More flags
 RXhead:   ds 1       ;; Head of serial RX interrupt buffer
@@ -792,23 +795,6 @@ irq_async_rx3:
         btfss   U3RXIF
         bra     irq_async_rx3_end
         banksel acs
-#if OPERATOR_UART == 3
-#if FC_TYPE == XONXOFF
-        movf    BANKMASK(RX3cnt), W, B
-        addlw   0xff - RX_OFF_FILL
-        bnc     irq_async_rx3_2
-        btfss   BANKMASK(FLAGS2), fFC, B
-        call    XXOFF
-#endif
-irq_async_rx3_1:
-#if FC_TYPE == CTS
-        movf    BANKMASK(RX3cnt), W, B
-        addlw   0xff - RX_OFF_FILL
-        bnc     irq_async_rx3_2
-        btfss   BANKMASK(FLAGS2), fFC, B
-        bsf     HW_FC_CTS_PORT, HW_FC_CTS_PIN
-#endif
-#endif
 irq_async_rx3_2:
         lfsr    Tptr, RX3buf
         movf    BANKMASK(RX3head), W, B
@@ -840,9 +826,10 @@ irq_async_rx3_4:
         andwf   BANKMASK(RX3head), F, B
 irq_async_rx3_end:
 #endif
+#ifdef USB_CDC
         btfsc   USBIF
         call    USBDriverService
-
+#endif
 ;; *****************************************************************
 ;;;; Restore Tp and Tbank
 irq_end:
@@ -1555,7 +1542,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 15.04.2024        ; 10
+        STRING 25.04.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2344,6 +2331,9 @@ INT:
 L_LITERAL:
         NF IMMED|7,literal
 LITERAL:
+        bsf     FLAGS1, fLIT, B
+        movsf   [1], litbuf0
+        movsf   [2], litbuf1
         movf    plusS, W, A
         movwf   plusR, A
         rcall   LIT_COMMA
@@ -2359,6 +2349,7 @@ LIT_COMMA:
         addlw   INDF0 - PLUSW2         ;
         bnc     LIT_PUSHL              ;
 LIT_FIX:
+        bcf     FLAGS1, fLIT, B
         bcf     [1],7                  ;     PUSHL k, where 0 <= k <= 127
         rcall   LIT_PUSHL              ;
         pushl   0x8E                   ;     BSF   [1],7
@@ -4963,9 +4954,18 @@ HB:
 L_BASE:
         NF 4,base
 BASE:
-        rcall   DOUSER
-        dw      ubase&0xffff
+;        rcall   DOUSER              ; 16 clocks + 4 = 22
+;        dw      ubase&0xffff
 
+        subfsr  Sptr, 2             ; 7 clocks + 4 = 11
+        movf    BANKMASK(upcurr), W, B
+        addlw   low(ubase)
+        movwf   [1]
+        movlw   high(ubase)
+        addwfc  BANKMASK(upcurr+1), W, B
+        movwf   [2]
+        return
+        
 ; USER   n --
 ; 18 cycles
         dw      L_BASE
@@ -4975,21 +4975,19 @@ USER:
         call    CONSTANT_
         rcall   XDOES
 DOUSER:
-        clrf    TBLPTRU, A
         movf    TOSL, W, A
         movwf   TBLPTRL, A
         movf    TOSH, W, A
         movwf   TBLPTRH, A
+        subfsr  Sptr, 2
         tblrd*+
         movf    TABLAT, W, A
         addwf   BANKMASK(upcurr), W, B
-        movwf   Tp, A
-        tblrd*+
+        movwf   [1]
+        tblrd*
         movf    TABLAT, W, A
-        addwfc  BANKMASK(upcurr)+1, W, B
-        movwf   Sminus, A
-        movf    Tp, W, A
-        movwf   Sminus, A
+        addwfc  BANKMASK(upcurr+1), W, B
+        movwf   [2]
         decf    STKPTR, F, A         ; return to the callers caller
         return
 
@@ -5508,6 +5506,12 @@ TICKSOURCE:
         NF 3,dup
 DUP_A:  goto    DUP
 
+; xt? (xt -- xt ) leave status sero flag
+XTQ:
+        call    OVER
+        rcall   EQUAL
+        bra     ZEROSENSE
+
 ;  INTERPRET  c-addr u --    interpret given buffer
         dw      L_TICKSOURCE
 L_INTERPRET:
@@ -5555,31 +5559,61 @@ IEXECUTE:
         bra     IPARSEWORD
 ICOMPILE_1:
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
-        rcall   DUP_A
-        LIT2    ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
-        rcall   EQUAL
-        rcall   ZEROSENSE
+        LIT2    ZEROEQUAL                    ; Check for 0=, modifies IF and UNTIL to use bnz
+        rcall   XTQ
         bz      ICOMPILE_2
         bsf     BANKMASK(FLAGS1), izeroeq, B ; Mark 0= encountered in compilation
         bra     ICOMMAXT
 ICOMPILE_2:
+        btfss   FLAGS1, fLIT, B
+        bra     ICOMPILE_7
+        LIT2    AND_
+        rcall   XTQ
+        bz      ICOMPILE_3
+        call    ANDIC
+        bra     ICLRFLIT
+ICOMPILE_3:
+        LIT2    OR
+        rcall   XTQ
+        bz      ICOMPILE_4
+        call    ORIC
+        bra     ICLRFLIT
+ICOMPILE_4:
+        LIT2    PLUS
+        rcall   XTQ
+        bz      ICOMPILE_5
+        call    PLUSIC
+        bra     ICLRFLIT
+ICOMPILE_5:
+        LIT2    MINUS
+        rcall   XTQ
+        bz      ICOMPILE_6
+        call    MINUSIC
+        bra     ICLRFLIT
+ICOMPILE_6:
+        LIT2    XOR
+        rcall   XTQ
+        bz      ICOMPILE_7
+        call    XORIC
+        bra     ICLRFLIT
+ICOMPILE_7:
         bcf     BANKMASK(FLAGS1), idup, B    ; Clear DUP encountered in compilation
-        rcall   DUP_A
-        LIT2    DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
-        rcall   EQUAL
-        rcall   ZEROSENSE
+        LIT2    DUP                          ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
+        rcall   XTQ
         bz      ICOMPILE
         bsf     BANKMASK(FLAGS1), idup, B    ; Mark DUP encountered during compilation
 ICOMMAXT:
         rcall   COMMAXT_A
         bcf     BANKMASK(FLAGS1), fTAILC, B  ; Allow tailgoto optimisation
-        btfsc   BANKMASK(wflags), 4, B          ; Compile only ?
+        btfsc   BANKMASK(wflags), 4, B       ; Compile only ?
         bsf     BANKMASK(FLAGS1), fTAILC, B  ; Prevent tailgoto optimisation
-        bra     IPARSEWORD
+        bra     ICLRFLIT
 ICOMPILE:
         btfss   BANKMASK(wflags), 5, B       ; Inline check
         bra     ICOMMAXT
         call    INLINE0
+ICLRFLIT:
+        bcf     FLAGS1, fLIT, B
         bra     IPARSEWORD
 INUMBER:
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
@@ -7106,6 +7140,50 @@ FLASHHI:
         dw      EEPROM_HI
         dw      RAM_HI
 
+ANDIC:
+        LIT     0x1602      ; andwf [2], f
+        pushl   0xe         ; movlw hi
+        movf    litbuf1, W, B
+        movwf   Sminus, A
+        LIT     0x1601      ; andwf [1], f
+        bra     NNNIC
+ORIC:
+        LIT     0x1202      ; iorwf [2], f
+        pushl   0xe         ; movlw hi
+        movf    litbuf1, W, B
+        movwf   Sminus, A
+        LIT     0x1201      ; iorwf [1], f
+        bra     NNNIC
+XORIC:
+        LIT     0x1a02      ; xorwf [2], f
+        pushl   0xe         ; movlw hi
+        movf    litbuf1, W, B
+        movwf   Sminus, A
+        LIT     0x1a01      ; xorwf [1], f
+        bra     NNNIC
+MINUSIC:
+        comf    litbuf0, F, B
+        comf    litbuf1, F, B
+        infsnz  litbuf0, F, B
+        incf    litbuf1, F, B
+PLUSIC:
+        LIT     0x2202      ; addwfc [2], f
+        pushl   0xe         ; movlw hi
+        movf    litbuf1, W, B
+        movwf   Sminus, A
+        LIT     0x2601      ; addwf [1], f
+NNNIC:
+        pushl   0xe         ; movlw lo
+        movf    litbuf0, W, B
+        movwf   Sminus, A
+        rcall   IDPMINUS
+        rcall   ICOMMAC
+        rcall   ICOMMAC
+        rcall   ICOMMAC
+        rcall   ICOMMAC
+        goto    DROP
+ICOMMAC:
+        goto    ICOMMA
 #ifdef USB_CDC
 #include "../../pic18/src/ff-usbcdc.S"
 #endif
