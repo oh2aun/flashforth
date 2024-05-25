@@ -262,7 +262,6 @@ fFC     equ 1           ;; 0=Flow Control, 1 = no Flow Control
 ixoff   equ 0           ;; 1=XOFF has been sent
 
 ;; BANKMASK(FLAGS1)
-fLIT    equ 7           ;; Literal compiled
 noclear equ 6           ;; dont clear optimisation flags
 idup    equ 5           ;; Use dupzeroequal instead of zeroequal
 izeroeq equ 4           ;; Use bnz instead of bz if zeroequal
@@ -2331,7 +2330,6 @@ INT:
 L_LITERAL:
         NF IMMED|7,literal
 LITERAL:
-        bsf     FLAGS1, fLIT, B
         movsf   [1], litbuf0
         movsf   [2], litbuf1
         movf    plusS, W, A
@@ -2349,7 +2347,6 @@ LIT_COMMA:
         addlw   INDF0 - PLUSW2         ;
         bnc     LIT_PUSHL              ;
 LIT_FIX:
-        bcf     FLAGS1, fLIT, B
         bcf     [1],7                  ;     PUSHL k, where 0 <= k <= 127
         rcall   LIT_PUSHL              ;
         pushl   0x8E                   ;     BSF   [1],7
@@ -4393,7 +4390,7 @@ ZEROLESS:
         movwf   plusS, A
         btfsc   plusS, 7, A
         bra     test_true
-   test_false:                    ; TOS is 0000 (FALSE)
+test_false:                       ; TOS is 0000 (FALSE)
         clrf    Sminus, A         ; TOS_LO = 00
         clrf    Sminus, A         ; TOS_HI = 00
         return
@@ -4414,10 +4411,9 @@ L_LESS:
         db      NFA|1,'<'
         align   2
 LESS:
-        rcall   MINUS               ; n1 - n2 in TOS
+        rcall   MINUS               ; STATUS flags set
 LESS2:
-        swapf   plusS, W, A
-        swapf   plusS, W, A
+        addfsr  Sptr, 2
         movf    STATUS, W, A
         andlw   0x18
         xorlw   0x10
@@ -4443,9 +4439,11 @@ L_ULESS:
         align   2
 ULESS:
         rcall   MINUS           ; Leaves a carry flag
-        addfsr  Sptr, 2
-        bnc     test_true
-        bra     test_false
+        movf    [1], W
+        subwfb  [1], F
+        movf    [2], W
+        subwfb  [2], F
+        return
 
 ;***************************************************
 ;   U>      u1 u2 -- flag       test unsigned greater than
@@ -5506,7 +5504,33 @@ TICKSOURCE:
         NF 3,dup
 DUP_A:  goto    DUP
 
-; xt? (xt -- xt ) leave status sero flag
+; lit? ( -- flag ) true if literal, fill litbuf
+LITQ:
+        rcall   IHERE
+        rcall   TWOMINUS
+        rcall   DUP_A
+        rcall   FETCH_A
+        movlw   0xea
+        cpfseq  [2]
+        bra     LITQ_FALSE1
+        movf    [1], W
+        movwf   litbuf0, B
+        DROPM
+        rcall   TWOMINUS
+        rcall   FETCH_A
+        movlw   0xea
+        cpfseq  [2]
+        bra     LITQ_FALSE2
+        movf    [1], W
+        movwf   litbuf1, B
+        return
+LITQ_FALSE1:
+        DROPM
+LITQ_FALSE2:
+        clrf    [1]
+        clrf    [2]
+        return
+; xt? (xt -- xt ) leave status zero flag
 XTQ:
         call    OVER
         rcall   EQUAL
@@ -5565,37 +5589,38 @@ ICOMPILE_1:
         bsf     BANKMASK(FLAGS1), izeroeq, B ; Mark 0= encountered in compilation
         bra     ICOMMAXT
 ICOMPILE_2:
-        btfss   FLAGS1, fLIT, B
-        bra     ICOMPILE_7
+        rcall   LITQ                         ; Check for inline literal and fill litbuf
+        rcall   ZEROSENSE
+        bz      ICOMPILE_7
         LIT2    AND_
         rcall   XTQ
         bz      ICOMPILE_3
         call    ANDIC
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE_3:
         LIT2    OR
         rcall   XTQ
         bz      ICOMPILE_4
         call    ORIC
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE_4:
         LIT2    PLUS
         rcall   XTQ
         bz      ICOMPILE_5
         call    PLUSIC
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE_5:
         LIT2    MINUS
         rcall   XTQ
         bz      ICOMPILE_6
         call    MINUSIC
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE_6:
         LIT2    XOR
         rcall   XTQ
         bz      ICOMPILE_7
         call    XORIC
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE_7:
         bcf     BANKMASK(FLAGS1), idup, B    ; Clear DUP encountered in compilation
         LIT2    DUP                          ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
@@ -5607,13 +5632,11 @@ ICOMMAXT:
         bcf     BANKMASK(FLAGS1), fTAILC, B  ; Allow tailgoto optimisation
         btfsc   BANKMASK(wflags), 4, B       ; Compile only ?
         bsf     BANKMASK(FLAGS1), fTAILC, B  ; Prevent tailgoto optimisation
-        bra     ICLRFLIT
+        bra     IPARSEWORD
 ICOMPILE:
         btfss   BANKMASK(wflags), 5, B       ; Inline check
         bra     ICOMMAXT
         call    INLINE0
-ICLRFLIT:
-        bcf     FLAGS1, fLIT, B
         bra     IPARSEWORD
 INUMBER:
         bcf     BANKMASK(FLAGS1), izeroeq, B ; Clear 0= encountered in compilation
