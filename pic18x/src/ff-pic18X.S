@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          25.05.2024                                        *
+;;    Date:          31.07.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1541,7 +1541,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 25.04.2024        ; 10
+        STRING 31.07.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2645,7 +2645,6 @@ VALUE:
         rcall   COMMA
         call    XDOES
 VALUE_DOES:
-        rcall   DODOES
         goto    FETCH
 
 ; DEFER
@@ -2658,7 +2657,6 @@ L_DEFER:
         rcall   COMMA
         call    XDOES
 DEFER_DOES:
-        rcall   DODOES
         goto    FEXECUTE
 
 ; TO
@@ -2690,8 +2688,8 @@ IS2:
 L_TURNKEY:
         NF 7,turnkey
 TURNKEY:
-        call    VALUE_DOES      ; Must be call for IS to work.
-        dw      dpSTART+PRAM
+        LIT2    dpSTART+PRAM
+        goto    VALUE_DOES      ; Must be call for IS to work.
 
 #ifdef USB_CDC
 ;***************************************************
@@ -2884,15 +2882,16 @@ MTST:
         dw      L_MTST
 L_CPUCLK:
         NF 3,Fcy
-        rcall   DOCREATE
-        dw      clock / 4000
+        LIT     clock / 4000
+        return
 
         dw      L_CPUCLK
 L_OPERATOR:
         NF 8,operator
 OPERATOR:
-        call    DOCREATE        ; Must be a call !
-        dw      OPERATOR_AREA
+        LIT     OPERATOR_AREA
+        return
+        nop
 OPERATOR_AREA:
         dw      u0+PRAM         ; User pointer
         dw      UADDSIZE, RETURN_STACK_SAVE_SIZE
@@ -2979,7 +2978,6 @@ AS1:
         rcall   CONSTANT_
         call    XDOES
 AS1_DOES:
-        rcall   DODOES
 AS1_1:
         rcall   OR_A
         bra     ICOMMA
@@ -2992,7 +2990,6 @@ AS2:
         rcall   CONSTANT_
         call    XDOES
 AS2_DOES:
-        rcall   DODOES
         rcall   ROT
         rcall   ICCOMMA
         bra     AS3_2
@@ -3006,7 +3003,6 @@ AS3:
         rcall   CONSTANT_
         call    XDOES
 AS3_DOES:
-        rcall   DODOES          ;  f d/b a opcode
         rcall   TOR             ;  f d/b A
         rcall   ROT             ;  d/b a f
         rcall   ICCOMMA         ;  d/b a
@@ -3026,7 +3022,6 @@ BR2:
         rcall   CONSTANT_
         call    XDOES
 BR2_DOES:
-        rcall   DODOES
         rcall   SWOP            ; opcode rel-addr
         LIT     0x0fff          ; opcode rel-addr limit
         call    BRQ             ; opcode clipped-rel-addr
@@ -3040,7 +3035,6 @@ BR3:
         rcall   CONSTANT_
         call    XDOES
 BR3_DOES:
-        rcall   DODOES          ; abs-addr opcode
         rcall   TOR             ; abs-addr
         LIT     01
         rcall   RSHIFT          ; abs-addr
@@ -3062,8 +3056,8 @@ L_GOTO:
         db      ','
         align   2
 GOTO_:
-        rcall   BR3_DOES
-        dw      0xef00
+        LIT      0xef00
+        bra      BR3_DOES
 
 ;       call, ( abs-addr -- )
         dw      L_GOTO
@@ -3072,8 +3066,8 @@ L_CALL:
         db      ','
         align   2
 CALL_:
-        rcall   BR3_DOES
-        dw      0xec00
+        LIT     0xec00
+        goto    BR3_DOES
 
 ;       rcall, ( rel-addr -- )
         dw      L_CALL
@@ -3082,8 +3076,8 @@ L_RCALL:
         db      ','
         align   2
 RCALL_:
-        rcall   BR2_DOES
-        dw      0xd800
+        LIT     0xd800
+        goto    BR2_DOES
 
 ;       bra, ( rel-addr -- )
         dw      L_RCALL
@@ -3092,8 +3086,8 @@ L_BRA:
         db      ','
         align   2
 BRA_:
-        rcall   BR2_DOES
-        dw      0xd000
+        LIT     0xd000
+        goto    BR2_DOES
 
 ;       bcf, ( f b a -- )
         dw      L_BRA
@@ -3102,8 +3096,8 @@ L_BCF:
         db      ','
         align   2
 BCF_:
-        rcall   AS3_DOES
-        dw      0x0090
+        LIT    0x0090
+        goto   AS3_DOES
 
 ;       bsf, ( f b a -- )
         dw      L_BCF
@@ -3112,8 +3106,8 @@ L_BSF:
         db      ','
         align   2
 BSF_:
-        rcall   AS3_DOES
-        dw      0x0080
+        LIT     0x0080
+        goto    AS3_DOES
 
 ;       btfsc, ( f b a -- )
         dw      L_BSF
@@ -3122,8 +3116,8 @@ L_BTFSC:
         db      ','
         align   2
 BTFSC_:
-        rcall   AS3_DOES
-        dw      0x00b0
+        LIT     0x00b0
+        goto   AS3_DOES
 
 ;       btfss, ( f b a -- )
         dw      L_BTFSC
@@ -3132,8 +3126,8 @@ L_BTFSS:
         db      ','
         align   2
 BTFSS_:
-        rcall   AS3_DOES
-        dw      0x00a0
+        LIT      0x00a0
+        goto   AS3_DOES
 
 ;;;
 LOCKED:
@@ -3350,7 +3344,7 @@ CONSTANT_:
 ;;; : con create -6 iallot postpone literal postpone  ; ;
         dw      L_CONSTANT
 L_CON:
-        NF 8,constant
+        NF 8, constant
 CON_:
         call    COLON         ; Create a word header
         call    INLINED
@@ -3367,42 +3361,6 @@ TWOCON:
         rcall   LITERAL       ; Append the constant value  as inline literal
         rcall   LITERAL       ; Append the constant value  as inline literal
         goto    SEMICOLON     ; Compile return
-
-; DOCREATE, code action of CREATE
-; Fetch the next cell from program memory to the parameter stack
-; 15 clock cycles
-;       dw      link
-;link    set     $
-        NF 3,(c)
-DOCREATE: ; -- addr  exec action of CREATE
-        movf    TOSL, W, A
-        movwf   TBLPTRL, A
-        movf    TOSH, W, A
-        rcall   FETCHLIT
-        decf    STKPTR, F, A
-RETURN2:
-        return
-
-;;; Resolve the runtime action of the word created by using does>
-; 20 clock cycles 6,3 us@12MHz
-;       dw      link
-;link   set     $
-        NF 3,(d)
-DODOES:
-        movf    TOSL, W, A
-        movwf   Tp, A
-        movf    TOSH, W, A
-        movwf   PCLATH, A
-        decf    STKPTR, F, A
-        movf    TOSL, W, A
-        movwf   TBLPTRL, A
-        movf    TOSH, W, A
-        rcall   FETCHLIT
-        movf    PCLATH, W, A
-        movwf   TOSH, A
-        movf    Tp, W, A
-        movwf   TOSL, A
-        return
 
 ;;; Compile inline address as subroutine call
         db      NFA|3,'(',',',')'
@@ -3775,16 +3733,6 @@ STORECF1:
 STORECF2:
         return
 
-; !COLON   --       change code field to docolon
-;   -6 IALLOT ;
-;       dw      link
-;link   set     $
-        NF 6,!colon
-STORCOLON:
-        LIT     -6
-        goto    IALLOT
-
-
 ; 2@    a-addr -- x1 x2            fetch 2 cells
 ;   DUP @ SWAP CELL+ @ ;
 ;   the higher address will appear on top of stack
@@ -3978,8 +3926,9 @@ ACC_6:
 
         NF 3,fcr
 FCR:
-        rcall   DOUSER
-        dw      uflg
+        LIT     uflg
+        goto    DOUSER
+
 ; TYPE    c-addr u --   type line to terminal u < $100
 ; : type for c@+ emit next drop ;
 
@@ -4124,6 +4073,7 @@ ROT:
         rcall   SWOP
         rcall   RFROM
         goto    SWOP
+
 ;   >R       x --   R: -- x   push to return stack
 ; 12 cycles
         dw      L_ROT
@@ -4299,10 +4249,28 @@ TWOPLUS:
 L_TOBODY:
         NF 5,>body
 TOBODY:
-        rcall   TWOPLUS
-        rcall   TWOPLUS
-        goto    FETCH
-
+        rcall   TOBODY_IS_PUSHL
+        rcall   TOBODY_IS_PUSHL
+        movf    Rminus, W, A
+        movwf   [1]
+        movf    Rminus, W, A
+        movwf   [2]
+        return
+TOBODY_IS_PUSHL:
+        rcall   FETCHPP
+        movlw   0x0e        ; movlw(0x0e) pushl(0xea)
+        cpfsgt  [2]
+        bra     TOBODY_MOVLW
+TOBODY_PUSHL:
+        movf    [1], W
+        movwf   plusR, A
+        addfsr  Sptr, 2
+        return
+TOBODY_MOVLW:
+        movf    [1], W
+        movwf   plusR, A
+        addfsr  Sptr, 2
+        bra     TWOPLUS
 
 ;   2*
         dw      L_TOBODY
@@ -4549,8 +4517,8 @@ L_UEMIT:
         STRING  emit
         align   2
 UEMIT:
-        rcall   DOUSER
-        dw      uemit&0xffff
+        LIT2    uemit&0xffff
+        goto    DOUSER
 
 ;***************************************************
 ; UKEY  -- addr         Address of KEY user vector
@@ -4560,8 +4528,8 @@ L_UKEY:
         STRING  key
         align   2
 UKEY:
-        rcall   DOUSER
-        dw      ukey&0xffff
+        LIT2    ukey&0xffff
+        goto    DOUSER
 
 ;***************************************************
 ; UKEYQ  -- addr         Address of KEYQ user vector
@@ -4571,8 +4539,8 @@ L_UKEYQ:
         STRING  key?
         align   2
 UKEYQ:
-        rcall   DOUSER
-        dw      ukeyq&0xffff
+        LIT2    ukeyq&0xffff
+        goto    DOUSER
 
 ;***************************************************
 
@@ -4919,24 +4887,26 @@ BIN:    rcall   CELL
         dw      L_BIN
 L_ULINK:
         NF 5,ulink
-ULINK:  rcall   DOUSER
-        dw      ulink&0xffff
+ULINK:
+        LIT     ulink&0xffff
+        goto    DOUSER
 
 
 ; TASK       -- a-addr              TASK pointer
         dw      L_ULINK
 L_TASK:
         NF 4,task
-TASK:   rcall   DOUSER
-        dw      utask&0xffff
-
+TASK:
+        LIT2    utask&0xffff
+        goto    DOUSER
 
 ; HP       -- a-addr                HOLD pointer
         dw      L_TASK
 L_HP:
         NF 2,hp
-HP:     rcall   DOUSER
-        dw      uhp&0xffff
+HP:
+        LIT     uhp&0xffff
+        goto    DOUSER
 
 ; HB     -- a-addr        Number formatting buffer, grows downwards
         dw      L_HP
@@ -4952,17 +4922,8 @@ HB:
 L_BASE:
         NF 4,base
 BASE:
-;        rcall   DOUSER              ; 16 clocks + 4 = 22
-;        dw      ubase&0xffff
-
-        subfsr  Sptr, 2             ; 7 clocks + 4 = 11
-        movf    BANKMASK(upcurr), W, B
-        addlw   low(ubase)
-        movwf   [1]
-        movlw   high(ubase)
-        addwfc  BANKMASK(upcurr+1), W, B
-        movwf   [2]
-        return
+        LIT     ubase&0xffff
+        goto    DOUSER              ; 16 clocks + 4 = 22
         
 ; USER   n --
 ; 18 cycles
@@ -4970,23 +4931,15 @@ BASE:
 L_USER:
         NF 4,user
 USER:
-        call    CONSTANT_
+        call    COLON
+        rcall   CREATE2
+        clrf    BANKMASK(state), B 
         rcall   XDOES
 DOUSER:
-        movf    TOSL, W, A
-        movwf   TBLPTRL, A
-        movf    TOSH, W, A
-        movwf   TBLPTRH, A
-        subfsr  Sptr, 2
-        tblrd*+
-        movf    TABLAT, W, A
-        addwf   BANKMASK(upcurr), W, B
-        movwf   [1]
-        tblrd*
-        movf    TABLAT, W, A
-        addwfc  BANKMASK(upcurr+1), W, B
-        movwf   [2]
-        decf    STKPTR, F, A         ; return to the callers caller
+        movf    BANKMASK(upcurr), W, B
+        addwf   [1]
+        movf    BANKMASK(upcurr+1), W, B
+        addwfc  [2]
         return
 
 ; SOURCE   -- adr n         current input buffer
@@ -5478,8 +5431,8 @@ TIB:
 L_TIU:
         NF 3,tiu
 TIU:
-        rcall   DOUSER
-        dw      utib&0xffff     ; pointer to Terminal input buffer
+        LIT     utib&0xffff     ; pointer to Terminal input buffer
+        goto    DOUSER
 
 ; >IN     -- a-addr        holds offset into TIB
 ; In RAM
@@ -5487,8 +5440,8 @@ TIU:
 L_TOIN:
         NF 3,>in
 TOIN:
-        rcall   DOUSER
-        dw      utoin&0xffff
+        LIT    utoin&0xffff
+        goto   DOUSER
 
 ; 'SOURCE  -- a-addr        two cells: len, adrs
 ; In RAM ?
@@ -5498,8 +5451,8 @@ L_TICKSOURCE:
         STRING source
         align 2
 TICKSOURCE:
-        rcall   DOUSER
-        dw      usource&0xffff    ; two cells !!!!!!
+        LIT     usource&0xffff    ; two cells !!!!!!
+        goto    DOUSER
 
         NF 3,dup
 DUP_A:  goto    DUP
@@ -5824,8 +5777,8 @@ QUIT1:
 L_PROMPT:
         NF 6,prompt
 PROMPT:
-        call    DEFER_DOES
-        dw      prompt
+        LIT     prompt
+        goto    DEFER_DOES
 
 ; ABORT    i*x --   R: j*x --   clear stk & QUIT
         dw      L_PROMPT
@@ -5834,7 +5787,7 @@ L_ABORT:
 ABORT:
         rcall   S0
         rcall   FETCH_A
-	rcall   SPSTORE
+        rcall   SPSTORE
         goto    QUIT
 
         dw      L_SPFETCH
@@ -5875,8 +5828,6 @@ QABORT1:
 QABO1:  TWODROPM
         return
 
-        NF 3,(,)
-DOCOMMAXT_A: goto DOCOMMAXT
 
 ; ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
 ;         i*x x1 --       R: j*x --      x1<>0
@@ -5885,7 +5836,7 @@ L_ABORTQUOTE:
         NF IMMED|COMPILE|6,abort"
 ABORTQUOTE:
         call    SQUOTE
-        rcall   DOCOMMAXT_A
+        call    DOCOMMAXT
         dw      QABORT
         return
 
@@ -5920,10 +5871,6 @@ PAREN:
         TWODROPM
         return
 
-        NF 3,(c)
-DOCREATE_A:
-        goto    DOCREATE
-
 ; IHERE    -- a-addr    return Code dictionary ptr
 ;   IDP @ ;
 ;;;         dw      link
@@ -5957,8 +5904,8 @@ CR:
 
 ; CREATE   --         create an empty definition
 ; Create a definition header and append
-; doCREATE and the current data space dictionary pointer
-; in FLASH.
+; the current data space pointer as a literal+return+nop
+; return+nop are changed to goto does-action for a does> word.
 ;  Examples :
 ; : table create 10 cells allot does> swap cells + ;
 ; ram table table_a     flash table table_b    eeprom table table_c
@@ -6016,16 +5963,18 @@ CREATE:
         call    ONEPLUS
         call    ALIGNED
         rcall   IALLOT          ; The header has now been created
-        rcall   DOCOMMAXT_A     ; Append an exeution token
-        dw      DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
         call    ALIGN_
         call    HERE            ; compiles the current dataspace dp into the dictionary
         movf    BANKMASK(cse), W, B
         bnz     CREATE2
-        call    TWOPLUS
+        LIT     12
+        call    PLUS
 CREATE2:
-        goto    ICOMMA          ; dp now points to a free cell
-
+        call    LITERALC
+        LIT     0x0012
+        call    ICOMMA          ; dp now points to a free cell
+        LIT     0               ; DOES> placeholder
+        goto    ICOMMA
 ;***************************************************************
 ; POSTPONE
         dw     L_CREATE
@@ -6040,7 +5989,7 @@ POSTPONE:
         call    ZEROLESS
         call    ZEROSENSE
         bz      POSTPONE1
-        rcall   DOCOMMAXT_A
+        call    DOCOMMAXT
         dw      DOCOMMAXT
         goto    ICOMMA
 POSTPONE1:
@@ -6052,9 +6001,8 @@ POSTPONE1:
         ;; link set $
         NF 3,idp
 IDP:
-        rcall   DOCREATE_A
-        dw      dpFLASH+PRAM
-
+        LIT     dpFLASH+PRAM
+        return
 
 ;***************************************************************
 ; (DOES>)  --      compile the run-time action of DOES>
@@ -6069,12 +6017,14 @@ XDOES:
         decf    STKPTR, F, A
         rcall   LAST
         rcall   NFATOCFA
+        LIT     8
+        call    PLUS
         rcall   IDP
         rcall   FETCH_A
         rcall   TOR_A
         rcall   IDP
         rcall   STORE_A
-        call    CALL_      ; Always stores a 4 byte call
+        call    GOTO_
         call    RFROM
         rcall   IDP
         goto    STORE
@@ -6084,10 +6034,8 @@ XDOES:
         dw      L_POSTPONE
 L_DOES:
         NF IMMED|COMPILE|5,does>
-DOES:   rcall   DOCOMMAXT_A
+DOES:   call    DOCOMMAXT
         dw      XDOES
-        rcall   DOCOMMAXT_A
-        dw      DODOES
         return
 
         dw      L_DOES
@@ -6122,7 +6070,8 @@ L_COLON:
 COLON:
         rcall   CREATE
         rcall   RIGHTBRACKET
-        goto    STORCOLON
+        LIT     -12
+        goto    IALLOT
 
 ; :noname        -- a          define headerless forth code
         dw      L_COLON
@@ -6223,16 +6172,16 @@ STATE_:
 L_LATEST:
         NF 6,latest
 LATEST:
-        rcall   DOCREATE_A
-        dw      dpLATEST+PRAM
+        LIT     dpLATEST+PRAM
+        return
 
 ; S0       -- a-addr      start of parameter stack
         dw      L_LATEST
 L_S0:
         NF 2,s0
 S0:
-        call    DOUSER
-        dw      us0&0xffff
+        LIT2    us0&0xffff
+        goto    DOUSER
 
 ; ini -- a-addr       ini variable contains the user-start xt
 ; In RAM
@@ -6240,8 +6189,8 @@ S0:
 ;link    set     $
 ;        NF 3,ini
 INI:
-        rcall   DOCREATE_A
-        dw      dpSTART+PRAM
+        LIT     dpSTART+PRAM
+        return
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
         dw      L_S0
@@ -6529,8 +6478,8 @@ L_ZC:
         db      ','
         align   2
 ZC:
-        rcall   DOCREATE_A
-        dw      0xe0
+        LIT     0xe0
+        return
 
 ; nz, ( -- cc)  Not Zero
         dw      L_ZC
@@ -6540,8 +6489,8 @@ L_NZC:
         db      ','
         align   2
 NZC:
-        rcall   DOCREATE_A
-        dw      0xe1
+        LIT     0xe1
+        return
 
 ; cc, ( -- cc) Carry
         dw      L_NZC
@@ -6551,8 +6500,8 @@ L_NCC:
         db      ','
         align   2
 NCC:
-        rcall   DOCREATE_A
-        dw      0xe3
+        LIT     0xe3
+        return
 
 ; not, ( cc -- opposite-cc)  Reverse the condition code
         dw      L_NCC
@@ -6792,7 +6741,7 @@ INLINE1:
 L_FOR:
         NF IMMED|COMPILE|3,for
 FOR:
-        rcall   DOCOMMAXT_A
+        call    DOCOMMAXT
         dw      TOR
         rcall   IHERE
         rcall   FALSE_
@@ -7107,7 +7056,6 @@ MARKER:
         call    ALLOT
         call    FRAM
         rcall   XDOES
-        call    DODOES
         rcall   INI
         LIT     10
         goto    CMOVE
@@ -7207,6 +7155,25 @@ NNNIC:
         goto    DROP
 ICOMMAC:
         goto    ICOMMA
+
+; LITERALC  x --           compile literal x as native code
+        NF 7,literal
+LITERALC:
+        movf    [1], W
+        movwf   plusR, A
+        movf    [2], W
+        movwf   [1]
+        rcall   LITERC1
+        subfsr  Sptr, 2
+        movf    Rminus, W, A
+        movwf   [1]
+LITERC1:
+        movlw   0x0e              ; movlw literal
+        movwf   [2]
+        call    ICOMMA
+        LIT     0x6edd            ; movwf Sminus
+        goto    ICOMMA
+
 #ifdef USB_CDC
 #include "../../pic18/src/ff-usbcdc.S"
 #endif
