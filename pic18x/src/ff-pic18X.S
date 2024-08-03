@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          31.07.2024                                        *
+;;    Date:          03.08.2024                                        *
 ;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -1425,7 +1425,7 @@ WARM_ZERO_1:
         movwf   T4CLKCON
         movlw   tmr2ms_val
         movwf   T4PR, A
-        movlw   0xaf         ; Prescale = 4, Postscale = 16
+        movlw   0xaf            ; Prescale = 4, Postscale = 16
         movwf   T4CON
         banksel PIE7
         bsf     TMR4IE
@@ -1541,7 +1541,7 @@ VER:
         db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 31.07.2024        ; 10
+        STRING 03.08.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2166,8 +2166,10 @@ asmemit:
 L_NEQUAL:
         NF 2,n=
 NEQUAL:
-        movff   plusS, TBLPTRL
-        movff   plusS, TBLPTRH       ; nfa in flash
+        movf    plusS, W, A
+        movwf   TBLPTRL, A
+        movf    plusS, W, A
+        movwf   TBLPTRH, A          ; nfa in flash
         movf    plusS, W, A
         movwf   Tp, A               ; String in ram
         movf    plusS, W, A
@@ -2318,8 +2320,10 @@ L_INT:
         align   2
 INT:
         DROPM
-        movff   plusS, irq_v
-        movff	plusS, irq_v+1
+        movf    plusS, W, A
+        movwf   BANKMASK(irq_v), B
+        movf 	plusS, W, A
+        movwf   BANKMASK(irq_v+1), B
         return
 
 ; LITERAL  x --           compile literal x as native code
@@ -2397,8 +2401,10 @@ ISTORECHK:
         bra     ISTORERR
 ISTOREOK:
 ;check if program memory row is already in buffer
-        movff   plusS, iaddr_lo
-        movff   plusS, iaddr_hi
+        movf    plusS, W, A
+        movwf   BANKMASK(iaddr_lo), B
+        movf    plusS, W, A
+        movwf   BANKMASK(iaddr_hi), B
         rcall   iupdatebuf
 ; set write address
         movf    BANKMASK(iaddr_lo), W, B
@@ -2412,23 +2418,23 @@ ISTOREOK:
 ; I!       x a-addr --    store cell in Code mem
 ISTORE:
         rcall   ISTORE_SETUP
-        movff   plusS, Tplus
-        movff   plusS, Trw
+        movf    plusS, W, A
+        movwf   Tplus, A
+        movf    plusS, W, A
+        movwf   Trw, A
         bra     ICSTORE1
 
 ; IC!       x addr --    store byte in Code mem
 ICSTORE:
         rcall   ISTORE_SETUP
-        movff   plusS, Trw
+        movf    plusS, W, A
+        movwf   Trw, A
         movf    plusS, W, A
 ICSTORE1:
         bsf     BANKMASK(FLAGS1), idirty, B
         return
 
 ; >TBLP  x --
-        dw      L_LITERAL
-L_TOTBLP:
-        NF 5,>tblp
 TOTBLP:
         movf    plusS, W, A
         movwf   TBLPTRL, A
@@ -2602,7 +2608,7 @@ asmecfetch:
         return
 
 ;;; Disable writes to flash and eeprom
-        dw      L_TOTBLP
+        dw      L_LITERAL
 L_FLOCK:
         NF 3,fl-
         bsf     BANKMASK(FLAGS1), fLOCK, B
@@ -3774,11 +3780,15 @@ TWODROP:
 L_TWODUP:
         NF 4,2dup
 TWODUP:
-        movlw   4
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
+        subfsr  Sptr, 4
+        movf    [5], W
+        movwf   [1]
+        movf    [6], W
+        movwf   [2]
+        movf    [7], W
+        movwf   [3]
+        movf    [8], W
+        movwf   [4]
         return
 
 
@@ -3787,11 +3797,15 @@ TWODUP:
 L_TWOOVER:
         NF 5,2over
 TWOOVER:
-        movlw   8
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
-        movff   SWrw, Sminus
+        subfsr  Sptr, 4
+        movf    [9], W
+        movwf   [1]
+        movf    [10], W
+        movwf   [2]
+        movf    [11], W
+        movwf   [3]
+        movf    [12], W
+        movwf   [4]
         return
 
 ; 2SWAP   x1 x2 x3 x4 -- x3 x4 x1 x2
@@ -4036,7 +4050,7 @@ DROP:
 
 
 ; SWAP  x1 x2 -- x2 x1          SWAP two top items
-; 17 cycles (23 movffl)
+; 10 cycles + call/ret
         dw      L_DROP
 L_SWOP:
         NF 4,swap
@@ -4258,20 +4272,23 @@ TOBODY:
         return
 TOBODY_IS_PUSHL:
         rcall   FETCHPP
+#ifdef K42
         movlw   0x0e        ; movlw(0x0e) pushl(0xea)
         cpfsgt  [2]
         bra     TOBODY_MOVLW
+#endif
 TOBODY_PUSHL:
         movf    [1], W
         movwf   plusR, A
         addfsr  Sptr, 2
         return
+#ifdef K42
 TOBODY_MOVLW:
         movf    [1], W
         movwf   plusR, A
         addfsr  Sptr, 2
         bra     TWOPLUS
-
+#endif
 ;   2*
         dw      L_TOBODY
 L_TWOSTAR:
@@ -5967,7 +5984,11 @@ CREATE:
         call    HERE            ; compiles the current dataspace dp into the dictionary
         movf    BANKMASK(cse), W, B
         bnz     CREATE2
+#ifdef K42
         LIT     12
+#else
+        LIT     8
+#endif
         call    PLUS
 CREATE2:
         call    LITERALC
@@ -6017,7 +6038,11 @@ XDOES:
         decf    STKPTR, F, A
         rcall   LAST
         rcall   NFATOCFA
+#ifdef K42
         LIT     8
+#else
+        LIT     4
+#endif
         call    PLUS
         rcall   IDP
         rcall   FETCH_A
@@ -6070,7 +6095,11 @@ L_COLON:
 COLON:
         rcall   CREATE
         rcall   RIGHTBRACKET
+#ifdef K42
         LIT     -12
+#else
+        LIT     -8
+#endif
         goto    IALLOT
 
 ; :noname        -- a          define headerless forth code
@@ -7157,7 +7186,7 @@ ICOMMAC:
         goto    ICOMMA
 
 ; LITERALC  x --           compile literal x as native code
-        NF 7,literal
+        NF 3,lit
 LITERALC:
         movf    [1], W
         movwf   plusR, A
@@ -7168,12 +7197,17 @@ LITERALC:
         movf    Rminus, W, A
         movwf   [1]
 LITERC1:
+#ifdef K42
         movlw   0x0e              ; movlw literal
         movwf   [2]
         call    ICOMMA
         LIT     0x6edd            ; movwf Sminus
         goto    ICOMMA
-
+#else
+        movlw   0xea              ; pushl
+        movwf   [2]
+        goto    ICOMMA
+#endif
 #ifdef USB_CDC
 #include "../../pic18/src/ff-usbcdc.S"
 #endif
