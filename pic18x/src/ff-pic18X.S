@@ -165,8 +165,14 @@ LIT2 MACRO literal
         movlw   low(literal)
         movwf   Sminus, A
 ENDM
+LIT3 MACRO literal
+        movlw   high(literal)
+        movwf   Sminus, A
+        pushl   low(literal)
+ENDM
 #else
 #define LIT2 LIT
+#define LIT3 LIT
 #endif
 
 NF MACRO arg0,arg1
@@ -3062,7 +3068,7 @@ L_GOTO:
         db      ','
         align   2
 GOTO_:
-        LIT      0xef00
+        LIT3     0xef00
         bra      BR3_DOES
 
 ;       call, ( abs-addr -- )
@@ -3072,7 +3078,7 @@ L_CALL:
         db      ','
         align   2
 CALL_:
-        LIT     0xec00
+        LIT3    0xec00
         goto    BR3_DOES
 
 ;       rcall, ( rel-addr -- )
@@ -3082,7 +3088,7 @@ L_RCALL:
         db      ','
         align   2
 RCALL_:
-        LIT     0xd800
+        LIT3    0xd800
         goto    BR2_DOES
 
 ;       bra, ( rel-addr -- )
@@ -6507,7 +6513,7 @@ L_ZC:
         db      ','
         align   2
 ZC:
-        LIT     0xe0
+        LIT2     0xe0
         return
 
 ; nz, ( -- cc)  Not Zero
@@ -6518,7 +6524,7 @@ L_NZC:
         db      ','
         align   2
 NZC:
-        LIT     0xe1
+        LIT2     0xe1
         return
 
 ; cc, ( -- cc) Carry
@@ -6529,7 +6535,7 @@ L_NCC:
         db      ','
         align   2
 NCC:
-        LIT     0xe3
+        LIT2     0xe3
         return
 
 ; not, ( cc -- opposite-cc)  Reverse the condition code
@@ -6657,7 +6663,7 @@ UNTILC:
 L_IF:
         NF IMMED|COMPILE|2,if
 IF_:
-       btfsc   BANKMASK(FLAGS1), izeroeq, B
+        btfsc   BANKMASK(FLAGS1), izeroeq, B
         rcall   IDPMINUS
         rcall   COMMAZEROSENSE
         rcall   NZC
