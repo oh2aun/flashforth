@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      core.txt                                          *
-\    Date:          31.12.2013                                        *
+\    Filename:      core.fs                                           *
+\    Date:          05.08.2024                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -21,14 +21,8 @@ hex ram
   r> >in ! r> r> 'source 2!
 ;
 
-: forget ( --- name )
-  bl word latest @ (f) ?abort?
-  c>n 2- dup @ ?abort?
-  dup flash dp ! @ latest ! ram
-;
-
- ( addr n c -- ) \ fill addr to addr+n with c
-: fill rot !p>r swap for dup pc! p+ next r>p drop ;
+\ addr n c -- \ fill addr to addr+n with c
+: fill >a for a> over c! 1+ next drop ;
 
 \  addr n --
 : erase  0 fill ;
