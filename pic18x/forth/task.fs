@@ -1,8 +1,8 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      taskx.fs                                          *
-\    Date:          29.04.2024                                        *
-\    FF Version:    5.0                                               *
+\    Date:          05.08.2024                                        *
+\    FF Version:    6                                                 *
 \    MCU:           PIC18X                                            *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -66,12 +66,12 @@ hex ram
     over , +
   next
   6 +                   \ Task size
-  
   ram allot             \ The user area is in ram
 ;
 
 \ Initialise a user area and link it to the task loop
 \ May only be executed from the operator task
+ram variable tini
 : tinit \ taskloop-addr task-addr -- 
   \ use task user area
   @+ up!                        \ a t+2
@@ -80,21 +80,22 @@ hex ram
   else
     dup 2- task !                             \ Pointer to task area
     \ rsave area = uarea+cell+addsize
-    @+ up@ + cell+ !p>r                       \ a t+3
+    @+ up@ + cell+ tini !                     \ a t+3
     \ s0 = rsave + rsize + ssize - 1 
-    @+ @p + >r @ r> + dup s0 !                \ a t+4
-    p! p2+                                    \ s0 to save area
-    p2+                                       \ dummy P to save area
-    \ tib = S0 + 4
-    s0 @ 4 + tiu ! \ a
-    p! p2+         \ taskloop-addr to save area
-    1 pc!          \ return stack size to save area
-    @p up@ !       \ end of save area to restore pointer
-    false ul!      \ no link yet
-    decimal        \ Set the base to decimal
-    r>p
+    @+ tini @ + >r @ r> + dup s0 !            \ a t+4
+    tini @ !                                  \ s0 to save area
+    2 tini +! 
+                                \ dummy P to save area
+    \ tib = S0 + 4  
+    s0 @ 4 + tiu !    \ a
+    tini @ !          \ taskloop-addr to save area
+    2 tini +! 
+    1 tini @ c!       \ return stack size to save area
+    tini @ up@ !      \ end of save area to restore pointer
+    false ul!         \ no link yet
+    decimal           \ Set the base to decimal
   then
-  op!                     \ run the operator task
+  op!                 \ run the operator task
 ;
 
 \ Insert a new task after operator in the linked list.

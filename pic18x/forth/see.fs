@@ -69,6 +69,8 @@ flash create xm4
 [ %0000.1000 c, ," sublw"     ]
 [ %0000.0001 c, ," movlb"     ]
 [ %1110.1010 c, ," pushl"     ]
+[ %1110.1000 c, ," addfsr"    ]
+[ %1110.1001 c, ," subfsr"    ]
 [ %0000.1010 c, ," xorlw" 0 ,
 
 flash create xm5
@@ -107,7 +109,7 @@ flash create regs
 [ $fa c, ," pclath" ]
 [ $fd c, ," tosl" ]
 [ $fe c, ," tosh" 0 ,
-
+ram
 : Dup dup ;
 : ?again Dup postpone 0= postpone until ; immediate
 : *@ Dup @ ;
@@ -116,19 +118,20 @@ flash create regs
 : Skip 2* over + 2+ ;
 : u.2 $ff and 2 u.r ;
 : u.4 4 u.r ;
+ram variable x.i
 : x.s ( a symtab -- a' code )
-  over @ !p>r         \ P instruction
+  over @ x.i !        \ P instruction
   @+ >r               \ R mask
   begin               \ a s
-    c@+ 8 lshift Dup        \ a s n n
+    c@+ 8 lshift Dup  \ a s n n
   while
-    Dup @p r@ and xor \ a s n flag
+    Dup x.i @ r@ and xor \ a s n flag
   while
     drop Next         \ a s
   repeat              \ a s n
     over x.$          \ a s n
   then                \ a s n
-  nip rdrop r>p
+  nip rdrop
 ;
 : x.a ( opc -- ) $0100 and if [char] b else [char] a then emit ;
 : x.d ( opc -- ) $0200 and if [char] f else [char] w then emit space ;
@@ -181,19 +184,19 @@ flash create regs
        if   $f800 or 
        then Skip
        a> $d800 =
-       if   Dup c>n .id .(s
+       if   Dup u.4 Dup c>n .id .(s
        else u.4
        then
   then ;
 
 : x.6
   xm6 x.s Dup >a
-  if @+ $ff and over @ 8 lshift or 2* Dup  c>n .id
-      a> $ec00 =
+  if @+ $ff and over @ 8 lshift or 2* Dup u.4 Dup  c>n .id
+      a> $ec00 = \ call
       if   .(s
       else drop
       then
-  then a> $ef00 = if cr abort then ;
+  then a> $ef00 = if cr abort then ;   \ goto
 
 : x.7 *@ $0012 = if ." return" cr abort then ;
 

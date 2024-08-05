@@ -1,8 +1,8 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18X.S                                       *
-;;    Date:          05.08.2024                                        *
-;;    File Version:  6                                                 *
+;;    Date:          03.08.2024                                        *
+;;    File Version:  5X                                                *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
 ;;                                                                     *
@@ -331,7 +331,7 @@ irq_v:    ds 2       ;; Interrupt vector
 areg:     ds 1       ;; A register
 aregh:    ds 1
 #if IDLE_MODE == ENABLE
-#if CPU_LOAD == ENABLE  
+#if CPU_LOAD == ENABLE
 load_acc: ds 1       ;;
 load_res: ds 3       ;; 256 ms load result
 #endif
@@ -949,6 +949,12 @@ PAUSE000:
         movf    Sbank, W, A
         movwf   plusR, A
 
+        ; Save P pointer
+        movf    BANKMASK(p_lo), W, B
+        movwf   plusR, A
+        movf    BANKMASK(p_hi), W, B
+        movwf   plusR, A
+
         ; Remember the return stack counter
         movf    STKPTR, W, A
         movwf   TBLPTRL, A           ; 17
@@ -1004,6 +1010,12 @@ pause2:
 
         decfsz  TBLPTRL, F, A
         bra     pause2              ; 15 2 items
+
+        ; Restore the P pointer
+        movf    Rminus, W, A
+        movwf   BANKMASK(p_hi), B
+        movf    Rminus, W, A
+        movwf   BANKMASK(p_lo), B
 
         ; Restore the parameter stack pointer
         movf    Rminus, W, A
@@ -1508,7 +1520,7 @@ WARM_2:
         db      3
         STRING  ESC
         call    TYPE
-        LIT2    TURNKEY_DELAY
+        LIT     TURNKEY_DELAY
         call    MS
         call    KEYQ
         call    ZEROSENSE
@@ -1530,12 +1542,12 @@ L_VER:
         NF 3,ver
 VER:
         call    XSQUOTE
-        db 27 + PICLEN, ' '      ; 1
+        db 28+PICLEN,' '         ; 1
         STRING  FlashForth       ; 10
-        db      ' ','6',' '      ; 3
+        db      ' ','5','X',' '  ; 4
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 05.08.2024        ; 10
+        STRING 03.08.2024        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1766,7 +1778,7 @@ LOAD:
         clrf    Sminus, A
         movf    BANKMASK(load_res)+2, W, B
         movwf   Sminus, A
-        LIT2    CPU_LOAD_VAL
+        LIT     CPU_LOAD_VAL
         call    UMSLASHMOD
         goto    NIP
 
@@ -2615,8 +2627,22 @@ L_FUNLOCK:
         bcf     BANKMASK(FLAGS1), fLOCK, B
         return
 
+;;; Enable flow control
+        dw      L_FUNLOCK
+L_FCON:
+        NF 3,u1+
+        bcf     BANKMASK(FLAGS2), fFC, B
+        return
+
+;;; Disable flow control
+        dw      L_FCON
+L_FCOFF:
+        NF 3,u1-
+        bsf     BANKMASK(FLAGS2), fFC, B
+        return
+
 ;;; Clear watchdog timer
-        dw      L_FLOCK
+        dw      L_FCOFF
 L_CWD:
         NF INLINE|3,cwd
         clrwdt
@@ -2675,7 +2701,7 @@ L_TURNKEY:
         NF 7,turnkey
 TURNKEY:
         LIT2    dpSTART+PRAM
-        goto    VALUE_DOES      ; 
+        goto    VALUE_DOES      ; Must be call for IS to work.
 
 #ifdef USB_CDC
 ;***************************************************
@@ -2868,14 +2894,14 @@ MTST:
         dw      L_MTST
 L_CPUCLK:
         NF 3,Fcy
-        LIT2    clock / 4000
+        LIT     clock / 4000
         return
 
         dw      L_CPUCLK
 L_OPERATOR:
         NF 8,operator
 OPERATOR:
-        LIT2    OPERATOR_AREA
+        LIT     OPERATOR_AREA
         return
         nop
 OPERATOR_AREA:
@@ -4210,7 +4236,7 @@ NEGATE:
 ;   1+
         dw      L_NEGATE
 L_ONEPLUS:
-        NF 2|INLINE,1+
+        NF 2,1+
 ONEPLUS:
         infsnz  [1], F
         incf    [2], F
@@ -4420,8 +4446,95 @@ UGREATER:
         goto    ULESS
 
 ;***************************************************
-; 'EMIT  -- addr         Address of EMIT user vector
         dw      L_UGREATER
+L_STORE_P:
+        db      NFA|2,'!','p'
+        align   2
+STORE_P:
+        movf    plusS, W, A
+        movwf   BANKMASK(p_lo), B
+        movf    plusS, W, A
+        movwf   BANKMASK(p_hi), B
+        return
+
+;***************************************************
+        dw      L_STORE_P
+L_STORE_P_TO_R:
+        db      NFA|4,'!'
+        STRING  p>r
+        align   2
+STORE_P_TO_R:
+        movf    BANKMASK(p_hi), W, B
+        movwf   plusR, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   plusR, A
+        goto    STORE_P           ; Set the new pointer
+;***************************************************
+        dw      L_STORE_P_TO_R
+L_R_TO_P:
+        NF 3,r>p
+R_TO_P:
+        movf    Rminus, W, A
+        movwf   BANKMASK(p_lo), B
+        movf    Rminus, W, A
+        movwf   BANKMASK(p_hi), B
+        return
+;***************************************************
+        dw      L_R_TO_P
+L_PFETCH:
+        NF 2,p@ ; ( -- u ) Fetch cell from pointer
+PFETCH:
+        movf    BANKMASK(p_hi), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
+        goto    FETCH
+;***************************************************
+        dw      L_PFETCH
+L_PSTORE:
+        db      NFA|2,'p','!'   ; store cell to pointer
+        align   2
+PSTORE:
+        movf    BANKMASK(p_hi), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
+        goto    STORE
+;***************************************************
+        dw      L_PSTORE
+L_PCSTORE:
+        db      NFA|3
+        STRING  pc    ; store char to pointer
+        db      '!'
+        align   2
+PCSTORE:
+        movf    BANKMASK(p_hi), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
+        goto    CSTORE
+;***************************************************
+        dw      L_PCSTORE
+L_PPLUS:
+        NF INLINE|2,p+  ; Increment p by one
+PPLUS:
+        infsnz  BANKMASK(p_lo), F, B
+        incf    BANKMASK(p_hi), F, B
+        return
+;***************************************************
+        dw      L_PAD
+L_PTWOPLUS:
+kernellink:
+        NF 3,p2+ ; ( n -- ) Add 2 to p
+PTWOPLUS:
+        movlw   2
+        addwf   BANKMASK(p_lo), F, B
+        movlw   0
+        addwfc  BANKMASK(p_hi), F, B
+        return
+;***************************************************
+; 'EMIT  -- addr         Address of EMIT user vector
+        dw      L_PPLUS
 L_UEMIT:
         db      NFA|5,"'"
         STRING  emit
@@ -4844,7 +4957,7 @@ USER:
         call    COLON
         rcall   CREATE2
         clrf    BANKMASK(state), B 
-        call    XDOES
+        rcall   XDOES
 DOUSER:
         movf    BANKMASK(upcurr), W, B
         addwf   [1]
@@ -4931,21 +5044,18 @@ WORD:
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p for c@+ pc! p+ next drop ;
-; cmove for over c@ over c! 1+ 2nd1+ next
         dw      L_WORD
 L_CMOVE:
         NF 5,cmove
 CMOVE:
+        rcall   SWOP
+        rcall   STORE_P_TO_R
         rcall   TOR             ; Count to return stack
         bra     CMOVE2
 CMOVE1:
-        rcall   OVER
-        call    CFETCH
-        rcall   OVER
-        call    CSTORE
-        rcall   ONEPLUS
-        infsnz  [3], F
-        incf    [4], F
+        rcall   CFETCHPP
+        rcall   PCSTORE
+        rcall   PPLUS
 CMOVE2:
         decf    Rminus, F, A      ;  XNEXT
         movlw   0
@@ -4953,7 +5063,8 @@ CMOVE2:
         bc      CMOVE1
         movwf   Rminus, A
         movwf   Rminus, A   ; UNNEXT
-        addfsr  Sptr, 4     ; 2drop
+        rcall   R_TO_P
+        DROPM
         return
 
 
@@ -5038,12 +5149,14 @@ findi:
         movf    plusS, W, A
         iorwf   plusS, W, A     ; c-addr nfa
         bz      findi2
-        movlw   2
-        subwf   plusS, W, A
+        movf    plusS, W, A
         movwf   TBLPTRL, A
+        movf    plusS, W, A
+        movwf   TBLPTRH, A
+        movlw   2
+        subwf   TBLPTRL, F, A
         movlw   0
-        subwfb  plusS, W, A
-        movwf   TBLPTRH, A      ; c-addr
+        subwfb  TBLPTRH, F, A   ; c-addr lfa
         call    pfetch0         ; c-addr nfa
         movf    [1], W
         iorwf   [2], W
@@ -5604,7 +5717,7 @@ DP_TO_RAM:
         NF 3,>dp
 DP_TO_EEPROM:
         LIT     dp_start
-        rcall   TO_A
+        call    STORE_P_TO_R
         rcall   INI
         movlw   5
         movwf   plusR, A
@@ -5612,24 +5725,21 @@ DP_TO_EEPROM:
 DP_TO_EEPROM_0:
         rcall   FETCHPP
         call    DUP
-        rcall   A_FROM
-        call    FETCH
+        call    PFETCH
         call    XOR; NOTEQUAL
         rcall   ZEROSENSE
         bz      DP_TO_EEPROM_1
-        rcall   A_FROM
-        call    STORE
+        call    PSTORE
         bra     DP_TO_EEPROM_2
 DP_TO_EEPROM_1:
         DROPM
 DP_TO_EEPROM_2:
-        rcall   A_FROM
-        call    TWOPLUS
-        rcall   TO_A
+        call    PTWOPLUS
 DP_TO_EEPROM_3:
         decf    Rrw, F, A
         bc      DP_TO_EEPROM_0
         movf    Rminus, W, A
+        call    R_TO_P
         DROPM
         return
 
@@ -6218,7 +6328,7 @@ LIKEQ:
         LIT     0xf
         call    AND_
         rcall   SWOP_A
-        call    TO_A
+        call    STORE_P
         rcall   SWOP_A
         rcall   CFETCHPP_A
         rcall   ROT_A
@@ -6231,10 +6341,8 @@ LIKEQ:
         bra     LIKEQ3
 LIKEQ1:
         call    TWODUP
-        call    A_FROM
-        call    FETCH
-        infsnz  areg, F, B
-        incf    areg+1, F, B
+        rcall   FETCH_P
+        call    PPLUS
         rcall   SWOP_A
         rcall   CMP
         bz      LIKEQ3
@@ -6466,7 +6574,7 @@ L_THENC:
         align   2
 THENC:
         bsf     BANKMASK(FLAGS1), fTAILC, B  ; Disable tail call optimisation
-        call    DUP
+        rcall   DUP_A
         rcall   FETCH_A         ; back-addr oper
         movf    [2], W
         call    TOR
@@ -6908,13 +7016,41 @@ MEMHI:
         call    CSE
         call    PLUS
         goto    FETCH
-
+;***************************************************
+        dw      L_MEMHI
+L_FETCH_P:
+        NF 2,@p
+FETCH_P:
+        movf    BANKMASK(p_hi), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
+        return
+;***************************************************
+        dw      L_FETCH_P
+L_PCFETCH:
+        NF 3,pc@ ; ( -- c ) Fetch char from pointer
+PCFETCH:
+        movf    BANKMASK(p_hi), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(p_lo), W, B
+        movwf   Sminus, A
+        goto    CFETCH
+;***************************************************
+        dw      L_PCFETCH
+L_PNPLUS:
+        NF 3,p++ ; ( n -- ) Add n to p
+PNPLUS:
+        movf    plusS, W, A
+        addwf   BANKMASK(p_lo), F, B
+        movf    plusS, W, A
+        addwfc  BANKMASK(p_hi), F, B
+        return
 ;***************************************************
 ; ?\  ( flag -- ) Skip rest of line if flag is false
 ;***************************************************
-        dw      L_MEMHI
+        dw      L_PNPLUS
 L_QBSLASH:
-kernellink:
         db      NFA|2,'?'
         db      0x5c
         align   2
@@ -6924,6 +7060,18 @@ QBSLASH:
         bnz     QBSLASH1
         call    BSLASH
 QBSLASH1:
+        return
+; PAD     -- addr   Used by WORD as temporary result storage.
+;                   Starts at free RAM (ram here). 
+
+        dw      L_QBSLASH
+L_PAD:        
+        NF  3,pad
+PAD:
+        movf    BANKMASK(dpRAM+1), W, B
+        movwf   Sminus, A
+        movf    BANKMASK(dpRAM), W, B
+        movwf   Sminus, A
         return
 
 ;***************************************************
@@ -7043,7 +7191,7 @@ NNNIC:
 ICOMMAC:
         goto    ICOMMA
 
-; LITERALC  x --           compile literal x as native code for CREATE
+; LITERALC  x --           compile literal x as native code
         NF 3,lit
 LITERALC:
         movf    [1], W
@@ -7059,7 +7207,7 @@ LITERC1:
         movlw   0x0e              ; movlw literal
         movwf   [2]
         call    ICOMMA
-        LIT2    0x6edd            ; movwf Sminus
+        LIT     0x6edd            ; movwf Sminus
         goto    ICOMMA
 #else
         movlw   0xea              ; pushl
