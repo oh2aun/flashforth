@@ -3,13 +3,12 @@
 \    Filename:      doloop.fs                                         *
 \    Date:          22.08.2024                                        *
 \    File Version:  5.0                                               *
-\    MCU:           Atmega (not 2560)                                 *
+\    MCU:           Atmega 2560 and similar                           *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
-\ do loop for Atmega32,64,128 (not 2560)
 -doloop
 marker -doloop
 
@@ -17,13 +16,15 @@ marker -doloop
 
 #20 constant ind inlined   \ R20:R21 index
 
-: (do)  ( limit index -- R: leave oldindex xfaxtor ) 
+: (do)  ( limit index -- R: leave oldindex xfaxtor )
+  [ $910f i, ] \ pop unused zero address byte
   r>
   dup >a xa> @ >r            \ R: leave 
   ind @ >r                   \ R: leave oldindex
   swap $8000 swap - dup >r   \ R: leave oldindex xfactor
   + ind !
   a> 1+ >r
+  [ $925f i, ] \ push unused zero address byte
 ; compileonly
 
 : (?do) ( limit index -- R: leave oldindex xfactor ) 
@@ -31,7 +32,7 @@ marker -doloop
   if
     [ '  (do) ] again  \ branch to (do) 
   then
-  r> xa> @ >r 2drop
+  [ $910f i, ] r> xa> @ >r [ $925f i, ] 2drop
 ; compileonly
 
 : (+loop) ( n -- )
@@ -41,9 +42,9 @@ marker -doloop
 ; compileonly
 
 : unloop
-  r>
+  [ $910f i, ] r>
   rdrop r> ind ! rdrop
-  >r
+  >r [ $925f i, ]
 ; compileonly
 
 : do
@@ -61,15 +62,17 @@ marker -doloop
 ; immediate compileonly
 
 : leave
-  rdrop rdrop r> ind ! 
+  [ $910f i, ] rdrop
+  rdrop r> ind !
+  [ $925f i, ]
 ; compileonly
 
 : i
-  ind @ rp@ 3 + @ >< -
+  ind @ rp@ #4 + @ >< -
 ; compileonly
 
 : j
-  rp@ 5 + @ >< rp@ 9 + @ >< - 
+  rp@ #6 + @ >< rp@ #10 + @ >< - 
 ; compileonly
 
 
