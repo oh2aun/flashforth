@@ -1,4 +1,4 @@
-#include <xc.h>
+
 ; Register definitions
   .equ upl, 2         ; not in interrupt 
   .equ uph, 3         ; not in interrupt
@@ -15,16 +15,16 @@
 
   .equ ibasel, 10       ; Not in interrupt
   .equ ibaseh, 11       ; Not in interrupt
-  .equ ms_count , 14  ; Not in interrupt
-  .equ ms_count1, 15  ; Not in interrupt
+  .equ ms_count , 14    ; Not in interrupt
+  .equ ms_count1, 15    ; Not in interrupt
   .equ t0, 16
   .equ t1, 17
-  .equ t2, 0          ; Not in interrupt
-  .equ t3, 1          ; Not in interrupt
+  .equ t2, 0            ; Not in interrupt
+  .equ t3, 1            ; Not in interrupt
 
   .equ al, 18
   .equ ah, 19
-  .equ pl, 20         ; P Register and FOR##LOOP INDEX variable
+  .equ pl, 20         ; P Register and DO..LOOP INDEX variable
   .equ ph, 21
 
   .equ FLAGS1, 22     ; Not in interrupt
@@ -160,6 +160,28 @@
 .endif
 .endm
 
+.macro m_header name, flags
+        fdw     9b
+.equ name_len, 2f-1f
+9:
+        .byte   NFA|\flags|name_len
+1:
+        .ascii  "\name"
+2:
+        .align  1
+.endm
+
+; Macros for constants
+.macro m_const value, name, flags
+        m_header \name, \flags
+        m_dup
+        ldi     tosl,lo8(\value)
+        ldi     tosh,hi8(\value)
+        ret
+.endm
+
+
+
 ; Symbol naming compatilibity
 ; UART1 symbols for Atmega32u4
 #if defined(XXU4)
@@ -176,6 +198,7 @@
 .equ UBRR0H,UBRR1H
 .equ UBRR0L,UBRR1L
 .equ URSEL_,0x00
+.equ U2X0, U2X1
 #else
 ; UART0 symbols for Atmega32
 #ifndef UCSR0A

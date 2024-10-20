@@ -1,21 +1,21 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      doloop.txt                                        *
-\    Date:          11.04.2017                                        *
+\    Filename:      doloop.fs                                         *
+\    Date:          24.08.2024                                        *
 \    File Version:  5.0                                               *
-\    MCU:           Atmega (not 256)                                  *
+\    MCU:           Atmega (not 2560)                                 *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
 \ *********************************************************************
 \    FlashForth is licensed acording to the GNU General Public License*
 \ *********************************************************************
-\ do loop for Atmega32,64,128 (not 256)
+\ do loop for Atmega32,64,128 (not 2560)
 -doloop
 marker -doloop
 
 : compileonly $10 shb ;
 
-#20 constant ind inlined   \ R18:R19 are unused by the kernel
+#20 constant ind inlined   \ R20:R21 index
 
 : (do)  ( limit index -- R: leave oldindex xfaxtor ) 
   r>
@@ -32,12 +32,6 @@ marker -doloop
     [ '  (do) ] again  \ branch to (do) 
   then
   r> xa> @ >r 2drop
-; compileonly
-
-: (+loop) ( n -- )
-  [ $0f48 i, ]   \ add r20, tosl
-  [ $1f59 i, ]   \ add r21, tosh
-  inline drop
 ; compileonly
 
 : unloop
@@ -65,17 +59,37 @@ marker -doloop
 ; compileonly
 
 : i
-  ind @ rp@ 3 + @ >< -
+  dup           \ st    -y, r25
+                \ st    -y, r24
+  [ $b7ed i, ]  \ in    r30, 3d
+  [ $b7fe i, ]  \ in    r31, 3e
+  [ $9633 i, ]  \ adiw  r30, 3
+  [ $9191 i, ]  \ ld    r25, z+
+  [ $9181 i, ]  \ ld    r24, z+   fetch xfactor
+  [ $018a i, ]  \ movw  r16, r20  fetch index
+  [ $1b08 i, ]  \ sub   r16, r24
+  [ $0b19 i, ]  \ sbc   r17, r25  index-xfactor
+  [ $01c8 i, ]  \ movw  r24, r16
 ; compileonly
 
 : j
-  rp@ 5 + @ >< rp@ 9 + @ >< - 
+  dup           \ st    -y, r25
+                \ st    -y, r24
+  [ $b7ed i, ]  \ in    r30, 3d
+  [ $b7fe i, ]  \ in    r31, 3e
+  [ $9635 i, ]  \ adiw  r30, 5
+  [ $9111 i, ]  \ ld    r17, z+
+  [ $9101 i, ]  \ ld    r16, z+   fetch index
+  [ $9632 i, ]  \ adiw  r30, 2
+  [ $9191 i, ]  \ ld    r25, z+
+  [ $9181 i, ]  \ ld    r24, z+   fetch xfactor
+  [ $1b08 i, ]  \ sub   r16, r24
+  [ $0b19 i, ]  \ sbc   r17, r25  index-xfactor
+  [ $01c8 i, ]  \ movw  r24, r16
 ; compileonly
 
-
 : loop
-  $0d46 i, $1d55 i, \ add 1 to r20:r21
-\  postpone (loop)
+  $0d46 i, $1d55 i,      \ add 1 to r20:r21
   $f00b i,               \ bra +2 if overflow
   postpone again
   postpone unloop
@@ -83,7 +97,9 @@ marker -doloop
 ; immediate compileonly
 
 : +loop
-  postpone (+loop)
+  $0f48 i,               \ add r20, tosl
+  $1f59 i,               \ add r21, tosh
+  $9189 i, $9199 i,      \ drop
   $f00b i,               \ bra +2 if overflow
   postpone again
   postpone unloop

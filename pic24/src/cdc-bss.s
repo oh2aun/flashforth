@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          06.01.2019                                        *
+;    Date:          01.04.2023                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2019  Mikael Nordman
+; Copyright (C) 2023  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -62,7 +62,6 @@
 
 .bss
 .align 512
-bdt_base:
 ep0ocnt:  	.space 1
 ep0ostat:	.space 1
 ep0oadr:	.space 2
@@ -87,8 +86,8 @@ cdc_data_rx:    .space CDC_BULK_OUT_EP_SIZE
 cdc_data_tx:    .space CDC_BULK_IN_EP_SIZE
 
 ; Control transfer session owner
-usb_status:     .space 1
-.equ MEM,           0
+usb_status:         .space 1
+.equ MEM,           0           ; 0=flash 1=ram
 .equ MUID_USB9,     1
 
 ; Control Transfer States
@@ -110,9 +109,6 @@ usb_device_state:   .space 1
 count:          .space 1
 dPtr:           .space 2
 line_coding:    .space 8
-mem:            .space 2           ; 0 = flash ; 0xff = ram
 ep2optr:        .space 2
 ep2iptr:        .space 2
-ep2icount:      .space 2
-ep2itmo:        .space 2
            

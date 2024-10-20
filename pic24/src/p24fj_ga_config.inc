@@ -1,52 +1,21 @@
-;;; FlashForth device configuration for the dsPIC24E
+;;; FlashForth device configuration for the PIC24FJnnnGA705
+;;; and for the PIC24FJ64GU205
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC24E256GP502
-;;; NOTE: The last words on the last FLASH page contains the configuration bits.
-;;; If these are overwritten the the device will loose its configuration bits.
-;;; So for example on PIC24EP256GP202 the FLASH_SIZE is set to 0x2b000 - 0x00800.
+.equ FREQ_OSC, 32000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
-.equ FLASH_SIZE,     0x2a800 ; Flash size in bytes without the high byte
-                              ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x8000   ; 0x8000  ; Ram size in bytes
-
-.ifndecl IOL1WAY_OFF
-.equ IOL1WAY_OFF, 0xffff
-.endif
-
-;; Check the configuration for your particular chip from the datasheet.
-config __FWDT, FWDTEN_OFF
-;config __FOSCSEL, IESO_ON & FNOSC_FRC
-config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
-;config __FOSCSEL, IESO_ON & FNOSC_PRI
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-;config FDS, GWRP_OFF & GCP_OFF
-;config FPOR,
-;;config __FICD, JTAGEN_OFF & ICS_PGD1
-
-.equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
-.equ PLL_FBD, PLL_DIV-2
-.equ PLL_POST, 2              ; Do not change
-.equ PLL_PRE, 2               ; Do not change
-.equ FREQ_FIN, 7372800        ; PLL input frequency.
-.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
-
-;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
-;.equ  FREQ_OSC, 16000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+.equ USB_CDC, 1
 
 ; Define the UART used for the operator
-.equ OPERATOR_UART, 1        ; 1 or 2
+.equ OPERATOR_UART, 3        ; 1 or 2 or 3=USB interface(USB_CDC=1)
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1. OPERATOR UART -> mandatory
-.equ FC1_TYPE, 2                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 38400			  ; Serial baudrate UART1. OPERATOR UART -> mandatory
+.equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
+;.equ BAUDRATE2, 38400			    ; Serial baudrate UART2, comment if not used
 .equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
@@ -96,7 +65,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 15  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 31
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -118,9 +87,6 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ;;; EXAMPLE: 8 user myUserVar  -> define UADDSIZE 8
 .equ UADDSIZE, 0
 
-; Set to 1 for extra debug info after an exception reset
-.equ DEBUG_INFO, 0
-
 ; Set to 1 to see when FF writes to flash and eeprom
 ; 'F' is printed before each flash write.
 ; 'E' is printed before each eeprom write
@@ -129,7 +95,10 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 ; Include the example for calling a C function. C4+,  C4add.c
 .equ C_EXAMPLE, 0
 
-; Include the 32-bit float number support
+; Include the 32-bit floating number support
+; In xc16-ld you have to link with -lm and 
+; include the standard libraries by clearing 
+; the Exclude standard libraries tickbox.
 .equ FLOATS, 0
 
 ; Set to 1 to allow control-o to reset FlashForth
@@ -143,17 +112,16 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 
 ;;; Flash memory commands. Do not modify.
 .equ FLASH_ERASE,    0x4003     ; Memory page erase
-.equ FLASH_WRITE,    0x4001     ; Memory row write = double word
+.equ FLASH_WRITE,    0x4002     ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4001 ; Memory double word write
 .equ FLASH_WRITE_DOUBLE, 0x4001 ; Memory double word write
-.equ IBUFSIZEL,      0x0800
-.equ IBUFSIZEH,      0x0400
-.equ IBUFLEN1,       0x0002   ; Inner write loop
-.equ IBUFLEN2,       0x0200   ; Outer write loop
-.equ IBUFMASK,       0xf800
+.equ FLASH_ROWSIZE,  0x0080	; Row size, words
+.equ FLASH_ROWS,     0x0008	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 ;;; Memory mapping prefixes
-.equ SFR_SIZE,       0x1000
+.equ SFR_SIZE,       0x800
 .equ PFLASH,         SFR_SIZE+RAM_SIZE
 .equ HI_TEMP,        PFLASH+FLASH_SIZE
 .if HI_TEMP > 0xffff
@@ -176,7 +144,7 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*2))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -186,12 +154,13 @@ config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*2))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
 
 ;;; Different flash write logic for E devices than HJ or FJ devices
+;;; Double word instead of single word write.
 .equ PIC2433E, 1
 
 ; Amount of interrupt vectors

@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5.0 05.09.2021
+Dictionary of FlashForth 5 31.03.2023
 
 !          ( x addr -- )
            Store x to addr
@@ -22,13 +22,13 @@ Dictionary of FlashForth 5.0 05.09.2021
            Parse word and find it in dictionary
 
 'emit      ( -- addr )  User Variable
-           EMIT vector. TX0, TX1, TX2 or TXU
+           EMIT vector. TX0, TX1, TX2, TX3 or TXU
 
 'key       ( -- addr )  User Variable
-           KEY vector.  RX0, RX1, TX2, or RXU
+           KEY vector.  RX0, RX1, RX2, RX3 or RXU
 
 'key?      ( -- addr )  User Variable
-           KEY? vector. RX0?, RX1?, TX2?, or RXU?
+           KEY? vector. RX0?, RX1?, RX2?, RX3? or RXU?
 
 'source    ( -- a-addr )     User Variable 
            Current input source
@@ -117,7 +117,7 @@ Dictionary of FlashForth 5.0 05.09.2021
            Fetch two cells
 
 2!         ( x1 x2 a-addr -- )
-           Store two cells
+           Store two cells. x1 to lower address. x2 to higher address
 
 2constant  ( x x "name" -- )
            Define a double constant
@@ -521,6 +521,9 @@ hold       ( c -- )  COMPILE_ONLY
            Append char to formatted numeric string
 
 hp         ( -- a-addr )  USER
+           Hold buffer for formatted numeric output
+
+hp         ( -- a-addr )  USER
            Hold pointer for formatted numeric output
 
 i          ( -- n ) COMPILE_ONLY
@@ -724,13 +727,10 @@ pc@        ( -- c )
            Fetch the char pointed by the p register
 
 pad        ( -- a-addr )
-           : pad tib ti# + ;
-           Each task has its own pad with initial size of 0.
-           If needed the user must allocate space with allot.
-           FF core does not use the pad.
+           PAD is a global temporary buffer at start of free ram.
 
 parse	   ( c -- addr length )
-           Parse a word in TIB
+           Parse a token addressed by 'SOURCE and >IN.
 
 pause      ( -- )
            Switch to the next task in the round robin task list.
@@ -800,23 +800,31 @@ rx1q       ( -- queue-addr )
 
 rx2        ( -- c )
            Receive a character from UART2.
-           PIC24-30-33
+           PIC18-24-30-33
 
 rx2?       ( -- f )
            Leave TRUE if UART2 receive buffer is not empty.
-           PIC24-30-33
+           PIC18-24-30-33
 
 rx2q       ( -- queue-addr )
            Leave the address of the queue for UART2.
            PIC24-30-33
 
+rx3        ( -- c )
+           Receive a character from UART3.
+           PIC18
+
+rx3?       ( -- f )
+           Leave TRUE if UART3 receive buffer is not empty.
+           PIC18
+
 rxu        ( -- c )
            Receive a character from USB UART.
-           PIC18 USB
+           PIC18-24 USB
 
 rxu?       ( -- f )
            Leave TRUE if USB UART receive buffer is not empty. 
-           PIC18 USB
+           PIC18-24 USB
 
 s>d        ( n -- d )
            Sign extend single to double precision number
@@ -827,6 +835,7 @@ s0         ( -- a-addr )
 
 scan       ( c-addr u c -- c-addr' u'
            Scan string until c is found.
+           If delimiter is space, treat control chars as delimiter.
            c-addr must point to ram. u<255
 
 sign       ( n -- )
@@ -842,6 +851,7 @@ single     ( -- )
 
 skip       ( c-addr u c -- c-addr' u' )
            Skip string until c not encountered.
+           If delimiter is space, treat control chars as delimiter.
            c-addr must point to ram. u<255
 
 sm/rem     ( d n -- rem quot )
@@ -929,11 +939,15 @@ tx1q       ( -- queue-addr )
 
 tx2        ( c -- )
            Send a character to UART 2.
-           PIC24-30-33
+           PIC18-24-30-33
 
 tx2q       ( -- queue-addr )
            Leave the address of the queue for UART2.
            PIC24-30-33
+
+tx3        ( c -- )
+           Send a character to UART 2.
+           PIC18
 
 txu        ( c -- )
            Send a character to USB UART.
@@ -1040,14 +1054,17 @@ qm+        ( q d -- q )
            Add a double number to quad number
            PIC18 PIC24 PIC30 PIC33
 
+um*/       ( ud1 u1 u2 -- ud2 )
+           Scale with triple number intermediate result
+
+unused     ( -- x )
+           Get the amount of unused memory in the current data section
+
 ut*        ( ud u -- ut )
            Multiply single number with double number
 
 ut/        ( ut u -- ud )
            Divide triple number with single number
-
-um*/       ( ud1 u1 u2 -- ud2 )
-           Scale with triple number intermediate result
 
 value      ( x "name" -- )
            Define a value
@@ -1083,7 +1100,7 @@ within     ( x xl xh -- flag )
            Leave true if  xl <= x < xh
 
 word       ( c -- c-addr )
-           Parse a word in TIB and write the length into TIB
+           Parse a token addressed by 'SOURCE and >IN and PLACE it in PAD
            Leave the address of the length byte on the stack.
 
 wmove      ( addr1 addr2 u -- )

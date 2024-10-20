@@ -1,21 +1,5 @@
 ;;; FlashForth device configuration for the PIC24FyyKxxx
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for PIC24FV32KA302
-.equ FLASH_SIZE,     0x5800  ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x0800  ; Ram size in bytes
-.equ EEPROM_SIZE,    0x0200  ; Eeprom size
-
-;; Check the configuration for your particular chip from the datasheet.
-; For some reason the normal config macros did not work
-           .pushsection __FOSCSEL.sec, code
-           .global __FOSCSEL
-__FOSCSEL: .pword FNOSC_FRCPLL
-           .popsection
-
-
 .equ FREQ_OSC, (8000000*4)	 ;Clock (Crystal)frequency (Hz)
 
 ; Define the UART used for the operator
@@ -23,7 +7,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 
 ;;; UART1 configuration
 .equ BAUDRATE1, 38400		 ; Serial baudrate
-.equ FC1_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC1_TYPE, 0             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 .equ U1RTSPORT, LATB
@@ -31,13 +15,13 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ U1RTSPIN, 0xc
 
 ;;; UART2 configuration
-;.equ BAUDRATE2, 38400		 ; Serial baudrate, comment if not used
-.equ FC2_TYPE, 1             ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE2, 38400	     ; Serial baudrate, comment if not used
+.equ FC2_TYPE, 0             ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0            ; 0 = to use fixed baudrate
                              ; 1 = Autobaud, First char after reset must be 'U' (0x55)
-.equ U2RTSPORT, LATB
-.equ U2RTSTRIS, TRISB
-.equ U2RTSPIN, 0xc
+.equ U2RTSPORT, LATA
+.equ U2RTSTRIS, TRISA
+.equ U2RTSPIN, 1
 
 ; Default number base
 .equ BASE_DEFAULT, 10      ; 16 = hexadecimal, 10 = decimal
@@ -46,14 +30,14 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 .equ IDLE_MODE, 1
 
 ; Set to 1 for CPU load measurement
-.equ CPU_LOAD, 1
+.equ CPU_LOAD, 0
 
 ; CPU load indicator led definitions
 .equ CPU_LOAD_LED, 0       ; set to 0 to disable
-.equ CPU_LOAD_TRIS, TRISB
-.equ CPU_LOAD_PORT, PORTB
-.equ CPU_LOAD_BIT, 8
-.equ CPU_LOAD_LED_POLARITY, 0   ; 0 = low on port turns on led, 1 = high on port turns on led 
+.equ CPU_LOAD_TRIS, TRISA
+.equ CPU_LOAD_PORT, LATA
+.equ CPU_LOAD_BIT, 0
+.equ CPU_LOAD_LED_POLARITY, 1   ; 0 = low on port turns on led, 1 = high on port turns on led 
 
 ; Define the startup delay for turnkey words. Milliseconds
 .equ TURNKEY_DELAY, 2000  ; milliseconds
@@ -114,19 +98,14 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 ;;; Memory control defines
 .equ EEPROM_WRITE, 0x4004	; Write one word automatic erase
 .equ FLASH_ERASE,  0x4058	; Erase one row (64/96 bytes)
-.equ FLASH_WRITE,  0x4004   ; Write one row (64/96 bytes)
+.equ FLASH_WRITE,  0x4004	; Write one row (64/96 bytes)
 .equ PAIVT,        0x100
-.equ IBUFSIZEL,    0x0040
-.equ IBUFSIZEH,    0x0020
-.equ IBUFLEN1,     0x0020   ; Inner write loop
-.equ IBUFLEN2,     0x0001   ; Outer write loop
-.equ IBUFMASK,     0xffc0
+.equ FLASH_ROWSIZE,  0x0020	; Row size, words
+.equ FLASH_ROWS,     0x0001	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
-.if (0x10000 - PFLASH) < FLASH_SIZE
-.equ WANT_X, 1
-.else
 .equ WANT_X, 0
-.endif
 
 .equ FCY, (FREQ_OSC/2)
 .equ BAUD_DIV1, (FCY/4/BAUDRATE1)-1		  ; UART divisor
@@ -138,3 +117,7 @@ __FOSCSEL: .pword FNOSC_FRCPLL
 
 ; Amount of interrupt vectors
 .equ IVECSIZE, 126
+
+; USB CDC support
+.equ USB_CDC, 0		; 1 includes the USB CDC support into FlashForth
+			      

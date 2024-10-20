@@ -1,55 +1,36 @@
 ;;; FlashForth device configuration for the dsPIC33
 
-;;; Device memory sizes. Set according to your device.
-;;; You can increase the addressable flash range be decreasing the addressable ram.
-;;; Below is the setting for max amount of ram for dsPIC33FJ128GP802
-.equ FLASH_SIZE,     0x15800 ; Flash size in bytes without the high byte
-                             ; See program memory size in the device datasheet.
-.equ RAM_SIZE,       0x4000  ; Ram size in bytes
-
-.ifndecl IOL1WAY_OFF
-.equ IOL1WAY_OFF, 0xffff
-.endif
-
-;; Check the configuration for your particular chip from the datasheet.
-;config __FOSCSEL, IESO_ON & FNOSC_FRC
-;config __FOSCSEL, IESO_ON & FNOSC_FRCPLL
-config __FOSCSEL, IESO_ON & FNOSC_PRI
-config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_HS
-;config __FOSC, FCKSM_CSECMD & IOL1WAY_OFF & OSCIOFNC_OFF & POSCMD_NONE
-config __FWDT, WDTPOST_PS1024
-;config FPOR,
-;config FICD, ICS_PGD3
-
-.equ PLL_DIV, 30              ; Fcy is 27637 KHz (FRC_PLL)
+.equ PLL_DIV, 64              ; Fcy is 32768/2 KHz (FRC_PLL)
 .equ PLL_FBD, PLL_DIV-2
-.equ PLL_POST, 2              ; Do not change
-.equ PLL_PRE, 2               ; Do not change
-.equ FREQ_FIN, 7372800        ; PLL input frequency.
-;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/PLL_PRE/PLL_POST )  ; PLL output frequency. Used with FRCPLL
+.equ PLL_POST, 4              ; Do not change ( default value )
+.equ PLL_PRE, 7               ; PLL-input=2048 (divide with PLL_PRE+2)
+.equ FREQ_FIN, 18432000       ; PLL input frequency.
+;.equ FREQ_OSC, ( FREQ_FIN*PLL_DIV/(PLL_PRE+2)/PLL_POST )  ; 32768 PLL output frequency.
 
-;.equ  FREQ_OSC, 7370000        ; Used with FNOSC_FRC POSCMD_NONE
-.equ  FREQ_OSC, 15000000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
+;.equ  FREQ_OSC, 7372800        ; Used with FNOSC_FRC POSCMD_NONE
+.equ  FREQ_OSC, 18432000       ; Used with FNOSC_PRI POSCMD_HS/XT and external XTAL
 
 ; Define the UART used for the operator
 .equ OPERATOR_UART, 1        ; 1 or 2
 
 ;;; UART1 configuration
-.equ BAUDRATE1, 38400 				      ; Serial baudrate UART1
-.equ FC1_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ BAUDRATE1, 9600 				      ; Serial baudrate UART1
+.equ FC1_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD1, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ;;; UART2 configuration
 ;.equ BAUDRATE2, 38400 				      ; Serial baudrate UART2, comment if not used
-.equ FC2_TYPE, 1                          ; 1 = XON/XOFF, 2=CTS/RTS
+.equ FC2_TYPE, 0                          ; 1 = XON/XOFF, 2=CTS/RTS
 .equ AUTOBAUD2, 0                         ; 0 = to use fixed baudrate
                                           ; 1 = Autobaud, First char after reset must be 'U' (0x55)
 
 ; Map UART1 pins
 .ifdecl RPINR18
-.equ RPINR18VAL, 6     ; RP6 (U1RXPIN)
-.equ U1TXPIN, 5        ; RP5
+.equ RPINR18VAL, 9       ; RP9 RB9 PIN15(U1RXPIN)  analog board
+.equ U1TXPIN, 8          ; RP8 RB8 PIN14           analog board
+;.equ RPINR18VAL, 15     ; RP15 RB15 PIN26(U1RXPIN)  ZZ board
+;.equ U1TXPIN, 14        ; RP14 RB14 PIN25           ZZ board
 ;.equ RPINR18VAL, 11     ; U1RXPIN RP43 PB11 pin22 microstickplus
 ;.equ U1TXPIN, 10        ; PB10 pin21 microstickplus
 .equ U1RTSPORT, LATB
@@ -89,7 +70,7 @@ config __FWDT, WDTPOST_PS1024
 
 ; UART buffer sizes
 ; Valid sizes are 7, 15, 31, 63, 127, 255, 511, 1023, etc.
-.equ TX1_BUF_SIZE, 31  ; Use 0 for unbuffered TX.
+.equ TX1_BUF_SIZE, 0  ; Use 0 for unbuffered TX.
 .equ RX1_BUF_SIZE, 63
 .equ RX1_OFF_FILL, 8   ; Fill level for XOFF
 
@@ -101,7 +82,7 @@ config __FWDT, WDTPOST_PS1024
 .equ ERRATA_UTXBF, 0
 
 ;;; USER AREA sizes for the OPERATOR task
-.equ RETURN_STACK_SIZE, 160          ; 80 cells return stack
+.equ RETURN_STACK_SIZE, 512          ; 80 cells return stack
 .equ PARAMETER_STACK_SIZE, 96        ; 48 cells parameter stack
 .equ INTERRUPT_STACK_FRAME, 16       ; 8 cells interrupt parameter stack frame on return stack
 .equ TIB_SIZE, 84                    ; 84 chars tib size
@@ -146,11 +127,10 @@ config __FWDT, WDTPOST_PS1024
 .equ FLASH_ERASE,    0x4042  ; Memory page erase
 .equ FLASH_WRITE,    0x4001  ; Memory row write
 .equ FLASH_WRITE_SINGLE, 0x4003;Memory word program
-.equ IBUFSIZEL,      0x0400
-.equ IBUFSIZEH,      0x0200
-.equ IBUFLEN1,       0x0040   ; Inner write loop
-.equ IBUFLEN2,       0x0008   ; Outer write loop
-.equ IBUFMASK,       0xfc00
+.equ FLASH_ROWSIZE,  0x0040	; Row size, words
+.equ FLASH_ROWS,     0x0008	; Rows
+.equ FBUFSIZE,       FLASH_ROWSIZE*FLASH_ROWS*2
+.equ FBUFMASK,       ~(FBUFSIZE-1)
 
 
 .if (0x10000 - SFR_SIZE - RAM_SIZE) < FLASH_SIZE
@@ -167,7 +147,7 @@ config __FWDT, WDTPOST_PS1024
 .endif
 .equ write_delay, 20                      ; Flash write delay
 
-.if FLASH_SIZE > (0x10000 - PFLASH + (IBUFSIZEL*4))
+.if FLASH_SIZE > (0x10000 - PFLASH + (FBUFSIZE*2))
 .equ DPS_LOW,  0    ; EEPROM emulation after end of addressable kernel
 .else
 .equ DPS_LOW,  1    ; EEPROM emulation inside kernel
@@ -177,10 +157,13 @@ config __FWDT, WDTPOST_PS1024
 .equ DPS_BASE, DPS_ADDR&0xffff
 .equ DPS_PAGE, DPS_ADDR>>16
 .else               ; EEPROM emulation inside kernel
-.equ DPS_BASE, (KERNEL_END -  (IBUFSIZEL*4))  ; AND IBUFMASK in runtime
+.equ DPS_BASE, (KERNEL_END -  (FBUFSIZE*2))  ; AND IBUFMASK in runtime
 .equ DPS_PAGE, 0
 .endif
 
 ; Amount of interrupt vectors
-.equ IVECSIZE, 126
+.equ IVECSIZE, 128
 
+; USB CDC support
+.equ USB_CDC, 0		    ; 1 includes the USB CDC support into FlashForth
+			      

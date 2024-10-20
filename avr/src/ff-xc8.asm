@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          04.09.2021                                        *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -11,7 +11,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2021  Mikael Nordman
+; Copyright (C) 2024  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as 
@@ -31,11 +31,11 @@
 ;**********************************************************************
 
 ; Include the FlashForth configuration file
-#include <xc.h>
-#include <config-xc8.inc>
+#include <avr/io.h>
+#include "config-xc8.inc"
 
 ; Define the FF version date string
-#define DATE "04.09.2021"
+#define DATE "16.04.2024"
 #define datelen 10
 
 
@@ -57,8 +57,8 @@
 #endif
 #endif
 
-#define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
-#define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
+#define ubrr0val (FREQ_OSC/8/BAUDRATE0) - 1
+#define ubrr1val (FREQ_OSC/8/BAUDRATE1) - 1
 
 #if FREQ_OSC < 16384000
 .equ ms_value_tmr0, ((FREQ_OSC/1000/64) - 1)
@@ -106,18 +106,16 @@
 .equ NFA, 0x80      ; Name field mask
 .equ IMMED, 0x40    ; Immediate mask
 .equ INLINE, 0x20   ; Inline mask for 1 and 2 cell code
-.equ INLINE4, 0x00   ; Inline mask for 4 cell code
-.equ INLINE5, 0x00   ; Inline mask for 5 cell code
+.equ INLINE4, 0x00  ; Inline mask for 4 cell code
+.equ INLINE5, 0x00  ; Inline mask for 5 cell code
 .equ COMPILE, 0x10  ; Compile only mask
 .equ NFAmask, 0xf   ; Name field length mask
 
 ; FLAGS2
-.equ fFIND,     7   ; 0 = use LPM, 1 = use IFETCH
+.equ fCREATE,   7   ; 1 = Create has been performed
 .equ fIDLE,     6   ; 0 = busy, 1 = idle
 .equ fLOAD,     5   ; Load measurement ready
 .equ fLOADled,  4   ; 0 = no load led, 1 = load led on
-.equ fFC_tx1,   3   ; 0=Flo8 Control, 1 = no Flo8 Control   
-.equ fFC_tx0,   2   ; 0=Flo8 Control, 1 = no Flo8 Control   
 .equ ixoff_tx1, 1                    
 .equ ixoff_tx0, 0
 
@@ -139,6 +137,7 @@
 .equ LF_,0x0a
 .equ BS_,0x08
 .equ TAB_,0x09
+.equ NAK_,0x15
 
 #ifdef USBCON
 #define USB_CODE 0x300
@@ -155,13 +154,15 @@
 
 #if (FLASHEND == 0x3ffff)             // 128 Kwords flash
 #define KERNEL_SIZE 0x2200
-#define FLASH_HI    (0x10000 - PFLASH - SPM_SIZE)
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0x1ffff)            // 64 Kwords flash
 #define KERNEL_SIZE 0x2100
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0xffff)             // 32 Kwords flash
 #define KERNEL_SIZE 0x2000
+#define FLASH_HI    (0xffff)
 
 #elif (FLASHEND == 0x7fff)            // 16 Kwords flash
 #define KERNEL_SIZE (0x2000 + USB_CODE)
@@ -179,7 +180,7 @@
 .equ EEPROM_HI , PEEPROM + E2END
 .equ RAM_HI , RAMEND
 
-#include <macros-xc8.inc>
+#include "macros-xc8.inc"
         
 ;;; USER AREA for the OPERATOR task
 .equ ursize,       RETURN_STACK_SIZE
@@ -941,7 +942,7 @@ NEQUALSFETCH:
         rjmp    ROT
 ;***************************************************
 ; N=    c-addr nfa -- n   string:name cmp
-;             n=0: s1==s2, n=ffff: s1!=s2
+;             n=0: s1==s2, n!=0: s1!=s2
 ; N= is specificly used for finding dictionary entries
 ; It can also be used for comparing strings shorter than 16 characters,
 ; but the first string must be in ram and the second in program memory.
@@ -951,59 +952,61 @@ NEQUAL_L:
         .ascii  "n="
         .align  1
 NEQUAL:
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
         ld      xl, y+
-        ld      xh, y+
-        m_lpm   tosh
-        andi    tosh, 0xf
-        ld      tosl, x+
-        sub     tosl, tosh
+        ld      xh, y+             ; c-addr
+NEQUAL_FETCH:
+        movw    z, tosl
+        subi    zh, hi8(PFLASH)    ; nfa in Z
+        m_lpm   tosl
+        andi    tosl, 0xf
+        ld      t2, x+
+        mov     t3, t2
+        sub     t2, tosl
         brne    NEQUAL3
-        dec     tosh
 NEQUAL2:
         m_lpm   tosl
-        ld      t0, x+
-        sub     tosl, t0
+        ld      t2, x+
+        sub     t2, tosl
         brne    NEQUAL3
-        dec     tosh
-        brpl    NEQUAL2
+        dec     t3
+        brne    NEQUAL2
 NEQUAL3:
-        mov     tosh, tosl
+        mov     tosl, t2
+        clr     tosh
         ret
 
 ; SKIP   c-addr u c -- c-addr' u'
 ;                          skip matching chars
-; u (count) must be smaller than 256
         fdw     NEQUAL_L
 SKIP_L:
         .byte     NFA|4
         .ascii  "skip"
         .align  1
 SKIP:
-
-        ld      tosh, y+   ; count
-        ld      t0, y+
-        ld      xl, y+
-        ld      xh, y+    ; c-addr
+        mov     t1, tosl
+        ld      tosl, y+    ; countl
+        ld      tosh, y+    ; counth
+        ld      xl, y+      ; c-addr
+        ld      xh, y+      ; c-addr
 SKIP0:
-        dec     tosh
+        sbiw    tosl, 0
         breq    SKIP2
-        ld      t0, x+
-        cpi     t0,  TAB_
-        breq    SKIP0
-
-        cp      t0, tosl
-        brne    SKIP1
-        rjmp    SKIP0
+        ld      t0, x
+        
+        cpi     t1, 32
+        brne    SKIP3
+        cpi     t0,  32
+        brcs    SKIP1
+SKIP3:
+        cp      t0, t1
+        brne    SKIP2
 SKIP1:
-        sbiw    xl, 1        
+        adiw    xl, 1
+        sbiw    tosl, 1
+        rjmp    SKIP0
 SKIP2:
         st      -y, xh
         st      -y, xl
-        mov     tosl, tosh
-        clr     tosh
-        adiw    tosl, 1
         ret
 
 
@@ -1015,34 +1018,30 @@ SCAN_L:
         .ascii  "scan"
         .align  1
 SCAN:
-        
-        mov     xl, tosl
-        ld      xh, y+
-        ld      zl, y+
-        ld      zl, y+
-        ld      zh, y+
-        rjmp    SCAN3
+        mov     t1, tosl    ; delimiter
+        ld      tosl, y+    ; count
+        ld      tosh, y+    ; dummy
+        ld      xl, y+      ; c-addr
+        ld      xh, y+      ; c-addr
 SCAN1:
-        ld      tosl, z+
-        cpi     tosl, TAB_
+        sbiw    tosl, 0
+        breq    SCAN4
+        ld      t0, x
+        
+        cpi     t1, 32
         brne    SCAN2
-        rjmp    SCAN25
+        cpi     t0, 32
+        brcs    SCAN4
 SCAN2:
-        cp      tosl, xl
-        brne    SCAN3
-SCAN25:
-        sbiw    zl, 1
-        movw    tosl, z
-        rjmp    SCAN4
+        cp      t1, t0
+        breq    SCAN4
 SCAN3:
-        dec     xh
-        brpl    SCAN1
-        movw    tosl, z
+        adiw    xl, 1
+        sbiw    tosl, 1
+        rjmp    SCAN1
 SCAN4:
-        m_dup
-        mov     tosl, xh
-        adiw    tosl, 1
-        mov     tosh, r_zero
+        st      -y, xh
+        st      -y, xl
         ret
 
 ; : mtst ( mask addr -- flag )
@@ -1070,25 +1069,7 @@ FCY_L:
         .align  1
         rcall   DOCREATE
         .word     FREQ_OSC / 1000
-
-;;; Check parameter stack pointer
-        .byte     NFA|3
-        .ascii  "sp?"
-        .align  1
-check_sp:
-        rcall   SPFETCH
-        call    R0_
-        rcall   FETCH_A
-        call    S0
-        rcall   FETCH_A
-        rcall   ONEPLUS
-        rcall   WITHIN
-        rcall   XSQUOTE
-        .byte     3
-        .ascii  "SP?"
-        .align  1
-        rcall   QABORT
-        ret
+        
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         fdw     FCY_L
@@ -1526,7 +1507,7 @@ STORCOLON:
 
 ; 2@    a-addr -- x1 x2            fetch 2 cells
 ;   DUP @ SWAP CELL+ @ ;
-;   the lower address will appear on top of stack
+;   the higher address will appear on top of stack
         fdw     COMMAXT_L
 TWOFETCH_L:
         .byte     NFA|2
@@ -1541,7 +1522,7 @@ TWOFETCH:
 
 ; 2!    x1 x2 a-addr --            store 2 cells
 ;   SWAP OVER ! CELL+ ! ;
-;   the top of stack is stored at the lower adrs
+;   the top of stack is stored at the higher address
         fdw     TWOFETCH_L
 TWOSTORE_L:
         .byte     NFA|2
@@ -1589,11 +1570,25 @@ TWOSWAP:
         rcall   RFROM
         ret
 
+	fdw     TWOSWAP_L
+TWOOVER_L:
+        .byte     NFA|5
+        .ascii  "2over"
+        .align  1
+TWOOVER:
+	m_dup
+        ldd     tosl, y+6
+        ldd     tosh, y+7
+        m_dup
+        ldd     tosl, y+6
+        ldd     tosh, y+7
+	ret
+
 ; INPUT/OUTPUT ==================================
 
 ; SPACE   --                      output a space
 ;   BL EMIT ;
-        fdw     TWOSWAP_L
+        fdw     TWOOVER_L
 SPACE_L:
         .byte     NFA|5
         .ascii  "space"
@@ -1784,18 +1779,37 @@ XSQUOTE:
         ror     zl
         m_ijmp
 
+PARSEQ:
+        rcall   DOLIT
+        .word     0x22
+        rjmp    PARSE
+
+;---------------------------------------------------
+; s"  "parse state if postpone sliteral then
+
         fdw     XSQUOTE_L
 SQUOTE_L:
-        .byte      NFA|IMMED|COMPILE|2
+        .byte     NFA|IMMED|2
         .ascii  "s"
         .byte   0x22
         .align  1
 SQUOTE:
+        rcall   PARSEQ
+        rcall   STATE_
+        rcall   ZEROSENSE
+        breq    SLIT1
+SLIT:
         rcall   DOCOMMAXT
         fdw     XSQUOTE
         rcall   ROM_
-        rcall   CQUOTE
-        jmp     FRAM
+        rcall   SCOMMA
+        rcall   ALIGN
+        rcall   FRAM
+SLIT1:
+        ret
+
+;---------------------------------------------------
+; ,"  "parse s,
 
         fdw     SQUOTE_L
 CQUOTE_L:
@@ -1803,17 +1817,18 @@ CQUOTE_L:
         .ascii  ","
         .byte   0x22
         .align  1
-CQUOTE: 
-        rcall   DOLIT
-        .word     0x22
-        rcall   PARSE
+CQUOTE:
+        rcall   PARSEQ
+SCOMMA:
         rcall   HERE
         rcall   OVER
         rcall   ONEPLUS
         rcall   ALIGNED
         rcall   ALLOT
-        jmp     PLACE
+        rjmp    PLACE
 
+;---------------------------------------------------
+; ."
 
         fdw     CQUOTE_L
 DOTQUOTE_L:
@@ -2516,14 +2531,14 @@ HOLD:   rcall   TRUE_
         jmp     CSTORE
 
 ; <#    --              begin numeric conversion
-;   PAD HP ! ;          (initialize Hold Pointer)
+;   HB HP ! ;          (initialize Hold Pointer)
         fdw     HOLD_L
 LESSNUM_L:
         .byte     NFA|2
         .ascii  "<#"
         .align  1
 LESSNUM: 
-        rcall   PAD
+        rcall   HB
         rcall   HP
         jmp     STORE
 
@@ -2582,7 +2597,7 @@ NUMGREATER:
         rcall   TWODROP
         rcall   HP
         rcall   FETCH_A
-        rcall   PAD
+        rcall   HB
         rcall   OVER
         jmp     MINUS
 
@@ -2734,19 +2749,19 @@ HP_L:
 HP:     rcall   DOUSER
         .word     uhp
 
-; PAD     -- a-addr        User Pad buffer
+; HB     -- a-addr        Number formatting buffer
         fdw     HP_L
-PAD_L:
-        .byte     NFA|3
-        .ascii  "pad"
+HB_L:
+        .byte     NFA|2
+        .ascii  "hb"
         .align  1
-PAD:
+HB:
         rcall   TIB
         rcall   TIBSIZE
         jmp     PLUS
 
 ; BASE    -- a-addr       holds conversion radix
-        fdw     PAD_L
+        fdw     HB_L
 BASE_L:
         .byte     NFA|4
         .ascii  "base"
@@ -2873,7 +2888,7 @@ WORD:
         rcall   SWOP
         rcall   ONEMINUS
         rcall   TUCK
-        jmp     CSTORE          ; Write the length into the TIB ! 
+        jmp     CSTORE
 
 ; CMOVE  src dst u --  copy u bytes from src to dst
 ; cmove swap !p>r for c@+ pc! p+ next r>p drop ;
@@ -2978,54 +2993,33 @@ BRACFIND_L:
         .ascii  "(f)"
         .align  1
 findi:
-        sbr     FLAGS2, (1<<fFIND)
 findi1:
-        movw    al, tosl    ; c-addr nfa
+FIND_1: 
+        ld      xl, y
+        ldd     xh, y+1         ; X = c-addr
+        m_dup                   ; c-addr nfa nfa
+        rcall   NEQUAL_FETCH    ; c-addr nfa flag
+        sbiw    tosl, 0         ; c-addr nfa flag
+        breq    findi2          ; word found
+        m_drop                  ; c-addr nfa
+        sbiw    tosl, 2         ; c-addr lfa
         movw    z, tosl
-        subi    zh, hi8(PFLASH)
-        ldd     xl, y+0
-        ldd     xh, y+1
-        m_lpm   tosh
-        andi    tosh, 0xf
-        ld      tosl, x+
-        sub     tosl, tosh
-        brne    FEQUAL3
-        dec     tosh
-FEQUAL2:
-        m_lpm   tosl
-        ld      t0, x+
-        sub     tosl, t0
-        brne    FEQUAL3
-        dec     tosh
-        brpl    FEQUAL2
-FEQUAL3:
-        cpi     tosl, 0
-        movw    tosl, al    ; c-addr nfa
-        breq    findi4      ; ( c-addr 0 )
-        sbiw    tosl, 2     ; c-addr lfa
-
-        sbrc    FLAGS2, fFIND
-        rjmp    F_LFA_FETCH
-        movw    z, tosl
-        subi    zh, hi8(PFLASH)
-        m_lpm   tosl
-        m_lpm   tosh
-        rjmp    findi2
-F_LFA_FETCH:
-        call    FETCH      ; c-addr nfa
-        cbr     FLAGS2, (1<<fFIND)
-findi2:
-        sbiw    tosl, 0     ; c-addr nfa
-        brne    findi1
+        sub_pflash_z
+        m_lpm    tosl
+        m_lpm    tosh           ; c-addr nfa
+        sbiw    tosl, 0         ; c-addr nfa
+        brne    findi1  
         rjmp    findi3
-findi4:
-        std     y+0, tosl
-        std     y+1, tosh    ; nfa nfa
-        rcall   NFATOCFA     ; nfa xt
+findi2:
+        rcall   DROP            ; c-adde nfa
+        rcall   NIP             ; nfa
+        rcall   DUP
+        rcall   NFATOCFA
         rcall   SWOP
-        rcall   IMMEDQ       ; xt flag
+        rcall   IMMEDQ
         rcall   ZEROEQUAL
-        ori     tosl, 1
+        rcall   ONE
+        rcall   OR_
 findi3: 
         ret
 
@@ -3056,7 +3050,8 @@ FIND:
         sbiw    tosl, 0
         brne    FIND1
         rcall   DROP
-        rcall   LATEST_
+        rcall   DOLIT
+        .word   latest
         rcall   FETCH_A
         rcall   findi
 FIND1:
@@ -3319,7 +3314,7 @@ TOIN_L:
 TOIN:
         rcall   DOUSER
         .word   utoin
-
+        
 ; 'SOURCE  -- a-addr        two cells: len, adrs
 ; In RAM ?
         fdw     TOIN_L
@@ -3383,8 +3378,9 @@ IPARSEWORD2:
         rjmp    IEXECUTE        ; Not a compile only word
         rcall   STATE_          ; Compile only word check
         rcall   XSQUOTE
-        .byte     12
+        .byte   13
         .ascii  "COMPILE ONLY"
+        .byte   NAK_
         .align  1
         rcall   QABORT
 IEXECUTE:
@@ -3562,8 +3558,8 @@ TEN:
         .word     10
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
-;        .word     link
-; link    set     $
+        fdw DOTSTATUS_L
+DP_TO_RAM_L:
         .byte     NFA|3
         .ascii  "dp>"
         .align  1
@@ -3575,8 +3571,8 @@ DP_TO_RAM:
         jmp     CMOVE
 
 ; >dp ( -- ) Copy only changed turnkey, dp's and latest from ram to eeprom
-;        .word     link
-; link    set     $
+        fdw     DP_TO_RAM_L
+DP_TO_EEPROM_L:
         .byte     NFA|3
         .ascii  ">dp"
         .align  1
@@ -3609,7 +3605,7 @@ DP_TO_EEPROM_3:
         rcall   R_TO_P
         jmp     DROP
 
-        fdw     DOTSTATUS_L
+        fdw     DP_TO_EEPROM_L
 FALSE_L:
         .byte     NFA|5
         .ascii  "false"
@@ -3645,7 +3641,7 @@ QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
 QUIT1: 
-        rcall   check_sp
+        cbr     FLAGS2, (1<<fCREATE)
         rcall   CR
         rcall   TIB
         rcall   DUP
@@ -3698,8 +3694,9 @@ QABORTQ_L:
         .align  1
 QABORTQ:
         rcall   XSQUOTE
-        .byte     1
+        .byte   2
         .ascii  "?"
+        .byte   NAK_
         .align  1
         jmp     QABORT
 
@@ -3869,6 +3866,10 @@ CREATE_L:
         .ascii  "create"
         .align  1
 CREATE:
+        sbrc    FLAGS2, fCREATE
+        rcall   IFLUSH
+        sbrc    FLAGS2, fCREATE
+        rcall   DP_TO_EEPROM
         rcall   BL
         rcall   WORD            ; Parse a word
 
@@ -3889,6 +3890,7 @@ CREATE:
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
+        sbr     FLAGS2, (1<<fCREATE)
         rcall   IHERE
         rcall   ALIGNED
         rcall   IDP             ; Align the flash DP.
@@ -4160,7 +4162,7 @@ LATEST_L:
 LATEST_:
         call    DOCREATE
         .word     dpLATEST
-
+        
 ; S0       -- a-addr      start of parameter stack
         fdw     LATEST_L
 S0_L:
@@ -4353,7 +4355,7 @@ DOTS:
         rcall   FETCH_A
         rcall   TWOMINUS
 DOTS1:
-        call   TWODUP
+        call    TWODUP
         rcall   LESS
         rcall   ZEROSENSE
         breq    DOTS2
@@ -4371,6 +4373,7 @@ DUMP_L:
         .ascii  "dump"
         .align  1
 DUMP:
+        adiw    tosl, 15
         rcall   DOLIT
         .word     16
         rcall   USLASH
@@ -4484,15 +4487,6 @@ PFL:
          call   DOCREATE
         .word     OFLASH
 ;***************************************************************
-        fdw    PFL_L
-ZFL_L:
-        .byte     NFA|3
-        .ascii   "zfl"
-        .align  1
-ZFL:
-         call   DOCREATE
-        .word   0
-;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .byte     NFA|4
         .ascii   ",?0="    ; Just for see to work !
@@ -4544,7 +4538,7 @@ BRNEC:
 ; IF       -- adrs   conditional forward branch
 ; Leaves address of branch instruction 
 ; and compiles the condition byte
-        fdw     ZFL_L
+        fdw     PFL_L
 IF_L:
         .byte     NFA|IMMED|COMPILE|2
         .ascii  "if"
@@ -4974,7 +4968,18 @@ DDOT_L:
         jmp     SPACE_
 ;****************************************************
         fdw      DDOT_L
-MEMHI_L:
+9:
+        .byte   NFA|6
+        .ascii  "unused"
+        .align  1
+UNUSED:
+        rcall   MEMHI
+        call    HERE
+        call    MINUS
+        jmp     ONEPLUS
+
+        fdw      9b
+9:
         .byte     NFA|2
         .ascii  "hi"
         .align  1
@@ -4989,10 +4994,9 @@ FLASHHI:
         .word      EEPROM_HI
         .word      RAM_HI
 
-#if FLASHEND > 0xffff
 ;;; x@ ( addrl addru -- x )
-        fdw     A_FROM_L
-XFETCH_L:
+        fdw     9b
+9:
         .byte     NFA|2
         .ascii  "x@"
         .align  1
@@ -5009,8 +5013,8 @@ XFETCH_L:
 	ret
 	
 ;;; x! ( x addrl addru -- )
-        fdw     XFETCH_L
-XSTORE_L:
+        fdw     9b
+9:
         .byte     NFA|2
         .ascii  "x!"
         .align  1
@@ -5018,11 +5022,11 @@ XSTORE_L:
         m_drop
         call   XUPDATEBUF
         jmp    ISTORE1
-#endif
 
 ;***************************************************
-
-        fdw      MEMHI_L
+#include "registers.inc"
+;***************************************************
+        fdw      9b
 L_FETCH_P:
         .byte      NFA|INLINE|2
         .ascii  "@p"
@@ -5043,6 +5047,17 @@ PCFETCH:
         jmp     CFETCH
 ;***************************************************
         fdw      L_PCFETCH
+L_PAD:
+        .byte   NFA|3
+        .ascii  "pad"
+        .align  1
+PAD:
+        m_dup
+        lds     tosl, dpRAM
+        lds     tosh, dpRAM+1
+        ret
+;***************************************************
+        fdw      L_PAD
 L_PTWOPLUS:
 kernellink:
         .byte     NFA|INLINE|3
@@ -5320,7 +5335,7 @@ LOAD_LED_END:
 #else
         m_in     t0, MCUCR
         cbr     t0, (1<<SE)
-        m_out    MCUCR, r_zero
+        m_out    MCUCR, t0
 #endif
 IDLE_LOAD1:
 #if CPU_LOAD_LED == 1
@@ -5568,6 +5583,7 @@ WARM_2:
         rcall   DOLIT
         .word   warmlitsize
         call    CMOVE
+        
 ; init cold data to eeprom
         rcall   DOLIT
         .word   dp_start
@@ -5575,7 +5591,7 @@ WARM_2:
         rcall   TRUE_
         call    EQUAL
         call    ZEROSENSE
-        breq    WARM_3  
+        breq    WARM_3
         rcall   EMPTY
 WARM_3:
 ; Start watchdog timer
@@ -5652,6 +5668,9 @@ WARM_3:
 ;        m_out    UBRR0H, r_zero
         ldi     t0, ubrr0val
         m_out   UBRR0L, t0
+        ; Enable double speed
+        ldi     t0, (1<<U2X0)
+        m_out   UCSR0A,t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0)
         m_out   UCSR0B,t0
@@ -5676,6 +5695,9 @@ WARM_3:
 ;        m_out    UBRR1H, r_zero
         ldi     t0, ubrr1val
         m_out    UBRR1L, t0
+       ; Enable double speed
+        ldi     t0, (1<<U2X1)
+        m_out   UCSR1A,t0
         ; Enable receiver and transmitter, rx1 interrupts
         ldi     t0, (1<<RXEN1)|(1<<TXEN1)|(1<<RXCIE1)
         m_out    UCSR1B,t0
@@ -5712,19 +5734,19 @@ WARM_3:
         call    ZEROSENSE
         breq    STARTQ2
         call    XSQUOTE
-        .byte     3
+        .byte   3
         .ascii  "ESC"
         .align  1
         call    TYPE
         rcall   DOLIT
-        .word     TURNKEY_DELAY
-        call   MS
+        .word   TURNKEY_DELAY
+        call    MS
         call    KEYQ
         call    ZEROSENSE
         breq    STARTQ1
         call    KEY
         rcall   DOLIT
-        .word     0x1b
+        .word   0x1b
         call    EQUAL
         call    ZEROSENSE
         brne    STARTQ2
@@ -5835,13 +5857,14 @@ ISTORE:
         call    IUPDATEBUF
 ISTORE1:
         m_drop
-        ldi     xl, lo8(ibuf)
+        lds     xl, iaddrl
+        sbrc    xl, 0
+        rjmp    ISTORERR0
+        andi    xl, (PAGESIZEB-1)
+#ifdef USBCON
+        subi    xl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
         ldi     xh, hi8(ibuf)
-        lds     t0, iaddrl
-        sbrc    t0, 0
-        jmp     ISTORERR0
-        andi    t0, (PAGESIZEB-1)
-        add     xl, t0
         st      x+, tosl
         st      x+, tosh
         rjmp    ICSTORE_POP
@@ -5900,18 +5923,21 @@ LOCKEDQ:
 IFETCH:
         movw    z, tosl
         sub_pflash_z
+        sbrs    FLAGS1, idirty
+        rjmp    IIFETCH
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zl
         andi    t0, (~(PAGESIZEB-1)&0xff)
         cp      t0, ibasel
         brne    IIFETCH
-        ldi     xl, lo8(ibuf)
-        ldi     xh, hi8(ibuf)
         andi    zl, (PAGESIZEB-1)
-        add     xl, zl
-        ld      tosl, x+
-        ld      tosh, x+
+#ifdef USBCON
+        subi    zl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
+        ldi     zh, hi8(ibuf)
+        ld      tosl, z+
+        ld      tosh, z+
         ret
 IIFETCH:
         m_lpm    tosl     ; Fetch from Flash directly
@@ -5919,7 +5945,7 @@ IIFETCH:
         ret
                 
         fdw     STORE_L
-A_FROM_L:
+9:
         .byte     NFA|2
         .ascii  "a>"
         .align  1
@@ -5929,11 +5955,7 @@ A_FROM:
         mov     tosh, ah
         ret
 
-#if FLASHEND > 0xffff
-        fdw     XSTORE_L
-#else
-        fdw     A_FROM_L
-#endif
+        fdw     9b
 FETCH_L:
         .byte     NFA|1
         .ascii  "@"
@@ -6001,11 +6023,12 @@ ECFETCH:
 ICSTORE:
         call    IUPDATEBUF
         m_drop
-        ldi     xl, lo8(ibuf)
+        lds     xl, iaddrl
+        andi    xl, (PAGESIZEB-1)
+#ifdef USBCON
+        subi    xl, lo8(usb_config_status - ibuf) ; USB variables
+#endif
         ldi     xh, hi8(ibuf)
-        lds     t0, iaddrl
-        andi    t0, (PAGESIZEB-1)
-        add     xl, t0
         st      x+, tosl
 ICSTORE_POP:
         sbr     FLAGS1, (1<<idirty)
@@ -6031,6 +6054,7 @@ CSTORE1:
         cpi     tosh, hi8(OFLASH)
         brcc    ICSTORE
 ECSTORE:
+        cli
         sbic    _SFR_IO_ADDR(EECR), EEPE
         rjmp    ECSTORE
         subi    tosh, hi8(PEEPROM)
@@ -6043,6 +6067,7 @@ ECSTORE:
 ECSTORE1:
         sbic    _SFR_IO_ADDR(EECR), EEPE
         rjmp    ECSTORE1
+        sei
 #if DEBUG_FLASH == 1
         rcall   DOLIT
         .word     'E'
@@ -6268,8 +6293,9 @@ ISTORERR0:
 ISTORERR:
         call   DOTS
         call    XSQUOTE
-        .byte     3
+        .byte   4
         .ascii  "AD?"
+        .byte   NAK_
         .align  1
         call    TYPE
         jmp    ABORT
@@ -6332,6 +6358,9 @@ KERNEL_END:
 ;***********************************************************
 .section .nrww, code, address(NRWW_START)
 ;*************************************************************
+; In case of boot loader reset vector is active
+; this jmp will ensure correct warm start anyway.
+        jmp  WARM_0
 umstar0:
         push t2
         push t3
@@ -6369,6 +6398,7 @@ umslashmod0:
         set  ; Set T flag
         jmp  WARM_0
 umslashmodstart:
+        push t3
         movw t4, tosl
 
         ld t3, Y+
@@ -6399,7 +6429,7 @@ umslashmod1:
 
         ; dividend is large enough
         ; do the subtraction for real
-        ; and set lo8est bit
+        ; and set lowest bit
         inc tosl
         sub t3, t4
         sbc t6, t5
@@ -6413,6 +6443,7 @@ umslashmod3:
         st -Y,t6
         st -Y,t3
         ; Quotient is already in tos ; 6 + 272 + 4 =282 cycles
+        pop t3
         ret
 
 ISTORERR3:
@@ -6427,8 +6458,8 @@ ISTORERR3:
 ;   ibasehi = iaddrhi
 ;endif
 IUPDATEBUF:
-	      sub_pflash_tos
-	      mov     t0, r_zero
+	    sub_pflash_tos
+	    mov     t0, r_zero
         rjmp    XUPDATEBUF2
 XUPDATEBUF:
 #if FLASHEND > 0xffff

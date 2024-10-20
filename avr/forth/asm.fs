@@ -1,6 +1,6 @@
 \ *********************************************************************
 \    Filename:      asm.txt                                           *
-\    Date:          10.09.2019                                        *
+\    Date:          03.06.2023                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           Atmega                                            *
 \    Copyright:     Mikael Nordman                                    *
@@ -221,7 +221,7 @@ f00f constant ie,   \ if/until interrupt enabled
 
 : not, 0400 xor ;   \ Invert the condition code
 
-: if, ( cc -- addr) i, [ ' if #8 + pfl - zfl d2/ jmp, ] ;
+: if, ( cc -- addr) i, [ ' if #8 + pfl - 0 d2/ jmp, ] ;
 : else, postpone else ;
 : then, postpone then ;
 : begin, postpone begin ;

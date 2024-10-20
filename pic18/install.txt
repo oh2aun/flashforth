@@ -1,54 +1,27 @@
-Compiling FlashForth 5.0
-------------------------
+Compiling FlashForth 5
+----------------------
 
-FlashForth 5.0 (FF) can be compiled
+FlashForth 5 (FF) can be compiled
 with the USB support and without.
 
-FF may also be compiled for installation via
-a device programmer (e.g. PicKit2) or a bootloader.
-The bootloadable FF has been tested with is the
-PICDEM FS USB Demo tool bootloader available from MicroChip.
+FF can be compiled for installation with a device programmer (e.g. PicKit2/3/4).
 
-The common configuration parameters are in p18f-main.cfg.
+The common configuration parameters are in p18f-main.inc.
 The device configuration bits and the USB definitions are in the
 device specific configuration files.
 
-UART mode
----------
-For operation with the UART as the OPERATOR interface,
-define a MPLAB or MPLABX project which compiles ff-pic18.asm.
+Use MPLABX v5.50 and XC8 PIC-AS v.2.32 or later.
 
-Undefine USB_CDC in the configuration file.
+Define a project with one source file 'ff-pic18.S'.
+Select a chip, pic-as and a device programmer.
+Update p18f-main.inc and device include file with your parameters.
+For some chips the peripheral pin selections for the UARTs 
+must be defined according to your hardware design.
 
-If you use a device programmer, use the FF_0000.lkr file 
-and define CONFIG_RESET 0x0000 in p18f-main.cfg.
+Note the assembler additional parameters that must be defined
+according to the instructions in the include files.
 
-If you use a bootloader, use the FF_0800.lkr file 
-and define CONFIG_RESET 0x0800 in p18f-main.cfg.
-
-USB mode
---------
-For operation with the USB CDC serial emulation as the OPERATOR
-interface, define a MPLAB or MPLABX project which compiles
-ff-pic18.asm and usbcdc.asm
-
-Define USB_CDC in the configuration file.
-p18f14k50.cfg, p18f2455-2550-4455-4550.cfg,
-p18f2458-2553-4458-4553.cfg or p18f24k50-25k50-45k50.cfg
-
-If you use a device programmer, use the FF_USB_0000.lkr file 
-and define CONFIG_RESET 0x0000 in p18f-main.cfg.
-
-If you use a bootloader, use the FF_USB_0800.lkr file 
-and define CONFIG_RESET 0x0800 in p18f-main.cfg.
-
-PIC18F14K50 has its own linker file for the USB mode.
-
-The result of the compilation is a HEX file which can then be moved
-to the target processor, either via a device programmer or a bootloader.
-
-NOTE :
 The USB VID and PID and the INF file provided with FlashForth
 are purely for test purposes and for personal use.
-It can be changed in the usbcdc.asm file.
+These can be changed in the ff-usbcdc.S file.
 

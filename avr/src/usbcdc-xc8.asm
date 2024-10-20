@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
-;    Filename:      usbcdc.asm                                        *
-;    Date:          18.04.2021                                        *
+;    Filename:      usbcdc-xc8.asm                                    *
+;    Date:          16.04.2024                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2021  Mikael Nordman
+; Copyright (C) 2024  Mikael Nordman
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License version 3 as
@@ -40,9 +40,9 @@ device_dsc:
                            ; DEVICE descriptor type
         .word   0x0110     ; USB Spec Release Number in BCD format
         .byte   0x02,0x00  ; Class Code CDC device
-                         ; Subclass 
+                           ; Subclass 
         .byte   0x00,0x20  ; Protocol
-                         ; EP0 packet size = 32 bytes
+                           ; EP0 packet size = 32 bytes
         .word   U_VID      ; Vendor ID
         .word   U_PID      ; Product ID
         .word   0x0000     ; Device release Number in BCD
@@ -83,7 +83,7 @@ USB_CFG:
         .byte 0x05,0x24,0x00,0x10,0x01 ; interface header FD  
         .byte 0x04,0x24,0x02,0x02      ; interface ACM FD
         .byte 0x05,0x24,0x06,0x00,0x01 ; interface Union FD
-        .byte 0x07,0x05,0x82,0x03,0x08,0x00,0x10 ; endpoint notification
+        .byte 0x07,0x05,0x82,0x03,0x08,0x00,0xff ; endpoint notification
         .byte 0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         .byte 0x07,0x05,0x03,0x02,0x08,0x00,0x00 ; endpoint data out
         .byte 0x07,0x05,0x84,0x02,0x08,0x00,0x00 ; endpoint data in
@@ -110,8 +110,8 @@ USB_PLL_WAIT:
         andi    t0, (1<<PLOCK)
         breq    USB_PLL_WAIT      ; Wait for PLL Lock to be achieved
         m_sbi   USBCON, USBE      ; Enable USB Controller
-        m_cbi   USBCON, FRZCLK      ; Unfreeze the clock
-        sts     UDCON, r_zero        ; Full speed mode and ATTACH
+        m_cbi   USBCON, FRZCLK    ; Unfreeze the clock
+        sts     UDCON, r_zero     ; Full speed mode and ATTACH
         sts     usb_config_status, r_zero
 USB_ON_RET:
         ret
@@ -159,6 +159,13 @@ USB_RET:
         ret
 
 GET_DESCRIPTOR_SEND:
+        lds     t0, wLength
+        cp      t0, t1
+        lds     t0, wLength+1
+        cpc     t0, r_zero
+        brcc    1f
+        lds     t1, wLength     ; send no more than requested
+1:
         rcall   USB_WAIT_TX
         lds     t0, UEINTX
         andi    t0, (1<<RXOUTI)
@@ -179,11 +186,12 @@ GET_DESCRIPTOR_SEND2:
         rjmp    TXINI_CLR
 
 USB_IN_MSG:
+        rcall   USB_WAIT_TX
         ld      t0, z+
         sts     UEDATX, t0
         dec     t1
         brne    USB_IN_MSG
-        ret
+        rjmp    TXINI_CLR
 
 USB_STALL:
         lds     t0, UECONX
@@ -252,7 +260,7 @@ GET_DEVICE_DESCRIPTOR:
 GET_CONFIGURATION_DESCRIPTOR:
         ldi     zl, lo8(USB_CFG)
         ldi     zh, hi8(USB_CFG)
-        lds     t1, wLength
+        ldi     t1, 0x3e
         rjmp    GET_DESCRIPTOR_SEND
 GET_STRING_DESCRIPTOR:
         lds     t0, wIndex
@@ -275,19 +283,21 @@ SET_STUFF:
         breq    USB_SET_CONFIGURATION
         cpi     t0, 0x05
         breq    SET_ADDR
-        cpi     t0, 0x22
-        breq    SET_CONTROL_LINE_STATE
         cpi     t0, 0x20
         breq    SET_LINE_CODING
+        cpi     t0, 0x22
+        breq    SET_CONTROL_LINE_STATE
         rjmp    USB_STALL
 SET_LINE_CODING:
-        rcall   TX_WAIT
+        lds     t0, UEINTX
+        andi    t0, (1<<RXOUTI)
+        breq    SET_LINE_CODING
         ldi     zl, lo8(line_coding)
         ldi     zh, hi8(line_coding)
         ldi     t1, 7
         rjmp    USB_OUT_MSG
 USB_SET_CONFIGURATION:
-        rcall   TX_WAIT
+        rcall   TXINI_CLR
         ; Interrupt Notification EP
         sts     UENUM, r_two
         sts     UECONX, r_one
@@ -314,7 +324,7 @@ USB_SET_CONFIGURATION:
         sts     UERST, r_zero
         lds     t0, wValue
         sts     usb_config_status, t0
-        ret
+        rjmp    INIT_LINE_CODING
 SET_ADDR:
         lds     t0, wValue
         sts     UDADDR, t0
@@ -338,7 +348,8 @@ USB_OUT_MSG:
         st      z+, t0
         dec     t1
         brne    USB_OUT_MSG
-        ret
+        rcall   RXOUTI_CLR
+        rjmp    TXINI_CLR
 
 TXINI_SET:
         ldi     t0, (1<<TXINI)
@@ -348,6 +359,9 @@ UEINTX_SET:
         sts     UEINTX, t4
         ret
 
+RXOUTI_CLR:
+        ldi     t0, ~(1<<RXOUTI)
+        rjmp    UEINTX_CLR
 FIFOCON_CLR:
         ldi     t0, ~(1<<FIFOCON)
         rjmp    UEINTX_CLR
@@ -357,6 +371,19 @@ UEINTX_CLR:
         lds     t4, UEINTX
         and     t4, t0
         sts     UEINTX, t4
+        ret
+
+INIT_LINE_CODING:
+        ; line coding 00 0x96 00 00 00 00 0x08
+        ldi     t0, 0x96
+        sts     line_coding+1, t0
+        sts     line_coding, r_zero
+        sts     line_coding+2, r_zero
+        sts     line_coding+3, r_zero
+        sts     line_coding+4, r_zero
+        sts     line_coding+5, r_zero
+        ldi     t0, 0x08
+        sts     line_coding+6, t0
         ret
 
 
@@ -394,8 +421,7 @@ RXU_:
         lds     t0, UEINTX
         andi    t0, (1<<FIFOCON)
         breq    RXU_
-        ldi     t0, ~(1<<RXOUTI)
-        rcall   UEINTX_CLR
+        rcall   RXOUTI_CLR
         lds     t0, UEBCLX
         cpi     t0, 0
         breq    RXU_2
