@@ -154,6 +154,9 @@ def main():
   # readline.parse_and_bind("tab: complete")
   histfn = os.path.join(os.path.expanduser("~"), ".ff.history")
   try:
+    if (not os.path.isfile(histfn)):
+      fh_touch = open(histfn, 'a')
+      fh_touch.close()
     readline.set_history_length(500)
     readline.read_history_file(histfn)
   except(IOError, e):
@@ -168,6 +171,7 @@ def main():
   print("Shell directives:")
   for cmd in sorted(cmd_dictionary):
     print(cmd + "\t" + cmd_dictionary[cmd])
+  print("Ctrl+c\t\tQuits the terminal")
   print("\n")
 
   running = True
