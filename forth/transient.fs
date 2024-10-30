@@ -3,19 +3,19 @@
 
 : transient ( size -- ) 
   flash
-    align latest @ here >r >r
-    ( size ) aligned hi 1+ swap - dp !
-    latest @ , here $2081 , latest ! r> , r> ,
+    latest @  align here  >r >r
+    ( size ) aligned  hi 1+  swap -  dp !
+    latest @ ,  here $2081 ,  latest !  r> , r> ,
   ram ;
   
-: tfind ( -- xt ) ram hi 1- $2001 over ! find ?abort? ;
+: tfind ( -- xt ) ram hi 1-  $2001 over  !  find ?abort? ;
 
 : permanent ( -- )  
   tfind 
   flash 
     cell+ @ dp !
     latest @ , 
-    here $2000 , latest !  \ dummy def for discard
+    here $2000 , latest !
   ram ;
 
 : discard ( -- ) tfind 2@ ! ;

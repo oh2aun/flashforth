@@ -1,15 +1,10 @@
 \ n=0 match; otherwise sign(n) = lexical order
+: n1+ swap 1+ swap ;
 : compare ( c-addr1 u1 caddr2 u2 -- n )
-  rot over - dup  \ 
-  if  nip
-  else
-     swap
-     for                      \ c-addr1 c-addr2 n 
-       drop
-       over c@ over c@ - dup  \ c-addr1 c-addr2 n n
-       if   endit 
-       else >r 1+ swap 1+ r>
-       then
-     next
-  then nip nip
-;
+  rot swap 2dup - >r min 0 swap
+  for  drop over c@ over c@ - >r 1+ n1+ r> 
+       dup if endit then 
+  next nip nip
+  dup if rdrop else drop r> then ;
+
+
