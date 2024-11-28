@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          16.04.2024                                        *
+;    Date:          28.11.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include "config-xc8.inc"
 
 ; Define the FF version date string
-#define DATE "16.04.2024"
+#define DATE "28.11.2024"
 #define datelen 10
 
 
@@ -2935,9 +2935,9 @@ CFETCHPP_L:
         .ascii  "c@+"
         .align  1
 CFETCHPP:
-        m_dup
         adiw    tosl, 1
-        rcall   SWOP
+        m_dup
+        sbiw    tosl, 1
         jmp     CFETCH
 
 ; :     @+ ( addr -- addr+2 n ) dup 2+ swap @ ;
@@ -2947,9 +2947,9 @@ FETCHPP_L:
         .ascii  "@+"
         .align  1
 FETCHPP:
-        m_dup
         adiw    tosl, 2
-        rcall   SWOP
+        m_dup
+        sbiw    tosl, 2
         jmp     FETCH
 
         .byte     NFA|1
@@ -5714,7 +5714,7 @@ WARM_3:
         rcall   DP_TO_RAM
 #ifdef USBCON
 #if OPERATOR_UART == 3
-		    call	USB_ON
+        call    USB_ON
 #endif
 #endif
         sts     rbuf0_lv, r_zero

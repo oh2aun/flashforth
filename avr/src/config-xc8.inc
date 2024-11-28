@@ -11,7 +11,16 @@
 ;;; Tested with ATmega328 ATmega328P ATmega2560 ATmega32u4
 
 ; Oscillator frequency in herz
+#ifndef FREQ_OSC
 #define FREQ_OSC 16000000
+
+// For getting the FREQ_OSC from an environment variable
+// Add -DFREQ_OSC = "{FREQ_OSC}" to the project
+// Usage : make clean all MP_PROCESSOR_OPTION=ATmega328  FREQ_OSC=8000000
+#elif (FREQ_OSC+0) == 0
+#undef FREQ_OSC
+#define FREQ_OSC 16000000
+#endif
 
 ; Define the UART used for the operator
 ; 0 or 1 (0 for 32u4 ) or 3 for USB

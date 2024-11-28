@@ -103,8 +103,12 @@ USB_ON:
         cpi     t0, 0x30
         brne    USB_ON_RET
         m_sbi   UHWCON, UVREGE      ; Enable USB regulator
-        ldi     t0, 0x12
-        m_out   PLLCSR, t0          ; Configure to use 16mHz oscillator
+#if FREQ_OSC < 16000000
+        ldi     t0, 0x02            ; 8 MHz oscillator
+#else
+        ldi     t0, 0x12            ; 16 MHz oscillator
+#endif
+        m_out   PLLCSR, t0          ; Configure to use 16MHz or 8 MHz oscillator
 USB_PLL_WAIT:
         m_in    t0, PLLCSR
         andi    t0, (1<<PLOCK)
