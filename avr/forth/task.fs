@@ -1,7 +1,7 @@
 \ *******************************************************************
 \                                                                   *
 \    Filename:      task.fs                                         *
-\    Date:          03.06.2023                                      *
+\    Date:          06.12.2024                                      *
 \    FF Version:    5.0                                             *
 \    MCU:           Atmega                                          *
 \    Copyright:     Mikael Nordman                                  *
@@ -147,7 +147,7 @@ hex ram
   up@ op!
   begin
     up@ 
-    task @ 6 - op! c>n .id space
+    task @ #12 - op! c>n .id space
     up!
     ul@ op@ -
   while
