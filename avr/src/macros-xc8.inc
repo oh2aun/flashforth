@@ -55,6 +55,23 @@
     st -y, tosl
 .endm
 
+.macro m_lit num
+    m_dup
+    ldi tosl, lo8(\num)
+    ldi tosh, hi8(\num)
+.endm
+
+.macro m_flit num
+    m_dup
+    ldi tosl, lo8(\num+PFLASH)
+    ldi tosh, hi8(\num+PFLASH)
+.endm
+
+.macro m_ft0 num
+    ldi t0, lo8(\num+PFLASH)
+    ldi t1, hi8(\num+PFLASH)
+.endm
+
 .macro m_in reg, addr
 .if (\addr < 0x20)
   in _SFR_IO_ADDR(\reg), \addr

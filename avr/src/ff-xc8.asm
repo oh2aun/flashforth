@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          28.11.2024                                        *
+;    Date:          06.12.2024                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -625,7 +625,7 @@ CTRL_O_WARM_RESET_1:
 #if U0FC_TYPE == 1
         cpi     xl, RX0_OFF_FILL
         brmi    RX0_ISR_SKIP_XOFF
-        rcall   XXOFF_TX0_1
+        call    XXOFF_TX0_1
 #endif
 #if U0FC_TYPE == 2
         cpi     xl, RX0_OFF_FILL
@@ -663,7 +663,7 @@ CTRL_O_WARM_RESET_1:
 #if U1FC_TYPE == 1
         cpi     xl, RX0_OFF_FILL
         brmi    RX1_ISR_SKIP_XOFF
-        rcall   XXOFF_TX1_1
+        call    XXOFF_TX1_1
 #endif
 #if U1FC_TYPE == 2
         cpi     xl, RX0_OFF_FILL
@@ -835,8 +835,8 @@ OPERATOR_L:
         .ascii  "operator"
         .align  1
 OPERATOR:
-        call    DOCREATE
-        fdw     OPERATOR_AREA
+        m_flit  OPERATOR_AREA
+        ret
 OPERATOR_AREA:
         .word     up0
         .word     0, ursize
@@ -1067,9 +1067,9 @@ FCY_L:
         .byte     NFA|3
         .ascii  "Fcy"
         .align  1
-        rcall   DOCREATE
-        .word     FREQ_OSC / 1000
-        
+        rcall   DOLIT
+        .word   FREQ_OSC / 1000
+        ret
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         fdw     FCY_L
@@ -1137,97 +1137,43 @@ VARIABLE_:
 
         fdw     VARIABLE_L
 TWOVARIABLE_L:
-        .byte     NFA|9
+        .byte   NFA|9
         .ascii  "2variable"
         .align  1
 TWOVARIABLE_:
         rcall   HERE
         rcall   DOLIT
-        .word     0x4
+        .word   0x4
         rcall   ALLOT
         jmp     CONSTANT_
 
         fdw     TWOVARIABLE_L
 CONSTANT_L:
-        .byte     NFA|8
+        .byte   NFA|8
         .ascii  "constant"
         .align  1
 CONSTANT_:
-        call   COLON
+        call    COLON
         call    LITERAL
         jmp     SEMICOLON
 
         fdw     CONSTANT_L
 TWOCONSTANT_L:
-        .byte     NFA|9
+        .byte   NFA|9
         .ascii  "2constant"
         .align  1
 TWOCONSTANT_:
         rcall   SWOP
-        call   COLON
+        call    COLON
         call    LITERAL
         call    LITERAL
         jmp     SEMICOLON
 
-; DOCREATE, code action of CREATE
-; Fetch the next cell from program memory to the parameter stack
-DOCREATE_L:
-        .byte     NFA|3
-        .ascii  "(c)"
-        .align  1
-DOCREATE:
-        m_pop_zh
-        pop     zh
-        pop     zl
-        rcall   FETCHLIT
-        m_pop_zh
-        pop     zh
-        pop     zl
-        m_ijmp
-
-;;; Resolve the runtime action of the word created by using does>
-DODOES_L:
-        .byte     NFA|3
-        .ascii  "(d)"
-        .align  1
-DODOES:
-        m_pop_xh
-        pop     xh
-        pop     xl
-        m_pop_zh
-        pop     zh
-        pop     zl
-        rcall   FETCHLIT
-        movw    z, x
-        m_ijmp    ; (z)
-
-FETCHLIT:
-        m_dup
-        lsl     zl
-        rol     zh
-        m_lpm    tosl
-        m_lpm    tosh
-        ret
-
-        .byte     NFA|3
-        .ascii  "(,)"
-        .align  1
-DOCOMMAXT:
-        m_pop_t0
-        pop     zh
-        pop     zl
-        rcall   FETCHLIT
-        lsr     zh
-        ror     zl
-        push    zl
-        push    zh
-        m_push_t0
-        rjmp     COMMAXT
 
 ;   SP@     -- addr         get parameter stack pointer
         fdw     TWOCONSTANT_L
 SPFETCH_L:
-        .byte     NFA|3
+        .byte   NFA|3
         .ascii  "sp@"
         .align  1
 SPFETCH:
@@ -1239,7 +1185,7 @@ SPFETCH:
 ;   SP!     addr --         store stack pointer
         fdw     SPFETCH_L
 SPSTORE_L:
-        .byte     NFA|3
+        .byte   NFA|3
         .ascii  "sp!"
         .align  1
 SPSTORE:
@@ -1247,7 +1193,7 @@ SPSTORE:
         ret
 
 ;   RPEMPTY     -- EMPTY THE RETURN STACK       
-        .byte     NFA|3
+        .byte   NFA|3
         .ascii  "rp0"
         .align  1
 RPEMPTY:
@@ -1265,7 +1211,7 @@ RPEMPTY:
 ;   RP@ Fetch the return stack pointer        
         fdw     SPSTORE_L
 RPFETCH_L:
-        .byte     NFA|INLINE|COMPILE|3
+        .byte   NFA|INLINE|COMPILE|3
         .ascii  "rp@"
         .align  1
 RPFETCH:
@@ -1468,13 +1414,13 @@ COMMAXT:
         rcall   MINUS
         rcall   ABS_ 
         rcall   DOLIT
-        .word     0xff0
+        .word   0xff0
         rcall   GREATER
         rcall   ZEROSENSE
         breq    STORECF1
 STORECFF1: 
         rcall   DOLIT
-        .word     0x940E  ; call jmp:0x940d
+        .word   0x940E  ; call jmp:0x940d
         call    ICOMMA
         sub_pflash_tos
         lsr     tosh
@@ -1485,7 +1431,6 @@ STORECF1:
         rcall   MINUS
         rcall   TWOMINUS
         rcall   TWOSLASH
-        ;rcall   RCALL_
         andi    tosh, 0x0f
         ori     tosh, 0xd0
 STORECF2:
@@ -1501,7 +1446,7 @@ STORECF2:
         .align  1
 STORCOLON:
         rcall   DOLIT
-        .word     0xfffa         ;  -6
+        .word   -12
         jmp     IALLOT
 
 
@@ -1726,9 +1671,8 @@ ACC6:
         .ascii  "fcr"
         .align  1
 FCR:
-        rcall   DOUSER
-        .word     uflg
-
+        m_lit   uflg
+        jmp     DOUSER
 
 ; TYPE    c-addr u --   type line to terminal u < $100
 ; : type for c@+ emit next drop ;
@@ -1781,7 +1725,7 @@ XSQUOTE:
 
 PARSEQ:
         rcall   DOLIT
-        .word     0x22
+        .word   0x22
         rjmp    PARSE
 
 ;---------------------------------------------------
@@ -1799,8 +1743,9 @@ SQUOTE:
         rcall   ZEROSENSE
         breq    SLIT1
 SLIT:
-        rcall   DOCOMMAXT
+        rcall   DOLIT
         fdw     XSQUOTE
+        rcall   COMMAXT
         rcall   ROM_
         rcall   SCOMMA
         rcall   ALIGN
@@ -1838,9 +1783,9 @@ DOTQUOTE_L:
         .align  1
 DOTQUOTE:
         rcall   SQUOTE
-        rcall   DOCOMMAXT
+        rcall   DOLIT
         fdw     TYPE
-        ret
+        jmp     COMMAXT
 
         fdw     DOTQUOTE_L
 ALLOT_L:
@@ -1922,21 +1867,23 @@ RFROM:
         pop     tosl
         m_ijmp
 
-        fdw     RFROM_L
+       fdw     RFROM_L
 RFETCH_L:
         .byte     NFA|COMPILE|2
         .ascii  "r@"
         .align  1
 RFETCH:
-        m_pop_zh
-        pop     zh
-        pop     zl
+        in      zl, spl
+        in      zh, sph
         m_dup
-        pop     tosh
-        pop     tosl
-        push    tosl
-        push    tosh
-        m_ijmp
+.if (FLASHEND > 0x1ffff)
+        ldd     tosh, z+4
+        ldd     tosl, z+5
+.else
+        ldd     tosh, z+3
+        ldd     tosl, z+4
+.endif
+        ret
 
 ;   ABS     n   --- n1      absolute value of n
         fdw     DUP_L
@@ -2132,7 +2079,22 @@ TOBODY_L:
         .align  1
 TOBODY:
         adiw    tosl, 4
-        jmp     FETCH
+        rcall   DUP
+        rcall   TOBODY1
+        or      tosl, tosh
+        clr     tosh
+        rcall   SWOP
+        adiw    tosl, 2
+        rcall   TOBODY1
+        or      tosh, tosl
+        clr     tosl
+        jmp     OR_
+TOBODY1:
+        rcall   FETCH_A
+        andi    tosl, 0x0f
+        andi    tosh, 0x0f
+        swap    tosh
+        ret
 
         fdw     TOBODY_L
 TWOSTAR_L:
@@ -2338,8 +2300,8 @@ UEMIT_L:
         .ascii  "'emit"
         .align  1
 UEMIT_:
-        rcall   DOUSER
-        .word     uemit
+        m_lit   uemit
+        jmp     DOUSER
         
         fdw     UEMIT_L
 UKEY_L:
@@ -2347,8 +2309,8 @@ UKEY_L:
         .ascii  "'key"
         .align  1
 UKEY_:
-        rcall   DOUSER
-        .word     ukey
+        m_lit   ukey
+        jmp     DOUSER
 
         fdw     UKEY_L
 UKEYQ_L:
@@ -2356,8 +2318,8 @@ UKEYQ_L:
         .ascii  "'key?"
         .align  1
 UKEYQ_:
-        rcall   DOUSER
-        .word     ukeyq
+        m_lit   ukeyq
+        jmp     DOUSER
 
         .byte     NFA|3
         .ascii  "?0="
@@ -2515,8 +2477,8 @@ UPTR_L:
         .byte     NFA|2
         .ascii  "up"
         .align  1
-UPTR:   rcall   DOCREATE
-        .word     2 ; upl
+UPTR:   m_lit   upl
+        ret
 
         fdw     UPTR_L
 HOLD_L:
@@ -2612,7 +2574,7 @@ SIGN:
         cpi     tosh, 0
         brpl    SIGN1
         rcall   DOLIT
-        .word     0x2D
+        .word   0x2D
         rcall   HOLD
 SIGN1:
         jmp     DROP
@@ -2695,7 +2657,7 @@ HEX_L:
         .align  1
 HEX:
         rcall   DOLIT
-        .word     16
+        .word   16
         rcall   BASE
         jmp     STORE
 
@@ -2716,9 +2678,9 @@ RSAVE_L:
         .byte     NFA|5
         .ascii  "rsave"
         .align  1
-RSAVE_: rcall   DOUSER
-        .word     ursave
-
+RSAVE_:
+        m_lit   ursave
+        jmp     DOUSER
 
 ; ULINK   -- a-addr     link to next task
         fdw     RSAVE_L
@@ -2726,9 +2688,9 @@ ULINK_L:
         .byte     NFA|5
         .ascii  "ulink"
         .align  1
-ULINK_: rcall   DOUSER
-        .word     ulink
-
+ULINK_:
+        m_lit   ulink
+        jmp     DOUSER
 
 ; TASK       -- a-addr              TASK pointer
         fdw     ULINK_L
@@ -2736,9 +2698,9 @@ TASK_L:
         .byte     NFA|4
         .ascii  "task"
         .align  1
-TASK:   rcall   DOUSER
-        .word     utask
-
+TASK:
+        m_lit   utask
+        jmp     DOUSER
 
 ; HP       -- a-addr                HOLD pointer
         fdw     TASK_L
@@ -2746,8 +2708,9 @@ HP_L:
         .byte     NFA|2
         .ascii  "hp"
         .align  1
-HP:     rcall   DOUSER
-        .word     uhp
+HP:
+        m_lit   uhp
+        jmp     DOUSER
 
 ; HB     -- a-addr        Number formatting buffer
         fdw     HP_L
@@ -2767,8 +2730,8 @@ BASE_L:
         .ascii  "base"
         .align  1
 BASE:
-        rcall   DOUSER
-        .word     ubase
+        m_lit    ubase
+        jmp      DOUSER
 
 ; USER   n --
         fdw     BASE_L
@@ -2777,17 +2740,10 @@ USER_L:
         .ascii  "user"
         .align  1
 USER:
-        rcall   CREATE
-        rcall   CELL
-        rcall   NEGATE
-        rcall   IALLOT
-        rcall   ICOMMA_
+        rcall   COLON
+        rcall   CREATE2
         rcall   XDOES
 DOUSER:
-        m_pop_zh
-        pop     zh
-        pop     zl
-        rcall   FETCHLIT
         add     tosl, upl
         adc     tosh, uph
         ret
@@ -3244,7 +3200,7 @@ QNUMD:                          ; Single or Double number
                                 ; a ud.l ud.h a'
         sbiw    tosl, 1
         rcall   CFETCH_A        ; a ud.l ud.h c
-        call    TO_A
+        rcall   TO_A
         rcall   RFROM           ; a a' u ud.l ud.d sign
         rcall   ZEROSENSE
         breq    QNUMD1
@@ -3301,8 +3257,8 @@ TIU_L:
         .ascii  "tiu"
         .align  1
 TIU:
-        rcall   DOUSER
-        .word     utib       ; pointer to Terminal input buffer
+        m_lit   utib       ; pointer to Terminal input buffer
+        jmp     DOUSER
 
 ; >IN     -- a-addr        holds offset into TIB
 ; In RAM
@@ -3312,8 +3268,8 @@ TOIN_L:
         .ascii  ">in"
         .align  1
 TOIN:
-        rcall   DOUSER
-        .word   utoin
+        m_lit   utoin
+        jmp     DOUSER
         
 ; 'SOURCE  -- a-addr        two cells: len, adrs
 ; In RAM ?
@@ -3323,20 +3279,13 @@ TICKSOURCE_L:
         .ascii  "'source"
         .align  1
 TICKSOURCE:
-        rcall   DOUSER
-        .word     usource       ; two cells !!!!!!
+        m_lit   usource       ; two cells !!!!!!
+        jmp     DOUSER
 
 WORDQ:
-        rcall   DUP
-        m_pop_t0
-        pop     zh
-        pop     zl
-        rcall   FETCHLIT
-        lsr     zh
-        ror     zl
-        rcall   EQUAL
-        rcall   ZEROSENSE
-        m_ijmp
+        sub     t0, tosl
+        sbc     t1, tosh
+        ret
 
 ;  INTERPRET  c-addr u --    interpret given buffer
         fdw     TICKSOURCE_L
@@ -3393,47 +3342,48 @@ IEXECUTE:
         rjmp    ICLRFLIT
 ICOMPILE_1:
         cbr     FLAGS1, (1<<izeroeq) ; Clear 0= encountered in compilation
+        m_ft0   ZEROEQUAL            ; Check for 0=, modifies IF and UNTIL to use bnz
         rcall   WORDQ
-        fdw     ZEROEQUAL       ; Check for 0=, modifies IF and UNTIL to use bnz
-        breq    ICOMPILE_2
+        brne    ICOMPILE_2
         sbr     FLAGS1, (1<<izeroeq) ; Mark 0= encountered in compilation
         rjmp    ICOMMAXT
 ICOMPILE_2:
         sbrs    FLAGS1, fLIT
         rjmp    ICOMPILE_6
+
+        m_ft0   AND_    
         rcall   WORDQ
-        fdw     AND_    
-        breq    ICOMPILE_3
+        brne    ICOMPILE_3
         rcall   ANDIC_
         rjmp    ICLRFLIT
 ICOMPILE_3:
+        m_ft0   OR_
         rcall   WORDQ
-        fdw     OR_
-        breq    ICOMPILE_4
+        brne    ICOMPILE_4
         rcall   ORIC_
         rjmp    ICLRFLIT
 ICOMPILE_4:
+        m_ft0   PLUS
         rcall   WORDQ
-        fdw     PLUS
-        breq    ICOMPILE_5
+        brne    ICOMPILE_5
         rcall   PLUSC_
         rjmp    ICLRFLIT
 ICOMPILE_5:
+        m_ft0   MINUS
         rcall   WORDQ
-        fdw     MINUS
-        breq    ICOMPILE_6
+        brne    ICOMPILE_6
         rcall   MINUSC_
         rjmp    ICLRFLIT
 ICOMPILE_6:
         cbr     FLAGS1, (1<<idup)    ; Clear DUP encountered in compilation
+        m_ft0   DUP                  ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
         rcall   WORDQ
-        fdw     DUP             ; Check for DUP, modies IF and UNTIl to use DUPZEROSENSE
-        breq    ICOMPILE
+        brne    ICOMPILE
         sbr     FLAGS1, (1<<idup)    ; Mark DUP encountered during compilation
 ICOMPILE:
         sbrs    wflags, 5       ; Inline check
         rjmp    ICOMMAXT
-        call    INLINE0
+        rcall   INLINE0
         rjmp    ICLRFLIT
 ICOMMAXT:
         rcall   COMMAXT_A
@@ -3458,9 +3408,9 @@ INUMBER:
         rjmp    ISINGLE
 IDOUBLE:
         rcall   SWOP_A
-        call    LITERAL
+        rcall   LITERAL
 ISINGLE:        
-        call    LITERAL
+        rcall   LITERAL
         rjmp    IPARSEWORD
 
 INUMBER1:
@@ -3507,7 +3457,7 @@ IMMEDIATE_L:
         .align  1
 IMMEDIATE:
         rcall   DOLIT
-        .word     IMMED
+        .word   IMMED
         jmp     SHB
 
 ;***************************************************************
@@ -3518,7 +3468,7 @@ INLINED_L:
         .align  1
 INLINED:
         rcall   DOLIT
-        .word     INLINE
+        .word   INLINE
         jmp     SHB
 
 ;; .st ( -- ) output a string with current data section and current base info
@@ -3531,17 +3481,17 @@ DOTSTATUS_L:
         .align  1
 DOTSTATUS:
         rcall   DOLIT
-        .word     '<'
+        .word   '<'
         rcall   EMIT
-        call    DOTBASE
+        rcall   DOTBASE
         rcall   EMIT
         rcall   DOLIT
-        .word     ','
+        .word   ','
         rcall   EMIT
         call    MEMQ
         rcall   TYPE
         rcall   DOLIT
-        .word     '>'
+        .word   '>'
         rcall   EMIT
         jmp     DOTS
 
@@ -3554,8 +3504,8 @@ TOR_A:  jmp     TOR
 ;;; TEN ( -- n ) Leave decimal 10 on the stack
 ;        .byte     NFA|1,"a"
 TEN:
-        rcall   DOCREATE
-        .word     10
+        m_lit   10
+        ret
 
 ; dp> ( -- ) Copy ini, dps and latest from eeprom to ram
         fdw DOTSTATUS_L
@@ -3565,7 +3515,7 @@ DP_TO_RAM_L:
         .align  1
 DP_TO_RAM:
         rcall   DOLIT
-        .word     dp_start
+        .word   dp_start
         rcall   INI
         rcall   TEN
         jmp     CMOVE
@@ -3671,8 +3621,8 @@ PROMPT_L:
         .ascii    "prompt"
         .align  1
 PROMPT_:
-        call    DEFER_DOES
-        .word     prompt
+        m_lit   prompt
+        jmp     DEFER_DOES
 
 ; ABORT    i*x --   R: j*x --   clear stk & QUIT
         fdw     PROMPT_L
@@ -3727,9 +3677,8 @@ ABORTQUOTE_L:
         .align  1
 ABORTQUOTE:
         rcall   SQUOTE
-        rcall   DOCOMMAXT
-        fdw     QABORT
-        ret
+        m_flit  QABORT
+        jmp     COMMAXT
 
 ;***************************************************
 ; LIT   -- x    fetch inline 16 bit literal to the stack
@@ -3742,7 +3691,11 @@ DOLIT:
         m_pop_zh
         pop     zh
         pop     zl
-        rcall   FETCHLIT
+        m_dup
+        lsl     zl
+        rol     zh
+        m_lpm   tosl
+        m_lpm   tosh
         lsr     zh
         ror     zl
         m_ijmp    ; (z)
@@ -3800,7 +3753,7 @@ PAREN_L:
         .align  1
 PAREN:
         rcall   DOLIT
-        .word     ')'
+        .word   ')'
         rcall   PARSE
         sbr     FLAGS1, (1<<noclear) ; dont clear flags in case of (
         jmp     TWODROP
@@ -3841,10 +3794,10 @@ CR_L:
         .align  1
 CR:
         rcall   DOLIT
-        .word     0x0d       ; CR \r
-        call    EMIT
+        .word   0x0d       ; CR \r
+        rcall   EMIT_A
         rcall   DOLIT
-        .word     0x0a       ; LF \n
+        .word   0x0a       ; LF \n
 EMIT_A:
         jmp     EMIT
 
@@ -3878,7 +3831,7 @@ CREATE:
         rcall   NIP
         rcall   ZEROEQUAL
         rcall   XSQUOTE
-        .byte     15
+        .byte   15
         .ascii  "ALREADY DEFINED"
         .align  1
         rcall   QABORT         ; ABORT if word has already been defined
@@ -3886,7 +3839,7 @@ CREATE:
         rcall   CFETCH_A
         rcall   ONE
         rcall   DOLIT
-        .word     16
+        .word   16
         rcall   WITHIN
         rcall   QABORTQ          ; Abort if there is no name for create
 
@@ -3920,18 +3873,16 @@ CREATE:
         rcall   ALIGNED
         rcall   IALLOT          ; The header has now been created
 
-        rcall   DOLIT             
-        fdw     DOCREATE        ; compiles the runtime routine to fetch the next dictionary cell to the parameter stack
-        rcall   STORECFF1       ; Append an exeution token, CALL !
-        rcall   ALIGN
-        rcall   HERE            ; compiles the current dataspace dp into the dictionary
-        rcall   CSE_
-        rcall   ZEROSENSE
-        brne    CREATE2
-        rcall   TWOPLUS
+        rcall   HERE
+        lds     t0, cse
+        cpi     t0, 0
+        brne    .+2
+        adiw    tosl, 12
 CREATE2:
-        jmp     ICOMMA          ; dp now points to a free cell
-
+        rcall   LITERAL
+        rcall   ADD_RETURN_1
+        rcall   FALSE_
+        jmp     ICOMMA
 ;***************************************************************
 ; POSTPONE
         fdw    CREATE_L
@@ -3948,9 +3899,8 @@ POSTPONE:
         rcall   ZEROLESS
         rcall   ZEROSENSE
         breq    POSTPONE1
-        call    DOCOMMAXT
-        fdw     DOCOMMAXT
-        rjmp    ICOMMA_
+        rcall   LITERAL
+        m_flit  COMMAXT
 POSTPONE1:
         jmp     COMMAXT
 
@@ -3960,8 +3910,8 @@ IDP_L:
         .ascii  "idp"
         .align  1
 IDP:
-        call    DOCREATE
-        .word     dpFLASH
+        m_lit   dpFLASH
+        ret
 
 ;***************************************************************
 ; (DOES>)  --      run-time action of DOES>
@@ -3971,24 +3921,22 @@ IDP:
         .ascii  "(does>)"
         .align  1
 XDOES:
+        rcall   IDP
+        rcall   FETCH_A     ;  idp
         m_pop_zh
-        rcall   RFROM       ; dodoes-xa
+        rcall   RFROM       ; idp dodoes-xa
         rcall   LATEST_
         rcall   FETCH_A
-        rcall   NFATOCFA    ; dodoes-xa markerword-cfa
+        rcall   NFATOCFA    ; idp dodoes-xa markerword-cfa
+        adiw    tosl, 8
         rcall   IDP
-        rcall   FETCH_A     ;  dodoes-xa markerword-cfa idp
-        rcall   TOR_A       ;  dodoes-xa markerword-cfa
-        rcall   IDP
-        rcall   STORE_A     ;  dodoes-xa
+        rcall   STORE_A     ; idp dodoes-xa
         rcall   DOLIT
-        .word     0x940E    ; call
-        call    ICOMMA
-        call    ICOMMA
-        rcall   RFROM
+        .word   0x940C    ; jmp
+        rcall   ICOMMA
+        rcall   ICOMMA      ; idp
         rcall   IDP
         jmp     STORE
-
 
 ; DOES>    --      change action of latest def'n
         fdw     POSTPONE_L
@@ -3996,11 +3944,9 @@ DOES_L:
         .byte     NFA|IMMED|COMPILE|5
         .ascii  "does>"
         .align  1
-DOES:   call    DOCOMMAXT
-        fdw     XDOES
-        call    DOCOMMAXT
-        fdw     DODOES
-        ret
+DOES:
+        m_flit  XDOES
+        jmp     COMMAXT
 
 
 ;*****************************************************************
@@ -4081,10 +4027,10 @@ RCALL_TO_JMP:
         rcall   IHERE
         rcall   PLUS
         rcall   DOLIT
-        .word     -2
+        .word   -2
         rcall   IALLOT
         rcall   DOLIT
-        .word     0x940c      ; jmp:0x940c
+        .word   0x940c      ; jmp:0x940c
         rcall   ICOMMA__
         sub_pflash_tos
         lsr     tosh
@@ -4094,7 +4040,7 @@ ADD_RETURN:
         rcall   TWODROP
 ADD_RETURN_1:
         rcall   DOLIT   ; Compile a ret
-        .word     0x9508
+        .word   0x9508
 ICOMMA__:
         jmp    ICOMMA
 
@@ -4138,8 +4084,8 @@ BL_L:
         .ascii  "bl"
         .align  1
 BL:
-        call    DOCREATE
-        .word     ' '
+        m_lit   ' '
+        ret
 
 ; STATE   -- flag                 holds compiler state
         fdw     BL_L
@@ -4160,9 +4106,9 @@ LATEST_L:
         .ascii  "latest"
         .align  1
 LATEST_:
-        call    DOCREATE
-        .word     dpLATEST
-        
+        m_lit   dpLATEST
+        ret
+
 ; S0       -- a-addr      start of parameter stack
         fdw     LATEST_L
 S0_L:
@@ -4170,9 +4116,9 @@ S0_L:
         .ascii  "s0"
         .align  1
 S0:
-        rcall   DOUSER
-        .word     us0
-        
+        m_lit   us0
+        jmp     DOUSER
+
 ; R0       -- a-addr      start of parameter stack
         fdw     S0_L
 R0_L:
@@ -4180,9 +4126,9 @@ R0_L:
         .ascii  "r0"
         .align  1
 R0_:
-        rcall   DOUSER
-        .word     ur0
-        
+        m_lit   ur0
+        jmp     DOUSER
+
 ; ini -- a-addr       ini variable contains the user-start xt
 ; In RAM
 ;        .word     link
@@ -4191,8 +4137,8 @@ R0_:
         .ascii  "ini"
         .align  1
 INI:
-         call   DOCREATE
-        .word     dpSTART
+        m_lit   dpSTART
+        ret
 
 ; ticks  -- u      system ticks (0-ffff) in milliseconds
         fdw     R0_L
@@ -4272,9 +4218,7 @@ TO_PRINTABLE2:
 ;;;;;;;;;;;;;;
 LIKEQ:
         rcall   CFETCHPP
-        rcall   DOLIT
-        .word     0x0f
-        rcall   AND_
+        andi    tosl, 0x0f
         rcall   SWOP
         rcall   STORE_P
         rcall   SWOP
@@ -4292,7 +4236,7 @@ LIKEQ1:
         rcall   FETCH_P
         rcall   PPLUS
         rcall   SWOP
-        call    CMP
+        rcall   CMP
         breq    LIKEQ3
 TWODROPNZ:
         clz
@@ -4375,7 +4319,7 @@ DUMP_L:
 DUMP:
         adiw    tosl, 15
         rcall   DOLIT
-        .word     16
+        .word   16
         rcall   USLASH
         rcall   TOR
         rjmp    DUMP7
@@ -4383,29 +4327,27 @@ DUMP1:
         rcall   CR
         rcall   DUP
         rcall   DOLIT
-        .word     4
+        .word   4
         rcall   UDOTR
         rcall   DOLIT
-        .word     ':'
+        .word   ':'
         rcall   EMIT_A
         rcall   DOLIT
-        .word     15
+        .word   15
         rcall   TOR
 DUMP2:
         rcall   CFETCHPP
         rcall   DOLIT
-        .word     2
+        .word   2
         rcall   UDOTR
         rcall   XNEXT
         brcc    DUMP2
         pop     t1
         pop     t0
 
+        sbiw    tosl, 16
         rcall   DOLIT
-        .word     16
-        rcall   MINUS
-        rcall   DOLIT
-        .word     15
+        .word   15
         rcall   TOR
 DUMP4:  
         rcall   CFETCHPP
@@ -4484,8 +4426,8 @@ PFL_L:
         .ascii  "pfl"
         .align  1
 PFL:
-         call   DOCREATE
-        .word     OFLASH
+        m_lit   OFLASH
+        ret
 ;***************************************************************
 ; ,?0=    -- addr  Compile ?0= and make make place for a branch instruction
         .byte     NFA|4
@@ -4507,7 +4449,7 @@ COMMAZEROSENSE2:
 
 IDPMINUS:
         rcall   DOLIT
-        .word     -4
+        .word   -4
         rjmp    IALLOT
 
 ;       rjmp, ( rel-addr -- )
@@ -4520,17 +4462,12 @@ RJMPC:
 
 BRCCC:
         rcall   DOLIT
-        .word     0xf008      ; brcc pc+2
+        .word   0xf008      ; brcc pc+2
         rjmp    ICOMMA__
-;BREQC:
-;        rcall   DOLIT
-;        .word     0xf009      ; breq pc+2
-;        sbrc    FLAGS1, izeroeq
-;        ori     tosh, 4     ; brne pc+2
-;        jmp     ICOMMA
+
 BRNEC:
         rcall   DOLIT
-        .word     0xf409      ; brne pc+2
+        .word   0xf409      ; brne pc+2
         sbrc    FLAGS1, izeroeq
         andi    tosh, ~4
         rjmp    ICOMMA__
@@ -4577,12 +4514,12 @@ THEN_L:
 THEN_:
         sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rcall   IHERE
-        call    OVER
+        rcall   OVER
         rcall   MINUS
         rcall   TWOMINUS
         rcall   TWOSLASH
         rcall   DOLIT
-        .word     0xc000      ;  back-addr mask 
+        .word   0xc000      ;  back-addr mask 
         rcall   OR_
         rcall   SWOP_A
         jmp     STORE
@@ -4621,7 +4558,7 @@ AGAIN_L:
 AGAIN_:
         sbr     FLAGS1, (1<<fTAILC)  ; Prevent tailjmp  optimisation
         rcall   IHERE
-        call    MINUS
+        rcall   MINUS
         rcall   TWOMINUS
         jmp     RJMPC
 
@@ -4656,6 +4593,7 @@ INLINE_L:
         cbr      FLAGS1, (1<<idup)
         rcall    TICK
         jmp      INLINE0
+
 ; in, ( addr -- ) begin @+ dup $9508 <> while i, repeat 2drop ;
         fdw      INLINE_L
 INLINEC_L:
@@ -4666,11 +4604,11 @@ INLINE0:
         rcall   FETCHPP
         rcall   DUP
         rcall   DOLIT
-        .word     0x9508
+        .word   0x9508
         rcall   NOTEQUAL
         rcall   ZEROSENSE
         breq    INLINE1
-        call   ICOMMA
+        rcall   ICOMMA
         rjmp    INLINE0
 INLINE1:
         jmp     TWODROP
@@ -4682,8 +4620,9 @@ FOR_L:
         .ascii  "for"
         .align  1
 FOR:
-        call    DOCOMMAXT
+        rcall   DOLIT
         fdw     TOR
+        call    COMMAXT
         rcall   IHERE
         rcall   FALSE_
         rcall   RJMPC
@@ -4698,8 +4637,9 @@ NEXT_L:
         .align  1
 NEXT:
         rcall   THEN_
-        call    DOCOMMAXT
+        rcall   DOLIT
         fdw     XNEXT
+        call    COMMAXT
         rcall   BRCCC
 
         rcall   AGAIN_
@@ -4707,6 +4647,7 @@ NEXT:
         rcall   DOLIT
         fdw     XNEXT1
         jmp     INLINE0
+
 ; (next) decrement top of return stack
         .byte     NFA|7
         .ascii  "(next) "
@@ -4990,9 +4931,9 @@ MEMHI:
         call    PLUS
         jmp     FETCH
 FLASHHI:
-        .word      FLASH_HI
-        .word      EEPROM_HI
-        .word      RAM_HI
+        .word   FLASH_HI
+        .word   EEPROM_HI
+        .word   RAM_HI
 
 ;;; x@ ( addrl addru -- x )
         fdw     9b
@@ -5088,7 +5029,6 @@ MARKER:
         call    ALLOT
         call    FRAM
         rcall   XDOES
-        call    DODOES
         rcall   INI
         rcall   TEN
         jmp     CMOVE
@@ -5249,31 +5189,31 @@ RQ_EMIT:
         sbrs    t2, PORF
         rjmp    RQ_EXTR
         rcall   DOLIT
-        .word     'P'
+        .word   'P'
         rcall   EMIT_A
 RQ_EXTR:
         sbrs    t2, EXTRF
         rjmp    RQ_BORF
         rcall   DOLIT
-        .word     'E'
+        .word   'E'
         rcall   EMIT_A
 RQ_BORF:
         sbrs    t2, BORF
         rjmp    RQ_WDRF
         rcall   DOLIT
-        .word     'B'
+        .word   'B'
         rcall   EMIT_A
 RQ_WDRF:
         sbrs    t2, WDRF
         rjmp    RQ_DIVZERO
         rcall   DOLIT
-        .word     'W'
+        .word   'W'
         rcall   EMIT_A
 RQ_DIVZERO:
         sbrs    t3, 6 ; T bit MATH error
         rjmp    RQ_END
         rcall   DOLIT
-        .word     'M'
+        .word   'M'
         rcall   EMIT_A
 RQ_END: 
         jmp    SPACE_
@@ -5488,11 +5428,11 @@ EMPTY:
         .word   dp_start
         rcall   DOLIT
         .word   coldlitsize
-        call    CMOVE
-        call    FALSE_
+        rcall   CMOVE
+        rcall   FALSE_
         rcall   DOLIT
         .word   dp_flash
-        call    CSTORE
+        rcall   CSTORE
         jmp     DP_TO_RAM
 
 ; Init constant registers
@@ -5724,7 +5664,7 @@ WARM_3:
         sts     rbuf1_wr, r_zero
 #endif
         sei
-        call    RQ_EMIT
+        rcall   RQ_EMIT
         rcall   VER
 #if CPU_LOAD_LED == 1
         m_sbi    CPU_LOAD_DDR, CPU_LOAD_BIT
@@ -5740,7 +5680,7 @@ WARM_3:
         call    TYPE
         rcall   DOLIT
         .word   TURNKEY_DELAY
-        call    MS
+        rcall   MS
         call    KEYQ
         call    ZEROSENSE
         breq    STARTQ1
@@ -5821,7 +5761,7 @@ IRQ_V:
         add     zl, tosl
         ldi     zh, hi8(ivec)
         m_drop
-        call    TO_XA
+        rcall   TO_XA
         jmp     STORE_RAM_2
 
 ; DOLITERAL  x --           compile DOLITeral x as native code
@@ -5833,11 +5773,11 @@ LITERAL_L:
 LITERAL:
         rcall   DOLIT
         fdw     DUP
-        call   INLINE0
+        rcall   INLINE0
         sts     litbuf0, tosl
         sts     litbuf1, tosh
         sbr     FLAGS1, (1<<fLIT)
-        call    DUP
+        rcall   DUP
         mov     tosh, tosl
         swap    tosh
         andi    tosh, 0xf
@@ -5911,9 +5851,9 @@ ESTORE:
 LOCKEDQ:
         sbrs    FLAGS1, fLOCK
         ret
-        call   DOTS
+        rcall   DOTS
         call    XSQUOTE
-        .byte     3
+        .byte   3
         .ascii  "AD?"
         .align  1
         call    TYPE
@@ -6070,7 +6010,7 @@ ECSTORE1:
         sei
 #if DEBUG_FLASH == 1
         rcall   DOLIT
-        .word     'E'
+        .word   'E'
         call    EMIT
 #endif
         rjmp    CSTORE_POP
@@ -6103,7 +6043,6 @@ VALUE:
         call    COMMA
         rcall   XDOES
 VALUE_DOES:
-        call    DODOES
         jmp     FETCH
 
         fdw     VALUE_L
@@ -6113,12 +6052,11 @@ DEFER_L:
         .align  1
 DEFER:
         rcall   CREATE
-        call    DOLIT
+        rcall   DOLIT
         fdw     ABORT
         call    COMMA
         rcall   XDOES
 DEFER_DOES:
-        call    DODOES
         jmp     FEXECUTE
 
         fdw     DEFER_L
@@ -6127,14 +6065,15 @@ IS_L:
         .ascii  "is"
         .align  1
 IS:
-        call    TICK
+        rcall   TICK
         call    TOBODY
         rcall   STATE_
         call    ZEROSENSE
         breq    IS1
         rcall   LITERAL
-        call    DOCOMMAXT
+        rcall   DOLIT
         fdw     STORE
+        call    COMMAXT
         rjmp    IS2
 IS1:
         rcall   STORE
@@ -6155,9 +6094,8 @@ TURNKEY_L:
         .ascii  "turnkey"
         .align  1
 TURNKEY:
-        call    VALUE_DOES      ; Must be call for IS to work.
-        .word     dpSTART
-
+        m_lit   dpSTART
+        jmp     VALUE_DOES
 
 ;;; *******************************************************
 ; PAUSE  --     switch task
@@ -6210,7 +6148,7 @@ ICOMMA_L:
         .ascii  "i,"
         .align  1
 ICOMMA:
-        call    IHERE
+        rcall   IHERE
         rcall   STORE
         call    CELL
         jmp     IALLOT
@@ -6223,7 +6161,7 @@ ICCOMMA_L:
         .ascii  "ic,"
         .align  1
 ICCOMMA:
-        call    IHERE
+        rcall   IHERE
         rcall   CSTORE
         call    ONE
         jmp     IALLOT
@@ -6236,7 +6174,7 @@ L_DOTBASE:
 DOTBASE:
         .global DOTBASE
         call    BASE
-        call    FETCH
+        rcall   FETCH
         cpi     tosl, 0x10
         brne    DOTBASE1
         ldi     tosl,'$'
@@ -6266,7 +6204,7 @@ CMP1:
         breq    CMP2
         jmp     TWODROPZ
 CMP2:
-        call    XNEXT
+        rcall   XNEXT
         brcc    CMP1
         jmp     TWODROPNZ
 
@@ -6277,13 +6215,13 @@ L_MEMQ:
         .align  1
 MEMQ:
         call    CSE_
-        call    DOLIT
+        rcall   DOLIT
         fdw     MEMQADDR_N
         call    PLUS
-        call    FETCH_A
+        rcall   FETCH
         call    CFETCHPP
-        call    DOLIT
-        .word     NFAmask
+        rcall   DOLIT
+        .word   NFAmask
         jmp     AND_
 ; *******************************************************************
 ISTORERR0:
@@ -6291,20 +6229,20 @@ ISTORERR0:
         lds   tosl, iaddrl
         lds   tosh, iaddrh
 ISTORERR:
-        call   DOTS
+        rcall   DOTS
         call    XSQUOTE
         .byte   4
         .ascii  "AD?"
         .byte   NAK_
         .align  1
         call    TYPE
-        jmp    ABORT
+        jmp     ABORT
         
 IWRITE_FC_START:
 #if OPERATOR_UART == 0
 #if U0FC_TYPE == 1
         rcall   DOLIT
-        .word     XOFF
+        .word   XOFF
         call    EMIT
 #endif
 #if U0FC_TYPE == 2
@@ -6313,7 +6251,7 @@ IWRITE_FC_START:
 #else
 #if U1FC_TYPE == 1
         rcall   DOLIT
-        .word     XOFF
+        .word   XOFF
         call    EMIT
 #endif
 #if U1FC_TYPE == 2
@@ -6331,7 +6269,7 @@ ISTORE_FC_END:
 #if OPERATOR_UART == 0
 #if U0FC_TYPE == 1
         rcall   DOLIT
-        .word     XON
+        .word   XON
         call    EMIT
 #endif
 #if U0FC_TYPE == 2
@@ -6340,7 +6278,7 @@ ISTORE_FC_END:
 #else
 #if U1FC_TYPE == 1
         rcall   DOLIT
-        .word     XON
+        .word   XON
         call    EMIT
 #endif
 #if U1FC_TYPE == 2
@@ -6348,8 +6286,8 @@ ISTORE_FC_END:
 #endif
 #endif
 #if DEBUG_FLASH == 1
-        call   DOLIT
-        .word     'F'
+        call    DOLIT
+        .word   'F'
         call    EMIT
 #endif
         ret
