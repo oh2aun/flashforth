@@ -65,12 +65,17 @@ $60 constant si5351
 $20 constant SI_CLK_SRC_PLLB
 $10 constant SI_CLK_INVERT
 
+eeprom
+$5c value clk2
+$4c value clk1
+
 ram
 #14 value divider
+#16 value clk0_divider
 
 variable mult
 2variable num
-#1048575. 2constant denom
+$f.ffff. 2constant denom
 
 :  pll! ( reg_base -- )
    >r
@@ -84,51 +89,56 @@ variable mult
    r> 2+ si5351.pll!
 ;
 
-: msynt! ( reg_base -- ) \ b = 1, c = $ffffff, a = divider
+: msynt! ( divider reg_base -- ) \ b = 1, c = $ffffff, a = divider
   >r
   1 r@ si5351.!  \ P3(15:0)
   0 r@ 2+ si5351.c!  \ P1(17:16)
-  #128 divider * #512 - r@ 3 + si5351.! \ P1(15:0)
+  ( divider ) #128 * #512 - r@ 3 + si5351.! \ P1(15:0)
   0. r> 5 + si5351.c!! \ P3(19:16)P2(19:0)
+;
+
+\ FM vfo. 76.8 - 97.3 MHz, AM fixed 44.545 MHz
+: fm.init
+  #8 to divider
+  #8 to clk0_divider
+  %1111.1110 SI_OE_CONTROL si5351.c!   \ clk0 on
+  clk0_divider SI_SYNTH_MS_0 msynt!
+  $dc SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Power down
+  $cc SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Power down
+  $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c!
+  $ffff SI_SYNTH_PLL_B si5351.!
+  $a0 SI_PLL_RESET si5351.c!
+;
+: fm.f ( ud -- )
+  clk0_divider ud* d>q xtal uq/mod drop mult !
+  denom uq* xtal uq/mod num 2! 2drop
+  SI_SYNTH_PLL_B  pll!
 ;
 
 \ Use CLK2 and CLK1 with 180 deg phase shift as push pull
 \ via a 4:1 wideband transformer. Iout=4mA -> output 11 dBm
-: a.init ( u -- )
+: am.init ( u -- )
   to divider
-  %1111.1001 SI_OE_CONTROL si5351.c!  \ clk1 and clk2
-  SI_SYNTH_MS_2 msynt!
-  SI_SYNTH_MS_1 msynt!
-  $5d SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Inverted output
-  $4d SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Normal output
-  $cc SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c! \ Power down
+  %1111.1000 SI_OE_CONTROL si5351.c!  \ clk0, clk1, clk2 on 
+  divider SI_SYNTH_MS_2 msynt!
+  divider SI_SYNTH_MS_1 msynt!
+  clk2 SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Inverted output
+  clk1 SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Normal output
   $ffff SI_SYNTH_PLL_A si5351.!
-  $40 #183 si5351.c!
+  
+  #16 to clk0_divider
+  clk0_divider SI_SYNTH_MS_0 msynt!
+  $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c! \ Normal output
+  $ffff SI_SYNTH_PLL_B si5351.!
+  #44.545.000. fm.f
+
   $a0 SI_PLL_RESET si5351.c!
 ;
 
-\ AM VFO 45-67 MHz output, multisynth divider is 16-24. vco 1100 MHz
-: a.f ( ud -- )
+\ AM VFO 45-67 MHz output, multisynth divider is 14-20. vco 900 MHz
+: am.f ( ud -- )
   divider ud* d>q xtal uq/mod drop mult !
   denom uq* xtal uq/mod num 2! 2drop
   SI_SYNTH_PLL_A  pll!
-;
-
-\ FM vfo. 76.8 - 97.3 MHz
-: b.init
-  #12 to divider
-  %1111.1110 SI_OE_CONTROL si5351.c!   \ clk0
-  SI_SYNTH_MS_0 msynt!
-  $dd SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Power down
-  $cd SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Power down
-  $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c!
-  $ffff SI_SYNTH_PLL_B si5351.!
-  $40 #183 si5351.c!
-  $a0 SI_PLL_RESET si5351.c!
-;
-: b.f ( ud -- )
-  divider ud* d>q xtal uq/mod drop mult !
-  denom uq* xtal uq/mod num 2! 2drop
-  SI_SYNTH_PLL_B  pll!
 ;
 

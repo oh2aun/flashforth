@@ -36,7 +36,7 @@ $ffb6 constant trise
 $fa81 constant wpue
 
 \ access ram variables 18F26K42
-$c046 constant timestamp
+\ $c046 constant timestamp
 $c048 constant switch1
 $c049 constant switch2
 $c04a constant ioca
@@ -54,7 +54,7 @@ $28 as3 incf,           ( f d a -- )
 
 \ Interrupt on pin change
 : knobi
-  [i
+\  [i
   [ pir0 banksel  pir0 iocif b, bcf, ]
   [ iocbf banksel ]
   [ ioccf w, b, movf,  iocc a, movwf, ]
@@ -66,13 +66,13 @@ $28 as3 incf,           ( f d a -- )
   [ iocbf w, b, movf, ]
   [ iocbf b, clrf, ]
   [ $20 andlw,  nz, if, ]
-      ticks timestamp @ - #80 < if
+\      ticks timestamp @ - #80 < if
   [     portb w, a, movf, $10 andlw,  nz, if, ]
   [       knob3 f, a, incf, ]
   [     else, ]
   [       knob3 f, a, decf, ]
   [     then, ]
-      then
+      \ then
       \ ticks timestamp !
   [   $10 w, a, movf,  $46 a, movwf, ]
   [   $11 w, a, movf,  $47 a, movwf, ]
@@ -100,7 +100,7 @@ $28 as3 incf,           ( f d a -- )
   [ ioce w, a, movf, $08 andlw, nz, if, ]
   [   switch1 f, a, incf, ]
   [ then, ]
-  i]
+\  i]
  ;i
 
 : knob-init

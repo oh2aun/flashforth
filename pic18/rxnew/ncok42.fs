@@ -10,7 +10,8 @@ $fa40 constant ansela
 $ffc2 constant trisa
 
 eeprom
-#22.272.410. 2value xtal_ee
+#26.998.784. 2value xtal_ee
+#32.004.192. 2value xtal_pic
 ram
 variable xtalOffset
 
@@ -35,12 +36,11 @@ variable xtalOffset
   0 ansela c!
   $80 nco1con c!
 ;
-
 : uq/ uq/mod rot drop rot drop ;
 
-: nco.value ( d -- d ) $20.0000. uq* xtal uq/ ;
+: nco.value ( d -- d ) $20.0000. uq* xtal_pic uq/ ;
 
 : nco.f ( d -- ) nco.value nco! ;
 
-: nco.real ( -- d )  nco@ xtal uq* $20.0000. uq/ ;
+: nco.real ( -- d )  nco@ xtal_pic uq* $20.0000. uq/ ;
 
