@@ -1,7 +1,7 @@
 //**********************************************************************
 //                                                                     *
 //    Filename:      p18f-main.inc                                     *
-//    Date:          18.01.2022                                        *
+//    Date:          08.01.2025                                        *
 //    FF Version:    5.0                                               *
 //    Copyright:     Mikael Nordman                                    *
 //    Author:        Mikael Nordman                                    *
@@ -24,7 +24,7 @@
 
 //  Specify the cpu clock frequency here
 //  It must be aligned with the processor specific configuration bits
-clock   equ 64000000  // Hz
+clock   equ 48000000  // Hz
 
 // Specify the baud rate for the UARTs
 baud    equ 38400
@@ -39,20 +39,8 @@ baud3   equ 38400
 #define MS_TMR 1
 // TMR 2 4 6 gives exactly 1 ms ticks only with clocks like 4096, 8192, 16384 KHz. N*256KHz.
 
-// System tick time in milliseconds.
-// TIMERS 1, 3, 5
-// - 1, 2, 4 ms can be used with upto 64 MHz clock
-// - 8 ms can be used with upto 32 MHz clock
-// - 16 ms can be used with upto 16 MHz clock
-// - etcetera
-// TIMERS 2, 4, 6
-// - 1 ms can be used with upto 64 MHz clock
-// - 2 ms can be used with upto 32 MHz clock
-// - 4 ms can be used with upto 16 MHz clock
-#define TICK_TIME 1
-
 // Allow warm reset by ctrl-O
-#define CTRL_O_WARM_RESET DISABLE     // ENABLE or DISABLE
+#define CTRL_O_WARM_RESET ENABLE     // ENABLE or DISABLE
 
 // Put CPU in idle when operator task calls PAUSE
 // Saves power on CPUs that support IDLE mode.
@@ -71,7 +59,7 @@ baud3   equ 38400
 // Define the startup delay for turnkey words.
 // Use 8 seconds for USB_CDC to have time to start the USB
 // connection and reset the turnkey
-#define TURNKEY_DELAY 2000  // Milliseconds
+#define TURNKEY_DELAY 4000  // Milliseconds
 
 // Define if extra UARTs are included
 #define WANT_UART2 DISABLE      // ENABLE or DISABLE
@@ -142,9 +130,9 @@ spbrg3valx4  equ ((clock/baud3)/4) - 1
 // Constant for the MS word.
 tmr2prescaler   equ 4
 tmr2postscaler  equ 16
-tmr2ms_val      equ (((clock/4000/tmr2prescaler/tmr2postscaler)*TICK_TIME)-1)
+tmr2ms_val      equ ((clock/4000/tmr2prescaler/tmr2postscaler)-1)
 tmr1prescaler   equ 1
-tmr1ms_val      equ ((clock/4000/tmr1prescaler)*TICK_TIME)
+tmr1ms_val      equ (clock/4000/tmr1prescaler-3)
 
 // Calculate the program memory write delay
 write_delay     equ clock / 1000000  + 1
