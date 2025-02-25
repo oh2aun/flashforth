@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          08.01.2025                                        *
+;;    Date:          25.02.2025                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -69,7 +69,7 @@
 #endif
 #define EEDATA NVMDAT
 #define EECON1 NVMCON1
-#define EEPGD
+#define EEPGD 
 #define CFGS 6
 #ifdef NVMCON2
 #define EECON2 NVMCON2
@@ -505,20 +505,20 @@ dpdata:      ds 2
 
 ;; Variables in EEPROM
 beeprom     equ PEEPROM
-dp_start    equ beeprom + 0  ;; Deferred TURNKEY execution vector
-dp_flash    equ beeprom + 2  ;; FLASH dictionary pointer
-dp_eeprom   equ beeprom + 4  ;; EEPROM dictionary pointer
-dp_ram      equ beeprom + 6  ;; RAM dictionary pointer
-latest      equ beeprom + 8  ;; Pointer to latest dictionary word
-prompt      equ beeprom + 10 ;; Deferred prompt action
-dpeeprom    equ beeprom + 12
+eeprom_null equ beeprom + 0  ;; place for corrupt eeprom writes
+dp_start    equ beeprom + 2  ;; Deferred TURNKEY execution vector
+dp_flash    equ beeprom + 4  ;; FLASH dictionary pointer
+dp_eeprom   equ beeprom + 6  ;; EEPROM dictionary pointer
+dp_ram      equ beeprom + 8  ;; RAM dictionary pointer
+latest      equ beeprom + 10  ;; Pointer to latest dictionary word
+prompt      equ beeprom + 12 ;; Deferred prompt action
+dpeeprom    equ beeprom + 14
 
 ;;**************************************************
 ;; Ensure the EEPROM is initialized even if the
 ;; eeprom is not erased when programming the chip
 PSECT   edata
-        db  0xff, 0xff
-
+    dw  0xdead, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff
 ;; Code **********************************************
 ;   Reset vector
 PSECT resetVec,class=CODE
@@ -1521,15 +1521,12 @@ WARM_ZERO_1:
         bsf     GIEH
 
         call    LIT
-        dw      dp_start
+        dw      prompt
         call    FETCH
         call    TRUE_
         call    EQUAL
         call    ZEROSENSE
         bz      WARM_2
-        call    LIT
-        dw      20
-        call    MS        ; Write to EEPROM fails with a shorter delay, why ?
         call    EMPTY
 WARM_2:
         call    DP_TO_RAM
@@ -1546,7 +1543,7 @@ WARM_2:
         rcall   RQ
         rcall   VER
 
-        rcall   TURNKEY   ; 0xca
+        rcall   TURNKEY
         call    ZEROSENSE
         bz      STARTQ2
         call    XSQUOTE
@@ -1582,7 +1579,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 08.01.2025        ; 10
+        STRING 25.02.2025        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -2670,12 +2667,14 @@ ESTORE:
         movwf   EEADRH, B
 #endif
         movf    Sminus, W, A
+        movwf   PRODL, A
         movwf   EEADR, B
         incf    EEADR, F, B
         movf    Sminus, W, A
         movwf   EEDATA, B
         rcall   ECSTORE1
-        decf    EEADR, F, B
+        movf    PRODL, W, A
+        movwf   EEADR, B
         movf    Sminus, W, A
         movwf   EEDATA, B
         bra     ECSTORE1
@@ -2719,6 +2718,7 @@ ECSTORE2:
         clrf    NVMCON1, B
         clrf    NVMADRU, B
 #endif
+        clrf    EEADR, B
         return
 
 
@@ -2737,6 +2737,7 @@ EFETCH:
         rcall   asmecfetch
         incf    EEADR, F, B
         rcall   asmecfetch
+        clrf    EEADR, B
         return
 
 ; EC@      addr -- c  fetch char from data EEPROM
@@ -2753,6 +2754,7 @@ ECFETCH:
         movwf   EEADR, B
         rcall   asmecfetch
         clrf    plusS, A
+        clrf    EEADR, B
         return
 asmecfetch:
 #ifndef Qxx
