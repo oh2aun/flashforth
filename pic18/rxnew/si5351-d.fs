@@ -66,7 +66,7 @@ $20 constant SI_CLK_SRC_PLLB
 $10 constant SI_CLK_INVERT
 
 eeprom
-$5c value clk2
+$4c value clk2
 $4c value clk1
 
 ram
@@ -99,13 +99,12 @@ $f.ffff. 2constant denom
 
 \ FM vfo. 76.8 - 97.3 MHz, AM fixed 44.545 MHz
 : fm.init
-  #8 to divider
   #8 to clk0_divider
-  %1111.1110 SI_OE_CONTROL si5351.c!   \ clk0 on
-  clk0_divider SI_SYNTH_MS_0 msynt!
-  $dc SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Power down
-  $cc SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Power down
-  $4c SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c!
+  %1111.1101 SI_OE_CONTROL si5351.c!   \ clk0 on
+  clk0_divider SI_SYNTH_MS_1 msynt!
+  $cc SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Power down
+  $4c SI_CLK_SRC_PLLB or SI_CLK1_CONTROL si5351.c! 
+  $cc SI_CLK_SRC_PLLB or SI_CLK0_CONTROL si5351.c! \ Power down
   $ffff SI_SYNTH_PLL_B si5351.!
   $a0 SI_PLL_RESET si5351.c!
 ;
@@ -119,11 +118,10 @@ $f.ffff. 2constant denom
 \ via a 4:1 wideband transformer. Iout=4mA -> output 11 dBm
 : am.init ( u -- )
   to divider
-  %1111.1000 SI_OE_CONTROL si5351.c!  \ clk0, clk1, clk2 on 
+  %1111.1010 SI_OE_CONTROL si5351.c!  \ clk0, clk1, clk2 on 
   divider SI_SYNTH_MS_2 msynt!
-  divider SI_SYNTH_MS_1 msynt!
-  clk2 SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Inverted output
-  clk1 SI_CLK_SRC_PLLA or SI_CLK1_CONTROL si5351.c! \ Normal output
+  clk2 SI_CLK_SRC_PLLA or SI_CLK2_CONTROL si5351.c! \ Normal output
+  $ec  SI_CLK_SRC_PLLB or SI_CLK1_CONTROL si5351.c! \ Off
   $ffff SI_SYNTH_PLL_A si5351.!
   
   #16 to clk0_divider

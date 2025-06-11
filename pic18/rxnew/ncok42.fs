@@ -10,7 +10,7 @@ $fa40 constant ansela
 $ffc2 constant trisa
 
 eeprom
-#26.998.784. 2value xtal_ee
+#27.001.527. 2value xtal_ee
 #32.004.192. 2value xtal_pic
 ram
 variable xtalOffset

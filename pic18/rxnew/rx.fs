@@ -1,5 +1,5 @@
 \ pic18f26K42 and si5351a, NCO used  as BFO
-\ #sendm f/forget f/case f/2value 18f/task 18f/qmath
+\ #sendm f/forget f/case f/2value 18f/qmath
 \ #sendm pic18/rxnew/strcat pic18/rxnew/i2c-base-b pic18/rxnew/knobi
 \ #sendm pic18/rxnew/ncok42 pic18/rxnew/dogs164e pic18/rxnew/si5351-d 
 \ #sendm pic18/rxnew/rx
@@ -123,7 +123,7 @@ eeprom
 4 2array: RX0
 defer mode0
 defer bw0
-1 value term?
+0 value term?
 ram
 variable vol
 variable newVol
@@ -144,6 +144,8 @@ variable newVol
 ;
 
 : am.ad
+  %1000 ansela mset
+  %1000 trisa mset
   %0000.0100 adcon0 c!
   %0011.1111 adclk c!
   0 adref c!
@@ -151,8 +153,8 @@ variable newVol
   %1000.0100 adcon0 c!  \ Fosc
 ;
 : fm.ad
-  1 ansela c!
-  1 trisa mset
+  %0001 ansela mset
+  %0001 trisa mset
   %0000.0100 adcon0 c!  \ Internal osc
   %0000.0000 adpch c!   \ AN0
   %1000.0100 adcon0 c!  \ Fosc
@@ -248,7 +250,7 @@ ram
 
 \ Set si5351 vco to about 900 MHz
 : divider!
-  #9000 rxf@ #10000 um/mod nip 450 + / aligned
+  #8000 rxf@ #10000 um/mod nip 450 + / aligned
   dup divider <> 
   if am.init else drop then 
 ;
@@ -330,12 +332,12 @@ ram variable muted
   if   newrxf 2@  #87.500.00. d< if #87.500.00. newrxf 2! then 
        newrxf 2@ #108.000.00. d> if #108.000.00. newrxf 2! then 
   else newrxf 2@ 0. d< if 0. newrxf 2! then 
-       newrxf 2@ #22.000.00. d> if #22.000.00. newrxf 2! then
+       newrxf 2@ #30.000.00. d> if #30.000.00. newrxf 2! then
   then ;
 
 : rx-set
   newMode mode change?
-  if 0 vol ! 0 vol!
+  if 0 vol ! 0 vol! 100 to divider
      newMode @ mode ! det-set filter-set 
      rxf@ 2dup newrxf 2! 1+ rxf! #100 ms
   then
@@ -351,7 +353,7 @@ ram variable muted
 #14.200.00.  modeUsb RX0 2!
 #101.100.00. modeFm  RX0 2!
 
-' fm is mode0
+' usb is mode0
 
 : rx-reset ( -- )
   cr
@@ -410,21 +412,21 @@ ram variable muted
 : am.s.get ( -- n ) \ 0-15
   0
   am.ad@ >r
-  r@ 2750 s.add \ s1
-  r@ 2550 s.add \ s2
-  r@ 2350 s.add \ s3
-  r@ 2150 s.add \ s4
-  r@ 1950 s.add \ s5
-  r@ 1750 s.add  \ s6
-  r@ 1550 s.add  \ s7
-  r@ 1350 s.add  \ s8
-  r@ 1150 s.add  \ s9
-  r@ 960 s.add  \ +10
-  r@ 800 s.add  \ +20
-  r@ 650 s.add  \ +30
-  r@ 475 s.add  \ +40
-  r@ 270 s.add  \ +50
-  r> 100 s.add  \ +60
+  r@ 3700 s.add  \ s1   -105
+  r@ 3300 s.add  \ s2   -101
+  r@ 3000 s.add  \ s3   -97
+  r@ 2520 s.add  \ s4   -93
+  r@ 2200 s.add  \ s5   -89
+  r@ 1900 s.add  \ s6  -85
+  r@ 1750 s.add  \ s7  -81
+  r@ 1600 s.add  \ s8  -77
+  r@ 1500 s.add  \ s9  -73
+  r@ 1300 s.add  \ +10
+  r@ 1050 s.add  \ +20
+  r@ 800  s.add  \ +30
+  r@ 600  s.add  \ +40
+  r@ 400  s.add  \ +50
+  r> 200  s.add  \ +60
 ;
 : fm.s.get ( -- n ) fm.ad@ #256 / ;
 : s.get modeFm? if fm.s.get else am.s.get then ;
@@ -508,15 +510,31 @@ ram variable muted
 : f-1000 -10000 rd ;
 : f+1000 10000 rd ;
 
+: offset+- ( n -- ) s>d rxOffset 2@ d+ rxOffset 2! det-set rx-freq ;
+
+: offset-
+  mode @ case
+    modeUsb of -50 endof
+    modeLsb of  50 endof
+    default 0 endof
+  endcase offset+- ;
+
+: offset+
+  mode @ case
+    modeUsb of  50 endof
+    modeLsb of -50 endof
+    default 0 endof
+  endcase offset+- ;
+
 : nop ;
 flash create exec
-   ' am , ' f+1000 ,    ' nop ,    ' lsb ,  \ abcd
-  ' f-5 ,     ' fm , ' narrow , ' middle ,  \ efgh
-' f+500 ,   ' wide ,    ' vo- ,    ' vo+ ,  \ ijkl
-  ' mem ,    ' nop ,  ' f-250 ,  ' f+250 ,  \ mnop
-  ' f-1 , ' f+5    ,    ' usb ,  ' f-100 ,  \ qrstx
-' f-500 , ' f-1000 ,    ' f+1 ,    ' nop ,  \ uvwx
-' f+100 ,  ' abort ,                        \ yz
+   ' am , ' f+1000 , ' offset+ ,     ' lsb ,  \ abcd
+  ' f-5 ,     ' fm ,  ' narrow ,  ' middle ,  \ efgh
+' f+500 ,   ' wide ,     ' vo- ,     ' vo+ ,  \ ijkl
+  ' mem ,    ' nop ,   ' f-250 ,   ' f+250 ,  \ mnop
+  ' f-1 , ' f+5    ,     ' usb ,   ' f-100 ,  \ qrstx
+' f-500 , ' f-1000 ,     ' f+1 , ' offset- ,  \ uvwx
+' f+100 ,  ' abort ,                          \ yz
 ram
 
 : c>s ( c -- n) dup $7f > if $ff00 or then ;
@@ -610,14 +628,14 @@ ram
     if   true
          key dup [char] a - dup 0 #26 within
          if cells exec + @ex else drop then
-         short-keys
+         term? if short-keys else drop then
     else false
     then
     knob-lores or knob-vol or knob-hires or
     knob-1 or knob-2 or
   again ;
 
-: f #100 um* newrxf 2! rx ;
+: F #100 um* newrxf 2! rx ;
 
 : rx-init rx-reset rx ;
 \ rx-init
