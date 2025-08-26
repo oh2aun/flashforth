@@ -1,9 +1,9 @@
 \ *******************************************************************
 \                                                                   *
-\    Filename:      task-scamp0.txt                                 *
-\    Date:          18.02.2023                                      *
+\    Filename:      task-nano-gu205.fs                              *
+\    Date:          26.08.2025                                      *
 \    FF Version:    5.0                                             *
-\    MCU:           PIC 24 33                                       *
+\    MCU:           PIC2464GU205 nano board                         *
 \    Copyright:     Mikael Nordman                                  *
 \    Author:        Mikael Nordman                                  *
 \ *******************************************************************
@@ -14,25 +14,23 @@ single
 marker -t1
 ram decimal
 \ Registers and LED for dsPIC33FJ128GB202 on Scamp 0.
-$0184 constant lata
-$0180 constant trisa
-$0001 lata 2constant led0
+$0002 latc 2constant led
 ram #250 value delay
-: led0off  led0 mclr ;
-: led0on   led0 mset ;
+: led-off  led mclr ;
+: led-on   led mset ;
 
 40 30 30 0 task: t1
 : tloop 
   #250 to delay
-  1 trisa mclr
-  led0off
+  2 trisc mclr
+  led-off
   begin 
     delay ms 
-    led0 mtst
+    led mtst
     if
-      led0off
+      led-off
     else 
-      led0on
+      led-on
     then
   again
 ;

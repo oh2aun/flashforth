@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-text.s                                        *
-;    Date:          16.04.2024                                        *
+;    Date:          26.08.2025                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -81,7 +81,7 @@ USB_CFG:
         .byte   0x07,0x05,0x81,0x03,0x08,0x00,0x10 ; endpoint notification
         .byte   0x09,0x04,0x01,0x00,0x02,0x0a,0x00,0x00,0x00 ; interface data
         .byte   0x07,0x05,0x02,0x02,0x08,0x00,0x00 ; endpoint data out
-        .byte   0x07,0x05,0x82,0x02,0x08,0x00,0x00 ; endpoint data in
+        .byte   0x07,0x05,0x82,0x02,0x10,0x00,0x00 ; endpoint data in
 
 ;*******************************************************************************
 USBDriverService:
@@ -107,7 +107,7 @@ USBSuspend:
         btss    U1OTGIE, #ACTVIE
         return
         mov	#__IDLEIF, W0
-	      mov     W0, U1IR         ; clear IDLEIF
+        mov     W0, U1IR         ; clear IDLEIF
         bset    U1OTGIE, #ACTVIE
         return
 USBWake:

@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      cdc-bss.s                                         *
-;    Date:          01.04.2023                                        *
+;    Date:          26.08.2025                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -58,7 +58,7 @@
     
 .equ CDC_INT_EP_SIZE,         8
 .equ CDC_BULK_OUT_EP_SIZE,    8
-.equ CDC_BULK_IN_EP_SIZE,     8
+.equ CDC_BULK_IN_EP_SIZE,     16
 
 .bss
 .align 512
@@ -106,9 +106,13 @@ usb_device_state:   .space 1
 .equ ADDRESS_STATE,     0x07
 .equ ADDRESS_STATE2,    0x83  ; Shifted to h'07'
 .equ CONFIGURED_STATE,  0x0f
+
 count:          .space 1
 dPtr:           .space 2
 line_coding:    .space 8
 ep2optr:        .space 2
 ep2iptr:        .space 2
+ep2icount:      .space 2
+ep2itmo:        .space 2
+
            
