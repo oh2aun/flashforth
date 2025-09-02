@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          26.08.2025                                        *
+;    Date:          02.09.2025                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1194,7 +1194,7 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 26.08.2025\r\n"
+        .ascii  " FlashForth 5 PIC24 02.09.2025\r\n"
         .align 2
        rcall   TYPE
 .if OPERATOR_UART == 1
@@ -1530,14 +1530,15 @@ OPERATOR_AREA:
         .word   TIB_SIZE+HOLD_SIZE
 
 
-;  rcall, ( rel-addr -- )
+;  rcall, ( rel-addr -- ) ONLY FOR NEGATIVE RELATIVE ADDRESSES.
         .pword   paddr(9b)+PFLASH
 9:
         .byte   NFA|6
         .ascii  "rcall,"
         .align  2
 RCALL_:
-        asr     [W14], [W14]        ; 2/
+        lsr     [W14], [W14]
+        bset    [W14], #15
         mlit    #7
         rcall   AS_COMMA
         return
