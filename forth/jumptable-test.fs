@@ -25,26 +25,15 @@ hex
 \ *********************************************************************
 hex ram
 
-: .1st    ( -- )
-  ." First "
-;
-
-: .2nd    ( -- )
-  ." Second "
-;
-
-: .3rd    ( -- )
-  ." Third "
-;
-
-: .4th    ( -- )
-  ." Default "
-;
+: .1st    ( -- ) ." First " ;
+: .2nd    ( -- ) ." Second " ;
+: .3rd    ( -- ) ." Third " ;
+: .4th    ( -- ) ." Default " ;
 
 jumptable: do_test
    00    | .1st
-   01    | .2nd
-   02    | .3rd
+   27    | .2nd
+   99    | .3rd
   default| .4th
 
 ram

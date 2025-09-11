@@ -28,7 +28,7 @@ marker -vt100-test
   begin
    \bri \rev 
    4 #14 \cp bl emit
-   dup 5 u.r 1+  ." sec "
+   dup 5 u.r 1+ ." sec "
    \res 
    #1000 ms
    key?

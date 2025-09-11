@@ -14,7 +14,7 @@
 
 -vt100
 marker -vt100
-
+decimal
 \ Auxiliary words
 : esc[ #27 emit #91 emit ; \ 'esc' and '[' for starting escape sequence
 : .n ( n -- )              \ Print n without separator space character
@@ -48,6 +48,17 @@ marker -vt100
 : \bli  5 \attr ;       \ Blinked
 : \rev  7 \attr ;       \ Reverse
 : \hid  8 \attr ;       \ Hidden
+
+: fg ( n -- ) 30 + \attr ;
+: bg ( n -- ) 40 + \attr ;
+0 constant black
+1 constant red
+2 constant green
+3 constant yellow
+4 constant blue
+5 constant magenta
+6 constant cyan
+7 constant white
 
 \ Cursor on/off
 : \c+   esc[ [char] ? emit [char] 2 emit [char] 5 emit [char] h emit ;
