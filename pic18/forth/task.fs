@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
-\    Filename:      task.txt                                          *
-\    Date:          26.04.2021                                        *
+\    Filename:      task.fs                                           *
+\    Date:          13.09.2025                                        *
 \    FF Version:    5.0                                               *
 \    MCU:           PIC18                                             *
 \    Copyright:     Mikael Nordman                                    *
@@ -98,7 +98,7 @@ hex ram
 
 \ Insert a new task after operator in the linked list.
 \ May only be executed from the operator task
-\ task-addr -- 
+\ task-addr --
 : run
   @ up! ul@ 0= if    \ t Already running ?
     up@              \ t t-up
@@ -144,7 +144,7 @@ hex ram
 : tasks ( -- )
   begin
     up@
-      task @ 6 - c>n
+      task @ #12 - c>n
       op! .id space
     up!
     ul@ op@ <> ul@ and

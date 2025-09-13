@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          25.02.2025                                        *
+;;    Date:          13.09.2025                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ;; FlashForth is a standalone Forth system for microcontrollers that
 ;; can flash their own flash memory.
 ;;
-;; Copyright (C) 2024  Mikael Nordman
+;; Copyright (C) 2025  Mikael Nordman
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License version 3 as
@@ -1579,7 +1579,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 25.02.2025        ; 10
+        STRING 13.09.2025        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1877,7 +1877,7 @@ L_MOVF_:
         NF2     5,movf
         db      ','
         align   2
-        rcall   LIT
+        call    LIT
         dw      0x0050
         bra     AS3_DOES
 
@@ -1887,7 +1887,7 @@ L_MOVWF_:
         NF2     5,movwf
         db      ','
         align   2
-        rcall   LIT
+        call    LIT
         dw      0x006e
         bra     AS2_DOES
 
@@ -1897,7 +1897,7 @@ L_MOVLW_:
         NF2     6,movlw
         db      ','
         align   2
-        rcall   LIT
+        call    LIT
         dw      0x0e00
         bra     AS1_DOES
 
@@ -1907,7 +1907,7 @@ L_MOVLB_:
         NF2     6,movlb
         db      ','
         align   2
-        rcall   LIT
+        call    LIT
         dw      0x0100
         bra     AS1_DOES
 
@@ -3764,7 +3764,17 @@ ECFETCH_:
 ;link   set     $
         NF 3,rp0
 RPEMPTY:
-        lfsr    Rptr, urbuf
+        lfsr    Tptr, upcurr
+        movf    Tplus, W, A
+        movwf   Rp, A
+        movf    Tplus, W, A
+        movwf   Rbank, A
+#ifdef K42
+        addfsr  Rptr, 2
+#else
+        movf    Rplus, W, A
+        movf    Rplus, W, A
+#endif
         movf    TOSH, W, A
         movwf   PCLATH, A    ; Save the return address
         movf    TOSL, W, A
