@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5 31.03.2023
+Dictionary of FlashForth 5 20.11.2025
 
 !          ( x addr -- )
            Store x to addr
@@ -227,6 +227,12 @@ Dictionary of FlashForth 5 31.03.2023
 [i         ( -- )   COMPILE_ONLY
            Enter Forth interrupt context
            PIC18 PIC24-30-33
+
+[[         ( -- )
+           Start compiling temporary code at start of free flash
+           
+]]         ( -- )
+           Stop compiling and execute the temporary code
 
 \          ( -- )
            Skip rest of line
@@ -514,8 +520,8 @@ here       ( -- addr )
 hex        ( -- )
            Set numeric base to hexadecimal
 
-hi         ( -- u )
-           High limit of the current data space memory.
+unused     ( -- u )
+           Unused bytes of the current data space memory.
 
 hold       ( c -- )  COMPILE_ONLY
            Append char to formatted numeric string
