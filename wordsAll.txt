@@ -1,4 +1,4 @@
-Dictionary of FlashForth 5 20.11.2025
+Dictionary of FlashForth 5 08.01.2026
 
 !          ( x addr -- )
            Store x to addr
@@ -30,7 +30,7 @@ Dictionary of FlashForth 5 20.11.2025
 'key?      ( -- addr )  User Variable
            KEY? vector. RX0?, RX1?, RX2?, RX3? or RXU?
 
-'source    ( -- a-addr )     User Variable 
+'source    ( -- a-addr )     User Variable
            Current input source
 
 (          ( -- )
@@ -43,7 +43,7 @@ Dictionary of FlashForth 5 20.11.2025
            Multiply n1 and n2 and divide with n3. 32 bit intermediate result.
 
 */mod      ( n1 n2 n3 -- rem quot )
-           Multiply n1 with n2 and divide with n3 via 32-bit 
+           Multiply n1 with n2 and divide with n3 via 32-bit
            intermediate result
 
 +          ( n1 n2 -- n3 )
@@ -79,7 +79,7 @@ Dictionary of FlashForth 5 20.11.2025
 
 /          ( n1 n2 -- n3 )
            16/16->16 bit signed division
-           
+
 /mod       ( n n  -- rem quot )
            16/16 -> 16-bit signed division.
 
@@ -92,7 +92,7 @@ Dictionary of FlashForth 5 20.11.2025
 0=         ( x -- flag )
            Leave true flag if x is zero
 
-1          ( -- 1 ) 
+1          ( -- 1 )
            Leave one
 
 1+         ( n -- n1 )
@@ -132,7 +132,7 @@ Dictionary of FlashForth 5 20.11.2025
            PIC18
 
 2literal   ( x x -- )
-           Compile a double literal 
+           Compile a double literal
 
 2variable  ( "name" -- )
            Define a double variable
@@ -168,7 +168,7 @@ Dictionary of FlashForth 5 20.11.2025
            Write to the A register
 
 >body      ( xt -- a-addr )
-           Leave the data field address of 
+           Leave the data field address of
            a created word
 
 >in        ( -- a-addr )      User Variable
@@ -199,7 +199,7 @@ Dictionary of FlashForth 5 20.11.2025
 
 ?dnegate   ( d n -- d )
            Negate d if n is negative
-           
+
 ?negate    ( n1 n2 -- n3 )
            Negate n1 if n2 is negative
 
@@ -208,7 +208,7 @@ Dictionary of FlashForth 5 20.11.2025
 
 @+         ( a-addr1 -- a-addr2 x )
            Fetch cell from a-addr1 and increment a-addr1 by cellsize
-           
+
 @p         ( -- addr )
            Fetch the p register to the stack
 
@@ -230,7 +230,7 @@ Dictionary of FlashForth 5 20.11.2025
 
 [[         ( -- )
            Start compiling temporary code at start of free flash
-           
+
 ]]         ( -- )
            Stop compiling and execute the temporary code
 
@@ -291,7 +291,7 @@ bl         ( -- c )
 
 busy       ( -- )
            Cpu idle mode not allowed
-           
+
 c!         ( c c-addr -- )
            Store c to c-addr
 
@@ -362,31 +362,31 @@ create     ( "name" -- )
 
 cwd        ( -- )
            Clear the WatchDog counter.
-           
+
 d+         ( d d -- d )
            Add double numbers
-           
+
 d-         ( d d -- d )
            Subtract double numbers
-           
+
 d.         ( d -- )
            Display signed double number.
-           
+
 d0=        ( d -- f )
            True if d equals zero
-           
+
 d0<        ( d -- f )
            True if d is negative
-           
+
 d<         ( d d -- f )
            True if less than
-           
+
 d=         ( d d -- f )
            True if equal
 
 d>         ( d d -- f )
            True if greater than
-           
+
 d2*        ( d -- d )
            Multiply by 2
 
@@ -413,7 +413,7 @@ digit      ( n -- c )
 
 digit?     ( c -- n flag )
            Convert char to a digit according to base
-           
+
 dinvert    ( ud -- ud )
            Invert double number
 
@@ -422,7 +422,7 @@ dnegate    ( d -- -d )
 
 do         ( limit index --) COMPILE_ONLY
            Start a do loop
-           
+
 does>      ( -- )  COMPILE_ONLY
            Define the runtime action of a created word.
 
@@ -431,7 +431,7 @@ dp         ( -- addr )       Eeprom variable mirrored in ram
            dictionary pointer
 
 dps        ( -- d )
-           End address of Dictionary Pointers. 
+           End address of Dictionary Pointers.
            Absolute address of start of free flash.
            Library and C code can be linked starting at this address.
            PIC24 and dsPIC33
@@ -440,7 +440,7 @@ drop       ( x1 -- )
            Drop top of stack
 
 dump       ( addr u -- )
-           Display a memory dump 
+           Display a memory dump
 
 dup        ( x -- x x )
            Duplicate top of stack
@@ -473,7 +473,7 @@ endit      ( -- ) COMPILE_ONLY
 
 endof      ( -- ) COMPILE_ONLY
            of .. endof in case statement
-         
+
 evaluate   ( c-addr n -- )
            Evaluate buffer
 
@@ -506,7 +506,7 @@ find       ( c-addr -- c-addr 0/1/-1 )
 
 fm/mod     (d n -- rem quot )
            Floored 32/16 -> 16-bit division
-           
+
 for        ( u -- )   COMPILE_ONLY
            Loop u times. for ... next
            R@ gets the loop counter  u-1 ... 0
@@ -547,8 +547,8 @@ ic,        ( c -- )
 
 idle       ( -- )
            Cpu idle mode is allowed
-           
-if         ( -- a-addr )  COMPILE_ONLY 
+
+if         ( -- a-addr )  COMPILE_ONLY
            if ... else ... then
 
 iflush     ( -- )
@@ -630,7 +630,7 @@ load-      ( -- )
 
 loop       ( -- )
            Increment the loop index and terminate the loop if the limit has been reached.
-           
+
 lshift     ( x1 u -- x2
            Shift x1 u bits to the left
 
@@ -639,7 +639,7 @@ m+         ( d1 n -- d2 )
 
 m*         ( n n -- d )
            Signed 16*16->32 multiply
-           
+
 m*/        ( d1 n1 n2 - d2 )
            Scale d2 = d1*n1/n2 with triple intermediate result
 
@@ -659,7 +659,7 @@ min        ( n1 n2 -- n3 )
 
 mod        ( n1 n2 -- remainder )
            Remainder of n1 divided by n2
-           
+
 ms         ( +n -- )
            Pause for +n milliseconds
 
@@ -801,7 +801,7 @@ rx1?       ( -- f )
            Leave TRUE if UART1 receive buffer is not empty.
 
 rx1q       ( -- queue-addr )
-           Leave the address of the queue for UART1. 
+           Leave the address of the queue for UART1.
            PIC24-30-33
 
 rx2        ( -- c )
@@ -829,12 +829,12 @@ rxu        ( -- c )
            PIC18-24 USB
 
 rxu?       ( -- f )
-           Leave TRUE if USB UART receive buffer is not empty. 
+           Leave TRUE if USB UART receive buffer is not empty.
            PIC18-24 USB
 
 s>d        ( n -- d )
            Sign extend single to double precision number
-           
+
 s0         ( -- a-addr )
            Bottom of parameter stack
 
@@ -862,7 +862,7 @@ skip       ( c-addr u c -- c-addr' u' )
 
 sm/rem     ( d n -- rem quot )
            Symmetric 32/16 -> 16 bit division
-           
+
 sp@        ( -- addr )
            Leave parameter stack pointer
 
@@ -884,8 +884,8 @@ space      ( -- )
 spaces     ( n -- )
            Emit n space characters
 
-state      ( -- flag )         
-           Compilation state. State can only be changed by [ and ] 
+state      ( -- flag )
+           Compilation state. State can only be changed by [ and ]
 
 swap       ( x1 x2 -- x2 x1 )
            Swap two top stack items
@@ -896,8 +896,8 @@ task	   ( -- addr )
 task:      ( tibsize stacksize rstacksize addsize -- )
            Define a task
            HINT:
-           Use RAM xxx ALLOT to leave space for PAD if it is needed. 
-           The OPERATOR task does not use PAD.  
+           Use RAM xxx ALLOT to leave space for PAD if it is needed.
+           The OPERATOR task does not use PAD.
 
 tinit      ( taskloop-addr task-addr -- )
            Initialise the user area and link it to a task loop
@@ -1001,7 +1001,7 @@ u>         ( u1 u2 -- flag )
 
 ud.        ( ud -- )
            Display unsigned double number
-           
+
 ud*        ( ud u -- ud )
            Unsigned 32x16 -> 32 bit multiply
 
@@ -1071,6 +1071,18 @@ ut*        ( ud u -- ut )
 
 ut/        ( ut u -- ud )
            Divide triple number with single number
+
+uq/         ( q q -- q )
+            Divide 64-bit unsigned numbers with 64-bit result.
+            PIC24
+
+q>>         ( q u -- q )
+            Shift 64-bit number to right.
+            PIC24
+
+q<<         ( q u -- q )
+            Shift 64-bit number to left.
+            PIC24
 
 value      ( x "name" -- )
            Define a value
@@ -1248,7 +1260,7 @@ sev,    ( -- )          V=1
 sez,    ( -- )          Z=1
 sleep,  ( -- )          Sleep
 st,     ( Rr RD -- )    (RD) = Rr, RD = {X,Y,Z,X+,-X,Y+,-Y,Z+,-Z}
-std,    ( Rr RD q -- )  (RD + q) = Rr, RD = {Y,Z} 
+std,    ( Rr RD q -- )  (RD + q) = Rr, RD = {Y,Z}
 sts,    ( k16 Rd -- )   (k) = Rr
 sub,    ( Rd Rr -- )    Rd = Rd - Rr
 subi,   ( Rd k -- )     Rd = Rd - K
@@ -1384,7 +1396,7 @@ tblwt*-,( -- )                   Table Write with Post-Decrement
 tblwt+*,( -- )                   Table Write with Pre-Increment
 cc,     ( -- cc )                if,/until, Carry
 mi,     ( -- cc )                if,/until, Minus
-z,      ( -- cc )                if,/until, Zero 
+z,      ( -- cc )                if,/until, Zero
 ov,     ( -- cc )                if,/until, Overflow
 not,    ( cc -- not-cc )
 if,     ( cc -- here )
