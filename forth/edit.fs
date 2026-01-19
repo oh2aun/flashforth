@@ -1,6 +1,6 @@
 \ Experimental code to for a block editor
 \ Requires a vt100 capable terminal program, e.g. minicom
-\ #sendm forth/core forth/case forth/vt100 xxxx/forth/block forth/edit
+\ #sendm forth/core forth/case forth/vt100 forth/block24 forth/edit
 -edit
 marker -edit
 decimal
@@ -12,10 +12,10 @@ decimal
 #27 constant k-esc      \ esc
 #25 constant k-ins-line \ C-y
 #11 constant k-del-line \ C-k
-#13 constant k-crlf     \ enter C-m
+#10 constant k-crlf     \ enter C-j
 #02 constant k-sl       \ C-b to beginning of line
 #05 constant k-el       \ C-e to end of line
-
+#23 constant k-wipe     \ wipe the block
 
 \ leftarrow  27 91 68
 \ rightarrow 27 91 67
@@ -32,8 +32,8 @@ create e.buf #cols allot \ Kill buffer
 
 : e.store ( c -- c ) \ store char to cursor and move right
   dup e.addr c! dup emit
-  e.x @ #cols 1- < 
-  if 1 e.x +! else \cb then 
+  e.x @ #cols 1- <
+  if 1 e.x +! else \cb then
   update
 ;
 : e.line ( addr1 -- addr2 )
@@ -48,12 +48,12 @@ create e.buf #cols allot \ Kill buffer
   #lines for #lines r@ - s>d <# bl hold [char] | hold # # #> type
     e.line
     cr
-  next drop 
+  next drop
   e.cp
 ;
 : e.redraw-line
   \c- e.y @ 1+ 5 \cp
-  blk-buffer e.y @ #cols * + 
+  blk-buffer e.y @ #cols * +
   e.line drop
   e.cp
 ;
@@ -63,16 +63,16 @@ create e.buf #cols allot \ Kill buffer
 : e.right e.x @ #cols 1- < if 1 e.x +! \cf then ;
 
 : n1- swap 1- swap ;
-: cmove> ( a1 a2 u -- ) 
-  dup >r + swap r@ + swap r>
-  for  
-     inline over inline over c! 1- n1- 
+: cmove> ( a1 a2 u -- )
+  >r r@ + swap r@ + swap r>
+  for
+     1- n1- over c@ over c!
   next 2drop
 ;
 
 : e.ins ( -- )
   e.addr dup 1+ #cols e.x @ - 1- cmove>
-  bl e.store e.left drop
+  bl e.store e.left drop e.redraw-line
 ;
 : e.del ( -- )
   e.addr 1+ dup 1- #cols e.x @ - 1- cmove
@@ -80,7 +80,7 @@ create e.buf #cols allot \ Kill buffer
 ;
 : e.addr.y ( -- a ) blk-buffer e.y @ #cols * + ;
 : e.ins-line ( -- )
-  e.addr.y dup #cols + 
+  e.addr.y dup #cols +
   blk-buffer blksize + over - cmove>
   e.buf blk-buffer e.y @ #cols * + #cols cmove \ insert e.buf
   e.redraw update
@@ -88,15 +88,15 @@ create e.buf #cols allot \ Kill buffer
 : e.del-line ( -- )
   e.addr.y e.buf #cols cmove      \ save line to e.buf
   e.addr.y dup #cols + swap over
-  blk-buffer blksize + swap - cmove 
-  blk-buffer blksize + #cols - #cols blanks
+  blk-buffer blksize + swap - cmove
+  blk-buffer blksize + #cols - #cols blank
   e.redraw update
 ;
 : e.s 2dup \cp \el \cp .s e.cp ;
 : e.esc
   \ 9 1 e.s
   2 ms key? if key #91 <> if exit then else exit then
-  2 ms key? if 
+  2 ms key? if
     key case
     #68 of e.left  endof
     #67 of e.right endof
@@ -115,7 +115,7 @@ create e.buf #cols allot \ Kill buffer
 
 : edit ( block --- )  \ Start editing a block
   block-init
-  e.buf #cols blanks
+  e.buf #cols blank
   block drop 0 e.x ! 0 e.y ! \cls e.redraw
   begin
     key dup case

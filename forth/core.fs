@@ -1,7 +1,7 @@
 \ *********************************************************************
 \                                                                     *
 \    Filename:      core.fs                                           *
-\    Date:          05.08.2024                                        *
+\    Date:          19.01.2026                                        *
 \    FF Version:    5.0                                               *
 \    Copyright:     Mikael Nordman                                    *
 \    Author:        Mikael Nordman                                    *
@@ -28,7 +28,7 @@ hex ram
 : erase  0 fill ;
 
 \ addr n --
-: blanks bl fill ;
+: blank bl fill ;
 
 \ x -- 0 | x x
 : ?dup dup if inline dup then ;
@@ -36,7 +36,7 @@ hex ram
 \ nfa -- flag
 : in? c@ $40 and ;
 
-\ addr -- addr+1 n 
+\ addr -- addr+1 n
 : count c@+ ;
 
 hex ram

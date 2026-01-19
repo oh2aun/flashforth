@@ -68,10 +68,7 @@ create line-buffer #cols allot
   false blk-dirty !
 ;
 
-: empty-buffers
-  true  blk !
-  false blk-dirty !
-;
+: empty-buffers true  blk ! false blk-dirty ! ;
 
 : flush save-buffers empty-buffers ;
 

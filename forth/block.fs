@@ -9,14 +9,15 @@ marker -block
 #512  constant blklen  \ words in flash
 #64 constant #cols
 blksize #cols / constant #lines
-
+$6000. 2constant fsize
 #2 constant #blk
 fsize #blk blklen 2* um* d- 2constant  blk-start ( absolute flash address )
 ram
 variable scr
-variable blk 
+variable blk
 variable blk-dirty
 create blk-buffer blksize allot
+create line-buffer #cols allot
 
 \ for turnkey
 : block-init
@@ -25,7 +26,7 @@ create blk-buffer blksize allot
 ;
 : blk-limit? 0 #blk within abort" ERROR:blk-limit" ;
 
-: load-buffer ( buf-addr u -- ) 
+: load-buffer ( buf-addr u -- )
   swap !p>r blksize um* blk-start d+ blklen
   for
     2dup x@ p! 2 m+ p2+
@@ -33,24 +34,24 @@ create blk-buffer blksize allot
 
 : save-buffer ( buf-addr u -- )
   swap !p>r blksize um* blk-start d+ blklen
-  for 
+  for
     2dup p@ rot rot x! 2 m+ p2+
   next r>p 2drop ;
 
 : update -1 blk-dirty ! ;
-: updated? ( u -- f ) 
-  blk @ = 
-  if   blk-dirty @ 
-  else false 
+: updated? ( u -- f )
+  blk @ =
+  if   blk-dirty @
+  else false
   then
 ;
 
 \ reloads the block only if the blocknumber differs
 : block ( u -- a-addr )
    dup blk-limit?
-   dup blk @ = 
-   if   drop 
-   else blk @ updated? 
+   dup blk @ =
+   if   drop
+   else blk @ updated?
         if   blk-buffer blk @ save-buffer
         then blk-buffer swap dup blk ! load-buffer
         false blk-dirty !
@@ -68,14 +69,11 @@ create blk-buffer blksize allot
   false blk-dirty !
 ;
 
-: empty-buffers
-  true  blk !
-  false blk-dirty !
-;
+: empty-buffers   true  blk !   false blk-dirty ! ;
 
 : flush save-buffers empty-buffers ;
 
-: wipe ( -- ) blk-buffer blksize blanks update ;
+: wipe ( -- ) blk-buffer blksize blank update ;
 : wipe-all ( -- ) #blk for r@ block drop wipe flush next ;
 : list      ( blk -- )                  \ list selected screen
    dup blk-limit?
@@ -92,15 +90,19 @@ create blk-buffer blksize allot
    r>p
    cr
  ;
- 
+
+\ Use to execute a (marker) word only if it has been defined.
+\ execute? -markerword
+: execute? bl word find if execute else drop then ;
+: line_i ( u -- u ) #lines swap - 1- #cols * ;
 : load ( n -- )
-  block !p>r dp>
+  block dp>
   #lines for
-    cr @p #cols 2dup type evaluate
-    #cols p++
+    dup r@ line_i + line-buffer #cols cmove
+    line-buffer #cols 2dup cr type evaluate
     state 0= if iflush >dp then
-  next r>p
-  postpone [ iflush >dp
+  next drop
+  postpone [ iflush >dp cr
 ;
 
 \ load blocks u1 thru u2
