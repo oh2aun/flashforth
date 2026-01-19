@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-pic24-30-33.s                                  *
-;    Date:          08.01.2026                                        *
+;    Date:          19.01.2026                                        *
 ;    File Version:  5.0                                               *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
@@ -1217,9 +1217,9 @@ WARM1:
         rcall   XSQUOTE
         .byte   32
 ;                1234567890123456789012345678901234567890
-        .ascii  " FlashForth 5 PIC24 08.01.2026\r\n"
+        .ascii  " FlashForth 5 PIC24 19.01.2026\r\n"
         .align 2
-       rcall   TYPE
+        rcall   TYPE
 .if OPERATOR_UART == 1
 .if FC1_TYPE == 1
         mlit    XON
@@ -6033,12 +6033,8 @@ IUNKNOWN:                           ;  a f
         dec2    W14, W14
         rcall   CFETCHPP
         rcall   TYPE
-        rcall   XSQUOTE
-        .byte   3,' ','?',NAK_
-        .align  2
-        rcall   TYPE
-        rcall   RESET_SP_DP
-        bra     INTER1
+        rcall   FALSE_
+        rcall   QABORTQ
 INTER6:
         sub     W14, #2, W14
         return
@@ -6342,10 +6338,6 @@ ABORT_L:
         .ascii  "abort"
         .align  2
 ABORT:
-        rcall   RESET_SP_DP
-        goto    QUIT            ; QUIT never returns
-
-RESET_SP_DP:
         rcall   S0
         rcall   FETCH
         rcall   SPSTORE

@@ -1,5 +1,4 @@
-\ Experimental code for blocks
-\ simple block wordset, PIC24 version
+\ Simple block wordset, PIC24 version
 \ single buffer management.
 \ needs core.fs ( evaluate )
 -block
@@ -14,9 +13,10 @@ blksize #cols / constant #lines
 fsize #blk blklen 2* um* d- 2constant  blk-start ( absolute flash address )
 ram
 variable scr
-variable blk 
+variable blk
 variable blk-dirty
 create blk-buffer blksize allot
+create line-buffer #cols allot
 
 \ for turnkey
 : block-init
@@ -25,7 +25,7 @@ create blk-buffer blksize allot
 ;
 : blk-limit? 0 #blk within abort" ERROR:blk-limit" ;
 
-: load-buffer ( buf-addr u -- ) 
+: load-buffer ( buf-addr u -- )
   swap !p>r blksize um* blk-start d+ blklen
   for
     2dup x@ drop p! 2 m+ p2+
@@ -33,24 +33,24 @@ create blk-buffer blksize allot
 
 : save-buffer ( buf-addr u -- )
   swap !p>r blksize um* blk-start d+ blklen
-  for 
+  for
     2dup >r >r p@ 0 r> r> x! 2 m+ p2+
   next r>p 2drop ;
 
 : update -1 blk-dirty ! ;
-: updated? ( u -- f ) 
-  blk @ = 
-  if   blk-dirty @ 
-  else false 
+: updated? ( u -- f )
+  blk @ =
+  if   blk-dirty @
+  else false
   then
 ;
 
 \ reloads the block only if the blocknumber differs
 : block ( u -- a-addr )
    dup blk-limit?
-   dup blk @ = 
-   if   drop 
-   else blk @ updated? 
+   dup blk @ =
+   if   drop
+   else blk @ updated?
         if   blk-buffer blk @ save-buffer
         then blk-buffer swap dup blk ! load-buffer
         false blk-dirty !
@@ -92,18 +92,27 @@ create blk-buffer blksize allot
    r>p
    cr
  ;
- 
+
+\ Use to execute a (marker) word only if it has been defined.
+\ execute? -markerword
+: execute? bl word find if execute else drop then ;
+
+: line_i ( u -- u ) #lines swap - 1- #cols * ;
 : load ( n -- )
-  block !p>r dp>
+  block dp>
   #lines for
-    cr @p #cols 2dup type evaluate
-    #cols p++
+    dup r@ line_i + line-buffer #cols cmove
+    line-buffer #cols 2dup cr type evaluate
     state 0= if iflush >dp then
-  next r>p
-  postpone [ iflush >dp
+  next drop
+  postpone [ iflush >dp cr
 ;
 
 \ load blocks u1 thru u2
 : thru ( u1 u2 -- ) over - 1+ for load blk @ 1+ next drop ;
 
-
+: I ( u -- ) \ Insert rest of line to row U (1-16) in block buffer
+  source drop >in @ + \ start of text
+  source >in @ - nip  \ length of text
+  rot 1- #cols * blk-buffer +
+  swap cmove update postpone \ ;
