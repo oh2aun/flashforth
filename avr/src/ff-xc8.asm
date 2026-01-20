@@ -1,20 +1,20 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          06.12.2024                                        *
+;    Date:          20.01.2025                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
 ;    Author:        Mikael Nordman                                    *
-;                                                                     * 
+;                                                                     *
 ;**********************************************************************
 ; FlashForth is a standalone Forth system for microcontrollers that
 ; can flash their own flash memory.
 ;
-; Copyright (C) 2024  Mikael Nordman
+; Copyright (C) 2026  Mikael Nordman
 
 ; This program is free software: you can redistribute it and/or modify
-; it under the terms of the GNU General Public License version 3 as 
+; it under the terms of the GNU General Public License version 3 as
 ; published by the Free Software Foundation.
 ;
 ; This program is distributed in the hope that it will be useful,
@@ -25,7 +25,7 @@
 ; You should have received a copy of the GNU General Public License
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
-; Modified versions of FlashForth must be clearly marked as such, 
+; Modified versions of FlashForth must be clearly marked as such,
 ; in the name of this file, and in the identification
 ; displayed when FlashForth starts.
 ;**********************************************************************
@@ -35,7 +35,7 @@
 #include "config-xc8.inc"
 
 ; Define the FF version date string
-#define DATE "28.11.2024"
+#define DATE "20.01.2026"
 #define datelen 10
 
 
@@ -100,7 +100,7 @@
 ;Program Specific Constants (literals used in code)
 ;..............................................................................
 ; Flash page size
-.equ PAGESIZEB, SPM_PAGESIZE    ; Page size in bytes 
+.equ PAGESIZEB, SPM_PAGESIZE    ; Page size in bytes
 
 ; Forth word header flags
 .equ NFA, 0x80      ; Name field mask
@@ -116,12 +116,12 @@
 .equ fIDLE,     6   ; 0 = busy, 1 = idle
 .equ fLOAD,     5   ; Load measurement ready
 .equ fLOADled,  4   ; 0 = no load led, 1 = load led on
-.equ ixoff_tx1, 1                    
+.equ ixoff_tx1, 1
 .equ ixoff_tx0, 0
 
 ; FLAGS1
 .equ fLIT,    7     ; Literal compiled
-.equ noclear, 6     ; dont clear optimisation flags 
+.equ noclear, 6     ; dont clear optimisation flags
 .equ idup,    5     ; Use dupzeroequal instead of zeroequal
 .equ izeroeq, 4     ; Use brne instead of breq if zeroequal
 .equ istream, 3
@@ -181,7 +181,7 @@
 .equ RAM_HI , RAMEND
 
 #include "macros-xc8.inc"
-        
+
 ;;; USER AREA for the OPERATOR task
 .equ ursize,       RETURN_STACK_SIZE
 .equ ussize,       PARAMETER_STACK_SIZE
@@ -261,7 +261,7 @@ ibaseu:	    .space 1
 #endif
 
 #if IDLE_MODE == 1
-#if CPU_LOAD == 1       
+#if CPU_LOAD == 1
 load_acc:   .space 3 ; Load measurement accumulator
 load_res:   .space 3 ; Load result
 #endif
@@ -547,7 +547,7 @@ MS_TIMER_ISR_EXIT:
         m_out    SREG, xh
         ld      xh, y+
         reti
-        
+
 FF_ISR:
 #if IDLE_MODE == 1
 #if CPU_LOAD == 1
@@ -683,7 +683,7 @@ RX1_ISR_SKIP_XOFF:
         rjmp    FF_ISR_EXIT
 #endif
 #ifdef USBCON
-#include  "usbcdc-xc8.asm" 
+#include  "usbcdc-xc8.asm"
 #endif
 
 ;;; *************************************
@@ -783,7 +783,7 @@ WDON:
         sei
         jmp     DROP
 
-; WD- ( -- )    stop the watchdog 
+; WD- ( -- )    stop the watchdog
         fdw     WDON_L
 WDOFF_L:
         .byte     NFA|3
@@ -851,7 +851,7 @@ IDLE_L:
 IDLE:
         sbr     FLAGS2, (1<<fIDLE)
         ret
-        
+
 ; busy
         fdw(IDLE_L)
 BUSY_L:
@@ -860,7 +860,7 @@ BUSY_L:
         .align  1
 BUSY:
         cbr     FLAGS2, (1<<fIDLE)
-        ret        
+        ret
 ; *********************************************
 ; Bit masking 8 bits, only for ram addresses !
 ; : mset ( mask addr -- )
@@ -879,7 +879,7 @@ MSET:
         st      -z, t0
         m_drop
         ret
-      
+
 ; : mclr  ( mask addr -- )
 ;  dup >r c@ swap invert and r> c!
 ; ;
@@ -992,7 +992,7 @@ SKIP0:
         sbiw    tosl, 0
         breq    SKIP2
         ld      t0, x
-        
+
         cpi     t1, 32
         brne    SKIP3
         cpi     t0,  32
@@ -1027,7 +1027,7 @@ SCAN1:
         sbiw    tosl, 0
         breq    SCAN4
         ld      t0, x
-        
+
         cpi     t1, 32
         brne    SCAN2
         cpi     t0, 32
@@ -1045,7 +1045,7 @@ SCAN4:
         ret
 
 ; : mtst ( mask addr -- flag )
-;   c@ and 
+;   c@ and
 ; ;
         fdw     SCAN_L
 MTST_L:
@@ -1070,6 +1070,26 @@ FCY_L:
         rcall   DOLIT
         .word   FREQ_OSC / 1000
         ret
+
+;;; Check parameter stack pointer
+        .byte   NFA|3
+        .ascii  "sp?"
+        .align  1
+check_sp:
+        rcall   SPFETCH
+        call    R0_
+        rcall   FETCH_A
+        call    S0
+        rcall   FETCH_A
+        rcall   ONEPLUS
+        rcall   WITHIN
+        rcall   XSQUOTE
+        .byte   3
+        .ascii  "SP?"
+        .align  1
+        rcall   QABORT
+        ret
+
 ;***************************************************
 ; EMIT  c --    output character to the emit vector
         fdw     FCY_L
@@ -1192,7 +1212,7 @@ SPSTORE:
         movw    y, tosl
         ret
 
-;   RPEMPTY     -- EMPTY THE RETURN STACK       
+;   RPEMPTY     -- EMPTY THE RETURN STACK
         .byte   NFA|3
         .ascii  "rp0"
         .align  1
@@ -1208,7 +1228,7 @@ RPEMPTY:
         movw    zl, xl
         m_ijmp
 
-;   RP@ Fetch the return stack pointer        
+;   RP@ Fetch the return stack pointer
         fdw     SPSTORE_L
 RPFETCH_L:
         .byte   NFA|INLINE|COMPILE|3
@@ -1220,7 +1240,7 @@ RPFETCH:
         in      tosh, sph
         ret
 
-;   ><  Swap bytes        
+;   ><  Swap bytes
         fdw     RPFETCH_L
 SWAPB_L:
         .byte     NFA|INLINE|2
@@ -1236,7 +1256,7 @@ SWAPB:
 ; Flash -- sets the data section to flash
         fdw     SWAPB_L
 FLASH_L:
-ROM_N:  
+ROM_N:
         .byte     NFA|5
         .ascii  "flash"
         .align  1
@@ -1247,18 +1267,18 @@ ROM_:
 ; EEPROM -- sets the data section to EEPROM data memory
         fdw     FLASH_L
 EEPROM_L:
-EROM_N: 
+EROM_N:
         .byte     NFA|6
         .ascii    "eeprom"
         .align  1
 EROM:
         sts     cse, r_two
         ret
-        
+
 ; RAM -- sets the data section to RAM memory
         fdw     EEPROM_L
 RAM_L:
-FRAM_N: 
+FRAM_N:
         .byte     NFA|3
         .ascii  "ram"
         .align  1
@@ -1267,7 +1287,7 @@ FRAM:
         sts     cse, t0
         ret
 
-; DP    -- a-addr          
+; DP    -- a-addr
 ; Fetched from EEPROM
         fdw     RAM_L
 DP_L:
@@ -1280,7 +1300,7 @@ DP:
         jmp     PLUS
 
 
-;;; 
+;;;
         .byte     NFA|3
         .ascii  "cse"
         .align  1
@@ -1316,7 +1336,7 @@ COMMA:
 
 ; C,  c --             append char to current data space
 ;   HERE C! 1 ALLOT ;
-        fdw     COMMA_L 
+        fdw     COMMA_L
 CCOMMA_L:
         .byte     NFA|2
         .ascii  "c,"
@@ -1412,13 +1432,13 @@ COMMAXT:
         rcall   DUP
         rcall   IHERE
         rcall   MINUS
-        rcall   ABS_ 
+        rcall   ABS_
         rcall   DOLIT
         .word   0xff0
         rcall   GREATER
         rcall   ZEROSENSE
         breq    STORECF1
-STORECFF1: 
+STORECFF1:
         rcall   DOLIT
         .word   0x940E  ; call jmp:0x940d
         call    ICOMMA
@@ -1438,7 +1458,7 @@ STORECF2:
 
 
 ; !COLON   --       change code field to docolon
-;   -6 IALLOT ; 
+;   -6 IALLOT ;
 ;       .word    link
 ;link   set     $
         .byte     NFA|2
@@ -1538,7 +1558,7 @@ SPACE_L:
         .byte     NFA|5
         .ascii  "space"
         .align  1
-SPACE_:  
+SPACE_:
         rcall   BL
         jmp     EMIT
 
@@ -1685,7 +1705,7 @@ TYPE_L:
 TYPE:
         rcall   TOR
         rjmp    TYPE2       ; XFOR
-TYPE1:  
+TYPE1:
         rcall   CFETCHPP
         rcall   EMIT
 TYPE2:
@@ -1901,7 +1921,7 @@ PLUS_L:
         .ascii  "+"
         .align  1
 PLUS:
-        ld      t0, Y+        
+        ld      t0, Y+
         ld      t1, Y+
         add     tosl, t0
         adc     tosh, t1
@@ -2281,7 +2301,7 @@ PPLUS_L:
 PPLUS:
         add     pl, r_one
         adc     ph, r_zero
-        ret   
+        ret
 
         fdw     PPLUS_L
 PNPLUS_L:
@@ -2302,7 +2322,7 @@ UEMIT_L:
 UEMIT_:
         m_lit   uemit
         jmp     DOUSER
-        
+
         fdw     UEMIT_L
 UKEY_L:
         .byte     NFA|4
@@ -2368,7 +2388,7 @@ STAR_L:
         .byte     NFA|1
         .ascii  "*"
         .align  1
-STAR: 
+STAR:
         rcall   UMSTAR
         jmp     DROP
 
@@ -2398,7 +2418,7 @@ SLASH_L:
         .byte     NFA|1
         .ascii  "/"
         .align  1
-SLASH: 
+SLASH:
         rcall   TWODUP
         rcall   XOR_
         rcall   TOR
@@ -2419,7 +2439,7 @@ NIP:
         ld      t0, y+
         ld      t0, y+
         ret
-    
+
         fdw     NIP_L
 TUCK_L:
         .byte     NFA|4
@@ -2463,13 +2483,13 @@ MIN:    rcall   TWODUP
         .byte     NFA|2
         .ascii  "c@"
         .align  1
-CFETCH_A:       
+CFETCH_A:
         jmp     CFETCH
 
         .byte     NFA|2
         .ascii  "c!"
         .align  1
-CSTORE_A:       
+CSTORE_A:
         jmp     CSTORE
 
         fdw     MIN_L
@@ -2499,7 +2519,7 @@ LESSNUM_L:
         .byte     NFA|2
         .ascii  "<#"
         .align  1
-LESSNUM: 
+LESSNUM:
         rcall   HB
         rcall   HP
         jmp     STORE
@@ -2564,7 +2584,7 @@ NUMGREATER:
         jmp     MINUS
 
 ; SIGN  n --               add minus sign if n<0
-;   0< IF 2D HOLD THEN ; 
+;   0< IF 2D HOLD THEN ;
         fdw     NUMGREATER_L
 SIGN_L:
         .byte     NFA|4
@@ -2595,7 +2615,7 @@ UDOT:
         jmp     SPACE_
 
 
-; U.R    u +n --      display u unsigned in field of n. 1<n<=255 
+; U.R    u +n --      display u unsigned in field of n. 1<n<=255
 ;    0 swap <# 1- for # next #s #> type space ;
         fdw     UDOT_L
 UDOTR_L:
@@ -2610,7 +2630,7 @@ UDOTR:
         rjmp    UDOTR2
 UDOTR1:
         rcall   NUM
-UDOTR2: 
+UDOTR2:
         rcall   XNEXT
         brcc    UDOTR1
         pop     t1
@@ -2643,7 +2663,7 @@ DECIMAL_L:
         .byte     NFA|7
         .ascii  "decimal"
         .align  1
-DECIMAL: 
+DECIMAL:
         rcall   TEN
         rcall   BASE
         jmp     STORE
@@ -2815,11 +2835,11 @@ PARSE:
         push    tosl
         push    tosh            ; c c a u                  R: u (new tib len
         rcall   ROT             ; c a u c
-        rcall   SKIP            ; c a u        
+        rcall   SKIP            ; c a u
         rcall   OVER            ; c a u a
         rcall   TOR             ; c a u                    R: u a (start of word
         rcall   ROT             ; a u c
-        rcall   SCAN            ; a u      end of word, tib left       
+        rcall   SCAN            ; a u      end of word, tib left
         sbiw    tosl, 0
         breq    PARSE1
         rcall   ONEMINUS
@@ -2831,7 +2851,7 @@ PARSE1: rcall   RFROM           ; a u a
         rcall   PLUSSTORE       ; aend astart
         rcall   TUCK            ; astart aend astart
         jmp     MINUS           ; astart wlen
-     
+
 
 ; WORD   char -- c-addr        word delimited by char and/or TAB
         fdw     PARSE_L
@@ -2877,7 +2897,7 @@ PLACE_L:
         .byte     NFA|5
         .ascii  "place"
         .align  1
-PLACE: 
+PLACE:
         rcall   TWODUP
         rcall   CSTORE_A
         rcall   CHARPLUS
@@ -2910,7 +2930,7 @@ FETCHPP:
 
         .byte     NFA|1
         .ascii  "!"
-STORE_A:        
+STORE_A:
         jmp     STORE
 
 ; N>C   nfa -- cfa    name adr -> code field
@@ -2950,7 +2970,7 @@ BRACFIND_L:
         .align  1
 findi:
 findi1:
-FIND_1: 
+FIND_1:
         ld      xl, y
         ldd     xh, y+1         ; X = c-addr
         m_dup                   ; c-addr nfa nfa
@@ -2964,7 +2984,7 @@ FIND_1:
         m_lpm    tosl
         m_lpm    tosh           ; c-addr nfa
         sbiw    tosl, 0         ; c-addr nfa
-        brne    findi1  
+        brne    findi1
         rjmp    findi3
 findi2:
         rcall   DROP            ; c-adde nfa
@@ -2976,7 +2996,7 @@ findi2:
         rcall   ZEROEQUAL
         rcall   ONE
         rcall   OR_
-findi3: 
+findi3:
         ret
 
 ; IMMED?    nfa -- f        fetch immediate flag
@@ -2985,7 +3005,7 @@ IMMEDQ_L:
         .byte     NFA|6
         .ascii  "immed?"
         .align  1
-IMMEDQ: 
+IMMEDQ:
         rcall   CFETCH_A
         mov     wflags, tosl  ; COMPILE and INLINE flags for the compiler
         andi    tosl, IMMED
@@ -2999,7 +3019,7 @@ FIND_L:
         .byte     NFA|4
         .ascii  "find"
         .align  1
-FIND:   
+FIND:
         rcall   DOLIT
         fdw     kernellink
         rcall   findi
@@ -3026,7 +3046,7 @@ DIGITQ:
         cpi     tosl, 0x61
         brmi    DIGITQ2
         sbiw    tosl, 0x27
-DIGITQ1:        
+DIGITQ1:
         sbiw    tosl, 0x30      ; 1
         brpl    DIGITQ3
 DIGITQ2:
@@ -3082,7 +3102,7 @@ UDSTAR:
         rcall   UMSTAR
         rcall   ROT
         jmp     PLUS
-        
+
 ; UD/MOD  ud u --u(rem) ud(quot)
         fdw     UDSTAR_L
 UDSLASHMOD_L:
@@ -3090,7 +3110,7 @@ UDSLASHMOD_L:
         .ascii  "ud/mod"
         .align  1
 UDSLASHMOD:
-        rcall   TOR             ; ud.l ud.h 
+        rcall   TOR             ; ud.l ud.h
         rcall   FALSE_          ; ud.l ud.h 0
         rcall   RFETCH          ; ud.l ud.h 0 u
         rcall   UMSLASHMOD      ; ud.l r.h q.h
@@ -3099,7 +3119,7 @@ UDSLASHMOD:
         rcall   RFROM           ; q.h ud.l r.h u
         rcall   UMSLASHMOD      ; q.h r.l q.l
         jmp     ROT             ; r.l q.l q.h
-        
+
 ; >NUMBER  0 0 adr u -- ud.l ud.h adr' u'
 ;                       convert string to number
         fdw     UDSLASHMOD_L
@@ -3125,7 +3145,7 @@ TONUM1:
         rcall   RFROM
         rcall   RFROM
         rjmp    TONUM3
-TONUM2: 
+TONUM2:
         rcall   TOR             ; ud.l ud.h digit
         rcall   BASE
         rcall   FETCH_A
@@ -3165,10 +3185,10 @@ NUMBERQ:
         rcall   BASE
         rcall   FETCH_A
         rcall   TOR             ; a 0 0 a' u
-        
+
         rcall   OVER
         rcall   CFETCH_A
-        
+
         sbiw    tosl, '#'
         cpi     tosl, 3
         brsh    BASEQ1
@@ -3217,7 +3237,7 @@ QNUM1:                          ; single precision dumber
         rcall   DROP            ; a n
         rcall   NIP             ; n
         rcall   ONE             ; n 1           Single number
-QNUM3:  
+QNUM3:
         ret
 
 
@@ -3249,8 +3269,8 @@ TIB_L:
 TIB:
         rcall   TIU
         jmp     FETCH
-        
-; TIU     -- a-addr        Terminal Input Buffer user variable 
+
+; TIU     -- a-addr        Terminal Input Buffer user variable
         fdw     TIB_L
 TIU_L:
         .byte     NFA|3
@@ -3270,7 +3290,7 @@ TOIN_L:
 TOIN:
         m_lit   utoin
         jmp     DOUSER
-        
+
 ; 'SOURCE  -- a-addr        two cells: len, adrs
 ; In RAM ?
         fdw     TOIN_L
@@ -3293,7 +3313,7 @@ INTERPRET_L:
         .byte     NFA|9
         .ascii  "interpret"
         .align  1
-INTERPRET: 
+INTERPRET:
         rcall   TICKSOURCE
         rcall   TWOSTORE
         rcall   FALSE_
@@ -3320,7 +3340,7 @@ IPARSEWORD2:
         rcall   OR_
         rcall   ZEROSENSE
         breq    ICOMPILE_1      ; Compile a word
-        
+
                                 ; Execute a word
                                 ; immediate&compiling or interpreting
         sbrs    wflags, 4       ; Compile only check
@@ -3351,7 +3371,7 @@ ICOMPILE_2:
         sbrs    FLAGS1, fLIT
         rjmp    ICOMPILE_6
 
-        m_ft0   AND_    
+        m_ft0   AND_
         rcall   WORDQ
         brne    ICOMPILE_3
         rcall   ANDIC_
@@ -3393,7 +3413,7 @@ ICOMMAXT:
 ICLRFLIT:
         cbr     FLAGS1, (1<<fLIT)
         rjmp    IPARSEWORD
-INUMBER: 
+INUMBER:
         cbr     FLAGS1, (1<<izeroeq) | (1<<idup) | (1<<fLIT)
         rcall   DROP
         rcall   NUMBERQ
@@ -3409,7 +3429,7 @@ INUMBER:
 IDOUBLE:
         rcall   SWOP_A
         rcall   LITERAL
-ISINGLE:        
+ISINGLE:
         rcall   LITERAL
         rjmp    IPARSEWORD
 
@@ -3418,23 +3438,23 @@ INUMBER1:
         rjmp    ICLRFLIT
 
 IUNKNOWN:
-        rcall   DROP 
+        rcall   DROP
         rcall   DP_TO_RAM
         rcall   CFETCHPP
         rcall   TYPE
         rcall   FALSE_
         rcall   QABORTQ         ; Never returns & resets the stacks
-INOWORD: 
+INOWORD:
         rcall   INIT_012
         jmp     DROP
 
         .byte     NFA|1
         .ascii  "@"
         .align  1
-FETCH_A:        
+FETCH_A:
         jmp     FETCH
 
-;;;    bitmask -- 
+;;;    bitmask --
         fdw     INTERPRET_L
 SHB_L:
         .byte     NFA|3
@@ -3449,11 +3469,11 @@ SHB:
         rcall   OR_
         rcall   SWOP_A
         jmp     CSTORE
-        
+
         fdw     SHB_L
 IMMEDIATE_L:
         .byte     NFA|9
-        .ascii  "immediate" ; 
+        .ascii  "immediate" ;
         .align  1
 IMMEDIATE:
         rcall   DOLIT
@@ -3464,7 +3484,7 @@ IMMEDIATE:
         fdw     IMMEDIATE_L
 INLINED_L:
         .byte     NFA|7
-        .ascii  "inlined" ; 
+        .ascii  "inlined" ;
         .align  1
 INLINED:
         rcall   DOLIT
@@ -3472,7 +3492,7 @@ INLINED:
         jmp     SHB
 
 ;; .st ( -- ) output a string with current data section and current base info
-;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type 
+;;; : .st base @ dup decimal <#  [char] , hold #s  [char] < hold #> type
 ;;;     <# [char] > hold cse @ #s #> type base ! ;
         fdw     INLINED_L
 DOTSTATUS_L:
@@ -3534,7 +3554,7 @@ DP_TO_EEPROM:
         rcall   DOLIT
         .word   9
         rcall   TOR
-DP_TO_EEPROM_0: 
+DP_TO_EEPROM_0:
         rcall   CFETCHPP
         rcall   DUP
         rcall   PCFETCH
@@ -3587,11 +3607,12 @@ QUIT:
         rcall   RPEMPTY
         rcall   LEFTBRACKET
         rcall   FRAM
-QUIT0:  
+QUIT0:
         ;; Copy INI and DP's from eeprom to ram
         rcall   DP_TO_RAM
-QUIT1: 
+QUIT1:
         cbr     FLAGS2, (1<<fCREATE)
+        rcall   check_sp
         rcall   CR
         rcall   TIB
         rcall   DUP
@@ -3605,7 +3626,7 @@ QUIT1:
         brne    QUIT1
         rcall   IFLUSH
         rcall   DP_TO_EEPROM
-         
+
         rcall    XSQUOTE
         .byte     3
         .ascii  " ok"
@@ -3661,7 +3682,7 @@ QABORT:
         rcall   ROT
         rcall   ZEROSENSE
         brne    QABO1
-QABORT1:        
+QABORT1:
         rcall   SPACE_
         rcall   TYPE
         rcall   ABORT  ; ABORT never returns
@@ -3802,17 +3823,17 @@ EMIT_A:
         jmp     EMIT
 
 ; CREATE   --         create an empty definition
-; Create a definition header and append 
+; Create a definition header and append
 ; doCREATE and the current data space dictionary pointer
 ; in FLASH.
-;  Examples :   
+;  Examples :
 ; : table create 10 cells allot does> swap cells + ;
 ; ram table table_a     flash table table_b    eeprom table table_c
 ; ram variable  qqq
 ; eeprom variable www ram
-; flash variable  rrr ram 
+; flash variable  rrr ram
 ; eeprom create calibrationtable 30 allot ram
-; 
+;
         fdw     CR_L
 CREATE_L:
         .byte     NFA|6
@@ -3835,7 +3856,7 @@ CREATE:
         .ascii  "ALREADY DEFINED"
         .align  1
         rcall   QABORT         ; ABORT if word has already been defined
-        rcall   DUP             ; Check the word length 
+        rcall   DUP             ; Check the word length
         rcall   CFETCH_A
         rcall   ONE
         rcall   DOLIT
@@ -3854,7 +3875,7 @@ CREATE:
         rcall   ICOMMA_          ; Link field
         rcall   CFETCHPP        ; str len
         rcall   IHERE
-        rcall   DUP             
+        rcall   DUP
         rcall   LATEST_         ; new 'latest' link
         rcall   STORE_A         ; str len ihere
 
@@ -4076,7 +4097,7 @@ TWOMINUS:
         sbiw    tosl, 2
         ret
 
-        
+
 ; BL      -- char                 an ASCII space
         fdw     TWOMINUS_L
 BL_L:
@@ -4099,7 +4120,7 @@ STATE_:
         lds     tosh, state
         ret
 
-; LATEST    -- a-addr           
+; LATEST    -- a-addr
         fdw     STATE_L
 LATEST_L:
         .byte   NFA|6
@@ -4146,7 +4167,7 @@ TICKS_L:
         .byte     NFA|5
         .ascii  "ticks"
         .align  1
-TICKS:  
+TICKS:
         m_dup
         movw     tosl, ms_count
         ret
@@ -4166,7 +4187,7 @@ MS_L:
 MS:
         rcall   TICKS
         rcall   PLUS
-MS1:    
+MS1:
         rcall   PAUSE
         movw    t0, tosl
         cli
@@ -4176,7 +4197,7 @@ MS1:
         brpl    MS1
         jmp     DROP
 
-;  .id ( nfa -- ) 
+;  .id ( nfa -- )
         fdw     MS_L
 DOTID_L:
         .byte     NFA|3
@@ -4193,7 +4214,7 @@ DOTID1:
         rcall   EMIT_A
 DOTID3:
         rcall   XNEXT
-        brcc    DOTID1  
+        brcc    DOTID1
         pop     t1
         pop     t0
         jmp     DROP
@@ -4205,7 +4226,7 @@ TO_PRINTABLE_L:
         .ascii  ">pr"
         .align  1
 TO_PRINTABLE:
-        clr     tosh   
+        clr     tosh
         cpi     tosl, 0
         brmi    TO_PRINTABLE1
         cpi     tosl, 0x20
@@ -4306,7 +4327,7 @@ DOTS1:
         rcall   MINUS_FETCH
         rcall   UDOT
         rjmp    DOTS1
-DOTS2:  
+DOTS2:
         rcall   DROP
         jmp     TWODROP
 
@@ -4323,7 +4344,7 @@ DUMP:
         rcall   USLASH
         rcall   TOR
         rjmp    DUMP7
-DUMP1:  
+DUMP1:
         rcall   CR
         rcall   DUP
         rcall   DOLIT
@@ -4349,7 +4370,7 @@ DUMP2:
         rcall   DOLIT
         .word   15
         rcall   TOR
-DUMP4:  
+DUMP4:
         rcall   CFETCHPP
         rcall   TO_PRINTABLE
         rcall   EMIT_A
@@ -4373,7 +4394,7 @@ DUMP7:
 IALLOT:
         rcall   IDP
         jmp     PLUSSTORE
-    
+
 
 ;***************************************************************
 ;  Store the execution vector addr to the return stack
@@ -4473,7 +4494,7 @@ BRNEC:
         rjmp    ICOMMA__
 
 ; IF       -- adrs   conditional forward branch
-; Leaves address of branch instruction 
+; Leaves address of branch instruction
 ; and compiles the condition byte
         fdw     PFL_L
 IF_L:
@@ -4488,7 +4509,7 @@ IF_:
         cbr     FLAGS1, (1<<izeroeq)
         rcall   IHERE
         rcall   FALSE_
-        jmp     RJMPC           ; Dummy, replaced by THEN with rjmp 
+        jmp     RJMPC           ; Dummy, replaced by THEN with rjmp
 
 ; ELSE     adrs1 -- adrs2    branch for IF..ELSE
 ; Leave adrs2 of bra instruction and store bz in adrs1
@@ -4502,7 +4523,7 @@ ELSE_:
         rcall   IHERE
         rcall   FALSE_
         rcall   RJMPC
-        rcall   SWOP_A      ; else-addr  if-addr 
+        rcall   SWOP_A      ; else-addr  if-addr
         jmp     THEN_
 
 ; THEN     adrs  --        resolve forward branch
@@ -4519,7 +4540,7 @@ THEN_:
         rcall   TWOMINUS
         rcall   TWOSLASH
         rcall   DOLIT
-        .word   0xc000      ;  back-addr mask 
+        .word   0xc000      ;  back-addr mask
         rcall   OR_
         rcall   SWOP_A
         jmp     STORE
@@ -4600,7 +4621,7 @@ INLINEC_L:
         .byte      NFA|3
         .ascii  "in,"
         .align  1
-INLINE0:        
+INLINE0:
         rcall   FETCHPP
         rcall   DUP
         rcall   DOLIT
@@ -4652,7 +4673,7 @@ NEXT:
         .byte     NFA|7
         .ascii  "(next) "
         .align  1
-XNEXT:  
+XNEXT:
         m_pop_zh
         pop     zh
         pop     zl
@@ -4952,7 +4973,7 @@ FLASHHI:
         m_out    RAMPZ, r_zero
 #endif
 	ret
-	
+
 ;;; x! ( x addrl addru -- )
         fdw     9b
 9:
@@ -5061,7 +5082,7 @@ LOADOFF_L:
 #endif
         ret
 #endif
-;;; 
+;;;
 #if CPU_LOAD == 1
 #if CPU_LOAD_LED == 1
         fdw     LOADOFF_L
@@ -5082,7 +5103,7 @@ LOAD_L:
         ldi     tosl, lo8(CPU_LOAD_VAL)
         ldi     tosh, hi8(CPU_LOAD_VAL)
         call    UMSLASHMOD
-        jmp     NIP 
+        jmp     NIP
 #endif
 #endif
 
@@ -5124,7 +5145,7 @@ XXOFF_TX1_TOS:
         rjmp    XXOFF_TX1_1
 XXOFF_TX1:
         sbrc    FLAGS2, ixoff_tx1
-        ret     
+        ret
 XXOFF_TX1_1:
         sbr     FLAGS2, (1<<ixoff_tx1)
         ldi     zh, XOFF
@@ -5215,13 +5236,13 @@ RQ_DIVZERO:
         rcall   DOLIT
         .word   'M'
         rcall   EMIT_A
-RQ_END: 
+RQ_END:
         jmp    SPACE_
 
 ;*****************************************************
 #if IDLE_MODE == 1
 IDLE_LOAD:
-#if CPU_LOAD == 1       
+#if CPU_LOAD == 1
         sbrs    FLAGS2, fLOAD
         rjmp    CPU_LOAD_END
         m_in    t0, SREG
@@ -5340,7 +5361,7 @@ XXOFF_TX0_TOS:
         rjmp    XXOFF_TX0_1
 XXOFF_TX0:
         sbrc    FLAGS2, ixoff_tx0
-        ret     
+        ret
 XXOFF_TX0_1:
         sbr     FLAGS2, (1<<ixoff_tx0)
         ldi     zh, XOFF
@@ -5482,7 +5503,7 @@ WARM_1:
 #endif
 WARM_2:
         st      x+, r_zero
-        cpi     xh, hi8(RAMEND) 
+        cpi     xh, hi8(RAMEND)
         brne    WARM_2
         cpi     xl, lo8(RAMEND)
         brne    WARM_2
@@ -5523,7 +5544,7 @@ WARM_2:
         rcall   DOLIT
         .word   warmlitsize
         call    CMOVE
-        
+
 ; init cold data to eeprom
         rcall   DOLIT
         .word   dp_start
@@ -5722,7 +5743,7 @@ EI_L:
         .align  1
         sei
         ret
-        
+
 //; di  ( -- )    Disable interrupts
         fdw     EI_L
 DI_L:
@@ -5748,7 +5769,7 @@ IRQ_SEMI:
         jmp     LEFTBRACKET
 
 
-; int!  ( addr n  --  )   store to interrupt vector number 
+; int!  ( addr n  --  )   store to interrupt vector number
         fdw     IRQ_SEMI_L
 IRQ_V_L:
         .byte     NFA|4
@@ -5858,7 +5879,7 @@ LOCKEDQ:
         .align  1
         call    TYPE
         rjmp    STARTQ2        ; goto    ABORT
-        
+
 ;***********************************************************
 IFETCH:
         movw    z, tosl
@@ -5883,7 +5904,7 @@ IIFETCH:
         m_lpm    tosl     ; Fetch from Flash directly
         m_lpm    tosh
         ret
-                
+
         fdw     STORE_L
 9:
         .byte     NFA|2
@@ -6237,7 +6258,7 @@ ISTORERR:
         .align  1
         call    TYPE
         jmp     ABORT
-        
+
 IWRITE_FC_START:
 #if OPERATOR_UART == 0
 #if U0FC_TYPE == 1
