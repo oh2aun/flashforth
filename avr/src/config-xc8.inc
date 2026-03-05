@@ -43,9 +43,9 @@
 #error OPERATOR_UART not supported
 #endif
 ;;; UART0 configuration
-;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues 
-;;; disturb the XON/XOFF flow control. 
-;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program. 
+;;; Note: With Arduino Uno R3 and MEGA R3 the USB to serial bridge latency and queues
+;;; disturb the XON/XOFF flow control.
+;;; The workaround is to use XON/XOFF flow control and/or 1/2 ms character delay in the terminal program.
 ;;; Or use the ff-shell.py which adds end of line (CR LF) flow control.
 #define BAUDRATE0 38400              // Serial baudrate UART0
 #define U0FC_TYPE 0                  // 0 = NONE, 1 = XON/XOFF, 2=CTS/RTS
@@ -70,28 +70,28 @@
 #define CPU_LOAD 0
 
 ; CPU load indicator led definitions. Needs IDLE_MODE = 1
-#define CPU_LOAD_LED 1            // set to 1 to enable
+#define CPU_LOAD_LED 0            // set to 1 to enable
 
 #if defined(__ATmega2560__)
 #define CPU_LOAD_DDR DDRB
 #define CPU_LOAD_PORT PORTB       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
 #define CPU_LOAD_BIT 7            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
-#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
-                                  // arduino : 1 = high on port turns on led 
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led,
+                                  // arduino : 1 = high on port turns on led
 #endif
 #if defined(__ATmega328P__) || defined(__ATmega328__)
 #define CPU_LOAD_DDR DDRB
 #define CPU_LOAD_PORT PORTB       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
 #define CPU_LOAD_BIT 5            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
-#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
-                                  // arduino : 1 = high on port turns on led 
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led,
+                                  // arduino : 1 = high on port turns on led
 #endif
 #ifdef __ATmega32U4__
 #define CPU_LOAD_DDR DDRC
 #define CPU_LOAD_PORT PORTC       // avr-p28:portc arduino mega:portb uno:portb leonardo:portc
 #define CPU_LOAD_BIT 7            // avr-p28:5     arduino mega:7     uno:5     leonardo:7
-#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led, 
-                                  // arduino : 1 = high on port turns on led 
+#define CPU_LOAD_LED_POLARITY 1   // avr-p28:  0 = low on port turns on led,
+                                  // arduino : 1 = high on port turns on led
 #endif
 
 ; Define the startup delay for the turnkey words. Milliseconds
@@ -152,6 +152,16 @@
 #define partstring "ATmega644"
 #define partlen 9
 #define UARTS 1
+
+#elif defined(__ATmega1284__)
+#define partstring "ATmega1284"
+#define partlen 10
+#define UARTS 2
+
+#elif defined(__ATmega1284P__)
+#define partstring "ATmega1284p"
+#define partlen 10
+#define UARTS 2
 
 #elif defined(__ATmega32U4__)
 #define partstring "ATmega32u4"

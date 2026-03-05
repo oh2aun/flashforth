@@ -1,6 +1,6 @@
 
 ; Register definitions
-  .equ upl, 2         ; not in interrupt 
+  .equ upl, 2         ; not in interrupt
   .equ uph, 3         ; not in interrupt
   .equ r_zero, 5      ; read only zero
   .equ r_one, 6       ; read only one
@@ -95,7 +95,7 @@
   m_in r16, \addr
   ori r16, (1<<\bit)
   m_out \addr, r16
-.endif 
+.endif
 .endm
 
 .macro m_cbi addr, bit
@@ -109,7 +109,7 @@
 .endm
 
 .macro m_lpm reg
-.if (FLASHEND < 0x8000)
+.if (FLASHEND < 0x10000)
         lpm \reg, z+
 .else
         elpm \reg, z+
@@ -138,7 +138,7 @@
 .macro add_pflash_tos
 .if (PFLASH > 0)
         subi    tosh, hi8(0x10000-PFLASH)
-.endif        
+.endif
 .endm
 
 .macro fdw addr

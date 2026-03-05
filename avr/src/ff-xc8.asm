@@ -1,7 +1,7 @@
 ;**********************************************************************
 ;                                                                     *
 ;    Filename:      ff-xc8.asm                                        *
-;    Date:          20.01.2025                                        *
+;    Date:          05.03.2026                                        *
 ;    File Version:  5.0                                               *
 ;    MCU:           Atmega                                            *
 ;    Copyright:     Mikael Nordman                                    *
@@ -35,7 +35,7 @@
 #include "config-xc8.inc"
 
 ; Define the FF version date string
-#define DATE "20.01.2026"
+#define DATE "05.03.2026"
 #define datelen 10
 
 
@@ -725,7 +725,7 @@ BASEQV:
         fdw     HEX
         fdw     BIN
 
-#if (FLASHEND == 0x1ffff)
+#ifdef WDTCR
         fdw     PAUSE_L
 WDON_L:
         .byte    NFA|3

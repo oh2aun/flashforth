@@ -3,7 +3,7 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>FF-ATMEGA</name>
+            <name>FF5-ATMEGA</name>
             <creation-uuid>0565bb62-a404-4c70-b4a6-20c1a34f46df</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions/>
