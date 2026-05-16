@@ -1,8 +1,8 @@
 \ pic18f26K42 and si5351a, NCO used  as BFO
 \ #sendm f/forget f/case f/2value 18f/qmath
-\ #sendm pic18/rxnew/strcat pic18/rxnew/i2c-base-b pic18/rxnew/knobi
-\ #sendm pic18/rxnew/ncok42 pic18/rxnew/dogs164e pic18/rxnew/si5351-d 
-\ #sendm pic18/rxnew/rx
+\ #sendm pic18/rxnew2/strcat pic18/rxnew2/i2c-base-b pic18/rxnew2/knobi
+\ #sendm pic18/rxnew2/dogs164e pic18/rxnew2/si5351
+\ #sendm pic18/rxnew2/rx-band2
 
 
 \ 
@@ -123,7 +123,7 @@ eeprom
 13550 13850 2,
 15000 15700 2,
 17400 17800 2,
-0     18200 2,
+0     22000 2,
 
 0 2array: e.am-freqs
 198.00. 2,
@@ -140,6 +140,9 @@ eeprom
 10000.00. 2,
 
 create e.fm-freq 101.100.00. 2,
+create e.am-band  5 ,
+create e.usb-band 1 ,
+create e.lsb-band 2 ,
 
 ram
 am-bands# 2array: am-freqs
@@ -161,7 +164,7 @@ eeprom
 -#1289. 2value lsbOffset
 
 eeprom
-defer mode0
+modeFm value e.mode
 defer bw0
 0 value term?
 ram
@@ -200,8 +203,7 @@ variable newVol
   endcase !
 ;
 
-: offsetsInit 44.545.000. if2Offset d+ if1Offset 2! ;
-
+: offsets-init lo2-freq 2@ if2Offset d+ if1Offset 2! ;
 : change? ( a a -- f ) @ swap  @ <> ;
 
 : fm.ad/
@@ -232,7 +234,7 @@ variable newVol
 \ Initialize ports
 : io.init ( -- )
   %0110 lata mclr
-  %1.0000 lata mode0 modeFm? if mset else mclr then 
+  %1.0000 lata modeFm? if mset else mclr then 
   %1111 latb mclr
   %1.0110 trisa mclr
   %1111 trisb mclr
@@ -313,27 +315,14 @@ ram
   $007f and \ dup 
   spi!
 ;
-
-\ Set si5351 vco to about 800 MHz
-: divider!
-  #8000 rxf@ #10000 um/mod nip 450 + / aligned
-  dup divider <> 
-  if am.init else drop then 
-;
-
 : rx-freq  ( -- ) \ Ten herz resolution
   rxf@ #10 ud*
   modeFm? 
   if   fmOffset d- fm.f
   else 
-       divider!
-       rxOffset 2@ d+ if1Offset 2@ d+ am.f
+       rxOffset 2@ d+ if1Offset 2@ d+ lo1
   then
 ;
-
-: bfo-off   0 nco1con c! ;
-: bfo-freq ( Hz. -- ) \ 8 Hz resolution with 16MHz clock
-  $80 nco1con c! nco.f ;
 
 : amOffset
   mode @ modeAm =
@@ -348,17 +337,12 @@ ram
 : usb filter3K filter ! modeUsb newMode ! usbOffset rxOffset 2! ;
 : lsb filter3K filter ! modeLsb newMode ! lsbOffset rxOffset 2! ;
 : fm  modeFm newMode ! fmOffset rxOffset 2! filterFM filter ! ;
-
+: bfo-set lo2 if2Offset rxOffset 2@ d+ bfo.f bfo-on ;
 : det-set
-  modeAm? modeFm? or
-  if   bfo-off
-  else if2Offset rxOffset 2@ d+ bfo-freq
-       nco/ nco.real if2Offset d- rxOffset 2!
-  then
   mode @ case
-    modeAm  of amOn det-am  endof
-    modeUsb of amOn det-ssb endof
-    modeLsb of amOn det-ssb endof
+    modeAm  of amOn am.init lo2 det-am bfo-off endof
+    modeUsb of amOn am.init bfo-set det-ssb endof
+    modeLsb of amOn am.init bfo-set det-ssb endof
     modeFm  of fmOn fm.init det-fm  endof
   endcase
 ;
@@ -399,6 +383,21 @@ ram variable muted
   #108.000.00. d> if #108.000.00. rxf!! then 
 ;
 
+: adjust-lo2  ( -- )
+  newrxf 2@ #14.239.00. d>  newrxf 2@ #14.241.30. d< and
+  if
+        newrxf 2@ #14.240.10. d<
+        if   44.547.000.
+        else 44.543.000.
+        then   
+  else  44.545.000.
+  then
+  2dup lo2-freq 2@ d= 0=
+  if   lo2-freq 2! offsets-init lo2
+  else 2drop
+  then
+;
+
 : limits ( -- )
   rxf@ #100 um/mod >r drop
   mode @ case
@@ -409,6 +408,7 @@ ram variable muted
   endcase
   2@ dup r@ < if #100 um* rxf!! else drop then
      dup r> > if #100 um* rxf!! else drop then
+  adjust-lo2
 ;
 
 : rx-set
@@ -429,7 +429,14 @@ ram variable muted
   modeFm? if fm.presel! then
 ;
 
-' fm is mode0
+: mode-init ( mode -- )
+  case
+    modeAm  of am  endof
+    modeUsb of usb endof
+    modeLsb of lsb endof
+    modeFm  of fm  endof
+  endcase
+;
 
 : rx-reset ( -- )
   cr
@@ -438,36 +445,29 @@ ram variable muted
   io.init
   dac.init
   i2c.init
+  44.545.000. lo2-freq 2!
+  am.init lo2
   am.ad
   0 s-old !
-  0 xtalOffset !
-  offsetsInit
-  nco/
-  100 to divider
-  5 am-band ! 1 usb-band ! 2 lsb-band !
+  offsets-init
+  e.am-band @ am-band ! e.usb-band @ usb-band ! e.lsb-band @ lsb-band !
   0 e.am-freqs 0 am-freqs am-bands# cells cells cmove
   0 e.usb-freqs 0 usb-freqs usb-bands# cells cells cmove
   0 e.lsb-freqs 0 lsb-freqs lsb-bands# cells cells cmove
   e.fm-freq 2@ 2dup fm-freq 2! newrxf 2!
-  true mode ! mode0
-  filter8K amFilter !
+  true mode ! e.mode mode-init
   rx-set
   #8 dup  vol! newVol ! 
   knob-init
   dogs.init
 ;
-
 : mem
   fl+
+  0 am-freqs 0 e.am-freqs am-bands# 4 * cmove am-band @ e.am-band ! 
+  0 usb-freqs 0 e.usb-freqs usb-bands# 4 * cmove usb-band @ e.usb-band ! 
+  0 lsb-freqs 0 e.lsb-freqs lsb-bands# 4 * cmove lsb-band @ e.lsb-band !
   fm-freq 2@ e.fm-freq 2!
-  mode @
-  case
-    modeAm   of ['] am  endof
-    modeUsb  of ['] usb endof
-    modeLsb  of ['] lsb endof
-    modeFm   of ['] fm  endof
-  endcase
-  is mode0
+  mode @ to e.mode
   fl- ;
 
 : rx-freq>$ 
@@ -568,7 +568,7 @@ ram variable muted
     then
   then ;
 
-: bw-set 
+: bw-set ( u -- )
   modeAm? 
   if   filter ! filter-set filter @ amFilter !
   else drop 
@@ -578,20 +578,21 @@ ram variable muted
 : middle filter4K bw-set ;
 : wide   filter8K bw-set ;
 
+: alignment >r newrxf 2@ 2dup r> ud/mod 2drop negate m+ newrxf 2! ;
 : f-1 -1 rd ;
 : f+1 1 rd ;
-: f-5 -5 rd ;
-: f+5 5 rd ;
-: f-10 -10 rd ;
-: f+10 10 rd ;
-: f-100 -100 rd ;
-: f+100 100 rd ;
+: f-5 -5 rd 5 alignment ;
+: f+5 5 rd 5 alignment ;
+: f-10 -10 rd 10 alignment ;
+: f+10 10 rd 10 alignment ;
+: f-100 -100 rd 100 alignment ;
+: f+100 100 rd 100 alignment ;
 : f-500 -500 am9khz rd ;
 : f+500 500 am9khz rd ;
 : f-1000 -10000 rd ;
 : f+1000 10000 rd ;
-: b-down modeFm? if -10000 rd else band@ 1- 0 max newband ! then ;
-: b-up   modeFm? if  10000 rd else band@ 1+ newband ! then ;
+: b-down modeFm? if f-1000 else band@ 1- 0 max newband ! then ;
+: b-up   modeFm? if f+1000 rd else band@ 1+ newband ! then ;
 
 : offset+- ( n -- ) s>d rxOffset 2@ d+ rxOffset 2! det-set rx-freq ;
 
@@ -693,7 +694,7 @@ ram
 
 : rx
   fl- >uart true
-  offsetsInit
+  offsets-init
   begin
     if   rx-set vol-set rx-freq>$ dogs.display 
          term? if term.display else app.display then
@@ -710,8 +711,6 @@ ram
     knob-lores or knob-vol or knob-hires or
     knob-1 or knob-2 or
   again ;
-
-: F #100 um* newrxf 2! rx ;
 
 : rx-init rx-reset rx ;
 \ rx-init

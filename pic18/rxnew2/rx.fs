@@ -1,12 +1,8 @@
-\ pic18f26K42 and si5351a, NCO used  as BFO
+\ pic18f26K42 and si5351
 \ #sendm f/forget f/case f/2value 18f/qmath
-\ #sendm pic18/rxnew/strcat pic18/rxnew/i2c-base-b pic18/rxnew/knobi
-\ #sendm pic18/rxnew/ncok42 pic18/rxnew/dogs164e pic18/rxnew/si5351-d 
-\ #sendm pic18/rxnew/rx
+\ #sendm pic18/rxnew2/strcat pic18/rxnew2/i2c-base-b pic18/rxnew2/knobi
+\ #sendm pic18/rxnew2/dogs164e pic18/rxnew2/si5351 pic18/rxnew2/rx
 
-
-\ 
-single
 fl+
 -rx
 marker -rx
@@ -82,88 +78,48 @@ eeprom
 #101.100.00. 2, 
 #106.200.00. 2,
 
-4 constant lsb-bands#
-0 2array: lsb-bands
-1800 1900 2,
-3500 3800 2,
-7000 7200 2,
-0    22000 2,
+4 constant lsb-list#
+0 2array: lsb-list
+#1.846.00. 2,
+#3.699.00. 2,
+#7.066.00. 2,
+#14.997.00. 2,
 
-5 constant usb-bands#
-0 2array: usb-bands
-10100 10200 2,
-14000 14350 2,
-18060 18170 2,
-21000 21300 2,
-0     22000 2,
+5 constant usb-list#
+0 2array: usb-list
+#10.100.00. 2,
+#14.200.00. 2,
+#18.105.00. 2,
+#21.150.00. 2,
+#14.995.00. 2,
 
-0 2array: e.lsb-freqs
-1846.00. 2,
-3699.00. 2,
-7066.00. 2,
-10000.00. 2,
-
-0 2array: e.usb-freqs
-10100.00. 2,
-14200.00. 2,
-18150.00. 2,
-21150.00. 2,
-15000.00. 2,
-
-12 constant am-bands#
-0 2array: am-bands
-150 300 2,
-522 1602 2,
-3950 4000 2,
-4700 5100 2,
-5850 6230 2,
-7200 7600 2,
-9300 10000 2,
-11500 12100 2,
-13550 13850 2,
-15000 15700 2,
-17400 17800 2,
-0     18200 2,
-
-0 2array: e.am-freqs
-198.00. 2,
-1089.00. 2,
-3955.00. 2,
-4950.00. 2,
-6185.00. 2,
-7415.00. 2,
-9400.00. 2,
-11900.00. 2,
-13755.00. 2,
-15590.00. 2,
-17490.00. 2,
-10000.00. 2,
-
-create e.fm-freq 101.100.00. 2,
-
+9 constant am-list#
+0 2array: am-list
+#0.198.00. 2,
+#1.089.00. 2,
+#7.415.00. 2,
+#9.400.00. 2,
+#12.095.00. 2,
+#13.755.00. 2,
+#15.590.00. 2,
+#17.490.00. 2,
+#21.300.00. 2,
 ram
-am-bands# 2array: am-freqs
-lsb-bands# 2array: lsb-freqs
-usb-bands# 2array: usb-freqs
-variable lsb-band \ 0-2
-variable usb-band
-variable am-band
-variable fm-band
-
-variable newband
-ram 2variable fm-freq
-2variable newrxf
 
 eeprom
 #10.730.000. 2value fmOffset
 #455.000.   2value if2Offset
 #1493. 2value usbOffset
 -#1289. 2value lsbOffset
+ram
+2variable newrxf
+4 2array: rxf          \ Use mode as index
 
 eeprom
+4 2array: RX0
 defer mode0
 defer bw0
-0 value term?
+1 value term?
 ram
 variable vol
 variable newVol
@@ -171,38 +127,12 @@ variable newVol
 : modeAm? mode @ modeAm = ;
 : modeFm? mode @ modeFm = ;
 
-: rxf ( -- a )
-  mode @ case
-    modeAm   of am-band @ am-freqs endof
-    modeUsb  of usb-band @ usb-freqs endof
-    modeLsb  of lsb-band @ lsb-freqs endof
-    modeFm   of fm-freq endof
-  endcase
-;
-: rxf@ ( -- d ) rxf 2@ ;
-: rxf! ( d -- ) rxf 2! ;
-
-: band ( -- a )
-  mode @ case
-    modeAm   of am-band  endof
-    modeUsb  of usb-band endof
-    modeLsb  of lsb-band endof
-    modeFm   of fm-band endof
-  endcase
-;
-: band@ ( -- n ) band @ ;
-: band! ( n -- )
-  mode @ case
-    modeAm   of am-bands# 1- min am-band  endof
-    modeUsb  of usb-bands# 1- min usb-band endof
-    modeLsb  of lsb-bands# 1- min lsb-band endof
-    modeFm   of 0 min fm-band endof
-  endcase !
-;
-
-: offsetsInit 44.545.000. if2Offset d+ if1Offset 2! ;
-
 : change? ( a a -- f ) @ swap  @ <> ;
+
+: rxf@ ( -- d ) mode @ rxf 2@ ;  \ 10 Hz resolution
+: rxf! ( d -- ) mode @ rxf 2! ;  \ 10 Hz resolution
+
+: offsets-init lo2-freq 2@ if2Offset d+ if1Offset 2! ;
 
 : fm.ad/
   1 ansela c!
@@ -314,26 +244,14 @@ ram
   spi!
 ;
 
-\ Set si5351 vco to about 800 MHz
-: divider!
-  #8000 rxf@ #10000 um/mod nip 450 + / aligned
-  dup divider <> 
-  if am.init else drop then 
-;
-
 : rx-freq  ( -- ) \ Ten herz resolution
   rxf@ #10 ud*
   modeFm? 
   if   fmOffset d- fm.f
   else 
-       divider!
-       rxOffset 2@ d+ if1Offset 2@ d+ am.f
+       rxOffset 2@ d+ if1Offset 2@ d+ lo1
   then
 ;
-
-: bfo-off   0 nco1con c! ;
-: bfo-freq ( Hz. -- ) \ 8 Hz resolution with 16MHz clock
-  $80 nco1con c! nco.f ;
 
 : amOffset
   mode @ modeAm =
@@ -349,16 +267,12 @@ ram
 : lsb filter3K filter ! modeLsb newMode ! lsbOffset rxOffset 2! ;
 : fm  modeFm newMode ! fmOffset rxOffset 2! filterFM filter ! ;
 
+: bfo-set lo2 if2Offset rxOffset 2@ d+ bfo.f bfo-on ;
 : det-set
-  modeAm? modeFm? or
-  if   bfo-off
-  else if2Offset rxOffset 2@ d+ bfo-freq
-       nco/ nco.real if2Offset d- rxOffset 2!
-  then
   mode @ case
-    modeAm  of amOn det-am  endof
-    modeUsb of amOn det-ssb endof
-    modeLsb of amOn det-ssb endof
+    modeAm  of amOn am.init lo2 det-am bfo-off endof
+    modeUsb of amOn am.init bfo-set det-ssb endof
+    modeLsb of amOn am.init bfo-set det-ssb endof
     modeFm  of fmOn fm.init det-fm  endof
   endcase
 ;
@@ -392,44 +306,49 @@ ram variable muted
     then
   then
 ;
-: rxf!! ( d -- ) 2dup rxf! newrxf 2! ;
-: limits-fm
-  rxf@ 2dup
-   #87.500.00. d< if  #87.500.00. rxf!! then 
-  #108.000.00. d> if #108.000.00. rxf!! then 
+: adjust-lo2  ( -- )
+  newrxf 2@ #14.239.00. d>  newrxf 2@ #14.241.30. d< and
+  if
+        newrxf 2@ #14.240.10. d<
+        if   44.547.000.
+        else 44.543.000.
+        then   
+  else  44.545.000.
+  then
+  2dup lo2-freq 2@ d= 0=
+  if   lo2-freq 2! offsets-init lo2
+  else 2drop
+  then
 ;
 
-: limits ( -- )
-  rxf@ #100 um/mod >r drop
-  mode @ case
-    modeAm   of am-band @ am-bands  endof
-    modeUsb  of usb-band @ usb-bands endof
-    modeLsb  of lsb-band @ lsb-bands endof
-    modeFm   of rdrop limits-fm exit endof
-  endcase
-  2@ dup r@ < if #100 um* rxf!! else drop then
-     dup r> > if #100 um* rxf!! else drop then
-;
+: limit-freq
+  modeFm? 
+  if   newrxf 2@  #87.500.00. d< if #87.500.00. newrxf 2! then 
+       newrxf 2@ #108.000.00. d> if #108.000.00. newrxf 2! then 
+  else newrxf 2@ 0. d< if 0. newrxf 2! then 
+       newrxf 2@ #30.000.00. d> if #30.000.00. newrxf 2! then
+       adjust-lo2
+  then ;
 
 : rx-set
   newMode mode change?
-  if 0 vol ! 0 vol! 100 to divider
-     newMode @ mode ! det-set filter-set
-     band@ newband !
+  if 0 vol ! 0 vol!
+     newMode @ mode ! det-set filter-set 
      rxf@ 2dup newrxf 2! 1+ rxf! #100 ms
   then
-  newband @ band@ <>
-  if  newband @ band! band@ newband ! 
-      rxf@ newrxf 2! rx-freq
-  then
-  newrxf 2@ rxf@ d= 0=
-  if newrxf 2@ rxf! limits rx-freq
+  newrxf 2@ rxf@ d- d0= 0=
+  if limit-freq newrxf 2@ rxf! rx-freq
   then
   vol-set
   modeFm? if fm.presel! then
 ;
 
-' fm is mode0
+#07.415.00.  modeAm  RX0 2!
+#03.699.00.  modeLsb RX0 2!
+#14.240.00.  modeUsb RX0 2!
+#101.100.00. modeFm  RX0 2!
+
+' usb is mode0
 
 : rx-reset ( -- )
   cr
@@ -438,17 +357,12 @@ ram variable muted
   io.init
   dac.init
   i2c.init
+  44.545.000. lo2-freq 2!
+  am.init lo2
   am.ad
   0 s-old !
-  0 xtalOffset !
-  offsetsInit
-  nco/
-  100 to divider
-  5 am-band ! 1 usb-band ! 2 lsb-band !
-  0 e.am-freqs 0 am-freqs am-bands# cells cells cmove
-  0 e.usb-freqs 0 usb-freqs usb-bands# cells cells cmove
-  0 e.lsb-freqs 0 lsb-freqs lsb-bands# cells cells cmove
-  e.fm-freq 2@ 2dup fm-freq 2! newrxf 2!
+  offsets-init
+  0 RX0 0 rxf #4 cells cells cmove
   true mode ! mode0
   filter8K amFilter !
   rx-set
@@ -458,8 +372,8 @@ ram variable muted
 ;
 
 : mem
-  fl+
-  fm-freq 2@ e.fm-freq 2!
+  fl+ 
+  0 rxf 0 RX0 #4 cells cells cmove 
   mode @
   case
     modeAm   of ['] am  endof
@@ -524,9 +438,6 @@ ram variable muted
 ;
 : s.meter modeFm? if fm.s.meter else am.s.meter then ;
 
-: s-on fl+ true to term? warm ;
-: s-off fl+ false to term? warm ;
-
 : >dogs ['] dogs.data 'emit ! ;
 : >uart ['] tx1 'emit ! ;
 : dogs.bw ( -- )
@@ -588,10 +499,10 @@ ram variable muted
 : f+100 100 rd ;
 : f-500 -500 am9khz rd ;
 : f+500 500 am9khz rd ;
+: f-250 -25000 rd ;
+: f+250 25000 rd ;
 : f-1000 -10000 rd ;
 : f+1000 10000 rd ;
-: b-down modeFm? if -10000 rd else band@ 1- 0 max newband ! then ;
-: b-up   modeFm? if  10000 rd else band@ 1+ newband ! then ;
 
 : offset+- ( n -- ) s>d rxOffset 2@ d+ rxOffset 2! det-set rx-freq ;
 
@@ -614,7 +525,7 @@ flash create exec
    ' am , ' f+1000 , ' offset+ ,     ' lsb ,  \ abcd
   ' f-5 ,     ' fm ,  ' narrow ,  ' middle ,  \ efgh
 ' f+500 ,   ' wide ,     ' vo- ,     ' vo+ ,  \ ijkl
-  ' mem ,    ' nop ,  ' b-down ,    ' b-up ,  \ mnop
+  ' mem ,    ' nop ,   ' f-250 ,   ' f+250 ,  \ mnop
   ' f-1 , ' f+5    ,     ' usb ,   ' f-100 ,  \ qrstx
 ' f-500 , ' f-1000 ,     ' f+1 , ' offset- ,  \ uvwx
 ' f+100 ,  ' abort ,                          \ yz
@@ -625,14 +536,14 @@ ram
 : knob-lores ( -- f ) \ True if value has changed
   knob1 c@  [ knob1 a, clrf, ]
   dup 0= if exit then 
-  127 > if b-down else b-up then true
+  127 > if f-1000 else f+1000 then true
 ;
-: knob-vol ( -- f )
+: knob-vol
   knob2 c@  [ knob2 a, clrf, ]
   dup 0= if exit then 
   127 > if vo- else vo+ then true
 ;
-: knob-hires ( -- f )
+: knob-hires
   knob3 c@  [ knob3 a, clrf, ]
   dup 0= modeFm? or if exit then 
   c>s dup 0<
@@ -686,14 +597,21 @@ ram
 
 : chan? ( c limit -- c f ) >r [char] 1 -  dup 0 r> within ;
 : short-keys ( n -- )
-  modeFm? term? and
-  if fm-list# chan? if fm-list 2@ newrxf 2! else drop then
-  else drop
-  then ;
+  mode @ case
+  modeFm  of fm-list#  chan? if fm-list  2@ newrxf 2! else drop then
+          endof
+  modeUsb of usb-list# chan? if usb-list 2@ newrxf 2! else drop then
+          endof
+  modeLsb of lsb-list# chan? if lsb-list 2@ newrxf 2! else drop then
+          endof
+  modeAm  of am-list#  chan? if am-list  2@ newrxf 2! else drop then
+          endof
+  endcase
+;
 
 : rx
   fl- >uart true
-  offsetsInit
+  offsets-init
   begin
     if   rx-set vol-set rx-freq>$ dogs.display 
          term? if term.display else app.display then
