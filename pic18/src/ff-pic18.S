@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          13.09.2025                                        *
+;;    Date:          26.05.2026                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -10,7 +10,7 @@
 ;; FlashForth is a standalone Forth system for microcontrollers that
 ;; can flash their own flash memory.
 ;;
-;; Copyright (C) 2025  Mikael Nordman
+;; Copyright (C) 2026  Mikael Nordman
 ;;
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License version 3 as
@@ -972,7 +972,11 @@ PAUSE:
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
-        btg     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#if CPU_LOAD_LED_POLARITY == POSITIVE
+        bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#else
+        bsf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
+#endif
 #endif
 #endif
 #endif
@@ -1579,7 +1583,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 13.09.2025        ; 10
+        STRING 26.05.2026        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
