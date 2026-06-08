@@ -22,8 +22,8 @@
 
 single busy
 fl+
--bms8
-marker -bms8
+-bms
+marker -bms
 
 $ffba constant refcon0
 $ffbb constant refcon1

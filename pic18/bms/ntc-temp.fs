@@ -1,6 +1,6 @@
-\ Generate table with gforth
+\ Generate table with gforth for 10Kohm NTC resistor
 \ e^((3950/(273.15+00))-(3950/(273.15+25)))*10000
-\ gentemp ( temp -- resistance ) parameters are integer
+\ gen-128 ( temp -- resistance ) parameters are integer
 \ : gen-r s>f 273.15e0 f+ 3950e0 fswap f/ 13.248365e0 f- fexp 1e4 f* f>s ;
 \ : gen-128 ( r -- adval ) gen-r dup >r 128 * r> 10000 + / ;
 \ : values ( stop start -- ) do cr i 2 .r ."  c,  \ " i gen-128 . -1 +loop ;
