@@ -1,7 +1,7 @@
 ;;**********************************************************************
 ;;                                                                     *
 ;;    Filename:      ff-pic18.S                                        *
-;;    Date:          26.05.2026                                        *
+;;    Date:          26.08.2026                                        *
 ;;    File Version:  5.0                                               *
 ;;    Copyright:     Mikael Nordman                                    *
 ;;    Author:        Mikael Nordman                                    *
@@ -972,6 +972,7 @@ PAUSE:
         sleep
 PAUSE_IDLE1:
 #if CPU_LOAD_LED == ENABLE
+        banksel CPU_LOAD_PORT
 #if CPU_LOAD_LED_POLARITY == POSITIVE
         bcf     CPU_LOAD_PORT, CPU_LOAD_BIT, B
 #else
@@ -1583,7 +1584,7 @@ VER:
         db      ' ','5',' '      ; 3
         STRING PICTYPE           ; 9,10,11
         db      ' '              ; 1
-        STRING 26.05.2026        ; 10
+        STRING 26.08.2026        ; 10
         db    0xa,0xd            ; 2
         align 2
         goto    TYPE
@@ -1921,7 +1922,7 @@ L_ANDLW_:
         NF2     6,andlw
         db      ','
         align   2
-        rcall   LIT
+        call    LIT
         dw      0x0b00
         bra     AS1_DOES
 
